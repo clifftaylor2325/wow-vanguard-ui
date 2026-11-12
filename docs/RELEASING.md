@@ -20,7 +20,7 @@ Two routes ship the same files. The normal one is the `release` workflow in GitH
 4. Rehearse once more: `node scripts/release-local.mjs`. Everything under "Would block a publish" must be empty. This runs `npm run quality`, `npm run test:quick`, `npm run coverage` (every test with the floor, 10 minutes or more), the raid bench with its instruction caps, luacheck when it is installed (the run says when it is not), the zip and its check, and the packager without uploading.
 5. In a real hurry, add `--fast`: every test still runs, as `npm test` without coverage (about half the time). The run says so, and the PR or release notes should too.
 6. Publish: `node scripts/release-local.mjs --publish=v<version>`. The value after `=` must be `v` plus the TOC version, so a stale command can't ship the wrong thing. It uploads to CurseForge and Wago, then creates the GitHub release (the zip attached, the tag created on GitHub at that commit). Each upload runs even if another fails, and the last line names any that failed.
-7. Open the CurseForge and Wago pages and the GitHub release once. The first real upload also shows whether CurseForge lists the file as Forever only or as retail too (the TOC's second Interface value is a retail one); that is the one thing nobody has seen yet.
+7. Open the CurseForge and Wago pages and the GitHub release once.
 8. Tell the site thread: release notes in `scripts/lib/changelog-content.mjs`, and `sourceRef` in the site's `site.config.json`.
 
 Options: `--no-listings` (GitHub only), `--no-github` (stores only), `--fast`, `--help`.
