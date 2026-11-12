@@ -3026,6 +3026,7 @@ L["{player} already reserves {item}."] = "{player}은(는) 이미 {item}을(를)
 L["{preset}: nothing you can mail has every word of {words} in its name. Commas separate alternatives, such as: ore, bar"] = "{preset}: 보낼 수 있는 것 중 이름에 {words}의 모든 단어가 있는 것이 없습니다. 쉼표는 대안을 구분합니다. 예: 광석, 주괴"
 L["{preset}: the Send Mail tab already holds {count} items. Press Send."] = "{preset}: 우편 보내기 탭에 이미 아이템이 {count}개 있습니다. 보내기를 누르세요."
 L["{preset}: to {to}, {words}"] = "{preset}: {to}에게, {words}"
+L["{preset}: {count} item attached for {to}. Press Send."] = "{preset}: {to}에게 아이템 {count}개 첨부. 보내기를 누르세요."
 L["{preset}: {count} items attached for {to}. Press Send."] = "{preset}: {to}에게 아이템 {count}개 첨부. 보내기를 누르세요."
 L["{price} · market {market}"] = "{price} · 시세 {market}"
 L["{profile}  (after reload)"] = "{profile}  (UI 재시작 후)"

@@ -200,7 +200,7 @@ it("presets attach only what can be mailed: a soulbound or locked item is passed
   expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: nothing you can mail has every word of iron in its name\./)], "every iron item is bound or locked").toEqual([null, true]);
   addon.eval("__wfgWorld.bags[0][2].locked = nil");
   addon.slash("mail send smith");
-  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 1 items attached for Bobalt\./)], "the ore, once free").toEqual([[[0, 2]], true]);
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 1 item attached for Bobalt\./)], "the ore, once free").toEqual([[[0, 2]], true]);
 });
 it("+ Add on the panel makes a preset, a right-click on its button asks and removes it, and pointing says what it sends", () => {
   const addon = mailer();

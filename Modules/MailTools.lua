@@ -428,7 +428,8 @@ local function sentLine(p, count)
   if count == 0 and p.words:find("%S") then
     return ns.Format(L["{preset}: nothing you can mail has every word of {words} in its name. Commas separate alternatives, such as: ore, bar"], { preset = p.name, words = p.words })
   end
-  return ns.Format(L["{preset}: {count} items attached for {to}. Press Send."], { preset = p.name, count = count, to = p.to })
+  local said = count == 1 and L["{preset}: {count} item attached for {to}. Press Send."] or L["{preset}: {count} items attached for {to}. Press Send."]
+  return ns.Format(said, { preset = p.name, count = count, to = p.to })
 end
 
 -- Sends: the Send Mail tab (open) gets the character's name and the items; you press Send.

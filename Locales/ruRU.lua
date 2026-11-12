@@ -3026,6 +3026,7 @@ L["{player} already reserves {item}."] = "{player} уже резервирует
 L["{preset}: nothing you can mail has every word of {words} in its name. Commas separate alternatives, such as: ore, bar"] = "{preset}: ни в одном предмете, который можно отправить, нет в названии всех слов из {words}. Запятые разделяют варианты, например: руда, слиток"
 L["{preset}: the Send Mail tab already holds {count} items. Press Send."] = "{preset}: на вкладке «Отправить письмо» уже предметов: {count}. Нажмите «Отправить»."
 L["{preset}: to {to}, {words}"] = "{preset}: для {to}, {words}"
+L["{preset}: {count} item attached for {to}. Press Send."] = "{preset}: приложен {count} предмет для {to}. Нажмите «Отправить»."
 L["{preset}: {count} items attached for {to}. Press Send."] = "{preset}: приложено предметов для {to}: {count}. Нажмите «Отправить»."
 L["{price} · market {market}"] = "{price} · рынок {market}"
 L["{profile}  (after reload)"] = "{profile}  (после перезагрузки)"
