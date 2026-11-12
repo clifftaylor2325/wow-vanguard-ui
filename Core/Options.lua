@@ -984,7 +984,7 @@ do
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
     GameTooltip:SetText(ns.Format(L["Vanguard {version}"], { version = ns.AddonVersion() }))
     GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
-    local n = #ns.errors
+    local n = ns.LoudErrorCount()
     local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]
     if n > 0 then GameTooltip:AddLine(ns.Format(caught, { count = n }), T.RGB("bad")) end
     GameTooltip:Show()

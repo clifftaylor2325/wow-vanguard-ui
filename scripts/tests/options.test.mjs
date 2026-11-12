@@ -2612,3 +2612,13 @@ it("Escape closes the options window with the close sound and the fade, as the c
   addon.key("Vanguard_Options", "ESCAPE");
   expect(addon.eval("return { table.concat(__sounds, ','), __closes, Vanguard_Options:IsShown() }"), "the close sound, the fade, the window gone").toEqual(["close", 1, false]);
 });
+
+it("options: the addons button's tooltip counts what the badge counts, not a fallback kept by ns.Quiet (H46-23-5)", () => {
+  const addon = loggedIn();
+  expectErrors("TEST-ONLY fallback: eval:2: TEST-ONLY refused");
+  addon.eval('ns.Quiet("TEST-ONLY fallback", function() error("TEST-ONLY refused") end) ns.ErrorBadge.Update()');
+  // The tooltip lines after pointing at the addons button.
+  const lines = () => addon.eval(`local b = CreateFrame("Button") Vanguard_OnAddonCompartmentEnter("Vanguard", b)
+    local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
+  expect([addon.eval("return { ns.LoudErrorCount(), #ns.errors }"), lines().length], "one quiet entry kept, no error line").toEqual([[0, 1], 2]);
+});
