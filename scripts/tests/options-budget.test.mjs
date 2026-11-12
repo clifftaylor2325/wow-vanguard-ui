@@ -5,12 +5,13 @@
 // with the rows each shows now, and the list only shrinks: a tab over 8 that is not listed fails, a tab that shows more
 // than it is listed with fails, and a listed tab that shows fewer must be lowered (or taken out at 8 or under).
 // VG_BUDGET_WRITE=1 rewrites the list from what the tabs show; use it only to take out or lower what a change fixed,
-// never to let a longer tab in.
+// never to let a longer tab in. It refuses a tab over the budget that is not listed yet (budgetWritten).
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
+import { budgetWritten } from "../lib/baselines.mjs";
 import { createAddon, FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, SETUP_DONE, loggedIn } from "./helpers.mjs";
 
@@ -62,8 +63,8 @@ function overBudget() {
 
 it("options budget: no tab opens on more rows than the budget or than its baseline", () => {
   const found = overBudget();
-  if (process.env.VG_BUDGET_WRITE) return void fs.writeFileSync(BASELINE, JSON.stringify(found, null, 2) + "\n");
   const known = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
+  if (process.env.VG_BUDGET_WRITE) return void fs.writeFileSync(BASELINE, JSON.stringify(budgetWritten(known, found), null, 2) + "\n");
   const grew = Object.keys(found).filter((name) => found[name] > (known[name] ?? BUDGET));
   const fixed = Object.keys(known).filter((name) => (found[name] ?? BUDGET) < known[name]);
   expect(grew, `tabs that show more rows than ${BUDGET} (fold the parts of a feature: essential = true on the rest)`).toEqual([]);
