@@ -1199,7 +1199,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
+    "general|General|10|63", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
     "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
@@ -2634,4 +2634,22 @@ it("options: pages built before a profile change are built again, so the Damage 
     .toEqual(["feral", "feral", "feral"]);
   addon.eval('ns.Options.Show("chat")');
   expect([addon.eval('return __click("Remove: TEST-ONLY old phrase")'), addon.eval('return __click("Remove: TEST-ONLY new phrase")')], "the Chat page lists the new profile's phrase, not the old one").toEqual([false, true]);
+});
+
+it("H46-24-53: General has a Grid spacing slider, and the Modules page a switch per registered skin", () => {
+  const addon = loggedIn(CLICK_LUA + 'Vanguard.RegisterSkin("TESTONLY", function() end)');
+  addon.eval('ns.Options.Show("general")');
+  const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then
+    local before = w.get() w.set(64) w:Refresh() return { before = before, now = ns.MoverOptions().gridSize, text = w.value:GetText() } end end`);
+  expect(slider, "the slider starts at the 32 px default and sets the spacing the command does").toEqual({ before: 32, now: 64, text: "64" });
+  addon.slash("unlock");
+  addon.eval('ns.MoverOptions().grid = true ns.ShowGrid = function(size) __grid = size end');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then w.set(96) end end`);
+  expect(addon.eval("return __grid"), "while unlocked the grid is drawn again at once").toBe(96);
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval('return __click("Skin for TESTONLY")') && addon.eval("return ns.Settings('skins').TESTONLY"), "the skin's switch turns it off like /vg skins TESTONLY off").toBe(false);
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "and it waits for the reload").toBe(true);
+  const none = loggedIn(CLICK_LUA);
+  none.eval('ns.Options.Show("modules")');
+  expect(none.eval('return __find("Skins for other addons") == nil'), "no skin registered, no skin rows").toBe(true);
 });

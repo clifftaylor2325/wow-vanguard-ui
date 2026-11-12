@@ -142,6 +142,17 @@ local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end, ns.MoverDefault(key)
 end
 
+-- get/set for the unlock grid's spacing, redrawn at once while frames are unlocked with the grid on, and its default.
+local function gridSpacing()
+  -- Saves the spacing and redraws the grid when it is showing.
+  local function set(size)
+    local o = ns.MoverOptions()
+    o.gridSize = size
+    if ns.Unlocked() and o.grid then ns.ShowGrid(size) end
+  end
+  return function() return ns.MoverOptions().gridSize end, set, ns.MoverDefault("gridSize")
+end
+
 -- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
 local function sizedMover()
   local list = ns.MoverList()
@@ -302,6 +313,8 @@ end
 -- A frame's scale (50% to 200%) and opacity (10% to 100%), in steps of 5.
 local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
 local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
+-- The unlock grid's spacing: 8 to 256 screen units (a plain number: a "px" value label overflows its box at 130% text), in steps of 8 (/vg grid takes any whole number in that range).
+local GRID_SIZES = { min = 8, max = 256, step = 8, format = function(v) return tostring(math.floor(v)) end }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -458,6 +471,7 @@ local function layoutRows()
   return append(setupRows(), {
     O.MoveFramesRow(),
     check(L["Show a grid while moving"], moverOption("grid")),
+    { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },
     check(L["Snap to other frames"], moverOption("snap")),
     check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
@@ -745,6 +759,23 @@ local function moduleEmptyRows()
   }
 end
 
+-- One addon's skin switch: on unless /vg skins <addon> off; it applies after the reload (a skin runs once at login).
+local function skinRow(skin)
+  local name = skin.name
+  return O.ReloadRow(check(ns.Format(L["Skin for {addon}"], { addon = name }),
+    function() return ns.Settings("skins")[name] ~= false end, function(v) ns.Settings("skins")[name] = v O.NeedReload() end, true))
+end
+
+-- The skins other addons registered (Vanguard.RegisterSkin), a switch each; nothing when none did.
+local function skinRows()
+  local rows = {}
+  for _, skin in ipairs(ns.SkinList()) do
+    if #rows == 0 then rows[1] = { "header", L["Skins for other addons"] } end
+    rows[#rows + 1] = skinRow(skin)
+  end
+  return rows
+end
+
 -- Modules: a filter, then one switch per module under the group (a nav page's name) it belongs to, or the empty
 -- state when the filter leaves none.
 local function moduleRows()
@@ -752,7 +783,7 @@ local function moduleRows()
   local top = #rows
   for _, group in ipairs(O.MODULE_GROUPS) do rows = append(rows, groupSection(group[1], groupModules(group[2], listed))) end
   rows = append(rows, groupSection(L["More"], otherModules(listed)))
-  return #rows > top and rows or append(rows, moduleEmptyRows())
+  return append(#rows > top and rows or append(rows, moduleEmptyRows()), skinRows())
 end
 
 -- "Spec 2 uses Healer." ("Primary talents use Healer." on WoW Forever) or why there's no spec profile.
