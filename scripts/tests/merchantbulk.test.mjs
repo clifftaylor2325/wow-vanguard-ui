@@ -603,3 +603,12 @@ it("an irreversible move started in a fight is refused before any question, with
   addon.eval(`ns.Irreversible({ question = "TEST-ONLY?", yes = "TEST-ONLY", act = function() __acted = true end })`);
   expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return __acted == true"), chatHas(addon, /Not in a fight: try again after it/)]).toEqual([false, false, true]);
 });
+
+it("/vg junk reads clear and remove in any case, as the other /vg words are read", () => {
+  const addon = loggedIn(BULK_ENV);
+  set(addon, "j[159] = true j[4540] = true");
+  addon.slash("junk Remove |Hitem:159::|h[TEST-ONLY Water]|h");
+  expect([chatHas(addon, /TEST-ONLY Water is off your sell list\.$/), addon.eval("return ns.GetModule('Merchant').SellList()[159] == nil")], "Remove takes the item off").toEqual([true, true]);
+  addon.slash("junk CLEAR");
+  expect([chatHas(addon, /Your sell list is empty\.$/), addon.eval("return next(ns.GetModule('Merchant').SellList()) == nil")], "CLEAR empties the list").toEqual([true, true]);
+});
