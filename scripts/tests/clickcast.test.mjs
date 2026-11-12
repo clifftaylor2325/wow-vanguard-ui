@@ -966,3 +966,15 @@ it("H44-9-100 an exported rank binding imports back unchanged", () => {
   addon.eval(`${CC}.Import(${JSON.stringify(text)})`);
   expect(JSON.stringify(bindings(addon))).toBe(before);
 });
+
+it("H45-19-51 a fight's end re-reads no options row while the window is closed, and the window re-reads as it opens", () => {
+  const addon = priest();
+  addon.eval('for _, p in ipairs(ns.Options.PAGES or {}) do ns.Options.Show(p.key) end ns.Options.Show("clickcast") ns.Options.Hide()');
+  addon.eval(`__refreshes = 0 local try = ns.Try ns.Try = function(what, ...) if what == "refresh options row" then __refreshes = __refreshes + 1 end return try(what, ...) end`);
+  addon.world.combat(true);
+  addon.world.combat(false);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  const closed = addon.eval("return __refreshes");
+  addon.eval('ns.Options.Show("clickcast")');
+  expect([closed, addon.eval("return __refreshes") > 0]).toEqual([0, true]);
+});
