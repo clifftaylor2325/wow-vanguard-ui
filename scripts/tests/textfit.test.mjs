@@ -230,6 +230,15 @@ it("text fits: the Click casting page's starter layout rows: Click to heal's gui
   expect(addon.textFit("Vanguard_Options"), "their texts and buttons fit, with every string a third longer").toEqual([]);
 });
 
+it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl + Shift + a mouse button, H46-19-55)", () => {
+  const addon = fitClient();
+  // TEST-ONLY saved binding from before Import's key check, on modifiers the grid has no column for.
+  addon.eval(`table.insert(ns.GetModule("ClickCast").Bindings(), { key = "alt-ctrl-shift-BUTTON4", action = "spell", value = "Renew", spellID = 139 })
+    ns.Options.Show("clickcast") ns.Options.ShowTab(ns.L["Keys while hovering a frame"])`);
+  expect(addon.frames('w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON4" and w:IsVisible()').length, "the row is on the page").toBe(1);
+  expect(addon.textFit("Vanguard_Options"), "the key name stays short of the icon, with every string a third longer").toEqual([]);
+});
+
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "frFR" end' });
   addon.login();

@@ -608,21 +608,32 @@ end
 
 -- Hover keys ------------------------------------------------------------------------------------
 
--- The current spec's hover-key bindings (not mouse buttons), in order.
+-- The current spec's bindings the grid has no cell for, in order: the hover keys, and a mouse binding saved before
+-- Import's key check on modifiers the grid has no column for (Alt + Ctrl + Shift), so it too has its row and Remove.
 local function hoverBindings()
   local out = {}
   for _, b in ipairs(CC.Bindings()) do
-    if not CC.MouseParts(b.key) then out[#out + 1] = b end
+    local prefix = CC.MouseParts(b.key)
+    if not (prefix and CC.MOUSE_PREFIXES[prefix]) then out[#out + 1] = b end
   end
   return out
 end
 
--- A hover-key row's texts: the key, the binding beside its icon, the collision note.
-local function keyRowTexts(row)
+-- A hover-key row's key name, from the row's start to a gap before the icon, wrapping onto a second line when it is
+-- wider (a mouse key on three modifiers, "Alt + Ctrl + Shift + Button 4", runs long).
+local function keyName(row)
   row.keyText = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
   row.keyText:SetPoint("LEFT", T.SPACE.tight, 0)
+  row.keyText:SetPoint("RIGHT", row.iconFrame, "LEFT", -T.SPACE.tight, 0)
+  row.keyText:SetJustifyH("LEFT")
+  row.keyText:SetMaxLines(2)
+end
+
+-- A hover-key row's texts: the key, the binding beside its icon, the collision note.
+local function keyRowTexts(row)
   row.iconFrame = bindingIcon(row, 20)
   row.iconFrame:SetPoint("LEFT", 150, 0)
+  keyName(row)
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
   row.text:SetPoint("LEFT", 176, 0)
   row.note = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")

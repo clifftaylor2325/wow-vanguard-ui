@@ -2,7 +2,7 @@
 // in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, RAID_ENV, UNITS_ENV, chatHas, isTok, loggedIn } from "./helpers.mjs";
 import { CC, CS, applies, bindings, cell, enterBinds, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
@@ -627,6 +627,22 @@ it("H46-19-54 a cell bound to a spell by name shows the top rank's tooltip, a pi
   // The spell id the tooltip shows over a cell.
   const tip = (key) => { addon.hover(cell(addon, key)); const id = addon.eval("return GameTooltip.__spellId"); addon.hover(null); return id; };
   expect({ byName: tip("BUTTON3"), rank: tip("BUTTON4"), unknown: tip("BUTTON5") }, "the name casts its highest rank (9472); a name the catalog doesn't hold keeps its id").toEqual({ byName: 9472, rank: 2061, unknown: 139 });
+});
+
+it("H46-19-55 a saved mouse binding on modifiers the grid has no column for gets a hover-key row with Remove, and works until removed", () => {
+  const addon = priest(UNITS_ENV + RAID_ENV);
+  // TEST-ONLY saved binding from before Import's key check: Alt + Ctrl + Shift + Left click, which the engine builds
+  // as "alt-ctrl-shift-" (Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifierPrefix), so it casts.
+  addon.eval(`table.insert(${CC}.Bindings(), { key = "alt-ctrl-shift-BUTTON1", action = "spell", value = "Renew", spellID = 139 })
+    __spawn(1, "raid1") ${CC}.ApplyAll()`);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
+  const row = widget(addon, 'w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON1" and w:IsShown()');
+  // The raid tile's Alt + Ctrl + Shift + Left click type, as the frame holds it.
+  const attr = () => addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("alt-ctrl-shift-type1")');
+  const remove = row && addon.eval(`return __wfgStub.frames[${row}].remove:IsVisible()`);
+  expect({ attr: attr(), texts: row && textsIn(addon, row).filter(Boolean), remove }).toEqual({ attr: "spell", texts: ["Alt + Ctrl + Shift + Left click", "Renew"], remove: true });
+  addon.eval(`local b = __wfgStub.frames[${row}].remove b:GetScript("OnClick")(b)`);
+  expect([bindings(addon)["alt-ctrl-shift-BUTTON1"], attr(), addon.frames('w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON1" and w:IsShown()').length], "Remove takes it off the list and the frames, and the row goes").toEqual([undefined, null, 0]);
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
