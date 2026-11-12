@@ -1112,14 +1112,21 @@ const TEXT_SINKS = new Set(["SetText", "AddLine", "AddDoubleLine", "Chat", "chec
 // True when a string token is words a player reads: it has a letter, and no backslash (a path).
 const isWords = (text) => /[A-Za-z]/.test(text) && !text.includes("\\") && !text.startsWith('"|T');
 
+// The words that carry an expression on (`r.check and 1`) where any other word would start the next statement.
+const EXPRESSION_GOES_ON = new Set(["and", "or"]);
+
+// True when the token t after a value ends its statement: the file's end, a ";" or the next statement's first word.
+// An operator (and, or, .., ==), a comma, a call's bracket or a field's dot means the value was only its start.
+const endsStatement = (t) => !t || t.text === ";" || (t.kind === "word" && !EXPRESSION_GOES_ON.has(t.text));
+
 // The sink a `local <name> = <a>.<b>.<Sink>` statement at tokens[i] names (`local chat = ns.Chat`), or null: the value
-// must be the sink itself, not its answer or a field of it.
+// must be the sink itself and the whole right-hand side, not its answer, a field of it or `r.check and 1`. A multiple
+// assignment (`local a, chat = 1, ns.Chat` or `local chat = ns.Chat, x`) is deliberately not read.
 function aliasedSink(tokens, i) {
   if (tokens[i].text !== "local" || tokens[i + 1]?.kind !== "word" || tokens[i + 2]?.text !== "=") return null;
   let k = i + 3;
   while ([".", ":"].includes(tokens[k + 1]?.text) && tokens[k + 2]?.kind === "word") k += 2;
-  const next = tokens[k + 1];
-  const value = tokens[k]?.kind === "word" && next?.kind !== "string" && !["(", ".", ":", "[", "{"].includes(next?.text);
+  const value = tokens[k]?.kind === "word" && endsStatement(tokens[k + 1]);
   return value && SHAPE_SINKS.has(tokens[k].text) ? tokens[k].text : null;
 }
 

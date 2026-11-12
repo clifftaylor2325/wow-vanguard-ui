@@ -661,6 +661,12 @@ function unwrappedPasses() {
   expect(reported(inFn('fs:SetText("Experience bar")'), "scripts/lib/t.lua")).toEqual([]);
   expect(reported(inFn('local chat = ns.Chat(x)\n  chat("Hello there")')), "the answer of a sink call is no sink").toEqual([]);
   expect(reported(inFn('local chat = ns.Chat\n  self.chat("Hello there")')), "another table's field of the same name is no sink").toEqual([]);
+  // H46-G2-6: the name is the sink only when the sink is the whole right-hand side; a multiple assignment is not read.
+  expect(reported(inFn('local on = r.check and 1\n  on("Hello there")')), "a sink and more is no sink").toEqual([]);
+  expect(reported(inFn('local say = r.header or print\n  say("Hello there")')), "a sink or another is no sink").toEqual([]);
+  expect(reported(inFn('local a, chat = 1, ns.Chat\n  chat("Hello there")')), "several names: not read").toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat, 1\n  chat("Hello there")')), "several values: not read").toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat;\n  chat("Hello there")')), "a semicolon ends it").toEqual([UNWRAPPED]);
 }
 
 const TRUTH = "secret-truth-test";
