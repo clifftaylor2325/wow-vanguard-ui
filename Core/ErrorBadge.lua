@@ -51,12 +51,13 @@ local function shortCount(n)
 end
 
 -- Keeps the footer line's two forms, the full sentence (also its tooltip when only the count fits) and the count,
--- and the count's width, which the reload notice leaves free (EB.FooterRoom).
+-- and both widths: the count's, which the reload notice leaves free (EB.FooterRoom), and the sentence's, which a fit compares.
 local function setFooterTexts(b, n)
   b.fullText, b.shortText = footerText(n), shortCount(n + #ns.paused)
   b.text:SetText(b.shortText)
   b.shortWidth = T.FullWidth(b.text)
   b.text:SetText(b.fullText)
+  b.fullWidth = T.FullWidth(b.text)
 end
 
 -- Shows the count on both badges (none at zero): the errors kept, but for those ns.Quiet kept for a
@@ -82,7 +83,7 @@ end
 function EB.FitFooter()
   local b = EB.footer
   if not (b and b:IsShown() and b:GetLeft() and b:GetRight()) then return end
-  b.short = T.FullWidth(b.text) > b:GetRight() - b:GetLeft()
+  b.short = b.fullWidth > b:GetRight() - b:GetLeft()
   b.text:SetText(b.short and b.shortText or b.fullText)
 end
 

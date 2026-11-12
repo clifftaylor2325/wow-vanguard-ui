@@ -416,6 +416,21 @@ it("H46-4-5 the errors line shows its count when the notice takes the room, with
   expect(addon.eval("return { Vanguard_OptionsErrors:IsShown(), ns.ErrorBadge.FooterRoom() }"), "no errors: no line and no room kept").toEqual([false, 0]);
 });
 
+it("H46-A-G1 the errors line keeps its count through a lone notice fit, which does not put the sentence back into the squeezed room", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Report("TEST-ONLY site", "failure 1") ns.Report("TEST-ONLY site", "failure 2")');
+  addon.advance(0.5);
+  addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+  const state = 'return { Vanguard_OptionsErrors.text:GetText(), Vanguard_OptionsErrors.short == true }';
+  expect(addon.eval(state), "the count while the notice takes the room").toEqual(["2", true]);
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.eval(state), "one refresh fits the notice alone and leaves the count").toEqual(["2", true]);
+  addon.eval("ns.Options.ShowReloadNotice()");
+  expect(addon.eval(state), "so does a lone reload notice").toEqual(["2", true]);
+});
+
 it("text fits: the options footer's reload notice naming two modules stays between the version line and Reload now (H45-23-2)", () => {
   for (const [locale, scale] of [["deDE", 1], ["deDE", 1.3], ["frFR", 1], ["frFR", 1.3]]) {
     const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
