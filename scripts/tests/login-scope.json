@@ -380,7 +380,6 @@
       "/vg report names the modules turned off and the skinned addons, with any that are off or failed"
     ],
     "scripts/tests/rolls.test.mjs": [],
-    "scripts/tests/savedvariables.test.mjs": [],
     "scripts/tests/setup.test.mjs": [
       "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
       "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"

@@ -18,7 +18,8 @@ export const DIFF = "scripts/fixtures/api-diff-forever-70755-vs-live-70783.json"
 export const OUT = "scripts/lib/forever-only-api.json";
 
 // An event's name as the client fires it, from its documented name: GameRulesChanged -> GAME_RULES_CHANGED.
-export const eventName = (documented) => documented.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase();
+export const eventName = (documented) => documented
+  .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2").replace(/([a-z])([A-Z0-9])/g, "$1_$2").replace(/([0-9])([A-Za-z])/g, "$1_$2").toUpperCase();
 
 // A pattern that finds a function's whole name, not a field or method of that name (`x.Name`, `x:Name`).
 const wholeName = (text) => new RegExp(`(?<![\\w.:])${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`);

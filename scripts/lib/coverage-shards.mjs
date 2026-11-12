@@ -76,10 +76,11 @@ export function listedTestFiles(listOutput) {
   return new Set(files.map((f) => path.basename(f)));
 }
 
-// The test files Vitest would run in this clone, asked with `vitest list --filesOnly` (it runs nothing).
+// The test files Vitest would run in this clone, asked with `vitest list --filesOnly` (it runs nothing). The Retail-only
+// files stay listed even under VG_SKIP_RETAIL: a merge judges a full set of shards.
 export function expectedTestFiles(root) {
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
-  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26 });
+  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26, env: { ...process.env, VG_SKIP_RETAIL: "" } });
   if (out.status !== 0) throw new Error(`vitest list failed:\n${out.stdout}${out.stderr}`);
   return listedTestFiles(out.stdout);
 }
