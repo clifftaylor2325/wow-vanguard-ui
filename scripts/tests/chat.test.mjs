@@ -1327,6 +1327,18 @@ it("H44-18-A1 minimap drawer: a button its addon shows or hides while the drawer
   addon.eval("LibDBIcon10_TestOnlyOne:Show()");
   expect(toggle(), "and Show as a show").toBe(true);
 });
+it("H45-28-2 minimap drawer: open when its last button is hidden, it shuts with the toggle, and stays shut when the button returns", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  addon.eval("LibDBIcon10_TestOnlyOne:Hide()");
+  addon.update(0);
+  // Whether the drawer and the toggle show.
+  const state = () => addon.eval("return { Vanguard_MinimapDrawer:IsShown(), Vanguard_MinimapDrawerToggle:IsShown() }");
+  expect(state(), "no button left: drawer and toggle both hidden").toEqual([false, false]);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show()");
+  addon.update(0);
+  expect(state(), "the button returns: the toggle is back, the drawer shut").toEqual([false, true]);
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");
