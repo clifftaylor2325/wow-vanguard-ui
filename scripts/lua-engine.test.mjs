@@ -270,6 +270,18 @@ it("inspectors: a frame's snapshot, text search and the top-level screen", () =>
   }
 });
 
+// scripts/tests/README.md "Who owns a frame": what the world makes is the game's, though it is made after the client's
+// frames at load (wow-taint.lua marks it __byGame), so screen(), textFit(null) and the lifecycle footprint leave it out.
+it("inspectors: a game window the world opens, and Retail's expansion button, are not frames the addon made", () => {
+  const addon = loggedIn();
+  addon.world.openAuctionHouse();
+  const names = addon.screen().map((f) => f.name);
+  expect([names.includes("AuctionHouseFrame"), names.includes("Vanguard_player")], "the auction house is the game's").toEqual([false, true]);
+  const retail = createAddon({ client: RETAIL_CLIENT });
+  expect(retail.eval("return { __wfgStub.addonMade(ExpansionLandingPageMinimapButton), ExpansionLandingPageMinimapButton.__id > __wfgStub.firstAddonFrame }"),
+    "made after the client's frames at load, but the game's").toEqual([false, true]);
+});
+
 it("the auction house: queries recorded, restricted calls logged with the click that made them, 0-based replicate rows", () => {
   const addon = createAddon();
   addon.eval(`__wfgWorld.items[2589].commodity = true __wfgWorld.bags[0][1] = { itemID = 2589, count = 5 }

@@ -283,7 +283,7 @@ a `ns` path (`"ns.GetModule('Minimap').frame"`) or a widget id from a snapshot.
 | --- | --- |
 | `frame(ref)` | A snapshot or null: `{ name, kind, parent, shown, visible, rect: { left, bottom, width, height, right, top }, text, textColor, font, texture, atlas, color, vertexColor, alpha, value, min, max, barColor, checked, enabled, cooldown, scale, strata, level, attributes, mouse, children }`. |
 | `frames(predicate)` | Snapshots of every widget passing a Lua predicate on `w`: `frames('w.__kind == "Cooldown" and w:IsVisible()')`. |
-| `screen()` | The visible top-level frames the addon made, with rects: for on-screen and overlap checks. |
+| `screen()` | The visible top-level frames the addon made, with rects: for on-screen and overlap checks. A frame the world or test code makes is the game's ("Who owns a frame") and is left out, as it is from `textFit(null)` and the lifecycle footprint. |
 | `texts(text)` | Every visible font string reading exactly `text`. |
 | `find(pattern)` | The first visible widget whose name or text matches a Lua pattern. |
 | `eval(lua)` | Anything else, with `ns` (the addon's namespace) in scope; the first result comes back as JS. |

@@ -216,13 +216,21 @@ local function collect(w, texts, controls)
   for _, child in ipairs({ w:GetChildren() }) do collect(child, texts, controls) end
 end
 
+-- Whether the addon made a widget: made after the client's frames at load (stub.firstAddonFrame) and not the game's.
+-- The world's windows and Retail's stubs are made later but are the game's (wow-taint.lua marks them __byGame;
+-- scripts/tests/README.md "Who owns a frame"). wow-inspect.lua's screen and the lifecycle footprint ask it too.
+function stub.addonMade(w)
+  return w.__id > stub.firstAddonFrame and rawget(w, "__byGame") ~= true
+end
+
 -- Every text and control under root (or under every top-level frame the addon made, when nil).
 local function gather(root)
   local texts, controls = {}, {}
   if root then collect(root, texts, controls) return texts, controls end
   for _, w in ipairs(stub.frames) do
-    if w.__id > stub.firstAddonFrame and w.__kind == "FontString" then texts[#texts + 1] = measured(w) end
-    if w.__id > stub.firstAddonFrame then controls[#controls + 1] = control(w) end
+    local made = stub.addonMade(w)
+    if made and w.__kind == "FontString" then texts[#texts + 1] = measured(w) end
+    if made then controls[#controls + 1] = control(w) end
   end
   return texts, controls
 end
