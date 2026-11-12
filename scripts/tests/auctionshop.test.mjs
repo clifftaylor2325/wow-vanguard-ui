@@ -154,6 +154,31 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
+it("H46-31-1 a name only containing the text waits while a result is unnamed, as the unnamed one may be the exact item", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true __wfgWorld.items[10941] = { name = 'Strange Dust Pouch', icon = 'TEST-ONLY-POUCH' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 500, totalQuantity = 5 }, { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "the pouch only contains the name: blank until the other is named").toEqual(["Strange Dust", ""]);
+  addon.eval("__wfgWorld.items[10940].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  addon.advance(1);
+  expect(shopRow(addon, 1).slice(1, 3), "named: the exact item wins").toEqual(["Strange Dust", "5s 0c"]);
+});
+it("H46-31-1 the exact item over the max price: the containing one is taken once every name is in", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true __wfgWorld.items[10941] = { name = 'Strange Dust Pouch', icon = 'TEST-ONLY-POUCH' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.eval(`VanguardDB.ah.lists["TEST-ONLY Mats"][1] = { term = "Strange Dust", maxPrice = 600 }`);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 900, totalQuantity = 5 }, { itemKey = { itemID = 10941 }, minPrice = 500, totalQuantity = 3 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(2, 3), "an unnamed result may be the exact one: blank").toEqual([""]);
+  addon.eval("__wfgWorld.items[10940].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  addon.advance(1);
+  expect(shopRow(addon, 1).slice(1, 3), "the exact one is over the max: the pouch is taken").toEqual(["Strange Dust Pouch", "5s 0c"]);
+});
 it("T3-1 a browsed item whose info comes in late gets its price remembered when it does", () => {
   const addon = atAuctionHouse("__wfgWorld.items[10943] = { name = 'TEST-ONLY Late', commodity = true, pending = true } __wfgWorld.items[10944] = { name = 'TEST-ONLY Early', commodity = true }");
   // The lowest price the store keeps for an item, or false.
