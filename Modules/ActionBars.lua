@@ -798,6 +798,18 @@ function AB.Bar1HalfWidth()
   return barWidth(AB.settings, bar1, 1) / 2
 end
 
+-- Bar 1's default height above the screen's bottom while bar 1 or the module is off: its spot in the default stack
+-- (bars 1 to 3 on), as the vehicle exit's spot always assumed.
+AB.BAR1_DEFAULT_Y = 100
+
+-- Bar 1's default height above the screen's bottom in UIParent's units, as the bottom stack places it (the bars
+-- under it lift it): the vehicle exit button rises with it.
+function AB.Bar1Y()
+  local bar1 = AB.settings and AB.settings.bars[1]
+  if not (bar1 and bar1.enabled) then return AB.BAR1_DEFAULT_Y end
+  return AB.StackPoint(1, AB.settings)[4]
+end
+
 -- The width of the bottom stack's first bar in UIParent's units (0 before the module has its
 -- settings), for frames that keep clear of it.
 ---@return number
@@ -806,9 +818,9 @@ function AB.StackWidth()
   return bar1 and barWidth(AB.settings, bar1, 1) or 0
 end
 
--- Moves the vehicle exit button's default spot to clear bar 1's current width.
+-- Moves the vehicle exit button's default spot to clear bar 1's current width, beside its current height.
 local function fitVehicleExit()
-  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth())
+  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth(), AB.Bar1Y())
 end
 
 -- The room between the right-edge bars and the screen's edge, and between the two.

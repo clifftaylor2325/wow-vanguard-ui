@@ -136,6 +136,19 @@ it("B6-6: the vehicle exit button keeps clear of action bar 1 at big button size
   expect(clear(dflt), "a size change while playing moves it too").toBeGreaterThanOrEqual(0);
 });
 
+it("the vehicle exit's default spot rises with bar 1 when more bottom bars are on, and stays put with bar 1 off", () => {
+  // The exit's and bar 1's default heights (their mover points' y, both lifted over your frames alike).
+  const heights = (addon) => addon.eval('return { select(4, ns.MoverPoint("vehicleexit")), select(4, ns.MoverPoint("bar1")) }');
+  const dflt = loggedIn("", { savedVariables: profile("ActionBars = { size = 38 }") });
+  const [exitY, bar1Y] = heights(dflt);
+  expect(exitY - bar1Y, "bars 1 to 3: beside bar 1, as before").toBe(14);
+  const lifted = loggedIn("", { savedVariables: profile("ActionBars = { size = 38, bars = { [6] = { enabled = true }, [7] = { enabled = true }, [8] = { enabled = true } } }") });
+  const [liftedExit, liftedBar1] = heights(lifted);
+  expect([liftedBar1 > bar1Y, liftedExit - liftedBar1], "bars 6 to 8 lift bar 1, and the exit rises with it").toEqual([true, 14]);
+  const off = loggedIn("", { savedVariables: profile("ActionBars = { bars = { [1] = { enabled = false } } }") });
+  expect(off.eval('return ns.GetModule("SpecialBars").ExitPoint(0, ns.GetModule("ActionBars").Bar1Y())[4]'), "bar 1 off: the default stack's spot").toBe(114);
+});
+
 // A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
 const LONG_FEED_ENV = `
   local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)

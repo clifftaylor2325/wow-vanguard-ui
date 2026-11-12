@@ -204,7 +204,8 @@
       "P4-4: the pet's health text ends left of the happiness glyph",
       "P4-7: the health text of the target, focus and boss frames ends left of the class diamond",
       "P4-9: the Versus deck stays a pad above a taller target frame",
-      "P6-2: bar 5 keeps clear of bar 4 at big button sizes and when bar 4 gets wider"
+      "P6-2: bar 5 keeps clear of bar 4 at big button sizes and when bar 4 gets wider",
+      "the vehicle exit's default spot rises with bar 1 when more bottom bars are on, and stays put with bar 1 off"
     ],
     "scripts/tests/integration.test.mjs": [],
     "scripts/tests/inventory.test.mjs": [],
