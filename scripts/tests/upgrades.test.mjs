@@ -197,6 +197,12 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   click("Vanguard_WeightsWizard.defaults");
   click("Vanguard_WeightsWizard.save");
   expect(lua("return ns.GetModule('Upgrades').settings.weights.WARRIOR.strength == nil"), "saving the defaults keeps nothing").toBe(true);
+  addon.slash("weights wizard");
+  lua("local r = Vanguard_WeightsWizard.rows[5] r.exact(0.005) r:Refresh() r.box:GetScript('OnEditFocusLost')(r.box)");
+  expect(lua("return Vanguard_WeightsWizard.rows[5].get()"), "clicking in and out of a box leaves a weight the slider could not make as it is").toBe(0.005);
+  lua("local r = Vanguard_WeightsWizard.rows[5] r.box:SetText('0.714') r.box:GetScript('OnEnterPressed')(r.box)");
+  expect(lua("return Vanguard_WeightsWizard.rows[5].get()"), "a typed weight is kept to the digit").toBe(0.714);
+  click("Vanguard_WeightsWizard.cancel");
 });
 
 it("upgrades: the wizard names every stat, and says when Gear upgrades is off", () => {
