@@ -291,11 +291,20 @@ local function afterLayout(row, f)
   MS.Refit(f)
 end
 
+-- The bar's method that ends each of its layouts: Forever's bag bar re-draws its dividers by method last, also when
+-- the layout runs from the Layout it handed EventRegistry by value (picking up an item; BagsBar.lua
+-- BagsBarMixin:OnLoad), which a hook on Layout never sees. Any other bar: Layout itself.
+local function layoutEnd(f)
+  if f.useDividers == true and type(f.UpdateDividers) == "function" then return "UpdateDividers" end
+  return "Layout"
+end
+
 -- Re-fits the bar whenever the game changes a row's size or lays it out again.
 local function watchBar(row, f)
   f:HookScript("OnSizeChanged", MS.Refit)
-  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then
-    hooksecurefunc(f, "Layout", ns.Guard("hook Layout", function() afterLayout(row, f) end))
+  local method = layoutEnd(f)
+  if type(f[method]) == "function" and type(hooksecurefunc) == "function" then
+    hooksecurefunc(f, method, ns.Guard("hook " .. method, function() afterLayout(row, f) end))
   end
 end
 

@@ -1058,17 +1058,25 @@ it("bag and menu bar: retail's queue eye, which the micro menu container counts 
   addon.eval("MicroMenuContainer:Layout()");
   expect([addon.eval("return MicroMenuContainer:GetWidth()") > 12 * 27 + 5, barSize(addon)], "twelve micro buttons are twelve slots, however wide the container").toEqual([true, [barW(12), BAR_H]]);
 });
-// TEST-ONLY Forever bag bar: its Layout sets the key ring back to its own 33 units and draws two pooled dividers anew, as the game does.
+// TEST-ONLY Forever bag bar: its Layout sets the key ring back to its own 33 units and, last, draws two pooled dividers
+// anew by method, as the game does (Blizzard_MainMenuBarBagButtons/Shared/BagsBar.lua BagsBarMixin:Layout, useDividers
+// true in Camelot/MainMenuBarBagButtons.xml). OnLoad hands its Layout to EventRegistry by value (BagsBarMixin:OnLoad),
+// so a layout from an item pickup's expand change never goes through the frame's Layout key.
 const FOREVER_BAGS_ENV = `
   BagsBar.bagPadding = 2
+  BagsBar.useDividers = true
   BagsBar.HorizontalDividersPool = { active = {} }
   function BagsBar.HorizontalDividersPool:ReleaseAll() for d in pairs(self.active) do d:Hide() end self.active = {} end
   function BagsBar.HorizontalDividersPool:EnumerateActive() return pairs(self.active) end
-  function BagsBar:Layout()
-    self:SetSize(266, 45) KeyRingButton:SetSize(33, 45)
+  function BagsBar:UpdateDividers()
     self.HorizontalDividersPool:ReleaseAll()
     for i = 1, 2 do local d = CreateFrame("Frame", nil, self) d:Show() self.HorizontalDividersPool.active[d] = true end
   end
+  function BagsBar:Layout()
+    self:SetSize(266, 45) KeyRingButton:SetSize(33, 45)
+    if self.useDividers then self:UpdateDividers() end
+  end
+  EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", BagsBar.Layout, BagsBar)
   BagsBar:Layout()
 `;
 it("bag and menu bar: after each layout the game's key ring is a bag's size again and its brass dividers stay faded", () => {
@@ -1083,6 +1091,13 @@ it("bag and menu bar: after each layout the game's key ring is a bag's size agai
   expect(addon.eval("return KeyRingButton:GetWidth()"), "in combat the key ring waits").toBe(33);
   setCombat(addon, false);
   expect(addon.eval("return KeyRingButton:GetWidth()"), "and is put right when combat ends").toBe(45);
+});
+it("bag and menu bar: a layout the game runs from its expand callback (picking up an item) is put right too", () => {
+  const addon = strips(FOREVER_BAGS_ENV);
+  // The key ring's width and the alpha of each divider the game has drawn.
+  const state = () => addon.eval("local out = {} for d in BagsBar.HorizontalDividersPool:EnumerateActive() do out[#out + 1] = d:GetAlpha() end return { KeyRingButton:GetWidth(), out }");
+  addon.eval('EventRegistry:TriggerEvent("MainMenuBarManager.OnExpandChanged")');
+  expect(state(), "the key ring is a full slot again and the new dividers are faded").toEqual([45, [0, 0]]);
 });
 it("bag and menu bar: a bag padding changed in Edit Mode is read again at the next layout", () => {
   const addon = strips(FOREVER_BAGS_ENV);
