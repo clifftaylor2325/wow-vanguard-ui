@@ -104,8 +104,9 @@ end
 
 -- Range --------------------------------------------------------------------------------------
 
--- Dims a row while your target is out of its hand's reach, as the game's own timer does (an
--- opacity, not a fade).
+-- Dims a row while your target is out of its hand's reach (an opacity, not a fade). The game's own timer uses
+-- the same 40%, but only between swings (Blizzard_SwingTimer.lua, SwingTimerMixin:IsOutOfRange); a row here
+-- shows only while a swing runs, so it dims mid-swing.
 local function paintRange(r, outOfRange)
   r:SetAlpha(outOfRange and SW.OUT_OF_RANGE or 1)
 end
