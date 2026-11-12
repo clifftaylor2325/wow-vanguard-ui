@@ -146,6 +146,13 @@ it("40 rolls are kept at most; /vg rolls lists them newest first and clear forge
   expect([chatHas(addon, /Rolls forgotten/), panel(addon)[0]], "forgotten and hidden").toEqual([true, false]);
 });
 
+it("H46-30-50 /vg rolls Clear forgets the rolls like /vg rolls clear", () => {
+  const addon = loggedIn(ROLL_ENV);
+  roll(addon, "Thrall", 50);
+  addon.slash("rolls Clear");
+  expect([chatHas(addon, /Rolls forgotten/), addon.eval("return #ns.GetModule('Rolls').rolls")], "forgotten, not listed").toEqual([true, 0]);
+});
+
 it("the panel is off with its switch, and shows again when it is turned back on", () => {
   const addon = loggedIn(ROLL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Rolls = { show = false } } }" });
   roll(addon, "Thrall", 9);

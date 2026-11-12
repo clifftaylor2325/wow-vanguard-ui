@@ -260,7 +260,7 @@ end
 
 -- /vg rolls: this session's rolls, newest first.
 function R.Command(arg)
-  if arg == "clear" then R.rolls, R.items = {}, {} R.Paint() return ns.Chat(L["Rolls forgotten."]) end
+  if (arg or ""):lower() == "clear" then R.rolls, R.items = {}, {} R.Paint() return ns.Chat(L["Rolls forgotten."]) end
   if #R.rolls == 0 then return ns.Chat(L["No rolls seen this session yet."]) end
   ns.Chat(L["Rolls this session, newest first:"])
   for i = #R.rolls, 1, -1 do
