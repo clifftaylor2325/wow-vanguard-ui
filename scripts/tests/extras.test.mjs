@@ -783,6 +783,13 @@ it("junk selling stops when the merchant closes or a fight starts: no retry uses
   addon.eval(`${MC}.SellJunk(3)`);
   expect(addon.eval("return __used"), "nor one in combat").toEqual({});
 });
+it("H44-G3-4 a junk retry while the merchant shows its Buyback tab sells nothing, as the game's bag click does", () => {
+  const addon = loggedIn(MERCHANT_ENV + "MerchantFrame = { selectedTab = 1 } __sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used"), "the first pass sells on the merchant tab").toEqual([1]);
+  addon.eval("MerchantFrame.selectedTab = 2 local t = __later __later = {} for _, f in ipairs(t) do f() end");
+  expect(addon.eval("return __used"), "the retry on the Buyback tab uses nothing").toEqual([1]);
+});
 it("quiet the game: the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);
   expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "the game's own handler keeps the event").toBe(true);

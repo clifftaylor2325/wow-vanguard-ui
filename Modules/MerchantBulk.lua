@@ -154,10 +154,16 @@ local function buybackShown()
   return type(frame) == "table" and frame.selectedTab == MC.BUYBACK_TAB
 end
 
+-- True while a bag item used now sells: trading (a merchant open, no fight) on the merchant tab, not Buyback
+-- (also used by Merchant.lua's junk sale, before every try).
+function MC.Selling()
+  return trading() and not buybackShown()
+end
+
 -- Sells the slots find() gives, and again shortly after for what is left (the server limits how fast
 -- items sell), while the merchant stays open on its merchant tab.
 function MC.SellRows(find, tries)
-  if not trading() or buybackShown() then return end
+  if not MC.Selling() then return end
   local rows = find()
   for _, r in ipairs(rows) do C_Container.UseContainerItem(r.bag, r.slot) end
   if #rows > 0 and tries > 1 then later(MC.RETRY_AFTER, function() MC.SellRows(find, tries - 1) end) end

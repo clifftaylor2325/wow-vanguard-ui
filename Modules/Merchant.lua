@@ -56,9 +56,9 @@ function MC.Junk()
 end
 
 -- Sells what junk is left, then tries again shortly while some remains and tries are left; only while a
--- merchant is open (using a bag item with none open would use or equip it), before every try.
+-- merchant is open on its merchant tab (using a bag item with none open would use or equip it), before every try.
 function MC.SellJunk(tries)
-  if not MC.Trading() then return end
+  if not MC.Selling() then return end
   local junk = MC.Junk()
   if #junk == 0 then return end
   for _, spot in ipairs(junk) do C_Container.UseContainerItem(spot[1], spot[2]) end
