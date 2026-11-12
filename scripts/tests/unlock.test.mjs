@@ -440,3 +440,29 @@ it("Exit without saving puts every frame back and locks, though one frame's foll
   addon.eval("ns.ExitWithoutSaving()");
   expect(addon.eval('return { ns.Unlocked(), ns.MoverSaved("TEST-ONLY b") }'), "locked, and the frame after it is back").toEqual([false, false]);
 });
+
+// H46-21-1: a profile change while unlocked (here a live switch and a reset) must not let Exit without saving write
+// the old profile's spots into the new one.
+const OFF_RELOAD_ONLY = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`;
+// A profile's saved variables with one frame spot at y.
+const BOX_SAVED = (y) => `{ modules = {}, positions = { box = { point = "TOP", relPoint = "TOP", x = 0, y = ${y} } } }`;
+
+it("H46-21-1 Exit without saving after a live profile switch keeps the new profile's own spots", () => {
+  const addon = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = ${BOX_SAVED(-100)}, Raid = ${BOX_SAVED(-500)} } }\nVanguardCharDB = { profile = "Default" }` });
+  addon.eval(OFF_RELOAD_ONLY + '\n__box = CreateFrame("Frame", nil, UIParent) __box:SetSize(200, 40)');
+  addon.login();
+  addon.eval('ns.Mover(__box, "box", "Box", { "CENTER", "CENTER", 0, 0 })');
+  addon.eval("ns.Unlock()");
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  addon.eval("ns.ExitWithoutSaving()");
+  expect(addon.eval("return { VanguardDB.profiles.Raid.positions.box.y, VanguardDB.profiles.Default.positions.box.y }"), "Raid keeps its own spot").toEqual([-500, -100]);
+});
+
+it("H46-21-1 Exit without saving after a profile reset made while unlocked leaves the profile reset", () => {
+  const addon = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = ${BOX_SAVED(-100)} } }\nVanguardCharDB = { profile = "Default", setupDone = true }` });
+  addon.login();
+  addon.eval("ns.Unlock() ns.ResetProfile() ns.ExitWithoutSaving()");
+  expect(addon.eval("return ((VanguardDB.profiles.Default.positions or {}).box) == nil"), "the reset profile has no spot").toBe(true);
+});

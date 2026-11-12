@@ -128,6 +128,12 @@ function ns.UnlockStartedForEditMode()
   bar:Hide()
 end
 
+-- The running profile's settings changed while unlocked (a switch, a reset, a copy or an import): its spots as they
+-- are now become the ones Exit without saving puts back, so it never writes the old profile's spots into the new one.
+ns.OnProfileChanged(function()
+  if before then before = ns.Copy(ns.Settings("positions")) end
+end)
+
 -- The frames locked: what was remembered is forgotten (the changes stay) and the bar hides.
 function ns.UnlockEnded()
   before, fromPage = nil, nil
