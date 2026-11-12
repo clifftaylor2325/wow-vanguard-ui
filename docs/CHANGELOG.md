@@ -4,6 +4,67 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.6
+
+<!-- SMOKE steps 2.1n, 2.1o, 7.2s, 7.2t, 7.2u, 9.2h, 9.6a, 10.4e, 10.4f, 14.9.5, 14.9.5a, 33.390a, 33.485, 33.486, 33.487, 33.488, 33.489, 33.490, 33.491, 33.492, 33.493, 33.494, 33.495, 33.496, 33.497, 33.498, 33.499, 33.500, 33.501, 33.502, 33.503, 33.504, 33.505, 33.506, 33.507, 33.508, 33.509, 33.510, 33.511, 33.512, 33.513, 33.514, 33.545, 33.546, 33.547, 33.548, 33.549, 33.550, 33.551, 33.552, 33.553, 33.554, 33.555, 33.556, 33.557, 33.558, 33.560, 33.561, 33.562, 33.563, 33.564, 33.565, 33.566, 33.567, 33.568, 33.568a, 33.569, 33.570, 33.571, 33.572, 33.573, 33.574, 33.575, 33.605, 33.606, 33.607, 33.608, 33.615, 33.616, 33.617, 33.625, 33.626, 33.627, 33.628, 33.629, 33.635, 33.636, 33.637, 33.638, 33.639, 33.640, 33.641, 33.642, 33.643, 33.644, 33.645, 33.646, 33.647, 33.648, 33.649, 33.650, 33.651, 33.652, 33.653, 33.654, 33.655, 33.656, 33.657, 33.658, 33.659, 33.660, 33.661, 33.662, 33.663, 33.664, 33.664a, 33.665, 34.16, 34.17, 34.18, 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9, 35.10, 35.11, 35.12 -->
+
+Modules that switch off and on without a reload, a bag fix for profession bags, and fixes from a 30-wave bug hunt across frames, auras, options, setup, quests, chat and the auction house. Nothing new in this release has been checked in the game yet.
+
+### Bags and town (0.9.6)
+
+- A profession bag's empty slots get their own section ("Empty: herb bag"), so the combined bag no longer counts them as room for anything when the game says your bags are full.
+- Bag section headers refit after a Text size change.
+- Train all runs once on a double-click, its summary matches what the trainer actually taught, and Keep stocked reads the list again before each purchase.
+- Mail: Take all leaves game master mail, as the game's Open All does, and the Sales filter lists your sales, not auctions you won.
+- The one-step junk sale waits for the end of a fight.
+
+### Auction house (0.9.6)
+
+- The Cancel question names the item ("Cancel Strange Dust? It costs 1s 0c.").
+- Post waits for the sell card's price check, a per-stack price is for the stack that goes up next, and the sell card's cheapest and price are of the sale's own variant.
+- A paid cancel marks the row that is listed when you click Yes, and Recent never rings a price alert.
+- Recipes with more than 8 reagents (Retail) draw a row for each one.
+
+### Modules and options (0.9.6)
+
+- Many modules switch off and on at once under `/vg` → Modules, with no reload: chat history, filter, extras, windows and Quiet; data bars, the broker strip and HUD text; Situations, Cooldown keys and Cooldown glow, and more. A switch made in a fight applies when it ends.
+- Options search: "changed" no longer dims the pages that hold changes, "reset" no longer lists every page's Reset this page, and Safer colours is found by its translated words.
+- Twenty settings that need a reload now carry the grey reload tag, and Keybind mode pressed in a fight no longer closes the options window.
+- A frame's position popover left open in unlock mode after its module is switched off no longer raises errors, and the unlock grid redraws after a UI scale or window size change.
+
+### Setup and profiles (0.9.6)
+
+- Undo setup puts the game's UI scale back and says what it really undid, and All set counts the layouts, presets and frames you moved.
+- A profile whose settings are damaged no longer raises an error when chosen, and a spec change after Not now on lost settings keeps the newer backup.
+- An import's backup no longer overwrites a profile another character still uses for a spec.
+
+### Unit frames, auras and HUD (0.9.6)
+
+- Level colours repaint at a level-up, and a unit that goes offline or dies loses its power text at once.
+- Under Standards the focus target stands as a small banner beside the focus, and under Tabs the party and boss stacks spread by the tab's height.
+- Heal and shield bars are cut to the health fill's shape.
+- Picking a HUD layout moves its frames and keeps each one's scale, opacity and size.
+- Raid aura icons follow a new tile size, and your buffs', your target's and the raid tiles' icons follow a scale change.
+- Nameplates: an aura row the game holds back in a fight no longer raises an error, and a plate whose unit keeps failing is paused alone.
+- A raid tile that fails no longer stops the others from painting.
+- Game frames Vanguard hides take no clicks when the game puts them back in a fight.
+
+### Action bars, keys and click casting (0.9.6)
+
+- A hunter's Auto Shot shows the ammo count on WoW Forever, and an edited macro repaints its cooldown and tint at once.
+- Saved bar sizes, spacing and button counts outside the sliders' limits are dropped at login.
+- Key setup: a lower rank on a key's own button gives way to the top rank, and an unticked change stays unticked after a fight.
+- Click casting: a spell rank you no longer have is marked, Import skips a key the frames can't bind, and the hover-key list scrolls.
+
+### Quests, map and chat (0.9.6)
+
+- With the quest dialog handed back, the game's own quest and gossip windows keep their own look, and abandoning several marked quests waits for the end of a fight.
+- A Shift-click waypoint no longer loses to the quest the game tracks by itself, and Toggle Minimap in a fight no longer gets Vanguard blocked.
+- Chat: a window dragged back into the dock stays docked, New chat tab no longer taints channel handling, and Close this tab gives the window's lists back as the game does.
+- Chat watch finds words next to guillemets, a no-break space or a dash, and a new tab no longer takes a closed Filtered tab's number and its spam.
+- A meter report to a channel is split under 255 bytes, and on WoW Forever declining strangers' group invites works again.
+- The social window's side panels no longer overlap a window docked beside it.
+
 ## 0.9.5
 
 <!-- SMOKE steps 1.3a, 2.1i, 2.1j, 2.1k, 2.1l, 2.1m, 6.2c, 7.1b, 7.2l, 7.2m, 7.2n, 7.2o, 7.2p, 7.2q, 7.2r, 7.5b, 7.5c, 7.5d, 8.3c, 8.4e, 8.4f, 8.6d, 8.6e, 8.6f, 8.6g, 10.3c, 10.3d, 10.4d, 10.9b, 12.1a, 18.2a, 20.3, 30.3, 33.217a, 33.471, 33.472, 33.473, 33.474, 33.475, 33.476, 33.477, 33.478, 33.479, 33.480, 33.481, 33.482, 33.483, 33.484 -->
