@@ -286,11 +286,23 @@ local function weakest(slots)
   return low, false, GetInventoryItemLink("player", at)
 end
 
--- What both hands are worth together, for a two-hander: main hand plus off hand (nil while either has no stats).
+-- The item level the worn pair counts twice (Retail's ILVL weight, once per item): half of both levels, so the pair
+-- carries the mean of its two, as a two-hander carries one. 0 where there is no ILVL weight, a hand is empty or the
+-- client gives no level for either.
+local function pairLevel()
+  local weight = (UP.Current()).ILVL
+  local main, off = GetInventoryItemLink("player", UP.MAIN_HAND), GetInventoryItemLink("player", UP.OFF_HAND)
+  if not (weight and main and off) then return 0 end
+  local a, b = itemLevel(main), itemLevel(off)
+  return a and b and weight * (a + b) / 2 or 0
+end
+
+-- What both hands are worth together, for a two-hander: main hand plus off hand, less the item level counted twice
+-- (nil while either has no stats).
 local function bothHands()
   local mh, empty = equipped(UP.MAIN_HAND)
   local oh = equipped(UP.OFF_HAND)
-  return mh and oh and mh + oh, empty, GetInventoryItemLink("player", UP.MAIN_HAND)
+  return mh and oh and mh + oh - pairLevel(), empty, GetInventoryItemLink("player", UP.MAIN_HAND)
 end
 
 -- Whether you can wear the item (the client's answers, where it has them).

@@ -303,6 +303,24 @@ it("upgrades: on Retail a ranged weapon is judged against both hands, where Fore
   expect(forever.eval("return __line(19)"), "Forever: the empty ranged slot 18").toBe("Upgrade: fills an empty slot");
 });
 
+// Retail counts item level as a weight (ILVL 1 per item). Worn: main hand 31 and off hand 32 (20 STR, level 250 each);
+// in the bags two-handers 33 (40 STR, level 250) and 34 (40 STR, level 280).
+const PAIR_ENV = GEAR_ENV + `
+  __gear[31] = { "INVTYPE_WEAPONMAINHAND", { ITEM_MOD_STRENGTH_SHORT = 20 }, 250 } __gear[32] = { "INVTYPE_WEAPONOFFHAND", { ITEM_MOD_STRENGTH_SHORT = 20 }, 250 }
+  __gear[33] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 40 }, 250 } __gear[34] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 40 }, 280 }
+  C_Item.GetDetailedItemLevelInfo = function(link) local g = __gear[tonumber(tostring(link):match("item:(%d+)"))] return g and g[3] end
+  __worn[16], __worn[17] = __link(31), __link(32)
+  function __cmp(n) return ns.GetModule("Upgrades").Compare(__link(n)) end
+`;
+
+it("upgrades: on Retail a two-hander's item level is weighed once against the pair it replaces (H46-33-103)", () => {
+  const retail = loggedIn(PAIR_ENV, { client: RETAIL_CLIENT });
+  expect(retail.eval("return math.floor(__cmp(33) + 0.5)"), "the same stats and level as the pair: no change").toBe(0);
+  expect(retail.eval("return __cmp(34) > 0"), "thirty levels more is an upgrade").toBe(true);
+  const forever = loggedIn(PAIR_ENV);
+  expect(forever.eval("return math.floor(__cmp(34) + 0.5)"), "Forever has no item level weight: equal stats, no change whatever the level").toBe(0);
+});
+
 // Sets the player's class, specialization (its role and primary stat as the client names them) and group role, and
 // answers the weights' kind and role.
 const specKind = (addon, class_, spec, role) => {
