@@ -1355,3 +1355,14 @@ it("H46-4-R2: /vg profile with no name names the profile the reload loads, not t
   mapped.slash("profile");
   expect(chatHas(mapped, /Profile: Default; Heal after a reload/), "a spec mapped to Heal loads it").toBe(true);
 });
+it("H46-4-R3: on a spec with its own profile, Use it turns Pixel-perfect off in the profile that loads and in the imported one, with no reload promise", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { pixelScale = true } } } }\nVanguardCharDB = { profile = "Heal", setupDone = true, ownProfile = "Default", specProfiles = { [2] = "Heal" } }' });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade", pixelScale = true }, display = { uiScale = 0.9 } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "off in the imported profile and in Heal, which the reload loads").toEqual([false, false, "0.9"]);
+  expect([chatHas(addon, /Created profile Imported\./), chatHas(addon, /will use it after a reload/), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "no promise and no reload offer").toEqual([true, false, false]);
+});
