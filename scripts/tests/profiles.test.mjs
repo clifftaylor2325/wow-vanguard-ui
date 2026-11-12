@@ -1328,3 +1328,18 @@ it("hunt H46-22-50: a Layout string brings the HUD layout, Centered included, an
   crafted.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
   expect(crafted.eval("return { type(ns.Profile().positions), ns.Profile().hudLayout }"), "a scalar over a table, or a table over the layout, is dropped").toEqual(["table", "fort"]);
 });
+it("hunt H46-22-51: an emptied list in a partial string empties yours, an empty map keeps your keys", () => {
+  const filter = 'ns.Settings("ChatFilter", ns.GetModule("ChatFilter").defaults)';
+  const src = loggedIn(CLICK_LUA);
+  src.eval(`${filter}.keywords = {}`);
+  const text = src.eval('return ns.ExportProfile("ChatFilter")');
+  const dst = loggedIn(CLICK_LUA);
+  dst.eval(`${filter}.keywords = { "wts" }`);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval(`return #${filter}.keywords`), "the string's emptied word list replaces yours").toBe(0);
+  const mapped = loggedIn(CLICK_LUA);
+  mapped.eval("ns.Settings('positions').X = { point = 'CENTER' }");
+  const empty = mapped.eval("return ns.Serialize.Encode('parts', ns.StampPayload({ parts = { 'layout' }, movers = {} }))");
+  mapped.eval(`ns.Profile().movers = { A = { x = 1 } } ns.ImportProfile(${JSON.stringify(empty)})`);
+  expect(mapped.eval("return ns.Profile().movers.A.x"), "an empty map keeps your keys").toBe(1);
+});

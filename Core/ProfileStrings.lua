@@ -311,12 +311,19 @@ local function copied(v)
   return type(v) == "table" and ns.Copy(v) or v
 end
 
+-- True when the string's table v replaces mine whole: a list (it has [1]), or an emptied list
+-- over a list of yours. An empty table over a map of yours keeps your keys.
+local function replaces(v, mine)
+  if v[1] ~= nil then return true end
+  return next(v) == nil and type(mine) == "table" and mine[1] ~= nil
+end
+
 -- Merges from into into, from's values winning, depth levels deep; a list (it has [1]) is
 -- replaced whole. Keys only into has stay. Returns into.
 local function merge(into, from, depth)
   for k, v in pairs(from) do
     local mine = into[k]
-    if depth > 1 and type(v) == "table" and type(mine) == "table" and v[1] == nil then
+    if depth > 1 and type(v) == "table" and type(mine) == "table" and not replaces(v, mine) then
       merge(mine, v, depth - 1)
     else
       into[k] = copied(v)
