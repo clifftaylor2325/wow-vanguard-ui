@@ -78,6 +78,17 @@ it("a lock is created once; a second create finds it taken and leaves it alone, 
   expect(fs.readdirSync(path.dirname(file))).toEqual(["slot1.lock"]);
 });
 
+it.skipIf(process.platform === "win32")("H45-36-101 a lock is writable by every user whatever the umask, so another user's run can take over a dead holder", () => {
+  const file = path.join(scratch, "mode.lock");
+  const before = process.umask(0o077);
+  createLock(file, run(process.pid));
+  const created = fs.statSync(file).mode & 0o777;
+  recordChild(file, 4242);
+  const rewritten = fs.statSync(file).mode & 0o777;
+  process.umask(before);
+  expect([created, rewritten]).toEqual([0o666, 0o666]);
+});
+
 it("a lock that cannot be created for another reason throws", () => {
   expect(() => createLock(path.join(scratch, "no-such-folder", "slot1.lock"), run(1))).toThrow(/ENOENT/);
 });

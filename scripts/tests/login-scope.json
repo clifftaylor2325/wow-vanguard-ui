@@ -165,6 +165,7 @@
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
       "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
+      "a reload inside a dungeon more than an hour after the way in is the same visit, not 'Last run: today'",
       "a run earlier the same calendar day reads today, even 21 hours before",
       "a wipe in a long run: the way back in within the hour of leaving is the same visit, not 'Last run: today'",
       "an item the client has not cached shows by its number; without a map listing, a dungeon shows its tagged quests",
@@ -331,6 +332,7 @@
     "scripts/tests/motion.test.mjs": [],
     "scripts/tests/officerloot.test.mjs": [],
     "scripts/tests/options.test.mjs": [
+      "H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum",
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
@@ -347,6 +349,7 @@
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)",
+      "prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)",
       "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
@@ -358,6 +361,7 @@
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
       "prep: a /reload inside the dungeon does not bring the door card back",
+      "prep: a class reagent that is also on Keep stocked is one row and one name in the low-supply warning (H45-33-201)",
       "prep: a client without the bag, item or instance calls checks what it can",
       "prep: a hidden count skips its row without an error",
       "prep: a ready check shows the card, packed or not, unless switched off",
@@ -394,7 +398,6 @@
       "/vg report names the modules turned off and the skinned addons, with any that are off or failed"
     ],
     "scripts/tests/rolls.test.mjs": [],
-    "scripts/tests/savedvariables.test.mjs": [],
     "scripts/tests/setup.test.mjs": [
       "setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload",
       "the setup wizard sits above the unlock handles on the last step, so their labels never draw over it"

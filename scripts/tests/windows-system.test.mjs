@@ -1324,3 +1324,32 @@ it("H45-A-G1 backdrops: with UIParent hidden, a frame in a game layout frame kee
   addon.eval("UIWidgetBelowMinimapContainerFrame:SetParent(__managed) UIParent:Hide() UIWidgetBelowMinimapContainerFrame:UpdateWidgetLayout()");
   expect(where(), "on UIParent, not the game's layout frame").toEqual([true, false]);
 });
+
+// H45-40-401: a popup already up when the report window's screenshot mode opens. ScreenshotModeFrameMixin:OnShow does
+// SetAlternateTopLevelParent(self) then UIParent:Hide() (Blizzard_ReportFrameShared/ReportFrameShared.lua, both
+// clients); the game's callback runs StaticPopup_ReparentDialogs, which moves the shown popup with no Show
+// (Blizzard_StaticPopup/StaticPopup.lua), so only a hook on it refits the panel.
+it("H45-40-401 backdrops: a popup already shown keeps its panel when screenshot mode takes the top level and gives it back", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    __shot = CreateFrame("Frame", "TestOnlyScreenshotFrame") __shot:SetAllPoints()`);
+  addon.eval("StaticPopup1:Show()");
+  // The popup's state: shown, its panel shown, the panel on UIParent.
+  const panel = () => addon.eval(`local back = ns.GetModule("Windows").MadeBackdrop(StaticPopup1) return { StaticPopup1:IsVisible(), back:IsVisible(), back:GetParent() == UIParent }`);
+  expect(panel(), "before: panel on UIParent").toEqual([true, true, true]);
+  addon.eval("__shot:Show() SetAlternateTopLevelParent(__shot) UIParent:Hide()");
+  expect(panel(), "the popup on the screenshot frame has its panel, off UIParent").toEqual([true, true, false]);
+  addon.eval("ClearAlternateTopLevelParent() __shot:Hide() UIParent:Show()");
+  expect(panel(), "the way back: the panel is on UIParent again").toEqual([true, true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// H45-40-1: the Trading Post is a parentless "full" panel (PerksProgramFrame has no parent in Blizzard_PerksProgram.xml,
+// area "full" in UIPanelWindows.lua) that calls StaticPopup_SetFullScreenFrame(self) in Blizzard_PerksProgram.lua; the
+// popup is parented to it (StaticPopup.lua GetFullScreenFrame), so its backdrop follows it while UIParent is hidden.
+it("H45-40-1 backdrops: a popup on a parentless full panel has its backdrop shown with UIParent hidden", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    __perks = CreateFrame("Frame", "PerksProgramFrame") __perks:SetAllPoints()`);
+  addon.eval("StaticPopup1:Show() StaticPopup1:Hide()");
+  addon.eval("UIParent:Hide() __perks:Show() StaticPopup1:SetParent(__perks) StaticPopup1:Show()");
+  expect(addon.eval(`local back = ns.GetModule("Windows").MadeBackdrop(StaticPopup1) return { StaticPopup1:IsVisible(), back:IsVisible() }`)).toEqual([true, true]);
+});

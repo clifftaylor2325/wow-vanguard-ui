@@ -144,14 +144,17 @@ do
   local vgBackdrop = ns.FrameState("vgBackdrop")
   local vgBackdropWhen = ns.FrameState("vgBackdropWhen")
 
-  -- Keeps a backdrop where it shows: on UIParent, or on the game's alternate top-level frame while its frame sits there
-  -- (a "full" panel such as the housing editor or the barber shop hides UIParent and makes itself that frame, and
-  -- StaticPopup_Show parents a popup to it: Blizzard_SharedXMLBase/FrameUtil.lua GetAppropriateTopLevelParent). A
-  -- frame under any other parent keeps its backdrop off the game's frames, UIParent hidden or not. The backdrop is
-  -- Vanguard's own frame, so this is safe in combat. SetParent resets strata and level; the caller sets both.
+  -- Keeps a backdrop where it shows: on UIParent, or on the frame's own parent when that is the game's alternate
+  -- top-level frame or a parentless "full" panel (a "full" panel such as the housing editor, the barber shop or the
+  -- Trading Post hides UIParent, and StaticPopup_Show parents a popup to the alternate top-level frame or to the
+  -- panel that StaticPopup_SetFullScreenFrame names: Blizzard_StaticPopup/StaticPopup.lua GetFullScreenFrame). A
+  -- frame under any parent that sits under UIParent keeps its backdrop on UIParent. The backdrop is Vanguard's own
+  -- frame, so this is safe in combat. SetParent resets strata and level; the caller sets both.
   local function followParent(frame, back)
     local top = GetAppropriateTopLevelParent and GetAppropriateTopLevelParent()
-    local parent = top and top ~= UIParent and frame:GetParent() == top and top or UIParent
+    local own = frame:GetParent()
+    local full = own and own ~= UIParent and (own == top or own:GetParent() == nil)
+    local parent = full and own or UIParent
     if back:GetParent() ~= parent then back:SetParent(parent) end
   end
 
@@ -2555,6 +2558,13 @@ end
 GW.Add("windows", GW.FRAMED, GW.SkinFramed)
 GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
 GW.Add("popups", GW.POPUPS, GW.SkinFramed)
+
+-- Refits each popup's panel after the game moves its shown popups to another top-level frame without showing them again
+-- (the report window's screenshot mode), which runs no OnShow.
+local function refitPopups()
+  for _, name in ipairs(GW.POPUPS) do GW.FitBackdrop(_G[name]) end
+end
+GW.HookGlobalOnce("StaticPopup_ReparentDialogs", "popup panels", refitPopups)
 GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
 for _, later in ipairs(GW.LATER) do GW.AddOnDemand("windows", later[1], later[2], GW.SkinFramed) end
 GW.Needs(GW.TIMERS, { methods = { "SetupTimer" } })

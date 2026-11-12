@@ -1,5 +1,7 @@
 # Auction helper inside the auction house window: review and plan
 
+Built. The tabs shipped as Lists and Posting (`AH.TAB_NAMES` in `Modules/AuctionHelper.lua`); the names below are the plan's.
+
 Written 2026-10-07 against `main` at `be83552` (after PR #160). Read with `docs/handoff/AUCTION-PLAN.md`
 (the feature gap analysis) and `CLAUDE.md` (how to work). Every `file:line` is as
 of that commit; if a line has moved, grep for the identifier quoted next to it.

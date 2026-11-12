@@ -18,7 +18,7 @@ const entry = (text, count = 1, stack = "") => ({ text, count, stack });
 // Matchers expectErrors must refuse: each could cover more than one error.
 const REFUSED = [
   /TEST-ONLY/, /^TEST-ONLY/, /TEST-ONLY$/, new RegExp(""), /^$/, /^.*$/, /^.+ boom$/, /^\d+$/,
-  /^\w+ boom$/, /^[a-z]+ boom$/, /^(a|b) boom$/, /^a boom|b boom$/, /^a boom$/m, /^a boom$/g, /^a boom$/y,
+  /^\w+ boom$/, /^[a-z]+ boom$/, /^(a|b) boom$/, /^a boom|b boom$/, /^a boom$/m, /^a boom$/g, /^a boom$/y, /^a boom$/i,
   /^a boom\$/, "", undefined, 42,
 ];
 

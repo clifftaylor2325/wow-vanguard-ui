@@ -78,6 +78,16 @@ it("i18n: each locale file is as the import writes it, with no orphaned, empty o
   }
 });
 
+// H45-37-314: a PR that adds player text imports a row for it in every locale (a machine draft is fine), so nothing ships in English only.
+it("i18n: every locale translates every key the code looks up", () => {
+  const keys = extractKeys(root, tocFiles());
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    const missing = [...keys.keys()].filter((key) => !entries.has(key));
+    expect(missing, `${locale}: import a row for each new key (node scripts/i18n.mjs export ${locale}, fill, import)`).toEqual([]);
+  }
+});
+
 it("i18n: the command line reports status and exports a CSV", () => {
   // Runs the command line with args and returns what it printed.
   const run = (...args) => execFileSync("node", ["scripts/i18n.mjs", ...args], { cwd: root }).toString();
@@ -96,6 +106,35 @@ it("i18n: no locale gives another text the translation of a caption the options 
       if (!captions.includes(key.toLowerCase())) continue;
       const clash = [...entries].filter(([other, same]) => same === text && other.toLowerCase() !== key.toLowerCase()).map(([other]) => other);
       expect(clash, `${locale}: "${key}" and ${clash} share the translation "${text}"`).toEqual([]);
+    }
+  }
+});
+
+it("i18n: no locale gives a renamed options row's new caption and its old caption one translation (ns.English would pick either and the tip would repeat the caption)", () => {
+  const names = fs.readFileSync(path.join(root, "Core", "OptionsNames.lua"), "utf8");
+  const table = names.slice(names.indexOf("O.RENAMED = {"), names.indexOf("\n}", names.indexOf("O.RENAMED = {")));
+  const pairs = [...table.matchAll(/\["([^"]+)"\]\s*=\s*L\["([^"]+)"\]/g)].map((m) => ({ fresh: m[1], old: m[2] }));
+  expect(pairs.length, "the renamed rows were found").toBeGreaterThan(10);
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    for (const { fresh, old } of pairs) {
+      const text = entries.get(fresh) ?? entries.get(`${fresh} (reload)`);
+      expect(text === undefined || text !== entries.get(old), `${locale}: "${fresh}" and "${old}" share the translation "${text}"`).toBe(true);
+    }
+  }
+});
+
+it("i18n: the hint after an unknown /vg situation keeps every situation word as typed in every locale (Modules/Situations.lua refuses a translated word)", () => {
+  const keys = [
+    "Situations: solo, party, raid, pvp, instance or resting.",
+    "Situations: solo, party, raid, pvp, instance, mythicplus, delve or resting.",
+  ];
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    for (const key of keys) {
+      const words = key.slice(key.indexOf(":") + 1).replace(/\.$/, "").split(/, | or /);
+      const missing = words.filter((word) => !entries.get(key).includes(word.trim()));
+      expect(missing, `${locale}: "${key}" must hold the words to type`).toEqual([]);
     }
   }
 });

@@ -1,6 +1,6 @@
 // The TEST-ONLY scenes of the UI preview (scripts/preview-ui.mjs): the Lua that builds a world,
 // and a function that logs the real addon in to one of them. Kept apart from the script so a
-// test can build every scene without Playwright (scripts/preview-scenes.test.mjs).
+// test can build every scene without Playwright (scripts/tests/preview.test.mjs; textfit.test.mjs builds them too).
 
 import fs from "node:fs";
 import path from "node:path";

@@ -23,7 +23,7 @@ local DB = ns.Module("DataBars", {
 -- Profiles saved before the Centered layout hold the old size (476 x 10) as
 -- values: once, put them back to the new defaults (as wide as the action bars).
 ns.Migrate("DataBars", function(saved)
-  if (saved.layout or 0) >= 2 then return end
+  if type(saved.layout) == "number" and saved.layout >= 2 then return end
   if saved.width == 476 then saved.width = nil end
   if saved.height == 10 then saved.height = nil end
   saved.layout = 2

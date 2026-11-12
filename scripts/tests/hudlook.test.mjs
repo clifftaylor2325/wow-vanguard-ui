@@ -106,6 +106,16 @@ it("Plain: the HUD look row under Look gives the flat frames back at once, texts
   expect(addon.eval('ns.Theme.Settings().hudLook = "pennant" return ns.Theme.HudLook()'), "a saved look no release knows reads as Plain").toBe("plain");
 });
 
+it("H45-D-G3A4 a HUD look picked in a fight is dropped when the profile changes before the fight ends", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
+  addon.slash("");
+  setCombat(addon, true);
+  addon.eval('__click("HUD look")');
+  addon.eval("ns.ProfileChanged()");
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "the new profile keeps its own look").toBe("shield");
+});
+
 it("the point's line is the one baked nearest its depth, cropped to that depth and flipped to its corner", () => {
   const addon = loggedIn();
   expect(addon.eval("return ns.Theme.POINT_DEPTHS")).toEqual([12, 14, 16, 18, 20, 22, 24, 30, 36]);

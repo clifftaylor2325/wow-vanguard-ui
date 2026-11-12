@@ -483,6 +483,12 @@ function jobTexts(text) {
   return text.split(/^(?=  [\w-]+:\s*$)/m);
 }
 
+it("H45-36-R1 the release job that holds contents: write installs no npm dependencies", () => {
+  const job = jobTexts(workflow("release.yml")).find((j) => /^\s+contents: write$/m.test(j));
+  expect(job, "a job with contents: write").toBeTruthy();
+  expect(job).not.toMatch(/\bnpm ci\b/);
+});
+
 it("every setup-node step reads .nvmrc, and has cache: npm only in a job that runs npm ci", () => {
   const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 3, "full-suite.yml": 0 };
   for (const [file, count] of Object.entries(counts)) {

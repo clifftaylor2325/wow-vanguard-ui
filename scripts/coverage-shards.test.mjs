@@ -110,7 +110,7 @@ function everyLine() {
 
 // Runs `coverage-lua.mjs --merge` on a folder: { status, out }.
 function merge(dir, ...more) {
-  const run = spawnSync(process.execPath, ["scripts/coverage-lua.mjs", "--merge", dir, ...more], { cwd: root, encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "" } });
+  const run = spawnSync(process.execPath, ["scripts/coverage-lua.mjs", "--merge", dir, ...more], { cwd: root, encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "", VG_SKIP_RETAIL: "" } });
   return { status: run.status, out: `${run.stdout}${run.stderr}` };
 }
 

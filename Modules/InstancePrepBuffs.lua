@@ -211,7 +211,7 @@ end
 -- What one check looks for, as "Flask: a, b" in the client's names, or says it is off when the client names none.
 local function lookingFor(check)
   local names = ns.SpellNames(check[2])
-  return check[1] .. ": " .. (#names > 0 and table.concat(names, ", ") or "none this client knows, so no row")
+  return check[1] .. ": " .. (#names > 0 and table.concat(names, ", ") or L["none this client knows, so no row"])
 end
 
 -- What each check looks for, as "Flask: a, b; Food buff: c; ...".

@@ -83,7 +83,7 @@ function patched(file, patches) {
   return src;
 }
 
-// A build folder: Lua's sources with the patched lvm.c, and the shim.
+// A build folder: Lua's sources with the patched lvm.c and lparser.c, and the shim.
 function stage() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-lua51-"));
   for (const f of fs.readdirSync(path.join(LUA, "src"))) fs.copyFileSync(path.join(LUA, "src", f), path.join(dir, f));

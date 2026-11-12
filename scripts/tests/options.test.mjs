@@ -643,6 +643,20 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("options: a HUD look picked in a fight shows on its row, waits for the fight's end and keeps its default (H45-40-501)", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
+  addon.eval('ns.Options.Show("general")');
+  const row = `local row for _, w in ipairs(__wfgStub.frames) do if w.caption == "HUD look" and ns.Options.RevealRow(w) then row = w end end`;
+  const click = `${row} row:GetScript("OnClick")(row, "LeftButton") return { row.get(), ns.Theme.Settings().hudLook }`;
+  addon.world.combat(true);
+  expect(addon.eval(click), "the first click: the row shows the pick, the setting waits for the fight").toEqual(["shield", "plain"]);
+  expect(addon.eval(click)[0], "the second steps on from the pick").not.toBe("shield");
+  expect(addon.eval(`${row} return { row.source[6], select(2, ns.Options.SettingOf(row.get)) }`), "the default and the setting tag stay").toEqual(["shield", "hudLook"]);
+  addon.world.combat(false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "after the fight the last pick lands").not.toBe("plain");
+  expect(addon.eval(click)[1], "out of combat a click applies at once").toBe(addon.eval("return ns.Theme.HudLook()"));
+});
+
 it("options: the Your characters lines on Game windows follow the record when the window opens again (H45-23-50)", () => {
   const addon = loggedIn(CLICK_LUA);
   // The page's newest All together line.
@@ -2537,6 +2551,18 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
   expect(addon.eval("return __sets"), "a locked slider is set once").toBe(1);
 });
 
+// H45-40-2: Pixel-perfect can save a shared bar size (24 to 64) past a single bar's Button size slider (24 to 48); a caption
+// click on a value past the slider's end steps it to the end, then wraps as usual.
+it("H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
+  addon.eval('ns.Options.Show("actionbars")');
+  // The shared size and bar 1's own size.
+  const sizes = () => addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.bars[1].size or false }');
+  addon.eval('__click("Button size")');
+  expect(sizes(), "the bar steps to the slider's end, the others keep theirs").toEqual([62, 48]);
+  addon.eval('__click("Button size")');
+  expect(sizes()[1], "the next click is the normal wrap").toBe(24);
+});
 it("options: while the spec's profile overrides a staged pick, Copy here names the profile that loads and is not on its row", () => {
   const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {}, Raid = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
   const addon = createAddon({ savedVariables: sv });

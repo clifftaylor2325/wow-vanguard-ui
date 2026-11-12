@@ -450,13 +450,23 @@ local function sectionRows(key)
   return out
 end
 
+-- Enum entries { key, value } in order: numbers first by value, other values by their text, ties by key.
+local function enumBefore(a, b)
+  local aNumber, bNumber = type(a[2]) == "number", type(b[2]) == "number"
+  if aNumber ~= bNumber then return aNumber end
+  if a[2] ~= b[2] and aNumber then return a[2] < b[2] end
+  local aText, bText = tostring(a[2]), tostring(b[2])
+  if aText ~= bText then return aText < bText end
+  return tostring(a[1]) < tostring(b[1])
+end
+
 -- The keys of a global enum table, as "Name=value" sorted by value, or nil when the client lacks it.
 local function enumText(name)
   local enum = type(_G.Enum) == "table" and _G.Enum[name]
   if type(enum) ~= "table" then return nil end
   local list = {}
   for key, value in pairs(enum) do list[#list + 1] = { key, value } end
-  table.sort(list, function(a, b) return tostring(a[2]) < tostring(b[2]) end)
+  table.sort(list, enumBefore)
   for i, pair in ipairs(list) do list[i] = pair[1] .. "=" .. tostring(pair[2]) end
   return table.concat(list, ", ")
 end
@@ -605,13 +615,22 @@ local function secretLines()
   return out
 end
 
+-- One line per restriction type, by name so two pasted reports compare line by line.
+local function restrictionTypeLines()
+  local types = type(_G.Enum) == "table" and _G.Enum.AddOnRestrictionType
+  local names, out = {}, {}
+  for key in pairs(type(types) == "table" and types or {}) do names[#names + 1] = key end
+  table.sort(names)
+  for _, key in ipairs(names) do
+    out[#out + 1] = "type " .. key .. ": " .. P.Row("C_RestrictedActions.GetAddOnRestrictionState", types[key])
+  end
+  return out
+end
+
 -- The restriction states the client reports and the chat lockdown reads.
 local function restrictionLines()
   local out = { enumLine("AddOnRestrictionType"), enumLine("AddOnRestrictionState") }
-  local types = type(_G.Enum) == "table" and _G.Enum.AddOnRestrictionType
-  for key, value in pairs(type(types) == "table" and types or {}) do
-    out[#out + 1] = "type " .. key .. ": " .. P.Row("C_RestrictedActions.GetAddOnRestrictionState", value)
-  end
+  for _, line in ipairs(restrictionTypeLines()) do out[#out + 1] = line end
   out[#out + 1] = P.Row("C_ChatInfo.InChatMessagingLockdown")
   out[#out + 1] = P.Row("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
   out[#out + 1] = P.Row("C_RestrictedActions.InCombatLockdown")
@@ -1012,15 +1031,26 @@ end
 local function fightDone()
   VanguardDB.probe = VanguardDB.probe or {}
   VanguardDB.probe.fight = P.fight
+  P.running = nil
   ns.Chat(L["Probe: the fight report is ready. /vg probe last shows it after the main report."])
+end
+
+-- The three-second snapshot of one fight: only while that fight is still on, so a short fight, or the next one,
+-- never gets an out-of-combat block labelled "3 s in". P.running is cleared when the fight's report is saved, so
+-- a second fight starting within the 3 s cannot add its block to the first one's saved report.
+local function threeSecondSnap(fight)
+  return function()
+    if ns.InCombat() and P.running == fight then snap("3 s in") end
+  end
 end
 
 -- A fight starts while armed: one snapshot now and one three seconds in, the report kept after it.
 local function fightStarted()
   if not P.armed then return end
   P.armed, P.fight = false, {}
+  P.running = P.fight
   snap("start")
-  if C_Timer and C_Timer.After then C_Timer.After(3, ns.Guard("probe fight snapshot", function() snap("3 s in") end)) end
+  if C_Timer and C_Timer.After then C_Timer.After(3, ns.Guard("probe fight snapshot", threeSecondSnap(P.fight))) end
   ns.AfterCombat(fightDone, "probefight")
 end
 ns.On("PLAYER_REGEN_DISABLED", fightStarted)

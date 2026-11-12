@@ -109,12 +109,15 @@ export function buildSteps(opts, ctx) {
   const npm = (script) => ({ name: `npm run ${script}`, cmd: "npm", args: ["run", script] });
   // Every test runs before a publish, since no pull request runs them in CI; --fast only drops the coverage floor.
   const gates = [npm("quality"), npm("test:quick"), npm(opts.fast ? "test" : "coverage")];
+  // The release workflow's other two gates: the raid bench's instruction caps, and luacheck when installed.
+  const bench = { name: "npm run bench (instruction caps)", cmd: "npm", args: ["run", "bench", "--", "--instr-budget", "scripts/bench-budget.json"] };
+  const lint = { name: "luacheck", cmd: "luacheck", args: ["--no-color", "."] };
   const zip = path.join("dist", `Vanguard-${ctx.version}.zip`);
   const build = [
     { name: "build the zip", cmd: "node", args: ["scripts/package.mjs", "--ref", "HEAD"] },
     { name: "check the zip", cmd: "node", args: ["scripts/check-zip.mjs", "--zip", zip] },
   ];
-  return [...(ctx.luac ? [luacStep(ctx.tocFiles)] : []), ...gates, ...build];
+  return [...(ctx.luac ? [luacStep(ctx.tocFiles)] : []), ...gates, bench, ...(ctx.luacheck ? [lint] : []), ...build];
 }
 
 // The Lua 5.1 syntax check over every file the TOC loads.
@@ -259,7 +262,8 @@ function onlyMode(opts) {
 
 // The checks, build and uploads once the preflight allows it.
 async function finish(opts, state) {
-  const ctx = { version: state.tocVersion, head: state.head, luac: has("luac5.1"), tocFiles: tocFiles(state.toc) };
+  const ctx = { version: state.tocVersion, head: state.head, luac: has("luac5.1"), luacheck: has("luacheck"), tocFiles: tocFiles(state.toc) };
+  if (!ctx.luacheck) console.log("\nluacheck is not installed: luacheck NOT checked (the release workflow runs it)");
   if (!ctx.luac) console.log("\nluac5.1 is not installed: Lua 5.1 syntax NOT checked (apt-get install lua5.1)");
   if (opts.fast) console.log("\n--fast: every test ran, without coverage (npm test, not npm run coverage)");
   if (!runAll(buildSteps(opts, ctx))) return fail("a check failed; nothing was uploaded");

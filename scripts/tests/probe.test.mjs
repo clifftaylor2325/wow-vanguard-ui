@@ -168,6 +168,50 @@ it("/vg probe fight: arms, reads as the fight starts and 3 s in, and keeps the r
   const text = reportText(addon);
   expect(text, "both snapshots are in the saved report").toMatch(/== Fight, start \(in combat: true\)[\s\S]*== Fight, 3 s in/);
 });
+it("H45-34-102 /vg probe fight: a fight under 3 s gets no 3 s block, and a second fight gets exactly one", () => {
+  const addon = loggedIn(PROBE_ENV);
+  // How many "3 s in" blocks the kept fight report holds.
+  const blocks = () => addon.eval("local n = 0 for _, l in ipairs(ns.Probe.fight) do if l:find('3 s in', 1, true) then n = n + 1 end end return n");
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(1);
+  setCombat(addon, false);
+  addon.advance(3);
+  expect(blocks(), "the fight ended at 1 s: nothing out of combat under a fight label").toBe(0);
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(2.5);
+  expect(blocks(), "the first fight's timer lands at 2 s: not in this fight's report").toBe(0);
+  addon.advance(1);
+  expect(blocks(), "its own timer at 3 s").toBe(1);
+});
+it("H45-D-G3A3 a short armed fight and an unarmed one within 3 s: the first report gets no 3 s block", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(1);
+  setCombat(addon, false);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(2.5);
+  expect(addon.eval("local n = 0 for _, l in ipairs(ns.Probe.fight) do if l:find('3 s in', 1, true) then n = n + 1 end end return n"), "the kept report is the first fight's: no block from the second").toBe(0);
+});
+it("H45-34-103 the probe's Enum lines go in value order (10 after 5) and the restriction types by name", () => {
+  const addon = loggedIn(PROBE_ENV + "Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5, Ten = 10 }");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "Enum.AddOnRestrictionType").trim(), "value order").toBe("Enum.AddOnRestrictionType: Combat=0, Encounter=1, ChallengeMode=2, PvPMatch=3, Map=4, Chat=5, Ten=10");
+  const names = text.split("\n").map((l) => /^\s*type (\w+):/.exec(l)?.[1]).filter(Boolean);
+  expect(names, "by name").toEqual(["ChallengeMode", "Chat", "Combat", "Encounter", "Map", "PvPMatch", "Ten"]);
+});
+it("H45-34-103 the probe's Enum lines put numbers first, then other values by their text, ties by key", () => {
+  const addon = loggedIn(PROBE_ENV + 'Enum.AddOnRestrictionType = { Bx = "x", Ax = "x", One = 1, W = "w", Uno = 1 }');
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "Enum.AddOnRestrictionType").trim(), "numbers, then text, then key").toBe("Enum.AddOnRestrictionType: One=1, Uno=1, W=w, Ax=x, Bx=x");
+});
 it("/vg probe fight: an unarmed fight records nothing", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.fire("PLAYER_REGEN_DISABLED");
@@ -391,8 +435,9 @@ it("/vg probe legacy copes with a window without a panel, secret ids, a failing 
   addon.slash("probe legacy");
   expect(chatHas(addon, /perk panel: configID hidden, treeID 9, nodes unknown/), "hidden ids and a failing call").toBe(true);
   addon.eval("C_Traits = nil LegacySystemFrame.TreePage.LegacyTreeTraitPanel.treeID = nil");
+  addon.clearChat();
   addon.slash("probe legacy");
-  expect(chatHas(addon, /treeID nil|treeID table|nodes unknown/), "no trait calls").toBe(true);
+  expect(chatHas(addon, /perk panel: configID hidden, treeID nil, nodes unknown/), "no trait calls").toBe(true);
   addon.world.combat(true);
   addon.slash("probe legacy");
   expect(chatHas(addon, /Not in a fight: try again after it\./), "nothing is read in combat").toBe(true);

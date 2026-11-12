@@ -90,10 +90,18 @@ export function waitingLine(holders, now) {
   return `test-slot: waiting for a free slot, ${holders.length} of ${holders.length} busy: ${who.join("; ")}. ${hint}, delete ${files}.`;
 }
 
+// Writes a scratch lock readable and writable by every user: the umask would cut a mode passed to
+// writeFileSync, and a run of another user cannot hard link a dead holder's 0644 file
+// (fs.protected_hardlinks), so it could never take the slot over.
+function writeScratch(scratch, text) {
+  fs.writeFileSync(scratch, text);
+  fs.chmodSync(scratch, 0o666);
+}
+
 // Writes the file whole, or not at all: false when it already exists.
 export function createLock(file, info) {
   const scratch = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(scratch, lockText(info), { mode: 0o666 });
+  writeScratch(scratch, lockText(info));
   try {
     fs.linkSync(scratch, file);
     return true;
@@ -132,7 +140,7 @@ function claimFile(file, deadText) {
 // Writes this run's lock over the slot file in one step (written beside it, then renamed over it).
 function replaceLock(file, info) {
   const scratch = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(scratch, lockText(info), { mode: 0o666 });
+  writeScratch(scratch, lockText(info));
   fs.renameSync(scratch, file);
   return true;
 }
@@ -257,7 +265,7 @@ export function recordChild(file, child) {
   const held = readLock(file);
   if (held.info?.pid !== process.pid) return;
   const scratch = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(scratch, lockText({ ...held.info, child }), { mode: 0o666 });
+  writeScratch(scratch, lockText({ ...held.info, child }));
   fs.renameSync(scratch, file);
 }
 

@@ -106,8 +106,10 @@ it("the check and build steps run in order, every test with coverage or (--fast)
   const ctx = { version: "0.7.0", head: "a", luac: true, tocFiles: ["Core/A.lua"] };
   // The step names for the options.
   const names = (opts, c = ctx) => buildSteps(opts, c).map((s) => s.name);
-  expect(names({})).toEqual(["luac5.1 -p (Lua 5.1 syntax)", "npm run quality", "npm run test:quick", "npm run coverage", "build the zip", "check the zip"]);
-  expect(names({ fast: true }, { ...ctx, luac: false })).toEqual(["npm run quality", "npm run test:quick", "npm run test", "build the zip", "check the zip"]);
+  expect(names({})).toEqual(["luac5.1 -p (Lua 5.1 syntax)", "npm run quality", "npm run test:quick", "npm run coverage", "npm run bench (instruction caps)", "build the zip", "check the zip"]);
+  expect(names({ fast: true }, { ...ctx, luac: false })).toEqual(["npm run quality", "npm run test:quick", "npm run test", "npm run bench (instruction caps)", "build the zip", "check the zip"]);
+  expect(names({}, { ...ctx, luacheck: true })).toContain("luacheck");
+  expect(buildSteps({}, ctx).find((s) => s.name.startsWith("npm run bench")).args).toContain("scripts/bench-budget.json");
   expect(buildSteps({}, ctx)[0].args).toEqual(["-p", "Core/A.lua"]);
   expect(buildSteps({}, ctx).at(-1).args).toContain(path.join("dist", "Vanguard-0.7.0.zip"));
 });

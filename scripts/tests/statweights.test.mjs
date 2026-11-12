@@ -78,8 +78,8 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
   becomeClass(addon, "WARRIOR");
   expect(addon.eval("return (ns.GetModule('Upgrades').Current()).STR"), "the warrior's change stays").toBe(3);
   const old = loggedIn(GEAR, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { caster = { SP = 2 }, healer = 5 } } } }" });
-  const saved = old.eval("local w = ns.GetModule('Upgrades').settings.weights return { w.caster == nil, w.MAGE.caster.SP, w.WARLOCK.caster.SP, w.SHAMAN.caster.SP, w.DRUID == nil, w.healer }");
-  expect(saved, "caster weights went to every caster class (not the druid, a caster only as Balance); a broken entry stays").toEqual([true, 2, 2, 2, true, 5]);
+  const saved = old.eval("local w = ns.GetModule('Upgrades').settings.weights return { w.caster == nil, w.MAGE.caster.SP, w.WARLOCK.caster.SP, w.SHAMAN.caster.SP, w.DRUID == nil, w.healer == nil }");
+  expect(saved, "caster weights went to every caster class (not the druid, a caster only as Balance); a broken entry is dropped (H45-40-204)").toEqual([true, 2, 2, 2, true, true]);
   becomeClass(old, "MAGE");
   expect(old.eval("return (ns.GetModule('Upgrades').Current()).SP"), "and are used").toBe(2);
   const none = loggedIn(GEAR, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = 7 } } }" });

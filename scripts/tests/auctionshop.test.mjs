@@ -894,3 +894,48 @@ it("H29-6-1 a list row lights under the mouse and the table's own onEnter still 
   addon.eval(`local r = ${row} r:GetScript("OnLeave")(r)`);
   expect(hover(), "left: the wash is off").toBe(false);
 });
+
+it("H45-31-1 searching a list again while a search is in flight counts only the new run", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Gamma" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.click(`${HELPER}.shopCard.search`);
+  const seen = [progress(addon)];
+  for (let i = 0; i < 5; i++) {
+    addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+    seen.push(progress(addon));
+    addon.advance(1.1);
+  }
+  expect(seen, "the old run's answer is not counted: never more than 3 of 3").toEqual(["0 of 3", "0 of 3", "1 of 3", "2 of 3", "3 of 3", "3 of 3"]);
+});
+
+it("H45-31-2 Filters on the lower of two equal entries changes that row, not the first", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Alpha" }');
+  addon.eval(`${HELPER}.PaintShop()`);
+  addon.click(`${TABLE}.rows[3]`, "RightButton");
+  addon.click("Vanguard_Menu.items[1]");
+  addon.eval(`${HELPER}.filterDialog.price:SetText("5s") ${HELPER}.SaveFilters()`);
+  const list = addon.eval(`local out = {} for i, e in ipairs(VanguardDB.ah.lists['TEST-ONLY Mats']) do out[i] = type(e) == "table" and (e.term .. "@" .. tostring(e.maxPrice)) or e end return out`);
+  expect(list).toEqual(["Alpha", "Beta", "Alpha@500"]);
+});
+
+it("H45-31-2 Remove on the lower of two equal entries removes that row", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Alpha" }');
+  addon.eval(`${HELPER}.PaintShop()`);
+  addon.click(`${TABLE}.rows[3]`, "RightButton");
+  addon.click("Vanguard_Menu.items[2]");
+  expect(addon.eval(`return VanguardDB.ah.lists['TEST-ONLY Mats']`)).toEqual(["Alpha", "Beta"]);
+});
+
+it("H45-31-R2 the shop's listings view and the Up now card name the same time left", () => {
+  const addon = atAuctionHouse(DUSTS + `__wfgWorld.ah.commodities[10940] = { { unitPrice = 1250, quantity = 20, timeLeftSeconds = 2150 } }`);
+  dustFound(addon);
+  addon.click(`${TABLE}.rows[1]`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  const upNow = addon.eval(`return ${HELPER}.TimeLeft({ timeLeftSeconds = 2150 })`);
+  expect([view(addon)[3][0][2], upNow], "2150 seconds is 35 whole minutes on both").toEqual(["35 min", "35 min"]);
+  const mine = addon.eval(`return { ${HELPER}.TimeLeft({ timeLeftSeconds = 119, containsOwnerItem = true }), ${HELPER}.TimeLeft({ timeLeftSeconds = 119 }), ${HELPER}.TimeLeft({ timeLeftSeconds = 7300, containsOwnerItem = true }) }`);
+  expect(mine, "H45-D-G3A5 your own auction's minutes round up (119 s is 2 min), another's down, hours down").toEqual(["2 min", "1 min", "2 h"]);
+});

@@ -15,7 +15,7 @@ const expected = (globalThis[Symbol.for("vanguard.expected")] ??= []);
 // anchored at both ends, a letter in it, and nothing wider than digit runs.
 function namesOneError(matcher) {
   if (typeof matcher === "string") return matcher.length > 0;
-  if (!(matcher instanceof RegExp) || /[gmy]/.test(matcher.flags)) return false;
+  if (!(matcher instanceof RegExp) || /[gimy]/.test(matcher.flags)) return false;
   const src = matcher.source;
   if (!src.startsWith("^") || !/(^|[^\\])(\\\\)*\$$/.test(src.slice(1))) return false;
   const rest = src.slice(1, -1).replace(/\\d\+?/g, "").replace(/\\[^a-zA-Z0-9]/g, "");
