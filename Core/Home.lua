@@ -48,7 +48,7 @@ end
 
 -- The ruleset the client names, else nil: "season<N>" while a season is on (C_Seasons), else
 -- "hardcore" on Hardcore rules (C_GameRules). Forever documents C_GameRules but has no C_Seasons, which
--- is asked only where a client has it. The Classic or Modern preset is shown by /vg realm, not part of the
+-- is asked only where a client has it. The Classic or Enhanced preset (the game's Modern) is shown by /vg realm, not part of the
 -- key: a key that gains a part orphans the data kept under the old one, so it waits on a probe paste.
 function H.Ruleset()
   if ask("C_Seasons", "HasActiveSeason") == true then

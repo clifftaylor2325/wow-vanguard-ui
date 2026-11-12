@@ -142,7 +142,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
 /vg factionart                  which of the game's own faction pictures this client has
 /vg launch [clear]               (WoW Forever only) prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)
-/vg realm                       your realm, ruleset, the Classic or Modern preset and side as the client gives them, how it writes your name, and the key your prices, sales and characters are kept under
+/vg realm                       your realm, ruleset, the Classic or Enhanced preset (the game's Modern) and side as the client gives them, how it writes your name, and the key your prices, sales and characters are kept under
 /vg frame <name> [deep]         (a name may end in #n parts, the nth child frame of the one before: QuestScrollFrame.Contents.#3) what the client says about a frame now (shown, alpha, scale, size, where its rect is or that it has none, anchors, its parents); deep adds its textures and child frames, for a frame that draws empty: paste it with a bug report
 /vg plates [enemies on|off]   how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)
 /vg craft [add [n]|next|stock|cd|top|done|clear]   the craft queue, profession cooldowns and best recipes (off until switched on)

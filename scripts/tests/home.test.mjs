@@ -91,9 +91,10 @@ it("home: /vg realm prints the realm, ruleset, side, data key and how your name 
   expect([chatHas(addon, /Ruleset: none named by the client/), chatHas(addon, /Your name in chat: \?-ForeverTest/)], "none named; a hidden name").toEqual([true, true]);
 });
 
-// TEST-ONLY game rules as Forever documents them: the Classic or Modern preset enum, self-found and the game mode record.
+// TEST-ONLY game rules as Forever documents them: the Classic or Enhanced preset enum, self-found and the game mode record.
 const FOREVER_RULES = `
-  Enum.ForeverExperiencePreset = { Classic = 0, Modern = 1 }
+  -- Forever names the second preset Enhanced (the login screen says Modern): Blizzard_APIDocumentationGenerated/GameRulesDocumentation.lua, ForeverExperiencePreset.
+  Enum.ForeverExperiencePreset = { Classic = 0, Enhanced = 1 }
   __preset, __self = 1, true
   C_GameRules = {
     IsHardcoreActive = function() return false end,
@@ -106,7 +107,7 @@ const FOREVER_RULES = `
 it("home: /vg realm names the Forever preset, self-found and game mode, none of which join the key", () => {
   const addon = loggedIn(FOREVER_RULES);
   addon.slash("realm");
-  expect(chatHas(addon, /Rules: preset Modern {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
+  expect(chatHas(addon, /Rules: preset Enhanced {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
   expect(home(addon)[4], "the key stays realm and side").toBe("ForeverTest-Alliance");
   addon.eval("__preset, __self = 7, false Enum.ForeverExperiencePreset = nil");
   addon.slash("realm");
