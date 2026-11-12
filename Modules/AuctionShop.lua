@@ -736,6 +736,7 @@ end
 -- by their pane keys.
 AH.Sources = {}
 AH.Sources.list = { columns = AH.LIST_COLUMNS, paint = paintRow, click = AH.ClickRow, count = listCount, status = listStatus, buttons = true,
+  -- The rows are the picked shopping list's entries.
   items = function() local _, list = AH.CurrentList() return list or {} end }
 
 -- The source of what the card shows now: the entry picked in the pane (a list unless a file adds its own).
@@ -884,6 +885,7 @@ end
 
 -- The dropdown's actions, by value.
 AH.LIST_ACTIONS = {
+  -- Each action runs one list command: new, rename, copy, delete, export, import.
   [AH.NEW] = function() ns.AskText(L["New shopping list"], AH.NewList, L["Create"]) end,
   [AH.RENAME] = function() AH.AskRename() end,
   [AH.COPY] = function() AH.DuplicateList() end,
@@ -1196,6 +1198,7 @@ local function buildView(c)
   f:SetAllPoints()
   viewHead(f)
   f.table = AH.Table(f, AH.VIEW_COLUMNS, AH.VIEW_ROWS, { keys = true, paintRow = paintListing, onOpen = AH.OpenListing, onSort = AH.SortListings,
+    -- A click opens the listing; scrolling near the end of the table asks for more.
     onClick = function(r) AH.OpenListing(r.index) end, onNear = function() if AH.view then moreIfNear(AH.view) end end })
   AH.TableUnder(f.table, f)
   f:Hide()

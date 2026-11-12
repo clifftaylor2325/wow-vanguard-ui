@@ -139,11 +139,35 @@ function luaFunctionName(tokens, i) {
   return eq?.text === "=" && lhs?.kind === "word" && tokens[i - 3]?.text !== "," ? lhs.text : null;
 }
 
+// The index of the "[" that opens the bracketed key ending at tokens[close] (a "]"), or -1.
+function openBracket(tokens, close) {
+  let depth = 0;
+  for (let k = close; k >= 0; k--) {
+    depth += tokens[k].text === "]" ? 1 : tokens[k].text === "[" ? -1 : 0;
+    if (depth === 0) return k;
+  }
+  return -1;
+}
+
+// A function the comment rule leaves unnamed because it is a table field: `, key = function` (after a comma) or
+// `X[key] = function` / `[key] = function` (a bracketed key). { label, at }: its key as written, and the token its
+// statement starts at (where a comment above it counts). null for any other function.
+function fieldFunction(tokens, i) {
+  if (tokens[i - 1]?.text !== "=" || tokens[i + 1]?.kind === "word") return null;
+  const lhs = tokens[i - 2];
+  if (lhs?.kind === "word" && tokens[i - 3]?.text === ",") return { label: lhs.text, at: lhs };
+  const open = lhs?.text === "]" ? openBracket(tokens, i - 2) : -1;
+  if (open < 0) return null;
+  const owner = ["word", "string"].includes(tokens[open - 1]?.kind) || [")", "]"].includes(tokens[open - 1]?.text) ? tokens[open - 1] : tokens[open];
+  return { label: tokens.slice(open, i - 1).map((t) => t.text).join(""), at: owner };
+}
+
 // Updates the open-block stack for one keyword; returns a closed function or null.
 function trackLuaBlock(stack, tokens, i, line) {
   const t = tokens[i];
   if (LUA_BLOCK_OPEN.has(t.text)) {
-    stack.push(t.text === "function" ? { name: luaFunctionName(tokens, i), start: line(t.start) } : null);
+    const field = t.text === "function" ? fieldFunction(tokens, i) : null;
+    stack.push(t.text === "function" ? { name: luaFunctionName(tokens, i), field: field && { label: field.label, line: line(field.at.start) }, start: line(t.start) } : null);
     return null;
   }
   if (!LUA_BLOCK_CLOSE.has(t.text)) return null;
@@ -232,7 +256,7 @@ function topLocalProblems(file, src) {
 // Every function in Lua source: { name, start, end } (1-based lines).
 export function luaFunctions(src) {
   const line = lineIndex(src);
-  const tokens = tokenizeLua(src).filter((t) => t.kind !== "comment");
+  const tokens = codeTokens(src);
   const stack = [];
   const found = [];
   tokens.forEach((t, i) => {
@@ -730,8 +754,12 @@ export function checkSource(file, src) {
 //     and, or), which errors in game when the answer is a secret (docs/PATTERNS.md).
 //   pcall-result-or: `ok and value or fallback` just after a pcall, which tests value for truth.
 //   long-line: addon Lua lines longer than MAX_LINE characters; the count only goes down.
+//   unwrapped-text-shapes: English in a sink's text argument that the narrow unwrapped-text rule does not read: joined to a
+//     value, chosen by and/or, or the pattern of a format call (H44-25-3). The /vg diagnostics stay English (DIAGNOSTIC_FILES).
+//   undocumented-field-function: a function written as a table field after a comma, or under a bracketed key, with no
+//     comment line above it (H44-25-6 and H44-25-R2): the comment rule reads only the first field and `name = function`.
 
-export const REPORT_RULES = ["unbounded-onupdate", "unguarded-script-handler", "unwrapped-text", "secret-truth-test", "pcall-result-or", "long-line"];
+export const REPORT_RULES = ["unbounded-onupdate", "unguarded-script-handler", "unwrapped-text", "secret-truth-test", "pcall-result-or", "long-line", "unwrapped-text-shapes", "undocumented-field-function"];
 // The blocking rule that grew out of the report-only list once it was quiet on main.
 export const SECURE_RULE = "secure-outside-combat-guard";
 
@@ -1005,6 +1033,76 @@ function unwrappedText(file, src) {
   return hits.map((t) => ({ rule: REPORT_RULES[2], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
 }
 
+// The wider unwrapped-text rule (report-only, with a baseline of its own; unwrapped-text stays the narrow one). It reads
+// the whole text argument of a sink, not only a literal that comes first: `"a" .. x`, `cond and "a" or "b"`, `x or "a"`,
+// and the pattern handed to string.format, ns.Format or ("..."):format inside it. SHAPE_SINKS gives each sink's text
+// argument, counted from 0. A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
+// is not text, and only words count: format codes, {slots}, color and link escapes and the brand name are stripped first.
+const SHAPE_SINKS = new Map(Object.entries({
+  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: 0, AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
+  OfferReload: 0, ShowText: 0, Ask: 0, AskText: 0, DialogButton: 1,
+}));
+const FORMATTERS = new Set(["format", "Format"]);
+// The /vg diagnostics docs/PATTERNS.md lists as staying English (pasted into a bug report), each with the files that print
+// it: a file that prints one is not read by the wider rule. A test holds this table to that sentence of the doc.
+export const DIAGNOSTIC_FILES = {
+  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: [], report: [], errors: [],
+  frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
+};
+const DIAGNOSTIC_SET = new Set(Object.values(DIAGNOSTIC_FILES).flat());
+// What a literal carries that is not words: format codes, {slots}, |c and |r, |H...|h link markup and the brand.
+const NOT_WORDS = /%[-+ #0-9.]*[a-zA-Z%]|\{\w+\}|\|c[0-9a-fA-F]{8}|\|[rh]|\|H[^|]*|Vanguard|\/vg/g;
+
+// True when a string token reads as English: two letters in a row once the non-words are stripped (a path is not text).
+const isShapeText = (text) => isWords(text) && /[A-Za-z]{2}/.test(text.replace(NOT_WORDS, " "));
+
+// True when the string at arg[k], at bracket depth `depth` of the argument, is text the sink prints: at the argument's own level
+// and not compared, or the pattern of string.format, ns.Format or ("..."):format.
+function printsText(arg, k, depth) {
+  const own = depth === 0 && !(arg[k - 1]?.text === "=" && ["=", "~"].includes(arg[k - 2]?.text)) && arg[k + 1]?.text !== "=";
+  const pattern = depth === 1 && arg[k - 1]?.text === "(" && FORMATTERS.has(arg[k - 2]?.text);
+  const method = depth === 1 && arg[k + 1]?.text === ")" && arg[k + 2]?.text === ":" && arg[k + 3]?.text === "format";
+  return own || pattern || method;
+}
+
+// The text literals in a sink's text argument (tokens): the string tokens printsText accepts that read as English. A
+// literal that is the whole start of the argument of a sink the narrow rule reads (`narrow`) is its finding, not this one's.
+function shapeLiterals(arg, narrow) {
+  let depth = 0;
+  return arg.filter((t, k) => {
+    const hit = t.kind === "string" && printsText(arg, k, depth) && isShapeText(t.text) && !(narrow && k === 0 && isWords(t.text));
+    depth += nesting(t);
+    return hit;
+  });
+}
+
+// The tokens of the text argument of the sink call at tokens[i], or an empty list when tokens[i] is not a sink call.
+function sinkArgument(tokens, i) {
+  const index = tokens[i].kind === "word" ? SHAPE_SINKS.get(tokens[i].text) : undefined;
+  const call = index !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  return call ? (callArgs(tokens, i + 1)[index] ?? []) : [];
+}
+
+// English in a sink's text argument in a shape the narrow rule does not read (rule unwrapped-text-shapes).
+function unwrappedShapes(file, src) {
+  if (!COLOR_SCOPE.test(file) || DIAGNOSTIC_SET.has(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  const hits = tokens.flatMap((t, i) => shapeLiterals(sinkArgument(tokens, i), TEXT_SINKS.has(t.text)));
+  return hits.map((t) => ({ rule: REPORT_RULES[6], line: line(t.start), message: `English text joined, chosen or formatted outside L[…]: ${t.text.slice(0, 48)}` }));
+}
+
+// Table-field functions with no comment above them (rule undocumented-field-function): a function after a comma or under a
+// bracketed key is anonymous to the comment rule. The same comment test applies: a comment line directly above the field, or
+// above the first of a run of one-line functions (two fields on one line share the line's comment); [{ rule, line, message }].
+function undocumentedFields(file, src) {
+  const fns = luaFunctions(src).map((f) => (f.name || !f.field ? f : { ...f, name: f.field.label, docLine: f.field.line, isField: true }));
+  const documented = documentedSet(fns, luaLineKinds(src));
+  const documentedLines = new Set(fns.filter((f) => documented.has(f)).map((f) => f.docLine ?? f.start));
+  const loose = fns.filter((f) => f.isField && !documentedLines.has(f.docLine));
+  return loose.map((f) => ({ rule: REPORT_RULES[7], line: f.docLine, message: `${f.name} = function has no comment above it (a table field the comment rule does not name)` }));
+}
+
 // Truth tests on client reads that can answer with a secret (the client errors on `if secret then`; the
 // harness raises too, but only on a path a test drives with a secret boolean). Narrow on purpose: a call to a Unit*, C_UnitAuras.*
 // or GetAction* function tested for truth by if, elseif, while, not, and or or.
@@ -1059,7 +1157,7 @@ function longLines(file, src) {
 // Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
 export function reportSource(file, src) {
   if (!file.endsWith(".lua")) return [];
-  const rules = [unboundedOnUpdates, unguardedScriptHandlers, unwrappedText, secretTruthTests, pcallResultOr, longLines];
+  const rules = [unboundedOnUpdates, unguardedScriptHandlers, unwrappedText, secretTruthTests, pcallResultOr, longLines, unwrappedShapes, undocumentedFields];
   return rules.flatMap((rule) => rule(file, src));
 }
 

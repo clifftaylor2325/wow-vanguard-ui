@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
+import { DIAGNOSTIC_FILES, FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -686,8 +686,74 @@ describe(
   () => {
     it("unwrapped text: a literal in a text sink is reported, and does not block", unwrappedBare);
     it("unwrapped text: wrapped text, paths, symbols and other folders pass", unwrappedPasses);
+    it("unwrapped text shapes: joined, chosen, formatted and the sinks the narrow rule lacked are counted", shapesReported);
+    it("unwrapped text shapes: wrapped, wordless, compared, indexed, nested, the brand and the diagnostics pass", shapesPass);
+    it("unwrapped text shapes: the diagnostics table is the list in docs/PATTERNS.md", diagnosticsMatchDoc);
+    it("field functions: after a comma or under a bracketed key, with no comment, they are counted", fieldsReported);
+    it("field functions: a comment above, or above a run of one-liners, covers them", fieldsDocumented);
   },
 );
+
+const SHAPES = "unwrapped-text-shapes";
+const FIELD = "undocumented-field-function";
+
+// Statements that print English in a shape the narrow rule does not read: joined, chosen by and/or, formatted, in a sink it lacked.
+const ENGLISH_SHAPES = [
+  'fs:SetText(n .. " items")', 'fs:SetText(on and "On" or "Off")', 'fs:SetText(name or "none")',
+  'ns.Chat(string.format("Sold %d items", n))', 'ns.Chat(("Sold %d items"):format(n))', 'ns.Chat(ns.Format("Sold {n} items", { n = n }))',
+  'fs:SetFormattedText("%d items left", n)', 'chatFrame:AddMessage("Hello there")', 'ns.Ask("Delete it?", yes)', 'ns.AskText("Name it", ok)',
+  'ns.DialogButton(parent, "Reload now", f)', 'tip:AddLine(key .. " to open")',
+];
+// Statements that look alike and are not English text to translate.
+const NOT_ENGLISH = [
+  'fs:SetText(L["Level"] .. n)', 'fs:SetText(("%d x %s"):format(n, name))', 'ns.Chat(mode == "tab" and L["a"] or L["b"])', 'ns.DialogButton(parent, "Vanguard", f)',
+  'fs:SetText(t["key"])', 'fs:SetText(fmt("Hello"))', 'ns.DialogButton("Hello", L["Reload"], f)', 'ns.Chat(string.format("%d. %s", i, name))', 'fs:SetFormattedText("%.1f", n)',
+  'ns.Chat(ns.Format(L["Sold {n}"], { n = n }))', 'fs:SetText(L["x"] .. "|r")', 'fs:SetText(("%s"):rep(2))',
+];
+
+// English joined to a value, chosen by and/or, formatted, or handed to a sink the narrow rule lacked is counted under its own key, and does not block.
+function shapesReported() {
+  for (const stmt of ENGLISH_SHAPES) expect(new Set(reported(inFn(stmt))), stmt).toEqual(new Set([SHAPES]));
+  expect(reportSource("Modules/t.lua", inFn('fs:SetText(n .. " items")'))[0]).toMatchObject({ line: 3, message: 'English text joined, chosen or formatted outside L[…]: " items"' });
+  expect(problems("Modules/t.lua", inFn('fs:SetText(n .. " items")'))).toBe("");
+  expect(reported(inFn('fs:SetText("Level " .. n)')), "a literal that comes first is the narrow rule's").toEqual([UNWRAPPED]);
+}
+
+// Wrapped text, format patterns with no words, compares, indexes, nested calls, the brand, the diagnostics' files and other folders pass.
+function shapesPass() {
+  for (const stmt of NOT_ENGLISH) expect(reported(inFn(stmt)), stmt).toEqual([]);
+  expect(reported(inFn('fs:SetText(n .. " items")'), "scripts/lib/t.lua")).toEqual([]);
+  expect(reported(inFn('ns.Chat(realm .. " is the realm")'), "Core/Home.lua"), "a file that prints a diagnostic").toEqual([]);
+}
+
+// The diagnostics the doc names are the table's keys, so the doc and the rule cannot drift.
+function diagnosticsMatchDoc() {
+  const doc = fs.readFileSync(path.join(root, "docs/PATTERNS.md"), "utf8");
+  const sentence = /the diagnostics pasted into a bug report: (.*?)\. Text with a/s.exec(doc)[1];
+  const words = [...sentence.matchAll(/`\/vg (\w+)`/g)].map((m) => m[1]);
+  expect(words.sort()).toEqual(Object.keys(DIAGNOSTIC_FILES).sort());
+}
+
+// A table with no comments: the first field is named (and needs a comment); later fields after a comma are anonymous to the blocking rule.
+const FIELDS = "local T = {\n  first = function() end,\n  second = function() end,\n  third = function()\n    return 1\n  end,\n}\n";
+
+// A function written as a table field after a comma, or under a bracketed key, with no comment above is counted under its own key; the blocking rule still names only the first.
+function fieldsReported() {
+  expect(reported(FIELDS)).toEqual([FIELD, FIELD]);
+  expect(reportSource("Modules/t.lua", FIELDS).map((f) => [f.line, f.message])).toEqual([[3, "second = function has no comment above it (a table field the comment rule does not name)"], [4, "third = function has no comment above it (a table field the comment rule does not name)"]]);
+  expect(problems("Modules/t.lua", FIELDS)).toMatch(/first\(\) has no comment above it/);
+  expect(reported('local M = {}\nM["Apply"] = function() end\nlocal T = {\n  ["Paint"] = function() end,\n}\n')).toEqual([FIELD, FIELD]);
+  expect(reportSource("Modules/t.lua", 'local M = {}\nM["Apply"] = function() end\n')[0].message).toMatch(/^\["Apply"\] = function/);
+}
+
+// A comment directly above a field, or above the first of a run of one-line fields, covers it; call arguments and named functions are not fields.
+function fieldsDocumented() {
+  const commented = "local T = {\n  -- one\n  first = function() end,\n  -- two\n  second = function() end,\n  third = function() end,\n  [\"k\"] = function() end, [\"j\"] = function() end,\n}\n";
+  expect(reported(commented)).toEqual([]);
+  expect(reported('-- doc\nlocal M = {}\n-- doc\nM["Apply"] = function() end\n-- doc\nlocal function f() end\nns.On("X", function() end, function() end)\n')).toEqual([]);
+  expect(reported(FIELDS, "scripts/lib/wow-t.lua"), "harness Lua is read too").toEqual([FIELD, FIELD]);
+  expect(reported(FIELDS, "scripts/lib/t.mjs")).toEqual([]);
+}
 
 it("baseline: a count above fails, below asks to lower it, a missing rule counts as 0", () => {
   const rows = compareToBaseline({ [ONUPDATE]: 3, [HANDLER]: 1 }, { [ONUPDATE]: 2 });
@@ -696,7 +762,7 @@ it("baseline: a count above fails, below asks to lower it, a missing rule counts
     { rule: HANDLER, count: 1, baseline: 0, status: "above" },
     { rule: UNWRAPPED, count: 0, baseline: 0, status: "at" },
   ]);
-  expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at"]);
+  expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at", "at", "at"]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {
