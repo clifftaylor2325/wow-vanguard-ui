@@ -66,10 +66,12 @@ DC.DUNGEONS = ns.ClientData({ forever = VANILLA_DUNGEONS, retail = {} })
 C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end))
 
 -- The same for a hook on a game function, a click, or a script on a frame.
-hooksecurefunc("CloseMerchant", ns.Guard("hook close merchant", MC.Closed))
+hooksecurefunc("UIDropDownMenu_AddButton", ns.Guard("hook UIDropDownMenu_AddButton", dressDropdownRow))
 button:SetScript("OnClick", ns.Guard("click sell", MC.Sell))
 frame:HookScript("OnShow", ns.Guard("show window", GW.Light))
 ```
+
+In a module that declares `live = true` a hook or a timer goes through its scope (`scope:Gate` for a hook, `scope:Every` for a timer; see A module that goes on and off live); the scan refuses the bare forms there.
 
 A callback the game reads a result from (a chat filter) uses `ns.GuardResult(where, fn, fallback)` instead: it hands back `fn`'s results, or `fallback` (`false` for a chat filter, so the line goes through) when `fn` fails. Callbacks the game calls from its own code (`ChatFrame_AddMessageEventFilter`, `TooltipDataProcessor.AddTooltipPostCall`, `EventRegistry:RegisterCallback`) are guarded the same way as hooks.
 
@@ -116,11 +118,11 @@ function AB.Rebuild(bar)
   ns.OutOfCombat(function() rebuild(bar) end, "rebuild " .. bar:GetName())
 end
 
--- From a PLAYER_REGEN_DISABLED handler (the lockdown has not started yet, so OutOfCombat would run at once):
-ns.On("PLAYER_REGEN_DISABLED", function() ns.AfterCombat(AB.HideHandles, "hide handles") end)
+-- From a PLAYER_REGEN_DISABLED handler (the lockdown has not started yet, so OutOfCombat would run at once), for example:
+ns.On("PLAYER_REGEN_DISABLED", function() ns.AfterCombat(RF.Fit, "raidfit") end)
 ```
 
-The key makes repeated calls collapse into one. Anything that calls `Show`, `Hide`, `SetPoint`, `SetSize` or `SetAttribute` on a protected frame goes through this; the harness blocks the call in combat and fails the test.
+In a module that declares `live = true` the handler is registered through its scope (`scope:On`; see A module that goes on and off live), as the scan refuses a bare `ns.On` there. The key makes repeated calls collapse into one. Anything that calls `Show`, `Hide`, `SetPoint`, `SetSize` or `SetAttribute` on a protected frame goes through this; the harness blocks the call in combat and fails the test.
 
 ## A move that can't be undone
 
@@ -136,14 +138,14 @@ Gold spent, items sold, mail returned, an auction cancelled: one path (`Core/Dia
 ## Events and timers
 
 ```lua
-ns.On("PLAYER_TARGET_CHANGED", UF.UpdateTarget)                 -- one shared frame; handlers run under ns.Try
+ns.On("PLAYER_TARGET_CHANGED", UF.UpdateTarget) -- one shared frame; handlers run under ns.Try
 local sub = ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, UF.UpdateHealth, "player", "target")
 ns.Every("action bar range", 0.2, function() each(updateRange) end) -- one shared OnUpdate; stops when unregistered
-ns.Soon("layout", relayout)                                      -- once, on the next frame, however often asked
-ns.AfterStill("frame auras settle", 0.3, rebuild)                -- once, 0.3 s after the last time it was asked for (a dragged slider)
+ns.Soon("layout", relayout) -- once, on the next frame, however often asked
+ns.AfterStill("frame auras settle", 0.3, rebuild) -- once, 0.3 s after the last time it was asked for (a dragged slider)
 ```
 
-No module makes its own event frame or its own `OnUpdate` loop. An event the client lacks is skipped and reported, not raised.
+In a module that declares `live = true` these go through its scope (`scope:On`, `scope:OnUnit`, `scope:Every`; see A module that goes on and off live); the scan refuses the bare forms there. No module makes its own event frame or its own `OnUpdate` loop. An event the client lacks is skipped and reported, not raised.
 
 ## Text a player reads
 
