@@ -1224,23 +1224,23 @@ local function after(name, fn)
   if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn)) end
 end
 
--- Keeps the size the player drags the window to with Edit Mode's corner grip: the grip's mouse-up calls
--- EditMode_OnResized (Blizzard_EditMode/Shared/EditModeSystemTemplates.lua, EditModeChatFrameResizeButtonMixin), which
--- writes the layout only, so the size is kept here and a later layout apply puts this one back.
-local function keepGripSize()
-  local frame = _G.ChatFrame1
-  if CH.settings.place then CH.KeepSize(frame:GetWidth(), frame:GetHeight()) end
+-- Keeps the size the player gives the main window in Edit Mode, by the corner grip or the dialog's Width and Height:
+-- both reach EditModeManagerFrame:OnSystemSettingChange (Blizzard_EditMode/Shared/EditModeManager.lua:390, called by
+-- EditModeSystemTemplates.lua EditMode_OnResized and EditModeDialogs.lua), never UpdateSystem, so a later layout
+-- apply would put the older kept size back. Not UpdateSystemSettingWidth/Height: every layout apply calls those.
+local function keepEditModeSize(_, systemFrame)
+  if systemFrame == _G.ChatFrame1 and CH.settings.place then CH.KeepSize(systemFrame:GetWidth(), systemFrame:GetHeight()) end
 end
 
 -- Puts the main window's kept size back each time the game's Edit Mode applies a layout to it: ChatFrame1 is an Edit
 -- Mode system, and EditModeChatFrameSystemMixin:UpdateSystem sets its size from the layout after placing it
--- (same file), so a post-hook sees the layout's size set; the grip's resize is kept (keepGripSize).
+-- (same file), so a post-hook sees the layout's size set; a size the player sets in Edit Mode is kept (keepEditModeSize).
 local function watchEditMode()
-  local frame = _G.ChatFrame1
+  local frame, manager = _G.ChatFrame1, _G.EditModeManagerFrame
   if type(hooksecurefunc) ~= "function" or type(frame) ~= "table" or type(frame.UpdateSystem) ~= "function" then return end
   hooksecurefunc(frame, "UpdateSystem", ns.Guard("hook chat edit mode", CH.RestoreSize))
-  if type(frame.EditMode_OnResized) ~= "function" then return end
-  hooksecurefunc(frame, "EditMode_OnResized", ns.Guard("hook chat edit mode resize", keepGripSize))
+  if type(manager) ~= "table" or type(manager.OnSystemSettingChange) ~= "function" then return end
+  hooksecurefunc(manager, "OnSystemSettingChange", ns.Guard("hook chat edit mode size", keepEditModeSize))
 end
 
 -- Re-stacks the side buttons after the game's chat alert container re-anchors Quick Join and text

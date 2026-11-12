@@ -2876,14 +2876,19 @@ it("H46-29-1 chat window size: Vanguard's size comes back after Edit Mode applie
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-// Blizzard_EditMode/Shared/EditModeSystemTemplates.lua:2233 EditModeChatFrameSystemMixin:EditMode_OnResized (the grip's mouse-up).
-it("H46-C-G1 chat window size: the size dragged with Edit Mode's corner grip is kept and comes back after a layout apply", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1.EditMode_OnResized = function() end", {
+// Blizzard_EditMode/Shared/EditModeManager.lua:390 OnSystemSettingChange, reached by the grip (EditModeSystemTemplates.lua:2156) and the dialog (EditModeDialogs.lua:661).
+const MANAGER_ENV = "\nEditModeManagerFrame = { OnSystemSettingChange = function(self, frame, setting, value) frame:SetSize(value, frame:GetHeight()) end }";
+it("H46-C-CR3 chat window size: a size set in Edit Mode (grip or dialog) is kept and survives a layout apply; a layout apply alone keeps nothing", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + MANAGER_ENV, {
     savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
   });
-  addon.eval("ChatFrame1:SetSize(700, 330) ChatFrame1:EditMode_OnResized() ChatFrame1:UpdateSystem({})");
-  expect([size(addon), addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }")]).toEqual([[700, 330], [700, 330]]);
-  addon.eval("ns.GetModule('Chat').settings.place = false ChatFrame1:SetSize(710, 340) ChatFrame1:EditMode_OnResized()");
+  addon.eval("ChatFrame1:UpdateSystem({}) ns.PausePins(true) ChatFrame1:UpdateSystem({})");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "a layout apply alone changes nothing kept").toBe(600);
+  addon.eval("EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 700) EditModeManagerFrame:OnSystemSettingChange(ChatFrame2, 1, 250)");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "the dialog's Width is kept, another window's is not").toBe(700);
+  addon.eval("ns.PausePins(false) ChatFrame1:UpdateSystem({})");
+  expect(size(addon)[0], "and comes back after the next layout apply").toBe(700);
+  addon.eval("ns.GetModule('Chat').settings.place = false EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 710)");
   expect(addon.eval("return VanguardCharDB.chatSize.width"), "a window Vanguard does not place keeps nothing").toBe(700);
 });
 
