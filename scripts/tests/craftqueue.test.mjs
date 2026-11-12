@@ -413,3 +413,17 @@ it("H40-19-1: a cooldown noted for a recipe whose profession is not open is not 
   addon.slash("craft cd");
   expect(addon.eval(`return ${CQ}.Mine().cooldowns[100]`), "a note that has run out is cleared as before").toBe(null);
 });
+
+it("H45-D-G2 on WoW Retail, /vg craft stock leaves out what another quality rank already covers", () => {
+  const addon = crafter(`
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Ore rank 1" } __wfgWorld.items[9002] = { name = "TEST-ONLY Ore rank 2" }
+    __wfgWorld.recipes[103] = { recipeID = 103, name = "TEST-ONLY Bar", outputItemID = 4238, quantityMin = 1, quantityMax = 1,
+      reagentSlotSchematics = { { reagents = { { itemID = 9001 }, { itemID = 9002 } }, quantityRequired = 3, reagentType = 1 } } }
+    C_Item.GetItemCount = function(id) return id == 9002 and 1 or 0 end`, ON, RETAIL_CLIENT);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar")`);
+  addon.slash("craft stock");
+  expect(addon.eval("return ns.GetModule('Errands').StockList()[9001] or false"), "one rank 2 held: two more of rank 1 wanted").toBe(2);
+  addon.eval("C_Item.GetItemCount = function(id) return id == 9002 and 3 or 0 end ns.GetModule('Errands').StockList()[9001] = nil");
+  addon.slash("craft stock");
+  expect(addon.eval("return ns.GetModule('Errands').StockList()[9001] or false"), "three held: nothing to keep stocked").toBe(false);
+});

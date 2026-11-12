@@ -200,13 +200,23 @@ function CQ.Next()
   ns.Chat(ns.Format(L["Next: {count} x {recipe}. Press Create in the profession window."], { count = e.n, recipe = recipeName(e) }))
 end
 
+-- Keep stocked list raised to what the queue needs of each reagent, less what its other quality ranks already cover
+-- (the count Short uses), so the two commands agree.
+local function raiseStock(list)
+  local total, ranks = needs()
+  for id, qty in pairs(total) do
+    local want = qty - (heldOf(ranks[id]) - held(id))
+    if want > 0 then list[id] = math.max(list[id] or 0, want) end
+  end
+end
+
 -- /vg craft stock: Keep stocked raised to what the queue needs, then the Restock list (a shopping list of the
 -- Auction helper's, so only while that is on, as /vg ah restock and Instance prep's Buy list check too).
 function CQ.Stock()
   local ER = ns.GetModule("Errands")
   if not ER.settings then return ns.Chat(L["Keep stocked is part of Errands, which is off (/vg > Modules)."]) end
   local list = ER.StockList()
-  for id, qty in pairs(needs()) do list[id] = math.max(list[id] or 0, qty) end
+  raiseStock(list)
   ER.StockWindow.Refresh()
   ns.Chat(L["Keep stocked now covers the queue."])
   if not AH.settings then return ns.Chat(L["The auction helper is off (/vg > Modules)."]) end
