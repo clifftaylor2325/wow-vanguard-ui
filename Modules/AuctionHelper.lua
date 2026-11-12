@@ -410,12 +410,18 @@ local function clampScanStamps()
   if house.lastScan > now then house.lastScan = now end
 end
 
+-- What was found before the house last closed: kept (its stamps clamped, a paused judging walk going on) or, past keeping, dropped.
+local function keepFound()
+  clampScanStamps()
+  AH.DropExpired()
+  AH.ResumeJudging()
+end
+
 -- The auction house opened: the tabs go on the window the first time (unless switched off, or
 -- the window has no tab row), and the cards are painted.
 function AH.OnShow()
   AH.open = true
-  clampScanStamps()
-  AH.DropExpired()
+  keepFound()
   if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
   if not AH.pages and not AH.Build() then return end
   AH.PaintShop()

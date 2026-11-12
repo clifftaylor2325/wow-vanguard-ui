@@ -210,7 +210,7 @@ end
 -- One frame of judging: the next AH.JUDGE_ROWS of the scan's gear; the walker stops after the last.
 local function judgeStep()
   local j = AH.judging
-  if not j then return AH.judge:Hide() end
+  if not j or not (AH.open and AH.settings.upgrades) then return AH.judge:Hide() end
   local last = math.min(j.next + AH.JUDGE_ROWS - 1, #j.links)
   for i = j.next, last do AH.SeeGear(j.links[i], walkPrice(j, j.links[i])) end
   j.next = last + 1
@@ -241,10 +241,20 @@ function AH.JudgeGear(gear, again)
   AH.judge:Show()
 end
 
--- Judging stops (the house closed, or the last listing is judged).
+-- Judging ends (the last listing is judged, or the listings are forgotten).
 function AH.StopJudging()
   AH.judging = nil
   AH.judge:Hide()
+end
+
+-- Judging pauses (the house closed): the walk and its place are kept for the next visit.
+function AH.PauseJudging()
+  AH.judge:Hide()
+end
+
+-- A paused walk goes on (the house opened, or the Upgrades switch came back on); it hides itself again if it must wait.
+function AH.ResumeJudging()
+  if AH.judging and AH.judge then AH.judge:Show() end
 end
 
 -- An item search row's buyout per unit, or nil when it is yours (or the client hides whether), has no buyout
@@ -272,8 +282,9 @@ end
 -- Every upgrade and gear listing found is forgotten.
 function AH.ForgetGear()
   AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
--- The weights the listings were judged with (nil while Gear upgrades is off); false until the first is judged.
-AH.weightsUsed = false
+  AH.judging = nil
+  -- The weights the listings were judged with (nil while Gear upgrades is off); false until the first is judged.
+  AH.weightsUsed = false
 end
 
 -- What you wear changed: while the house is open every listing seen is judged again; while it is
@@ -285,7 +296,7 @@ local function onGearChanged()
 end
 
 -- The Upgrades entry's events (on: the helper's): item search
--- results and closing the house (judging stopped); your gear
+-- results and closing the house (judging paused); your gear
 -- changing, also in combat (the house is closed then, so that only forgets); the judging walker is made here.
 function AH.ListenUpgrades(on)
   AH.judge = CreateFrame("Frame")
@@ -294,7 +305,7 @@ function AH.ListenUpgrades(on)
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnGearResults)
   on("ITEM_SEARCH_RESULTS_ADDED", AH.OnGearResults)
   ns.On("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
-  ns.On("AUCTION_HOUSE_CLOSED", AH.StopJudging) -- state only, so also in combat
+  ns.On("AUCTION_HOUSE_CLOSED", AH.PauseJudging) -- state only, so also in combat
 end
 
 -- The entry ------------------------------------------------------------------------------------
@@ -361,6 +372,7 @@ AH.Sources[AH.UPGRADES] = { name = L["Upgrades"], on = function() return AH.sett
 -- pane and, while it is the entry shown, its rows (the entry gives way to no list when its switch goes off).
 function AH.PaintUpgrades()
   if not AH.shopCard then return end
+  AH.ResumeJudging()
   judgeIfWeightsChanged()
   if not AH.settings.upgrades and AH.ListKey() == AH.UPGRADES then AP.Store().list = nil end
   AH.PaintShop()

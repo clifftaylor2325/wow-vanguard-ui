@@ -618,12 +618,18 @@ local function money(copper, none)
   return copper and AP.Money(copper) or none
 end
 
--- The sell card's lines for its sale: the cheapest now ("none up" after a search found none),
+-- What the cheapest-now line says without a price: "none up" after a search found none, "no answer"
+-- when the house never answered it (unknown is not "nothing is up"), "..." while it still runs.
+local function noPriceWord(s)
+  return s.searched and L["none up"] or s.unanswered and L["no answer"] or "..."
+end
+
+-- The sell card's lines for its sale: the cheapest now (noPriceWord without one),
 -- the 7-day low, the next stack's deposit with the length, and the unit price it will ask.
 local function sellValues(s)
   local d, label = AH.Duration(s)
   local price, dep = AH.SellPrice(s), deposit(s, d, AH.SellLocation(s))
-  local now = money(s.cheapest, s.searched and L["none up"] or "...")
+  local now = money(s.cheapest, noPriceWord(s))
   return { now, money(AP.Low7(s.id), L["none"]), dep and (AP.Money(dep) .. " · " .. label) or "", money(price, "") }
 end
 
@@ -743,10 +749,12 @@ local function paintListing(r, l)
 end
 
 -- The Up now card's status line: what to do without a sale (an empty-state line: the table's second
--- return), "searching..." until its price check answers, "none up" when it found nothing.
+-- return), "searching..." until its price check answers, "none up" when it found nothing, "no answer"
+-- when the house gave none.
 local function upStatus(s)
   if not s then return L["Put an item on the Sell card to see what's up now."], true end
   if #(s.rows or {}) > 0 then return "" end
+  if s.unanswered and not s.searched then return L["no answer"] end
   return s.searched and L["none up"] or L["searching..."]
 end
 
