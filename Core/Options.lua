@@ -162,7 +162,8 @@ local function moverChoices()
 end
 
 -- The General page is built again when the frames you can move change (a module switched on or off, settled by
--- ns.OnModulesChanged), so the Frame to size choice never offers a frame that is gone or misses a new one.
+-- ns.OnModulesChanged, or a frame registered or let go on its own: ns.OnMoversChanged), so the Frame to size choice
+-- never offers a frame that is gone or misses a new one.
 do
   local listed = ""
 
@@ -176,12 +177,17 @@ do
   -- Records the frames the Frame to size choice was built with, so the first change is compared with them.
   function noteListed() listed = moverKeys() end
 
-  ns.OnModulesChanged(function()
+  -- Builds the General page again when the frames you can move are not the ones it was built with.
+  local function relist()
     local now = moverKeys()
     if now == listed then return end
     listed = now
     if O.Frame() then O.RebuildPage("general") end
-  end)
+  end
+
+  ns.OnModulesChanged(relist)
+  -- A settle pass or a profile switch lets go of and registers many movers in one frame: one rebuild, next frame.
+  ns.OnMoversChanged(function() ns.Soon("frame to size", relist) end)
 end
 
 -- get/set for which frame the sliders size; picking one re-reads the sliders.
