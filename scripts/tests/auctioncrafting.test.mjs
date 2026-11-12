@@ -206,6 +206,8 @@ it("H46-31-203 a reagent the client names after the panel was painted gets its n
   addon.update(0.5);
   expect(look()[0], "not known yet").toBe("item 7777");
   addon.eval(`__paints, __paint = 0, ${CR}.Paint ${CR}.Paint = function() __paints = __paints + 1 return __paint() end`);
+  // GET_ITEM_INFO_RECEIVED carries itemID and success: forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+  // ItemDocumentation.lua:1815-1820.
   addon.fire("GET_ITEM_INFO_RECEIVED", 5555, true);
   addon.fire("GET_ITEM_INFO_RECEIVED", 7777, false);
   addon.update(0.5);

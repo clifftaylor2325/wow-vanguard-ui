@@ -90,7 +90,8 @@ local function onMerchantClosed()
 end
 
 -- Whether the merchant window is up: the game fires MERCHANT_SHOW once, so a module switched on at an open merchant
--- reads the window instead of waiting for an event that does not come again.
+-- reads the window instead of waiting for an event that does not come again. The event opens the merchant interaction
+-- (Blizzard_APIDocumentationGenerated/MerchantFrameDocumentation.lua:112); that it does not come again is game-only.
 local function merchantShown()
   local frame = _G.MerchantFrame
   return type(frame) == "table" and frame:IsShown() == true
