@@ -340,3 +340,27 @@ it("H45-5-3 raid status: a login in a fight starts it before the grid is built, 
   addon.login();
   expect(addon.eval('return { ns.ModuleEnabled("RaidStatus"), #ns.errors, ns.GetModule("RaidFrames").header == nil }'), "running, no error, grid not built yet").toEqual([true, 0, true]);
 });
+
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua CompactUnitFrame_UpdateReadyCheck (forever :1366-1374,
+// live :1372-1380) and Blizzard_UnitFrame/Mainline/PlayerFrame.lua PlayerFrame_UpdateReadyCheck: a nil
+// GetReadyCheckStatus("player") means no check is showing.
+const OFF_ENV = { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidStatus = false } } }" };
+
+it("ready check: Raid status switched on during a check shows its answers, and the cross at the end", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV, OFF_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { player = "ready", raid1 = "ready", raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  const shown = [marks(addon, 1).ready, marks(addon, 3).ready].map((tex) => String(tex).replace(/^.*\\/, ""));
+  addon.fire("READY_CHECK_FINISHED");
+  const finished = [marks(addon, 1).ready, marks(addon, 3).ready].map((tex) => String(tex).replace(/^.*\\/, ""));
+  expect({ shown, finished }).toEqual({ shown: ["Check", "Waiting"], finished: ["Check", "Close"] });
+});
+
+it("ready check: Raid status switched on with no check running shows no marks", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV, OFF_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  expect([marks(addon, 1).ready, marks(addon, 3).ready, marks(addon, 3).status]).toEqual([false, false, true]);
+});
