@@ -1089,3 +1089,30 @@ it("H46-3-2: with the raid frames showing the party (no party column built), Tab
   expect(built, "the unit frames are built, the party column is not").toEqual([true, false]);
   expect(tabs - shield, "no tabbed party column under it: no 84-unit rise, only half the raid grid's 12 (H46-3-1), touching neither the grid nor the raid tools at 1365 x 768").toBe(6);
 });
+// H46-13-2 (decide pick: the column grows up from its foot): party frames of any height leave the column's foot
+// where the default height puts it, party1's top and the pets column over it rising by the growth.
+// Whether two screen positions agree to a pixel's rounding at the harness scale.
+const near = (a, b) => Math.abs(a - b) <= 2;
+// Party4's bottom, party1's top and the pets column's bottom with party frames `height` tall (`extra` Lua runs after login).
+const partyAt = (height, extra = "") => {
+  const saved = `VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "plain" }, PartyExtras = { show = true }, UnitFrames = { partyHeight = ${height} } } }`;
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: saved });
+  if (extra) addon.eval(extra);
+  return addon.eval(`return { Vanguard_party4:GetBottom(), Vanguard_party1:GetTop(), Vanguard_PartyExtras:GetBottom() }`);
+};
+it("H46-13-2: the party column grows up from its foot, and the pets column over it with it", () => {
+  const [foot32, top32, extras32] = partyAt(32);
+  const [foot80, top80, extras80] = partyAt(80);
+  const [foot24] = partyAt(24);
+  expect([near(foot80, foot32), near(top80 - top32, 192), near(extras80 - extras32, 192)], "foot stays (to a pixel's rounding); top and pets column rise by 4 x 48 = 192 (party1's own 48 and the three under it)").toEqual([true, true, true]);
+  expect(near(foot24, foot32), "a shorter column keeps its foot too").toBe(true);
+});
+it("H46-13-2: the height goes through the range clamp, a dragged column keeps its spot, and a change out of combat re-places the default", () => {
+  expect(partyAt(500), "a crafted height past the slider's 80 is held to 80").toEqual(partyAt(80));
+  const dragged = partyAt(80, 'ns.SetMoverPoint("uf_party1", "BOTTOM", "BOTTOM", 100, 200) ns.GetModule("UnitFrames").ApplySizes()');
+  expect(Math.abs(dragged[0] - (dragged[1] - 80 - 3 * 90)) <= 2, "party4 hangs 3 x (80 + 10) under party1's bottom at the dragged spot").toBe(true);
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, PartyExtras = { show = true } } }' });
+  const foot = addon.eval("return Vanguard_party4:GetBottom()");
+  addon.eval('ns.GetModule("UnitFrames").settings.partyHeight = 60 ns.GetModule("UnitFrames").ApplySizes()');
+  expect(Math.abs(addon.eval("return Vanguard_party4:GetBottom()") - foot) <= 2, "a live change keeps the foot").toBe(true);
+});

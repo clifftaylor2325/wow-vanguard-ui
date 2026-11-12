@@ -972,18 +972,41 @@ function UF.PartyClear()
   return UF.TabLift(UF.frames.party1) > 0 and UF.TAB.partyClear or 0
 end
 
--- The party column's default spot lifts for the tabs it carries (a gap each between the frames) and for the focus's
--- cast bar to stand clear of its foot.
+-- How much taller (negative: shorter) the party frames stand than the 32 the column's default spot was laid out for,
+-- taken through UF.FrameSize so the slider's range clamp (and a HUD layout's size) applies.
 ---@return number
-function UF.PartyLift()
-  return (PARTY_SIZE - 1) * UF.TabLift(UF.frames.party1) + UF.PartyClear()
+function UF.PartyGrow()
+  return select(2, UF.FrameSize("party1")) - PARTY.h
 end
 
--- How far the party column's top rises under the Tabs look: its default spot's lift plus party1's own tab. What stands
+-- The party column's default spot lifts for the tabs it carries (a gap each between the frames), for the focus's
+-- cast bar to stand clear of its foot, and for the height the three frames under party1 gained, so the column grows
+-- up from its foot.
+---@return number
+function UF.PartyLift()
+  return (PARTY_SIZE - 1) * (UF.TabLift(UF.frames.party1) + UF.PartyGrow()) + UF.PartyClear()
+end
+
+-- How far the party column's top rises: its default spot's lift plus party1's own tab and own growth. What stands
 -- over the column (Modules/PartyExtras.lua) rises by as much.
 ---@return number
 function UF.PartyRise()
-  return UF.PartyLift() + UF.TabLift(UF.frames.party1)
+  return UF.PartyLift() + UF.TabLift(UF.frames.party1) + UF.PartyGrow()
+end
+
+-- Puts the party column's default spot where the look and the frames' height put it, and remembers the lift (a dragged
+-- spot still wins). Out of combat only: the column is secure.
+function UF.FitParty()
+  UF.partyLift = UF.PartyLift()
+  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, UF.partyLift))
+end
+
+-- After a size change: moves the party column's default spot, and the pets and targets column over it, only when
+-- the height moved the column's lift (placing a mover rounds every pixel-sized frame again).
+function UF.RefitParty()
+  if UF.PartyLift() == UF.partyLift then return end
+  UF.FitParty()
+  if ns.ModuleLive("PartyExtras") then ns.GetModule("PartyExtras").FitLook() end
 end
 
 -- The target of target's default spot for the look: on a narrow canvas it sits over the target's cast bar, so its
@@ -1015,7 +1038,7 @@ end
 function UF.ApplyLook()
   for _, f in pairs(UF.frames) do ns.Try("unit frame layout", UF.PlaceParts, f) end
   ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
-  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, UF.PartyLift()))
+  UF.FitParty()
   restack("party", PARTY_SIZE, PARTY)
   restack("boss", UF.BOSS.count, UF.BOSS)
   local CB = ns.GetModule("CastBars")
@@ -1660,6 +1683,7 @@ function UF.ApplySizes()
     for _, f in pairs(UF.frames) do sizeFrame(f) end
     fitDeckTop(UF.frames.player)
     refitAuras()
+    UF.RefitParty()
   end, "unit frame sizes")
 end
 
