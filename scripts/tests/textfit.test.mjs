@@ -394,3 +394,17 @@ it("text fits: the options window's page names fit the nav in Russian (H33-18-2)
   expect(names, "the nav holds the page titles").toContain("Заклинания по щелчку");
   expect(addon.textFit("Vanguard_Options").filter((finding) => finding.kind === "cut" && names.includes(finding.text)), "no page name in the nav is cut").toEqual([]);
 });
+
+it("text fits: a 32-character profile name on the Profiles page stays clear of that row's buttons (H46-23-53)", () => {
+  for (const scale of [1, 1.3]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()
+      VanguardDB.profiles["MAIN TANK WARRIOR RAID SETUP ONE"] = {} VanguardDB.profiles["WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"] = {}
+      ns.Options.Show("profiles")`);
+    for (let tab = 1; addon.eval(`return ns.Options.ShowTab(${tab})`); tab++) {
+      const over = addon.textFit("Vanguard_Options").filter((finding) => finding.kind !== "cut");
+      expect(over, `Profiles tab ${tab} at ${scale * 100}%: a long name ends in an ellipsis and draws over no button`).toEqual([]);
+    }
+  }
+});

@@ -93,6 +93,9 @@ local function profileRow(parent, row, width)
   local name = row[2]
   local r = captioned(parent, width, profileLabel(name))
   addProfileButtons(r, name)
+  -- A long name ends in an ellipsis short of the leftmost button, not under it.
+  r.label:SetPoint("RIGHT", r.use or r, r.use and "LEFT" or "RIGHT", -T.SPACE.gap, 0)
+  r.label:SetWordWrap(false)
   return r
 end
 
