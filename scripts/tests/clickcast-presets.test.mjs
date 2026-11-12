@@ -5,7 +5,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_ENGINE_LUA, RAID_ENV, RETAIL, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
-import { CC, bindings, priestly } from "./clickcast-helpers.mjs";
+import { CC, applies, bindings, priestly } from "./clickcast-helpers.mjs";
 
 const CP = "ns.ClickCastPresets";
 
@@ -330,6 +330,28 @@ it("click presets: in a fight the list changes at once and the frames take it wh
   expect([shortBindings(addon).BUTTON3, middle()], "saved, not applied").toEqual(["Flash Heal", null]);
   addon.world.combat(false);
   expect(middle(), "applied after the fight").toBe("spell");
+});
+
+it("H46-19-R1 a starter layout put on applies the bindings to the frames once, as Import does", () => {
+  const addon = priestly(loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + '__units.player.class = "PRIEST"'));
+  addon.eval(`__spawn(1, "raid1") ${CC}.Add("SHIFT-Q", "spell", "Renew", 139)`);
+  const [, first] = applies(addon, () => addon.eval(`${CP}.Apply("select")`));
+  const [, second] = applies(addon, () => addon.eval(`${CP}.Apply("heal")`));
+  expect({ first, second, heal: shortBindings(addon) }).toEqual({ first: 1, second: 1, heal: expect.objectContaining({ BUTTON1: "Flash Heal", "shift-BUTTON1": "target", "SHIFT-Q": "Renew" }) });
+  expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("type1")'), "the frames hold the layout put on last").toBe("spell");
+});
+
+it("H46-19-R1 a starter layout put on in a fight applies nothing until it ends, then once", () => {
+  const addon = priestly(loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + '__units.player.class = "PRIEST"'));
+  addon.eval('__spawn(1, "raid1")');
+  const [during, count] = applies(addon, () => {
+    addon.world.combat(true);
+    addon.eval(`${CP}.Apply("select")`);
+    const inFight = addon.eval("return __applies");
+    addon.world.combat(false);
+    return inFight;
+  });
+  expect({ during, count, middle: addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("type3")') }).toEqual({ during: 0, count: 1, middle: "spell" });
 });
 
 it("click presets: another addon's raid frames or click casting: a line says why, and no layout is offered", () => {
