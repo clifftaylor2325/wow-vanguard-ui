@@ -12,7 +12,7 @@ it("the committed list is what the API diff and today's addon give; run node scr
 });
 
 it("a documented event name becomes the name the client fires", () => {
-  expect(["GameRulesChanged", "PlayerSwingRangeUpdate", "Bc26ExperienceChanged"].map(eventName)).toEqual(["GAME_RULES_CHANGED", "PLAYER_SWING_RANGE_UPDATE", "BC26_EXPERIENCE_CHANGED"]);
+  expect(["GameRulesChanged", "PlayerSwingRangeUpdate", "Bc26ExperienceChanged", "SocialUIRaidListSystemStatusUpdated"].map(eventName)).toEqual(["GAME_RULES_CHANGED", "PLAYER_SWING_RANGE_UPDATE", "BC_26_EXPERIENCE_CHANGED", "SOCIAL_UI_RAID_LIST_SYSTEM_STATUS_UPDATED"]);
 });
 
 it("a function counts by its whole name only, an event only as a quoted string", () => {
