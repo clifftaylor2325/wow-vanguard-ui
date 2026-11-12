@@ -114,7 +114,8 @@ function CP.Update()
   CP.bar:SetShown(count > 0)
 end
 
--- The power events that name a power type; the others (a new maximum, a charged point) always count.
+-- The power events whose type is read; the others always count (UNIT_MAXPOWER names a type too, but a new maximum is
+-- counted whatever it names, and a charged point names none).
 CP.TYPED = { UNIT_POWER_UPDATE = true, UNIT_POWER_FREQUENT = true }
 
 -- One of your power events: the pips follow it unless it plainly names another power (an energy or mana tick,
