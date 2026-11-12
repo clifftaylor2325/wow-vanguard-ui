@@ -509,3 +509,13 @@ it("C_ActionBar.IsEquippedAction answers nothing for a slot outside 1 to 180, an
       C_ActionBar.IsEquippedAction(7), C_ActionBar.IsEquippedAction(8), (pcall(C_ActionBar.IsEquippedAction, "x")) }`);
   expect(out).toEqual([0, 0, true, false, false]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:469 reads
+// serviceName, serviceType, texture, reqLevel, serviceSubText, category = GetTrainerServiceInfo(index).
+it("the world's GetTrainerServiceInfo answers name, kind, icon, level, rank and category in the client's order", () => {
+  const addon = createAddon();
+  const out = addon.eval(`__wfgWorld.trainer = { services = { { name = "TEST-ONLY Bolt", cost = 5, icon = 135808, level = 4,
+      rank = "TEST-ONLY Rank 2", category = "TEST-ONLY Cat" } } }
+    return { GetTrainerServiceInfo(1) }`);
+  expect(out).toEqual(["TEST-ONLY Bolt", "available", 135808, 4, "TEST-ONLY Rank 2", "TEST-ONLY Cat"]);
+});

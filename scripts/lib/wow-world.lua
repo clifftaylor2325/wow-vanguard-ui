@@ -1728,11 +1728,13 @@ C_MerchantFrame = {
   IsMerchantItemRefundable = function(i) local it = world.merchant and world.merchant.items[i] if it == nil or it.refundable == nil then return true end return it.refundable end,
 }
 
--- Trainers: world.trainer = { services = { { name, cost, available } } }.
+-- Trainers: world.trainer = { services = { { name, cost, available, icon, level, rank, category } } }.
 world.trainer = nil
--- The trainer API, read from world.trainer.
+-- The trainer API, read from world.trainer. GetTrainerServiceInfo answers in the client's order: name, kind, icon,
+-- required level, rank text, category (Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:469; the kind's words stay
+-- a guess).
 function GetNumTrainerServices() return world.trainer and #world.trainer.services or 0 end
-function GetTrainerServiceInfo(i) local s = world.trainer and world.trainer.services[i] if not s then return nil end return s.name, s.available ~= false and "available" or "unavailable", s.category or "" end
+function GetTrainerServiceInfo(i) local s = world.trainer and world.trainer.services[i] if not s then return nil end return s.name, s.available ~= false and "available" or "unavailable", s.icon, s.level, s.rank, s.category or "" end
 function GetTrainerServiceCost(i) local s = world.trainer and world.trainer.services[i] return s and s.cost or 0 end
 function BuyTrainerService(i) world.trained = world.trained or {} table.insert(world.trained, i) world.money = world.money - GetTrainerServiceCost(i) end
 
