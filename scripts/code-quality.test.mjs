@@ -457,6 +457,12 @@ const WEAK_GUARDS = [
   `if not ns.Combat.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
   `if state.InCombat then return end\n  ${SECURE_CALL_LINE}`,
   `if UF.InCombat(u) then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-10-8: a comparison written before the check, or a doubled not.
+  `if false == InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if x ~= ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if x == not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if not not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if not not ns.InCombat() then ${SECURE_CALL_LINE} end`,
 ];
 
 // H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.

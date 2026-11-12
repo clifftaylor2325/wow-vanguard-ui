@@ -945,11 +945,20 @@ function insideNot(words, head) {
   return false;
 }
 
+// True when the words before the check's head (words[head]) hide its sense: a comparison written before it
+// (`false == InCombatLockdown()`, `x ~= not ns.InCombat()`), or a doubled `not` (`not not InCombatLockdown()`)
+// (H46-10-8).
+function senseHiddenBefore(words, head) {
+  const before = words[head - 1] === "not" ? head - 2 : head - 1;
+  return ["=", "~", "not"].includes(words[before]);
+}
+
 // True when the word before the check does not give the condition's sense: the check's answer is compared
-// (`InCombatLockdown() == false`; the tokenizer gives `==` and `~=` as single characters) or it stands in a negated
-// bracket (H45-2-51).
+// (`InCombatLockdown() == false`; the tokenizer gives `==` and `~=` as single characters), a comparison or a second
+// `not` stands before it (senseHiddenBefore), or it stands in a negated bracket (H45-2-51).
 function senseUnclear(words, head, at) {
-  return ["=", "~"].includes(words[checkClose(words, at) + 1]) || insideNot(words, head);
+  const comparedAfter = ["=", "~"].includes(words[checkClose(words, at) + 1]);
+  return comparedAfter || senseHiddenBefore(words, head) || insideNot(words, head);
 }
 
 // True when words[k] is a combat lockdown check, called: the game's global InCombatLockdown(), or ns.InCombat() with a
