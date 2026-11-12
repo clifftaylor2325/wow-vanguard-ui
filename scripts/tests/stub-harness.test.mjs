@@ -357,6 +357,19 @@ it("an aura group makes another batch of ten buttons when its auras outnumber th
   expect(out).toEqual([[20, 15, 20, 12, 40], [30, 21, 50, 10]]);
 });
 
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:286-304 (forever and live identical): AddAuraGroup calls
+// frameProvider:CreateFrameBatch() before registering the group, whatever maxFrameCount is; Blizzard_AuraContainerShared.lua
+// :105 FrameCreationBatchSize = 10; Blizzard_AuraContainerFrameProviders.lua CreateFrame runs initializeFrame on each.
+it("a new aura group makes and dresses a first batch of ten buttons, even when it shows fewer (H46-2-1)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local dressed = 0 local init = function() dressed = dressed + 1 end
+    c:AddAuraGroup("a", "HELPFUL", { maxFrameCount = 4, layout = {}, initializeFrame = init })
+    c:AddAuraGroup("b", "HELPFUL", { maxFrameCount = 1, layout = {}, initializeFrame = init })
+    return { #c.__groups[1].buttons, #c.__groups[2].buttons, dressed }`);
+  expect(out).toEqual([10, 10, 20]);
+});
+
 // helpers.mjs's TIDY_ENV and TOOLS_ENV use the world's hooksecurefunc (wow-world.lua), which already hooks methods on
 // tables: a hooked function keeps its results and the hook is counted (stub.hooks), as in a plain client.
 it("a client set up with TIDY_ENV keeps the world's hooksecurefunc: every result kept, every hook counted", () => {
