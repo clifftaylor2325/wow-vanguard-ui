@@ -113,7 +113,9 @@ it("UnitInRange hands a secret range back as a secret, with a secret checked fla
 });
 
 // UnitHealthPercent is SecretReturns and SecretWhenCurveSecret on both clients
-// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden.
+// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden. Without a
+// curve it answers the percentage the curve would be given, 0 to 1 (Blizzard_SharedXMLBase/CurveConstants.lua:
+// ScaleTo100 "re-scales any percentage value from [0, 1] to [0, 100]", both clients).
 it("UnitHealthPercent answers hidden health with a secret percent, a secret number curve result or a hidden color", () => {
   const addon = createAddon();
   addon.world.setUnit("target", { name: "TEST-ONLY Mob", hp: 25, maxhp: 100 });
@@ -123,9 +125,9 @@ it("UnitHealthPercent answers hidden health with a secret percent, a secret numb
     local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
     return { look(UnitHealthPercent("target")), look(UnitHealthPercent("target", true, num)),
       look(UnitHealthPercent("target", true, col).r) }`);
-  expect(read(), "plain").toEqual([[false, 25], [false, 25], [false, 1]]);
+  expect(read(), "plain").toEqual([[false, 0.25], [false, 25], [false, 1]]);
   addon.eval("__wfgWorld.units.target.hp = __wfgWorld.secret(25)");
-  expect(read(), "hidden health").toEqual([[true, 25], [true, 25], [true, 1]]);
+  expect(read(), "hidden health").toEqual([[true, 0.25], [true, 25], [true, 1]]);
 });
 
 // UnitIsGroupLeader and UnitIsGroupAssistant are SecretWhenUnitIdentityRestricted, UnitIsAFK

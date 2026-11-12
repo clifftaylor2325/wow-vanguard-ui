@@ -743,15 +743,16 @@ function UnitHealthMissing(unit)
   return world.secret(type(h) == "number" and type(m) == "number" and m - h or nil)
 end
 
--- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
--- evaluates it. With hidden health the answer is hidden: a secret number (the percent, or a number curve's result),
--- or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
+-- A unit's health as a percentage, 0 to 1; with a curve, what the curve gives at that percentage, as the client
+-- evaluates it (Blizzard_SharedXMLBase/CurveConstants.lua, both clients: ScaleTo100 "re-scales any percentage value
+-- from [0, 1] to [0, 100]", so the plain percentage is the 0 to 1 one). With hidden health the answer is hidden: a
+-- secret number (the percentage, or a number curve's result), or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
 -- (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 function UnitHealthPercent(unit, _, curve)
   local u = resolveUnit(unit)
   local hp, max = u and inside(u.hp), u and inside(u.maxhp)
   local fraction = max and max > 0 and hp / max or 0
-  local result = fraction * 100
+  local result = fraction
   if type(curve) == "table" and curve.Evaluate then result = curve:Evaluate(fraction) end
   if not (u and (worldIsSecret(u.hp) or worldIsSecret(u.maxhp))) then return result end
   if type(result) == "number" then return world.secret(result) end
