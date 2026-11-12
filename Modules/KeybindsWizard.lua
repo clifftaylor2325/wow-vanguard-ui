@@ -654,12 +654,14 @@ function WZ.Show(n)
 end
 
 -- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
--- no tick box, so it is always kept), the changes the player unticked, and the keys those would have rebound (they
--- stay the player's, on every bar page).
+-- no tick box, so it is always kept), the changes the player unticked that still are changes (one that stopped
+-- being a change has no box left), and the keys those would have rebound (they stay
+-- the player's, on every bar page).
 local function kept()
   local changes, declined, keys = 0, {}, {}
   for i, entry in ipairs(state.entries) do
-    if unticked(i) then
+    local off = unticked(i) and KA.WRITES[state.full[i].kind]
+    if off then
       declined[#declined + 1] = entry
       if rebinds(i) then keys[#keys + 1] = state.full[i].key end
     elseif KA.WRITES[state.rows[i].kind] then changes = changes + 1 end

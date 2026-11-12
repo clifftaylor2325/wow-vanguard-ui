@@ -567,3 +567,21 @@ it("H45-6-2 step 3: a key bound after the list was drawn, in the same key set, s
   expect([win(addon).shown, win(addon).step]).toEqual([true, 3]);
   expect(ready(addon).join("\n")).toMatch(/F: .*\(now /);
 });
+
+it("H45-6-R1 step 3: a change the player unticked that stops being one (the key set by hand, then a fight) no longer blocks Apply", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __click("Apply")');
+  const command = keys(addon, ["F"])[0];
+  addon.eval('SetBinding("F", nil) SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: ");
+  addon.world.combat(true);
+  addon.eval(`SetBinding("F", "${command}") SaveBindings(1)`);
+  addon.world.combat(false);
+  expect(Object.values(ready(addon)).filter((r) => /^\[/.test(r)), "the entry is no change now, so no box is drawn").toEqual([]);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\./), chatHas(addon, /No key needs changing\./)]).toEqual([false, false, true]);
+});
