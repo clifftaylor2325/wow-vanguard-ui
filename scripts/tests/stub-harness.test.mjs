@@ -36,6 +36,71 @@ it("buttons, check buttons, sliders and edit boxes take OnEnable and OnDisable h
   expect(runs).toEqual({ Button: "off on", CheckButton: "off on", Slider: "off on", EditBox: "off on" });
 });
 
+// SetEnabled(enabled) is the button's own switch (Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua:336,
+// both clients; Blizzard_SharedXML/Shared/Frame/MainMenuFrameTemplates.lua:44 calls it on a button); the aura
+// container's SetEnabled is its own (the switched-off container case below).
+it("SetEnabled turns a button, check button, edit box or slider off and on, with its OnDisable and OnEnable hooks", () => {
+  const addon = createAddon();
+  const states = addon.eval(`local out = {}
+    for _, kind in ipairs({ "Button", "CheckButton", "EditBox", "Slider" }) do
+      local w, seen = CreateFrame(kind), {}
+      w:HookScript("OnDisable", function() seen[#seen + 1] = "off" end)
+      w:HookScript("OnEnable", function() seen[#seen + 1] = "on" end)
+      w:SetEnabled(false) local off = w:IsEnabled()
+      w:SetEnabled(true) out[kind] = { off, w:IsEnabled(), table.concat(seen, " ") }
+    end
+    return out`);
+  const on = [false, true, "off on"];
+  expect(states).toEqual({ Button: on, CheckButton: on, EditBox: on, Slider: on });
+});
+
+// A click flips a check button's check before its OnClick, which reads the new state with no SetChecked of its own
+// (forever Blizzard_Transmog/Blizzard_Transmog.lua:1960-1966, live :1650). A disabled one and a click it did not
+// register leave the check alone.
+it("a click flips an enabled check button's check before its OnClick; a disabled one or an unregistered click does not", () => {
+  const addon = createAddon();
+  addon.eval(`__seen = {} local b = CreateFrame("CheckButton", "TestCheck", UIParent)
+    b:SetScript("OnClick", function(self) __seen[#__seen + 1] = self:GetChecked() end)`);
+  addon.click("TestCheck");
+  addon.click("TestCheck");
+  expect(addon.eval("return { __seen[1], __seen[2], TestCheck:GetChecked() }"), "OnClick reads true, then false").toEqual([true, false, false]);
+  addon.eval("TestCheck:Click()");
+  expect(addon.eval("return TestCheck:GetChecked()"), ":Click() flips it too").toBe(true);
+  addon.click("TestCheck", "RightButton");
+  expect(addon.eval("return TestCheck:GetChecked()"), "an unregistered click leaves it").toBe(true);
+  addon.eval("TestCheck:Disable()");
+  addon.click("TestCheck");
+  expect(addon.eval("return { TestCheck:GetChecked(), #__seen }"), "a disabled button keeps its check").toEqual([true, 3]);
+});
+
+// forever Blizzard_UnitFrame/Shared/PlayerFrame.lua:45-46 (live :40): a frame moved under PlayerFrame inherits the
+// strata its new parent has, though PlayerFrame sets none of its own there.
+it("a frame moved under a parent whose strata is inherited takes that strata, as a frame made there does", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local top = CreateFrame("Frame", nil, UIParent) top:SetFrameStrata("DIALOG")
+    local mid = CreateFrame("Frame", nil, top)
+    local made = CreateFrame("Frame", nil, mid)
+    local moved = CreateFrame("Frame", nil, UIParent) moved:SetParent(mid)
+    return { mid:GetFrameStrata(), made:GetFrameStrata(), moved:GetFrameStrata() }`)).toEqual(["DIALOG", "DIALOG", "DIALOG"]);
+});
+
+// Blizzard_APIDocumentationGenerated/SimpleFontStringAPIDocumentation.lua SetFormattedText (both clients) sets the
+// formatted text; wow-aspects.lua lets the addon hand it a secret, which the text then holds.
+it("a font string's SetFormattedText sets the formatted text, a hook on it seeing the new text; a secret argument makes the text secret", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local fs = UIParent:CreateFontString() fs:SetFont("x", 10) local seen
+    hooksecurefunc(fs, "SetFormattedText", function(self) seen = self:GetText() end)
+    fs:SetFormattedText("%d TEST-ONLY %s", 5, "x")
+    return { fs:GetText(), seen }`)).toEqual(["5 TEST-ONLY x", "5 TEST-ONLY x"]);
+  expect(addon.eval(`local fs = UIParent:CreateFontString() local ok, e = pcall(fs.SetFormattedText, fs, "%d", 1) return { ok, tostring(e):match("Font not set") ~= nil }`),
+    "a font string with no font refuses, as SetText does").toEqual([false, true]);
+  const secret = addon.eval(`local fs = UIParent:CreateFontString() fs:SetFont("x", 10)
+    local ok = pcall(assert(loadstring("TestFs = ... TestFs:SetFormattedText('%d%%', __wfgWorld.secret(42))", "@Modules/TEST-ONLY.lua")), fs)
+    local text = fs:GetText()
+    return { ok, issecretvalue(text), rawget(text, "n") }`);
+  expect(secret, "the addon's secret: no error, the text a secret of the formatted words").toEqual([true, true, "42%"]);
+});
+
 it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
   const addon = createAddon();
   const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}
