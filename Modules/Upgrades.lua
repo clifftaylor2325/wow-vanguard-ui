@@ -142,7 +142,7 @@ end
 
 -- The cap on a stat (W.CAP_STATS) for a kind, for your class: this profile's, else the kind's (0: none).
 function UP.Cap(kind, short)
-  local own = ((UP.settings.caps[UP.Class()] or {})[kind] or {})[short]
+  local own = UP.Weight(((UP.settings.caps[UP.Class()] or {})[kind] or {})[short])
   return own or (W.CAPS[kind] or {})[short] or 0
 end
 

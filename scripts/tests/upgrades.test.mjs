@@ -410,3 +410,12 @@ it("H45-40-204 upgrades: wrong-shaped saved weights and caps do not break the re
     capsKind: run("{ caps = { WARRIOR = { strength = 7, tank = 7 } } }"),
   }).toEqual({ weightsClass: all, weightsKind: all, capsClass: all, capsKind: all });
 });
+
+it("H45-D-G3 upgrades: a saved cap that is not a number compares as the kind's own cap does", () => {
+  // Whether the tooltip line for better bracers came, with this saved cap on strength HIT.
+  const line = (cap) => {
+    const addon = loggedIn(GEAR_ENV, { savedVariables: `VanguardDB.profiles = { Default = { Upgrades = { caps = { WARRIOR = { strength = { HIT = ${cap} } } } } } }` });
+    return addon.eval("local ok, v = pcall(__line, 2) return { ok, v }");
+  };
+  expect({ text: line("'x'"), table: line("{}") }, "the tooltip line still comes").toEqual({ text: [true, "Upgrade +20% (estimate) vs TEST-ONLY Item 1"], table: [true, "Upgrade +20% (estimate) vs TEST-ONLY Item 1"] });
+});
