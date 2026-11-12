@@ -299,12 +299,27 @@ local function takeKeys()
   QD.frame:EnableKeyboard(QD.frame:IsShown())
 end
 
--- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk). An offer an
--- item started (QD.itemOffer) shows too, but no key answers it: you were looting, not asking.
+-- Whether the game shows no window for this offer, as its own QuestFrame_OnEvent decides on QUEST_DETAIL
+-- (Blizzard_UIPanels_Game/Mainline/QuestFrame.lua): an adventure map's offer has the map's own dialog, so nothing
+-- is done; a quest the game accepted on its own from an area trigger is already in the log, so the offer is
+-- closed (CloseQuest, as the game does) and no dialog opens. The game's tracker popup is not forwarded: that
+-- would run its tracker code from here.
+function QD.GameShowsNone(event)
+  if event ~= "QUEST_DETAIL" then return false end
+  if ns.CallIf(_G, "QuestIsFromAdventureMap") == true then return true end
+  if not (ns.CallIf(_G, "QuestGetAutoAccept") == true and ns.CallIf(_G, "QuestIsFromAreaTrigger") == true) then return false end
+  ns.CallIf(_G, "CloseQuest")
+  return true
+end
+
+-- Shows a page (unless automation is about to answer it for you, the game shows no window for it, or the game's own
+-- window has the talk). An offer an item started (QD.itemOffer) shows too, but no key answers it: you were looting,
+-- not asking.
 function QD.Show(key, event, ...)
   if QD.Bypassed(event, ...) then return end
   local auto = ns.GetModule("QuestAuto")
   if auto and auto.Claims and auto.Claims(event, ...) then return end
+  if QD.GameShowsNone(event) then return end
   QD.itemOffer = QP.StartItem(event, ...)
   if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice, QD.event = key, QD.PAGES[key](), nil, event

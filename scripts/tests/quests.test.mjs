@@ -61,6 +61,25 @@ it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   key(addon, "SPACE");
   expect([dialog(addon).primary, dialog(addon).secondary, calls(addon)], "a quest the game already accepted: just OK").toEqual(["OK", false, ["ack nil"]]);
 });
+// Client rule: QuestFrame_OnEvent, QUEST_DETAIL branch (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua):
+// an adventure map's offer returns with no window; QuestGetAutoAccept() and QuestIsFromAreaTrigger() show a tracker popup and CloseQuest().
+it("H45-27-50: an auto-accepted area-trigger quest opens no dialog and the offer is closed, as the game does", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("__autoAccept = true QuestIsFromAreaTrigger = function() return true end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "no dialog, closed once, nothing acknowledged").toEqual([false, ["closeQuest nil"]]);
+  addon.eval("__autoAccept = true QuestIsFromAreaTrigger = function() return false end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([dialog(addon).primary, calls(addon)], "an NPC's auto-accepted quest still shows OK, closing nothing").toEqual(["OK", []]);
+});
+it("H45-27-50: an adventure map's offer opens no dialog and is not closed, as the game does", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("QuestIsFromAdventureMap = function() return true end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "the map's own dialog has it").toEqual([false, []]);
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "only a QUEST_DETAIL is the map's").toBe(true);
+});
 it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.eval("__completable = false");
