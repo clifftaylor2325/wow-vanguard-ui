@@ -6003,6 +6003,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The "..." button on the map's left edge goes when the last button is hidden and comes back when one is shown, without opening the drawer or reloading.
 - If it fails, paste: The addon's name and what the "..." button did.
 
+### 33.665 A special bag's empty slots have their own header (bags full with empty slots)
+
+- Do: On WoW Forever, with the combined bag in sections, put a profession bag (Apprentice's Herb Pouch, Mining Pack or Skinning Satchel) in a bag slot, fill your other bags, and open the bag window. Then loot an item that is not that bag's kind.
+- Expect: The profession bag's free slots sit under their own header after Empty, such as "EMPTY: HERB BAG", not under Empty; with only those left there is no Empty header, the bag bar's free count reads 0, and the game's "bags are full" message matches what the window shows. The free-space tooltip on the info strip names the bag ("Bag 2 (herb bag)").
+- If it fails, paste: A screenshot of the bag window and the bag bar, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

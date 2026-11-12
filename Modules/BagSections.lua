@@ -47,6 +47,8 @@ local CLASS_SECTION = {
 BG.pending = {}
 -- Section headers by section key: W.SectionHeader bands on the bag window, made as needed.
 BG.headers = {}
+-- The special bags' empty-slot sections seen so far: their key ("empty:herb bag") -> header label.
+BG.special = {}
 
 -- Whether the slot holds a quest item (or one that starts a quest).
 local function isQuestItem(bag, slot)
@@ -72,11 +74,23 @@ local function builtIn(info, bag, slot)
   return "other"
 end
 
+-- The section of an empty slot: Empty in a bag that takes anything; in a bag that takes one kind of thing
+-- (a herb bag, a quiver) that bag's own, "Empty: herb bag", since the game won't put anything else there and
+-- says your bags are full while those slots show.
+local function emptySection(bag)
+  local _, family = C_Container.GetContainerNumFreeSlots(bag)
+  local kind = ns.BagKind(ns.PlainNumber(family) or 0)
+  if not kind then return "empty" end
+  local key = "empty:" .. kind
+  BG.special[key] = ns.Format(L["Empty: {kind}"], { kind = kind })
+  return key
+end
+
 -- The section of what a slot holds: empty, one of your categories, or a built-in section.
 function BG.Classify(button)
   local bag, slot = button:GetBagID(), button:GetID()
   local info = C_Container.GetContainerItemInfo(bag, slot)
-  if not info then return "empty" end
+  if not info then return emptySection(bag) end
   return BG.CategoryOf and BG.CategoryOf(info.itemID) or builtIn(info, bag, slot)
 end
 
@@ -103,11 +117,22 @@ local function buttonsOf(frame)
   return list
 end
 
--- The sections that have buttons, in order: { key, label, buttons }.
+-- The special bags' empty-slot sections that have buttons, by name: { key, label }.
+local function specialSections(bySection)
+  local list = {}
+  for key, label in pairs(BG.special) do
+    if bySection[key] then list[#list + 1] = { key = key, label = label } end
+  end
+  table.sort(list, function(a, b) return a.key < b.key end)
+  return list
+end
+
+-- The sections that have buttons, in order: { key, label, buttons }; the special bags' empty slots last.
 local function ordered(bySection)
   local list = {}
   local all = BG.CategorySections and BG.CategorySections() or {}
   for _, s in ipairs(BG.SECTIONS) do all[#all + 1] = s end
+  for _, s in ipairs(specialSections(bySection)) do all[#all + 1] = s end
   for _, s in ipairs(all) do
     if bySection[s.key] then list[#list + 1] = { key = s.key, label = s.label, buttons = bySection[s.key] } end
   end
@@ -336,6 +361,7 @@ end
 -- Whether the client has the item calls the sections classify with.
 local function itemAPI()
   return type(C_Container) == "table" and type(C_Container.GetContainerItemInfo) == "function"
+    and type(C_Container.GetContainerNumFreeSlots) == "function"
     and type(C_Item) == "table" and type(C_Item.GetItemInfoInstant) == "function"
 end
 

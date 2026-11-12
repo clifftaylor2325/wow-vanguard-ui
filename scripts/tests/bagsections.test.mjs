@@ -180,6 +180,25 @@ const countLayouts = (addon) => {
   return () => addon.eval("local n = __places __places = 0 return n");
 };
 
+// The combined bag's sections as the module groups them now: [label, slots] each, in order.
+const sections = (addon) => addon.eval(`local out = {}
+  for _, s in ipairs((ns.GetModule("Bags").Group(ContainerFrameCombinedBags.Items))) do out[#out + 1] = { s.label, #s.buttons } end
+  return out`);
+
+it("the combined bag in sections: a special bag's empty slots get their own header after Empty, as only its kind of item goes there", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__wfgWorld.bagFamilies[1] = 32 __openBag()");
+  expect(sections(addon).slice(-2), "the backpack's free slot under Empty, the herb bag's four under their own").toEqual([["Empty", 1], ["Empty: herb bag", 4]]);
+  expect(addon.texts("EMPTY: HERB BAG").length, "its header shows in the window").toBe(1);
+  expect(spot(addon, "b1s1")[1] > spot(addon, "b0s8")[1], "the herb bag's slots sit below the Empty row").toBe(true);
+});
+
+it("the combined bag in sections: with the general bags full only the special bags' empty slots show, each kind by name", () => {
+  const addon = openFilled([4, 2, 2, 2, 0], { trade: 4 }, "__wfgWorld.bagFamilies[1], __wfgWorld.bagFamilies[2], __wfgWorld.bagFamilies[3] = 1, 32, 4096");
+  const want = [["Trade goods", 4], ["Empty: herb bag", 2], ["Empty: quiver", 2], ["Empty: special bag", 2]];
+  expect(sections(addon), "no plain Empty section; a family Vanguard has no name for reads special bag").toEqual(want);
+});
+
 it("the combined bag in sections: slots the game marks locked stay in Empty, after every other empty slot", () => {
   const addon = loggedIn(BAG_ENV);
   addon.eval("__slots.b0s8.IsExtended = function() return true end __openBag()");

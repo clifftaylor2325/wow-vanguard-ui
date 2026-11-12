@@ -723,8 +723,6 @@ IS.SLOT_NAMES = {
   [1] = L["Head"], [3] = L["Shoulders"], [5] = L["Chest"], [6] = L["Waist"], [7] = L["Legs"], [8] = L["Feet"], [9] = L["Wrists"],
   [10] = L["Hands"], [16] = L["Main hand"], [17] = L["Off hand"], [18] = L["Ranged"],
 }
--- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
-IS.BAG_KINDS = { [1] = L["quiver"], [2] = L["ammo pouch"], [4] = L["soul bag"] }
 
 -- One slot's durability in whole percent (rounded to the nearest, as the strip's block reads it), or nil
 -- for a slot without durability; the character pane's labels read it too so both agree.
@@ -762,7 +760,7 @@ end
 local function bagName(bag, family)
   local name = bag == 0 and L["Backpack"] or ns.Format(L["Bag {number}"], { number = bag })
   if family == 0 then return name end
-  return ns.Format(L["{bag} ({kind})"], { bag = name, kind = IS.BAG_KINDS[family] or L["special bag"] })
+  return ns.Format(L["{bag} ({kind})"], { bag = name, kind = ns.BagKind(family) })
 end
 
 -- Free space's tooltip: each bag's slots used of its total (a soul bag or quiver named as such).
