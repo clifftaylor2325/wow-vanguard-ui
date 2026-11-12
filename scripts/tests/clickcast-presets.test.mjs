@@ -6,7 +6,7 @@
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, GAME_ENGINE_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
-import { CC, bindings, priestly } from "./clickcast-helpers.mjs";
+import { CC, applies, bindings, priestly } from "./clickcast-helpers.mjs";
 
 const CP = "ns.ClickCastPresets";
 
@@ -93,13 +93,26 @@ it("click presets: damage or tanking keeps Target and the menu, with a class's h
   expect(picked(warrior, "Damage or tank"), "Target, the menu, Focus and Assist").toEqual({ BUTTON1: "target", BUTTON2: "menu", ...SHARED });
 });
 
+// Puts a picked layout on through its guide's button when the pick showed the guide (the harness client's game click
+// profile has Target and the menu on plain Left and Right only, so Click to heal shows it), saying Replace if asked.
+function throughGuide(addon) {
+  for (const button of ["Put heals on Left and Right", "Put the layout on"]) {
+    if (addon.texts(button).length > 0) addon.eval(`__click(${JSON.stringify(button)})`);
+  }
+  if (addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()")) addon.click("Vanguard_Question.confirm");
+}
+
 it("click presets: every class's layouts bind only spells the character knows, none twice", () => {
   for (const cls of ["PRIEST", "PALADIN", "DRUID", "SHAMAN", "MAGE", "WARLOCK", "WARRIOR", "ROGUE", "HUNTER"]) {
     const addon = knowsAll(cls);
-    for (const label of choices(addon)) {
-      const spells = Object.values(picked(addon, label)).filter((v) => v.startsWith("TEST-ONLY"));
+    const ids = addon.eval(`local out = { "" } for _, c in ipairs(${CP}.Choices()) do out[#out + 1] = c[1] end return out`).slice(1);
+    choices(addon).forEach((label, i) => {
+      picked(addon, label);
+      throughGuide(addon);
+      expect(addon.eval(`return ${CP}.Applied().id`), `${cls} ${label}: the layout checked is the one picked (H46-19-57)`).toBe(ids[i]);
+      const spells = Object.values(shortBindings(addon)).filter((v) => v.startsWith("TEST-ONLY"));
       expect(new Set(spells).size, `${cls} ${label}: no spell twice`).toBe(spells.length);
-    }
+    });
   }
   const unknown = knowsAll("PRIEST");
   unknown.eval("__wfgWorld.units.player.class = 'TEST-ONLY'");
@@ -320,6 +333,28 @@ it("click presets: in a fight the list changes at once and the frames take it wh
   expect(middle(), "applied after the fight").toBe("spell");
 });
 
+it("H46-19-R1 a starter layout put on applies the bindings to the frames once, as Import does", () => {
+  const addon = priestly(loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + '__units.player.class = "PRIEST"'));
+  addon.eval(`__spawn(1, "raid1") ${CC}.Add("SHIFT-Q", "spell", "Renew", 139)`);
+  const [, first] = applies(addon, () => addon.eval(`${CP}.Apply("select")`));
+  const [, second] = applies(addon, () => addon.eval(`${CP}.Apply("heal")`));
+  expect({ first, second, heal: shortBindings(addon) }).toEqual({ first: 1, second: 1, heal: expect.objectContaining({ BUTTON1: "Flash Heal", "shift-BUTTON1": "target", "SHIFT-Q": "Renew" }) });
+  expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("type1")'), "the frames hold the layout put on last").toBe("spell");
+});
+
+it("H46-19-R1 a starter layout put on in a fight applies nothing until it ends, then once", () => {
+  const addon = priestly(loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + '__units.player.class = "PRIEST"'));
+  addon.eval('__spawn(1, "raid1")');
+  const [during, count] = applies(addon, () => {
+    addon.world.combat(true);
+    addon.eval(`${CP}.Apply("select")`);
+    const inFight = addon.eval("return __applies");
+    addon.world.combat(false);
+    return inFight;
+  });
+  expect({ during, count, middle: addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("type3")') }).toEqual({ during: 0, count: 1, middle: "spell" });
+});
+
 it("click presets: another addon's raid frames or click casting: a line says why, and no layout is offered", () => {
   const addon = priestly(loggedIn(CLICK_LUA + '__wfgStub.world.loaded.VuhDo = true __wfgStub.world.loaded.Clique = true'));
   addon.eval('ns.Options.Show("clickcast")');
@@ -518,4 +553,68 @@ it("H45-19-52 an offer the page shows after Keep as it is is not told in chat at
   addon.fire("SPELLS_CHANGED");
   addon.update(0.1); addon.update(0.1);
   expect([page.length, chatHas(addon, /you can put/)]).toEqual([1, false]);
+});
+
+// The Click casting page's grid cells shown, its starter layout control and Clear all, and the Undo row's line.
+const pageParts = (addon) => [addon.frames("w.iconFrame ~= nil and w.empty ~= nil and w:IsVisible()").length, addon.texts("Starter layout...").length, addon.texts("Clear all").length, textsWith(addon, "These bindings came from").length];
+
+it("H46-19-50 a talent group switch while the window shows another page leaves a never-built Click casting page whole", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  addon.eval(`${CP}.Apply("select") ns.Options.Show("general")`);
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.update(0.1); addon.update(0.1);
+  expect({ parts: pageParts(addon), errors: addon.eval("return #ns.errors") }).toEqual({ parts: [20, 1, 1, 0], errors: 0 });
+});
+
+it("H46-19-50 a built Click casting page is read again after a switch there and back while the window shows another page", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.Hide()');
+  switchGroup(addon, 1, 2);
+  addon.eval('ns.Options.Show("general")');
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.update(0.1); addon.update(0.1);
+  expect({ parts: pageParts(addon), errors: addon.eval("return #ns.errors") }).toEqual({ parts: [20, 1, 1, 0], errors: 0 });
+});
+
+// The page's grid cell for a key, clicked with a mouse button.
+const clickCell = (addon, key, button) => addon.eval(`local c for _, w in ipairs(__wfgStub.frames) do if w.key == "${key}" and w.iconFrame and w:IsVisible() then c = w end end
+  c.__scripts.OnClick(c, "${button}")`);
+
+it("H46-19-51 an offer the player's own grid clear frees is shown on the page and not told in chat at the next SPELLS_CHANGED", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  addon.eval(`${CP}.Apply("select") ns.Options.Show("clickcast")`);
+  clickCell(addon, "BUTTON3", "RightButton");
+  addon.update(0.1); addon.update(0.1);
+  const page = textsWith(addon, "Shift + Left click could cast Heal.").length;
+  addon.clearChat();
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([page, chatHas(addon, /you can put/)]).toEqual([1, false]);
+});
+
+it("H46-19-51 a spell learned on one talent group is told on it, and on the other group's list after the switch", () => {
+  const addon = loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1");
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  switchGroup(addon, 2, 1);
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 1, 2);
+  addon.eval(`${CP}.Apply("select")`);
+  addon.clearChat();
+  addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  const primary = chatHas(addon, /you can put Flash Heal on Middle click now/);
+  addon.clearChat();
+  switchGroup(addon, 2, 1);
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([primary, chatHas(addon, /you can put Flash Heal on Middle click now/)]).toEqual([true, true]);
 });

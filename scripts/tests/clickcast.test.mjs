@@ -2,7 +2,7 @@
 // in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, RAID_ENV, UNITS_ENV, chatHas, isTok, loggedIn } from "./helpers.mjs";
 import { CC, CS, applies, bindings, cell, enterBinds, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
@@ -602,6 +602,69 @@ it("H45-19-R3 the frame's own click carries the does-nothing note where the game
   expect(tileSays(addon, "LeftButton")).toContain("Left click -> Target on Tester  ");
   expect(tileSays(addon, "LeftButton")).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
   expect(tileSays(addon, "RightButton")).toBe("Right click -> Unit menu on Tester");
+});
+
+// The game's click handler runs a profile Spell, Macro or PetAction itself and returns, and for an Interaction reads
+// the attribute of GetEffectiveInteractionButton's button under the held modifiers
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua SecureUnitButton_OnClick).
+it("H46-19-53 a click with no Vanguard binding that the game's profile binds says nothing bound, with the game's reason", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`table.insert(__gameClicks, { type = 3, actionID = 1, button = "MiddleButton", modifiers = __wfgWorld.modifierBits.shift })
+    table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "Button4", modifiers = 0 })
+    ${CC}.Add("shift-BUTTON1", "spell", "Renew", 139) ns.Options.Show("clickcast")`);
+  // The tile's line without its colour codes.
+  const plain = (text) => text.replace(/\|c[0-9a-f]{8}|\|r/g, "");
+  const button4 = plain(tileSays(addon, "Button4"));
+  const button5 = plain(tileSays(addon, "Button5"));
+  addon.keys({ shift: true });
+  const shiftMiddle = plain(tileSays(addon, "MiddleButton"));
+  addon.keys({ shift: false });
+  expect({ button4, shiftMiddle, button5 }).toEqual({
+    button4: "Button 4 -> nothing bound  (the game's own Click Casting window binds a spell or macro to this click, and that runs instead)",
+    shiftMiddle: "Shift + Middle click -> nothing bound  (the game's own Click Casting window puts Target on this click, so it runs your Shift + Left click binding instead)",
+    button5: "Button 5 -> nothing bound",
+  });
+});
+
+it("H46-19-52 while the game's click bindings are in use, the test tile says so for a click, a key and the wheel", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("SHIFT-Q", "spell", "Renew", 139) ${CC}.SetUseGame(true) ns.Options.Show("clickcast")`);
+  const resting = "The game's click bindings are in use: these are kept for when you switch back.";
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  const middle = tileSays(addon, "MiddleButton");
+  addon.hover(tile);
+  addon.keys({ shift: true });
+  addon.key(tile, "Q");
+  const key = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.keys({ shift: false });
+  addon.wheel(tile, 1);
+  const wheel = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.hover(null);
+  expect({ middle, key, wheel }).toEqual({ middle: resting, key: resting, wheel: resting });
+});
+
+it("H46-19-54 a cell bound to a spell by name shows the top rank's tooltip, a picked rank its own", () => {
+  const addon = priest();
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("BUTTON4", "spell", "Flash Heal", 2061, 1) ${CC}.Add("BUTTON5", "spell", "TEST-ONLY Unknown", 139) ns.Options.Show("clickcast")`);
+  // The spell id the tooltip shows over a cell.
+  const tip = (key) => { addon.hover(cell(addon, key)); const id = addon.eval("return GameTooltip.__spellId"); addon.hover(null); return id; };
+  expect({ byName: tip("BUTTON3"), rank: tip("BUTTON4"), unknown: tip("BUTTON5") }, "the name casts its highest rank (9472); a name the catalog doesn't hold keeps its id").toEqual({ byName: 9472, rank: 2061, unknown: 139 });
+});
+
+it("H46-19-55 a saved mouse binding on modifiers the grid has no column for gets a hover-key row with Remove, and works until removed", () => {
+  const addon = priest(UNITS_ENV + RAID_ENV);
+  // TEST-ONLY saved binding from before Import's key check: Alt + Ctrl + Shift + Left click, which the engine builds
+  // as "alt-ctrl-shift-" (Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifierPrefix), so it casts.
+  addon.eval(`table.insert(${CC}.Bindings(), { key = "alt-ctrl-shift-BUTTON1", action = "spell", value = "Renew", spellID = 139 })
+    __spawn(1, "raid1") ${CC}.ApplyAll()`);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
+  const row = widget(addon, 'w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON1" and w:IsShown()');
+  // The raid tile's Alt + Ctrl + Shift + Left click type, as the frame holds it.
+  const attr = () => addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("alt-ctrl-shift-type1")');
+  const remove = row && addon.eval(`return __wfgStub.frames[${row}].remove:IsVisible()`);
+  expect({ attr: attr(), texts: row && textsIn(addon, row).filter(Boolean), remove }).toEqual({ attr: "spell", texts: ["Alt + Ctrl + Shift + Left click", "Renew"], remove: true });
+  addon.eval(`local b = __wfgStub.frames[${row}].remove b:GetScript("OnClick")(b)`);
+  expect([bindings(addon)["alt-ctrl-shift-BUTTON1"], attr(), addon.frames('w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON1" and w:IsShown()').length], "Remove takes it off the list and the frames, and the row goes").toEqual([undefined, null, 0]);
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).

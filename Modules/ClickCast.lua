@@ -288,6 +288,19 @@ local function replaced(key)
   if CC.OnReplaced then CC.OnReplaced(key) end
 end
 
+-- Replaces every mouse binding of the current spec with a layout's ({ key, action, value, spellID } each, checked as
+-- CC.Add checks one; Modules/ClickCastPresets.lua's starter layouts), hover keys kept, then applies once.
+function CC.ReplaceMouse(list)
+  local mine = CC.Bindings()
+  for i = #mine, 1, -1 do
+    if CC.MouseParts(mine[i].key) then table.remove(mine, i) end
+  end
+  for _, b in ipairs(list) do
+    if not problem(b.key, b.action, b.value) then put(mine, { key = b.key, action = b.action, value = b.value, spellID = b.spellID }) end
+  end
+  applySoon()
+end
+
 -- Removes every binding in the current spec.
 function CC.Clear()
   clearList(CC.Bindings())
