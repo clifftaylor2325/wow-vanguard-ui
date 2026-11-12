@@ -770,24 +770,28 @@ local function parentsShown(w)
   return w.__parent == nil or w.__parent:IsVisible()
 end
 
--- Showing a hidden widget runs its OnShow, as the client does, and its shown
--- children's when it comes into view.
+-- Showing a hidden widget runs its OnShow and its shown children's when it comes into view; under a
+-- hidden parent nothing runs until the parent shows (cascade). Blizzard relies on that:
+-- Blizzard_EncounterTimeline/EncounterTimelineView.lua:192-203 ("the parent container may not be
+-- visible - instead, allow the OnShow script to fire and handle that for us") and
+-- Blizzard_GlueXML/Mainline/CharacterSelect.lua:2701.
 local function showWidget(w)
   local was = w.__shown
   w.__shown = true
   local onShow = w.__scripts.OnShow
-  if not was and onShow then onShow(w) end
-  if not was and parentsShown(w) then cascade(w, "OnShow") end
+  if was or not parentsShown(w) then return end
+  if onShow then onShow(w) end
+  cascade(w, "OnShow")
 end
 
--- Hiding a shown widget runs its OnHide, as the client does, and its shown
--- children's when it was in view.
+-- Hiding a shown widget runs its OnHide and its shown children's when it was in view (the mirror of showWidget).
 local function hideWidget(w)
   local was = w.__shown
   w.__shown = false
   local onHide = w.__scripts.OnHide
-  if was and onHide then onHide(w) end
-  if was and parentsShown(w) then cascade(w, "OnHide") end
+  if not was or not parentsShown(w) then return end
+  if onHide then onHide(w) end
+  cascade(w, "OnHide")
 end
 
 -- Shows a widget (showWidget).

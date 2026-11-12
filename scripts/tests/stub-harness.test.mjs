@@ -276,3 +276,16 @@ it("getters answer what their setter stored, HasScript the kind's script list an
       b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), b:CreateTexture():GetTexCoord() == nil }`);
   expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, true]);
 });
+
+// The client runs OnShow when a frame comes into view and OnHide when it leaves it, once each (Blizzard relies on it:
+// Blizzard_EncounterTimeline/EncounterTimelineView.lua:192-203, Blizzard_GlueXML/Mainline/CharacterSelect.lua:2701).
+it("a frame shown or hidden under a hidden parent runs its OnShow or OnHide only when it comes into or leaves view", () => {
+  const addon = createAddon();
+  const runs = addon.eval(`local p = CreateFrame("Frame") local c, seen = CreateFrame("Frame", nil, p), {}
+    c:SetScript("OnShow", function() seen[#seen + 1] = "show" end)
+    c:SetScript("OnHide", function() seen[#seen + 1] = "hide" end)
+    c:Hide() p:Hide() c:Show() seen[#seen + 1] = "|" p:Show() seen[#seen + 1] = "|"
+    p:Hide() c:Hide() seen[#seen + 1] = "|" p:Show()
+    return table.concat(seen, " ")`);
+  expect(runs).toBe("hide | show | hide |");
+});
