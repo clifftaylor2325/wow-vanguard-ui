@@ -153,6 +153,13 @@ function CQ.List()
   ns.Chat(CQ.ShortText())
 end
 
+-- How many crafts the queue holds in all (each entry counts its n).
+local function craftsLeft(queue)
+  local total = 0
+  for _, e in ipairs(queue) do total = total + e.n end
+  return total
+end
+
 -- Takes one craft off the first entry (the whole entry when it is the last craft); says what is left.
 function CQ.Done(id)
   local queue = CQ.Mine().queue
@@ -160,7 +167,9 @@ function CQ.Done(id)
   if not entry or (id and entry.id ~= id) then return end
   entry.n = entry.n - 1
   if entry.n <= 0 then table.remove(queue, 1) end
-  ns.Chat(ns.Format(L["Crafted {recipe}. {count} left in the queue."], { recipe = entry.name or L["a recipe"], count = #queue }))
+  local left = craftsLeft(queue)
+  local line = left == 1 and L["Crafted {recipe}. 1 craft left in the queue."] or L["Crafted {recipe}. {count} crafts left in the queue."]
+  ns.Chat(ns.Format(line, { recipe = entry.name or L["a recipe"], count = left }))
   CQ.Repaint()
 end
 

@@ -76,10 +76,11 @@ it("queues the recipe on display, lists it with what's short, and takes crafts o
   expect(queue(addon), "in combat: nothing").toEqual([[100, 3], [102, 1]]);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 100);
   expect(queue(addon)[0], "your own craft comes off").toEqual([100, 2]);
-  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 2 left in the queue\./), "chat says so").toBe(true);
+  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 3 crafts left in the queue\./), "chat counts crafts (2 + 1), not recipes").toBe(true);
   addon.slash("craft done");
   addon.slash("craft done");
   expect(queue(addon), "done takes one a time, the entry goes at its last").toEqual([[102, 1]]);
+  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 1 craft left in the queue\./), "one is said in the singular").toBe(true);
   addon.slash("craft clear");
   expect([Object.keys(queue(addon)).length, chatHas(addon, /Craft queue emptied/)], "clear").toEqual([0, true]);
   addon.slash("craft done");
