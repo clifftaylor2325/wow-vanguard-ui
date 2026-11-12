@@ -140,14 +140,23 @@ function ns.HudLayout()
   return "centered"
 end
 
--- A mover's default spot now: the HUD layout's for it (one with `under` only on a canvas at least that wide), else
+-- A layout spot as it stands now: a copy with its x worked out when the x is a function (the keep's spots move out
+-- with the bars' width, Core/HudLayout.lua), else the spot itself.
+local function spotNow(spot)
+  if type(spot[3]) ~= "function" then return spot end
+  local now = {}
+  for k, v in pairs(spot) do now[k] = v end
+  now[3] = spot[3]()
+  return now
+end
+
+-- A mover's default spot now: the HUD layout's for it while the layout holds on this canvas (ns.LayoutHolds), else
 -- its module's.
 local function spotFor(m)
   local spots = layoutSpots[ns.HudLayout()]
   local spot = spots and spots[m.key]
-  local width = ns.PlainNumber(UIParent:GetWidth())
-  if spot and spot.under and width and width < spot.under then return m.default end
-  return spot or m.default
+  if not spot or not ns.LayoutHolds() then return m.default end
+  return spotNow(spot)
 end
 
 -- A mover's default point on this canvas (spotOn), raised with the block around your character on a tall canvas
@@ -336,6 +345,16 @@ function ns.SetHudLayout(layout)
     for key in pairs(spots) do ns.ForgetMoverPoint(key) end
   end
   for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
+  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
+end
+
+-- Puts the frames the HUD layout in force places at their spots again and tells the ns.OnLayoutChanged listeners,
+-- after something the layout measures changed (bar 1's width: the keep's spread and the canvas it holds on). Each
+-- frame waits for combat to end (the unit frames are secure); nothing to do under Centered.
+function ns.RefitHudLayout()
+  local spots = layoutSpots[ns.HudLayout()]
+  if not spots then return end
+  for key in pairs(spots) do ns.Try("place " .. key, ns.PlaceMover, key) end
   for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
 end
 
