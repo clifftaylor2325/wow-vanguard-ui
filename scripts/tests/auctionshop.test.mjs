@@ -253,7 +253,7 @@ const pick = (addon, key) => addon.eval(`${HELPER}.PickEntry(${key})`);
 const heading = (addon) => addon.eval(`return { ${HELPER}.shopCard.title:GetText(), ${TABLE}.status:GetText() }`);
 it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold", () => {
   const addon = atAuctionHouse();
-  expect([choices(addon), actions(addon), heading(addon)], "no lists yet: make one or import (Deals and Upgrades are always there)").toEqual([["Deals", "Upgrades"], ["New list", "Import"], ["Shopping", "No lists yet: New makes one, Import pastes one."]]);
+  expect([choices(addon), actions(addon), heading(addon)], "no lists yet: make one or import (Deals and Upgrades are always there)").toEqual([["Deals", "Upgrades"], ["New list", "Import"], ["Shopping", "No lists yet: New list makes one, Import pastes one."]]);
   addon.click(`${HELPER}.shopCard.add`);
   addon.type("Vanguard_TextEdit", "Strange Dust");
   addon.click("Vanguard_TextDialog.primary");
@@ -305,7 +305,7 @@ it("a table's status line is small text2 while it reports (searching, none up), 
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
   addon.click("AuctionHouseFrame.Tabs[4]");
   const [label, small] = addon.eval("return { ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
-  expect(statusOf(addon, TABLE), "no lists: how to start, an empty-state line").toEqual(["No lists yet: New makes one, Import pastes one.", label, "muted"]);
+  expect(statusOf(addon, TABLE), "no lists: how to start, an empty-state line").toEqual(["No lists yet: New list makes one, Import pastes one.", label, "muted"]);
   const edges = addon.eval(`local t = ${TABLE} return { t.status:GetLeft() - t:GetLeft(), t:GetRight() - t.status:GetRight() }`);
   expect(edges, "the line runs from the table's left to its right edge, T.SPACE.tight in, so a long one wraps").toEqual(Array(2).fill(addon.eval("return ns.Theme.SPACE.tight")));
   pick(addon, `${HELPER}.DEALS`);

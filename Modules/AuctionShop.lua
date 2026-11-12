@@ -719,7 +719,7 @@ end
 
 -- The list's status line: how to start while there's no list, or the list is empty.
 local function listStatus(items)
-  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and L["Pick a list in the Lists pane."] or L["No lists yet: New makes one, Import pastes one."] end
+  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and L["Pick a list in the Lists pane."] or L["No lists yet: New list makes one, Import pastes one."] end
   if #items > 0 then return "" end
   return AH.ListKey() == AH.RECENT and L["Nothing searched yet."] or L["+ Add takes an item link, an item ID or a name."]
 end

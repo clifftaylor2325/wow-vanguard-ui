@@ -1251,7 +1251,7 @@ L["No key changed: the game refused one of the changes, so Vanguard put everythi
 L["No key changes here."] = "这里没有按键更改。"
 L["No key needs changing."] = "没有需要更改的按键。"
 L["No keys are bound here."] = "这里没有绑定按键。"
-L["No lists yet: New makes one, Import pastes one."] = "还没有列表：“新建”可创建一个，“导入”可粘贴一个。"
+L["No lists yet: New list makes one, Import pastes one."] = "还没有列表：“新建列表”可创建一个，“导入”可粘贴一个。"
 L["No longer filtering \"{word}\"."] = "不再过滤“{word}”。"
 L["No longer showing item {id}."] = "不再显示物品{id}。"
 L["No longer showing spell {id}."] = "不再显示法术{id}。"

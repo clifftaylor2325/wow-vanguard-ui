@@ -1251,7 +1251,7 @@ L["No key changed: the game refused one of the changes, so Vanguard put everythi
 L["No key changes here."] = "Nenhuma tecla muda aqui."
 L["No key needs changing."] = "Nenhuma tecla precisa mudar."
 L["No keys are bound here."] = "Não há teclas atribuídas aqui."
-L["No lists yet: New makes one, Import pastes one."] = "Nenhuma lista ainda: Nova cria uma, Importar cola uma."
+L["No lists yet: New list makes one, Import pastes one."] = "Nenhuma lista ainda: Nova lista cria uma, Importar cola uma."
 L["No longer filtering \"{word}\"."] = "Não filtrando mais \"{word}\"."
 L["No longer showing item {id}."] = "Item {id} não é mais exibido."
 L["No longer showing spell {id}."] = "Feitiço {id} não é mais exibido."

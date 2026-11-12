@@ -1251,7 +1251,7 @@ L["No key changed: the game refused one of the changes, so Vanguard put everythi
 L["No key changes here."] = "여기서는 바뀌는 키가 없습니다."
 L["No key needs changing."] = "바꿀 키가 없습니다."
 L["No keys are bound here."] = "여기에 지정된 키가 없습니다."
-L["No lists yet: New makes one, Import pastes one."] = "아직 목록이 없습니다. 새로 만들기로 만들거나 가져오기로 붙여 넣으세요."
+L["No lists yet: New list makes one, Import pastes one."] = "아직 목록이 없습니다. 새 목록으로 만들거나 가져오기로 붙여 넣으세요."
 L["No longer filtering \"{word}\"."] = "더 이상 \"{word}\"(을)를 거르지 않습니다."
 L["No longer showing item {id}."] = "더 이상 아이템 {id}을(를) 표시하지 않습니다."
 L["No longer showing spell {id}."] = "더 이상 주문 {id}을(를) 표시하지 않습니다."
