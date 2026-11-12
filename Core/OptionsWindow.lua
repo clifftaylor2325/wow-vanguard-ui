@@ -840,13 +840,15 @@ local function placeVersion(f)
   f.version:SetPoint("LEFT", f.footer, "LEFT", T.SPACE.pad + past, 0)
 end
 
--- Sizes the footer's reload notice to its text, but no wider than the room between the version line and the Reload now
--- button (a long list of module names ends in "..." instead of running over the version). Waits while either edge is unknown.
+-- Leaves the footer's reload notice its own width (0, the text's) while it fits between the version line and the Reload
+-- now button, and caps it to that room when it does not (a long list of module names ends in "..." instead of running
+-- over the version). The room ends at the version's last letter, as the notice sits T.SPACE.col left of the button.
+-- Waits while either edge is unknown.
 function O.FitNotice(f)
-  local width = T.FullWidth(f.notice)
   local from, to = f.version:GetRight(), f.reload:GetLeft()
-  if from and to then width = math.min(width, to - from - 2 * T.SPACE.col) end
-  f.notice:SetWidth(math.max(1, math.ceil(width)))
+  local room = from and to and math.floor(to - from - T.SPACE.col)
+  local capped = room and T.FullWidth(f.notice) > room
+  f.notice:SetWidth(capped and math.max(1, room) or 0)
 end
 
 -- The footer: your faction's crest (T.CREST.footer, while the faction look is on) and the version on the left; a
