@@ -132,9 +132,11 @@ end
 
 -- The windows each part of the game makes, by its name.
 local BUILDERS = {
-  -- The professions window with the Retail pages (its crafting page is the shared window's, wow-world.lua).
+  -- The professions window: one window with the crafting page (wow-world.lua's world.addCraftingPage, the one
+  -- world.openProfession uses) and the Retail pages (live Blizzard_Professions/Blizzard_ProfessionsFrame.xml:7, :28-30).
   Blizzard_Professions = function()
     local window = world.portraitWindow("ProfessionsFrame")
+    world.addCraftingPage(window)
     specPage(window)
     window.OrdersPage = CreateFrame("Frame", nil, window)
     browseFrame(window.OrdersPage)

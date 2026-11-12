@@ -2630,17 +2630,26 @@ function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked, isRecraft)
   world.trackRecipe(recipeID, tracked, isRecraft)
 end
 
+-- Shows a recipe on the crafting page's form (its recipeInfo kept, as the game's GetRecipeInfo returns it).
+local function initRecipe(form, recipeInfo) form.currentRecipeInfo = recipeInfo end
+
+-- Gives the professions window its crafting page and the page's recipe form (live
+-- Blizzard_Professions/Blizzard_ProfessionsFrame.xml:28: one window holds the crafting, specialisation and orders
+-- pages; wow-retail-professions.lua adds the other two on Retail).
+function world.addCraftingPage(f)
+  f.CraftingPage = stub.newWidget("Frame", nil, f)
+  f.CraftingPage:SetAllPoints()
+  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
+  f.CraftingPage.SchematicForm.Init = initRecipe
+end
+
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()
   if ProfessionsFrame then return ProfessionsFrame end
   local f = stub.newWidget("Frame", "ProfessionsFrame", UIParent)
   f:SetSize(673, 594)
   f:SetPoint("TOPLEFT", 16, -116)
-  f.CraftingPage = stub.newWidget("Frame", nil, f)
-  f.CraftingPage:SetAllPoints()
-  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
-  -- Shows a recipe (its recipeInfo kept, as the game's GetRecipeInfo returns it).
-  function f.CraftingPage.SchematicForm:Init(recipeInfo) self.currentRecipeInfo = recipeInfo end
+  world.addCraftingPage(f)
   stub.fire("ADDON_LOADED", "Blizzard_Professions")
   return f
 end
