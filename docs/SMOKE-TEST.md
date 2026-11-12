@@ -585,9 +585,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
 
-- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
-- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
-- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf slow` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf slow` lists no `event UNIT_AURA` line with calls over 5 ms.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf slow` lines.
 
 ### 6.4 Preview the party and raid frames alone
 
@@ -5686,9 +5686,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.645 Raid holds (H41-3-1, H41-4-1, H44-7-3, H44-7-51 with H5-9-1, H44-9-3)
 
-- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf reset, take damage 30 s, /vg perf; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
-- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; about one UNIT_HEALTH per change for your tile; the roster line says Dead and loses it; nothing is cast under the map.
-- If it fails, paste: /vg perf lines for RaidFrames, /vg errors, screenshots.
+- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf slow reset, take damage 30 s, /vg perf slow; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
+- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; if a line `event UNIT_HEALTH` is listed, note its calls (they count every Vanguard handler of the event, not only your tile); the roster line says Dead and loses it; nothing is cast under the map.
+- If it fails, paste: the /vg perf slow lines, /vg errors, screenshots.
 
 ### 33.646 Plate quest marks (H41-11-1)
 
