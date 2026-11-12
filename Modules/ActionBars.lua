@@ -729,9 +729,12 @@ local function wireAttributes(b, action, index)
   b:SetAttribute("checkmouseovercast", true)
 end
 
--- Scripts: click on either edge of the press, drag to move actions, the tooltip.
+-- Scripts: click on either edge of the press, drag to move actions, the tooltip. The client flips a
+-- CheckButton's check on each click, so PostClick puts it back to the truth, as the game's own action
+-- buttons do (ActionButtonTemplate.xml PostClick -> UpdateState); SetChecked is safe in a fight.
 local function wireScripts(b)
   b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetScript("PostClick", ns.Guard("action button check", updateChecked))
   b:RegisterForDrag("LeftButton", "RightButton")
   b:SetScript("OnDragStart", onDragStart)
   b:SetScript("OnReceiveDrag", onReceiveDrag)

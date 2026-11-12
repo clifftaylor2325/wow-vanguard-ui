@@ -30,6 +30,9 @@ const CURVE_ENV = `
   end
 `;
 
+// Whether the glow's look runs: its job on the shared ticker (scope:Every, Core/ModuleScope.lua and Core/Ticker.lua).
+const looking = (addon) => addon.eval("return ns.ticker.vgJobs['cooldown glow'] ~= nil");
+
 // The glow ring state of the buff row's first item: shown and its opacity.
 const ring = (addon) => addon.eval("local g = ns.FrameState('vgGlow')[BuffIconCooldownViewer.items[1]] return g and { g[1]:IsShown(), g[1]:GetAlpha() } or false");
 
@@ -46,7 +49,7 @@ it("cooldown glow: off by default, nothing looks at the buffs", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM);
   buff(addon, 2);
   addon.advance(1);
-  expect([ring(addon), addon.eval("return ns.GetModule('CooldownGlow').ticker == nil")], "no ring, no timer").toEqual([false, true]);
+  expect([ring(addon), looking(addon)], "no ring, no timer").toEqual([false, false]);
 });
 
 it("cooldown glow: plain numbers light the ring under the share and put it out above it or when the aura ends", () => {
@@ -167,13 +170,13 @@ it("cooldown glow: /vg cdmglow and the options switch it at once, and the share 
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM + CLICK_LUA);
   buff(addon, 5);
   addon.slash("cdmglow on");
-  expect([lit(addon), chatHas(addon, /Cooldown Manager glow on: under 30 percent left/)], "on lights it now").toEqual([true, true]);
+  expect([lit(addon), chatHas(addon, /Cooldown Manager glow on: under 30 percent left/), looking(addon)], "on lights it now and keeps looking").toEqual([true, true, true]);
   addon.slash("cdmglow 80");
   expect(addon.eval("return VanguardDB.profiles.Default.CooldownGlow.percent"), "the share stops at 60").toBe(60);
   addon.slash("cdmglow 1");
   expect(addon.eval("return VanguardDB.profiles.Default.CooldownGlow.percent"), "and at 10").toBe(10);
   addon.slash("cdmglow off");
-  expect([lit(addon), chatHas(addon, /Cooldown Manager glow off/)], "off puts it out").toEqual([false, true]);
+  expect([lit(addon), chatHas(addon, /Cooldown Manager glow off/), looking(addon)], "off puts it out and stops looking").toEqual([false, true, false]);
   addon.slash("cdmglow");
   expect(addon.eval("return ns.GetModule('CooldownGlow').settings.glow"), "no word toggles").toBe(true);
   addon.slash("");
@@ -190,7 +193,7 @@ it("cooldown glow: /vg cdmglow with the module switched off says so and does not
 
 it("cooldown glow: a client without timers or without the Cooldown Manager loads cleanly", () => {
   const plain = loggedIn(ITEM.replace(/.*/, "") + "C_Timer = nil", { savedVariables: ON });
-  expect(plain.eval("return ns.GetModule('CooldownGlow').ticker == nil"), "no timer, no ticker, no error").toBe(true);
+  expect([plain.eval("return #ns.errors"), looking(plain)], "no error, and the glow still looks: the ticker is a frame's, not C_Timer").toEqual([0, true]);
   const noTools = loggedIn("", { savedVariables: ON });
   expect(noTools.eval("return #ns.GetModule('CooldownGlow').Items()"), "no rows, no items").toBe(0);
 });

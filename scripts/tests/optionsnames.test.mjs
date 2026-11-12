@@ -113,6 +113,20 @@ it("options: Forget every merchant asks first, and only Forget forgets them", ()
   expect([addon.eval("return VanguardDB.vendors == nil"), /Forgot every merchant\.$/.test(addon.chat().at(-1))], "Forget forgets them and says so").toEqual([true, true]);
 });
 
+it("H46-18-52 options: Forget every class's trainers asks first, names the whole account, and only Forget forgets", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("VanguardDB.trainers = { MAGE = { count = 1, list = {} }, PRIEST = { count = 1, list = {} } }");
+  addon.slash("");
+  addon.eval(`ns.Options.Show("town") __click("Forget every class's trainers...")`);
+  expect(addon.eval("return { Vanguard_Question:IsShown(), VanguardDB.trainers ~= nil, Vanguard_Question.title:GetText() }"), "a question, nothing forgotten yet").toEqual([
+    true, true, "Forget what trainers taught every class on this account? Trainer memory learns them again as you visit them.",
+  ]);
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return VanguardDB.trainers ~= nil"), "No keeps them").toBe(true);
+  addon.eval(`__click("Forget every class's trainers...") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)`);
+  expect([addon.eval("return VanguardDB.trainers == nil"), /Forgot every trainer\.$/.test(addon.chat().at(-1))], "Forget forgets every class and says so").toEqual([true, true]);
+});
+
 it("options: Move frames on Chat windows and Situations unlocks the frames", () => {
   for (const page of ["chat", "situations"]) {
     const addon = loggedIn(CLICK_LUA);
