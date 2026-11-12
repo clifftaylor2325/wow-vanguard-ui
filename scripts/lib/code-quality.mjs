@@ -17,10 +17,11 @@
 //      Lua 5.3 and accepts them; the game does not, and the addon would not load.
 //      Quoted strings use no \x, \z or \u{...} escape: luac5.1 accepts them, but the
 //      game reads them as plain letters while the harness decodes them.
-//   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals active at the
-//      top level of the file. Lua allows 200 per function and the file is one function:
-//      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
-//      within 2 of it). Locals inside a do ... end block or a function don't count.
+//   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals of the main chunk alive at
+//      once. Lua allows 200 per function and the file is one function: the next `local` past 200
+//      stops the whole addon loading (Core/Theme.lua got within 2 of it). The count is the peak:
+//      the locals of a do, if, for, while or repeat block count while it is open (it frees them at
+//      its end), and a for loop holds three hidden ones. Locals inside a function don't count.
 //   7. Addon Lua (Core/, Modules/) makes no secure call (SetAttribute, a state driver, an
 //      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
 //      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
@@ -172,13 +173,60 @@ export function topLevelLocals(src) {
   return found;
 }
 
-// Files near Lua's 200-local limit: [{ line, message }] once the top-level locals pass MAX_TOP_LOCALS.
+// The locals a `for` loop starts, from the `for` at tokens[i]: its names after the word, and the three hidden
+// state locals the Lua 5.1 compiler adds (the loop index, limit and step, or the generator, state and control).
+function forLocals(tokens, i) {
+  let names = 1;
+  for (let k = i + 1; tokens[k] && ![":", "="].includes(tokens[k].text) && tokens[k].text !== "in"; k++) names += tokens[k].text === "," ? 1 : 0;
+  return names + 3;
+}
+
+// Moves the scope stack of the main chunk's blocks on by the token at tokens[i]. Each entry is { fn, count }: a function
+// body (its locals are its own) or a block with the locals it declared so far. A loop's hidden locals arrive with its `do`.
+function stepScopes(state, tokens, i) {
+  const [t, top] = [tokens[i], state.stack[state.stack.length - 1]];
+  if (t.kind !== "word") return;
+  if (t.text === "for") state.pendingFor = forLocals(tokens, i);
+  else if (t.text === "function") state.stack.push({ fn: true, count: 0 });
+  else if (LUA_BLOCK_OPEN.has(t.text)) state.stack.push({ fn: false, count: t.text === "do" ? state.pendingFor : 0 });
+  else if (LUA_BLOCK_CLOSE.has(t.text)) state.stack.pop();
+  else if (t.text === "else" || t.text === "elseif") top.count = 0;
+  if (t.text === "do") state.pendingFor = 0;
+}
+
+// How many main-chunk locals are alive now: those of the open blocks, or 0 inside a function (its locals are its own).
+function aliveLocals(state) {
+  return state.stack.some((e) => e.fn) ? 0 : state.stack.reduce((n, e) => n + e.count, 0);
+}
+
+// Moves the scope walk on by tokens[i] and notes the locals alive now in seen: { peak, over }.
+function noteLocals(state, seen, tokens, i) {
+  stepScopes(state, tokens, i);
+  const names = tokens[i].text === "local" && tokens[i].kind === "word" ? localNames(tokens, i) : [];
+  state.stack[state.stack.length - 1].count += names.length;
+  const alive = aliveLocals(state);
+  if (alive > MAX_TOP_LOCALS && seen.over < 0) seen.over = (names.at(-1) ?? tokens[i]).start;
+  seen.peak = Math.max(seen.peak, alive);
+}
+
+// The most `local`s the main chunk has alive at once, counting those in open do, if, for, while and repeat blocks
+// (a block frees its locals only after its end, and a for loop holds three hidden ones): { peak, over }, where over is
+// the offset of the local that took the count past MAX_TOP_LOCALS, or -1.
+export function topLocalPeak(src) {
+  const tokens = codeTokens(src);
+  const state = { stack: [{ fn: false, count: 0 }], pendingFor: 0 };
+  const seen = { peak: 0, over: -1 };
+  tokens.forEach((t, i) => noteLocals(state, seen, tokens, i));
+  return seen;
+}
+
+// Files near Lua's 200-local limit: [{ line, message }] once the main chunk's locals alive at once pass MAX_TOP_LOCALS.
 function topLocalProblems(file, src) {
   if (!COLOR_SCOPE.test(file)) return [];
-  const found = topLevelLocals(src);
-  if (found.length <= MAX_TOP_LOCALS) return [];
-  const message = `${found.length} top-level locals (limit ${MAX_TOP_LOCALS}; Lua stops at 200 and then the addon does not load): move a group into a do ... end block or onto a table`;
-  return [{ line: lineIndex(src)(found[MAX_TOP_LOCALS].start), message }];
+  const { peak, over } = topLocalPeak(src);
+  if (peak <= MAX_TOP_LOCALS) return [];
+  const message = `${peak} top-level locals at once (limit ${MAX_TOP_LOCALS}; Lua stops at 200 and then the addon does not load): move a group onto a table (a do ... end block frees its locals only at its end, and a for loop holds three hidden ones)`;
+  return [{ line: lineIndex(src)(over), message }];
 }
 
 // Every function in Lua source: { name, start, end } (1-based lines).

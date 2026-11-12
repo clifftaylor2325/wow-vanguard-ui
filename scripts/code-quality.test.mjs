@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
+import { FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -760,14 +760,46 @@ function topLocalsCounted() {
 // The scan fails a file one local above the limit and passes one at the limit.
 function topLocalsRule() {
   expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS))).toBe("");
-  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(new RegExp(`${MAX_TOP_LOCALS + 1} top-level locals \\(limit 170;`));
+  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(new RegExp(`${MAX_TOP_LOCALS + 1} top-level locals at once \\(limit 170;`));
   expect(checkSource("Core/T.lua", locals(MAX_TOP_LOCALS + 1))[0].line).toBe(MAX_TOP_LOCALS + 1);
   expect(problems("scripts/lib/x.lua", locals(MAX_TOP_LOCALS + 5))).toBe("");
 }
 
-// A do ... end block frees its locals, so grouping them there brings a file back under the limit.
+// A do ... end block frees its locals at its end, so grouping them there brings a file back under the limit; the
+// block's locals count while it is open (H44-25-4).
 function topLocalsBlock() {
-  expect(problems("Modules/M.lua", `do\n${locals(MAX_TOP_LOCALS + 20)}end\n${locals(MAX_TOP_LOCALS)}`)).toBe("");
+  expect(problems("Modules/M.lua", `do\n${locals(100)}end\n${locals(MAX_TOP_LOCALS - 20)}`)).toBe("");
+  expect(problems("Modules/M.lua", `${locals(100)}do\n${locals(80)}end\n`)).toMatch(/180 top-level locals at once \(limit 170;/);
+  expect(problems("Modules/M.lua", `do\n${locals(MAX_TOP_LOCALS + 1)}end\n`)).toMatch(/171 top-level locals at once/);
+}
+
+// The compiler's own peak: the most locals of the main chunk alive at one point, read from luac5.1's listing, or null without luac5.1.
+function luacPeak(src) {
+  const run = spawnSync("luac5.1", ["-l", "-l", "-p", "-"], { input: src, encoding: "utf8" });
+  if (run.error) return null;
+  const rows = run.stdout.slice(run.stdout.indexOf("locals (")).split("\n").slice(1).map((l) => /^\t\d+\t.+\t(\d+)\t(\d+)$/.exec(l));
+  const spans = rows.slice(0, rows.indexOf(null)).map((m) => [Number(m[1]), Number(m[2])]);
+  // A local that ends where it starts (the last of a block) is alive at that one point.
+  return Math.max(0, ...spans.map(([at]) => spans.filter(([from, to]) => from <= at && (at < to || at === from)).length));
+}
+
+// The peak counts the locals of open blocks and a for loop's three hidden ones, and agrees with the compiler.
+function topLocalsPeakCounted() {
+  const src = "local a\ndo local b local c end\nif x then local d else local e local f end\nfor i = 1, 2 do local y end\nfor k, v in pairs(t) do end\nwhile x do local z end\nrepeat local w until w\nlocal function g() local inner end\n";
+  expect(topLocalPeak(src).peak).toBe(6);
+  const compiled = luacPeak(src);
+  if (compiled !== null) expect(compiled).toBe(6);
+  expect(topLocalPeak(`${locals(MAX_TOP_LOCALS - 3)}for i = 1, 2 do end\n`).peak, "a for loop holds four").toBe(MAX_TOP_LOCALS + 1);
+}
+
+// The peak is judged on the real Core/Theme.lua and Core/OptionsWindow.lua, the files nearest the limit, and agrees with luac5.1.
+function topLocalsPeakReal() {
+  for (const file of ["Core/Theme.lua", "Core/OptionsWindow.lua"]) {
+    const src = fs.readFileSync(path.join(root, file), "utf8");
+    expect(topLocalPeak(src).peak, file).toBeLessThanOrEqual(MAX_TOP_LOCALS);
+    const compiled = luacPeak(src);
+    if (compiled !== null) expect(topLocalPeak(src).peak, `${file} against luac5.1`).toBe(compiled);
+  }
 }
 
 // The counter agrees with the compiler on the real Core/Theme.lua, which keeps clear of the limit.
@@ -781,7 +813,9 @@ function topLocalsTheme() {
 describe("code quality: top-level locals", () => {
   it("counts every local form and skips nested scopes, as the compiler does", topLocalsCounted);
   it("fails an addon file above the limit and passes one at it", topLocalsRule);
-  it("a do block frees its locals", topLocalsBlock);
+  it("a do block frees its locals at its end, and counts them while it is open", topLocalsBlock);
+  it("the peak counts open blocks and a for loop's hidden locals, as luac5.1 does", topLocalsPeakCounted);
+  it("the peak agrees with luac5.1 on Core/Theme.lua and Core/OptionsWindow.lua", topLocalsPeakReal);
   it("agrees with the compiler on Core/Theme.lua, which stays at or below 170", topLocalsTheme);
 });
 
