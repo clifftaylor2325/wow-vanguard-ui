@@ -385,6 +385,20 @@ it("H46-3-1: a look change in a fight moves the raid grid when it ends (its secu
   expect(moved.eval("return Vanguard_RaidHolder:GetBottom()"), "a dragged grid stays put under Tabs").toBe(savedY);
 });
 
+it("H46-A-G2: a HUD layout change places the raid grid and the Party pets column again, since the grid rises only while the focus wears its tab", () => {
+  const addon = raidLogin("tabs", ', hudLayout = "fort", PartyExtras = { show = true }');
+  // The raid spot's y and the Party pets column's y, read without arranging the grid again.
+  const spot = () => addon.eval('return select(4, ns.MoverPoint("raid"))');
+  const column = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
+  addon.eval('ns.GetModule("RaidFrames").Arrange(5)');
+  const [keepSpot, keepColumn] = [spot(), column()];
+  addon.eval("ns.SetHudLayout(nil)");
+  expect(spot() - keepSpot, "Centered: the focus wears its tab, the grid's spot rises 12").toBe(12);
+  expect(column(), "and the Party pets column moves with it").not.toBe(keepColumn);
+  addon.eval('ns.SetHudLayout("fort")');
+  expect([spot(), column()], "back under the keep: both come down again").toEqual([keepSpot, keepColumn]);
+});
+
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + GCD_ENV, NO_RAID);
   expect(keystone(addon), "shown by default with the Shield look").toEqual({ made: true, shown: true, left: true, right: true, top: true, strata: "BACKGROUND", mouse: false, rails: 2, crest: 36, ring: false, swords: false, sweep: "none" });

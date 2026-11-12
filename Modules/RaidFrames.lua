@@ -1014,4 +1014,6 @@ function RF.Enable(settings)
   T.OnChanged(function() ns.OutOfCombat(RF.PlaceAllTexts, "raidtexts") end)
   -- A new HUD look: the party and ten-player spot rises or comes down with the Tabs look (RF.Lift).
   T.OnChanged(function() ns.OutOfCombat(RF.PlaceAgain, "raid look") end)
+  -- A new HUD layout: the focus wears its tab or not (UF.TabLift), so the spot rises or comes down the same way.
+  ns.OnLayoutChanged(function() ns.OutOfCombat(RF.PlaceAgain, "raid layout") end)
 end

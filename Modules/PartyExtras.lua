@@ -95,4 +95,5 @@ function PX.Enable(settings, scope)
   if settings.show then ns.OutOfCombat(function() show(scope) end) end
   scope:Gate("scale", PX.PlaceBars, ns.Theme.OnScale)
   scope:Gate("look", function() ns.OutOfCombat(PX.FitLook, "party extras look") end, ns.Theme.OnChanged)
+  scope:Gate("layout", function() ns.OutOfCombat(PX.FitLook, "party extras layout") end, ns.OnLayoutChanged)
 end
