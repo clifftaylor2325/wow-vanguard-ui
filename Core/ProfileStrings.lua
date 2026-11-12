@@ -47,6 +47,8 @@ local CORE = { theme = true, modules = true, skins = true, positions = true, mov
 -- the local one whole (a frame's spot, a situation's override). Lists are always replaced.
 local MERGE_DEPTH = { positions = 1, Situations = 2 }
 local DEEP = 20
+-- The profile's top-level values that are not tables, and the type each must have to be merged in.
+local SCALARS = { hudLayout = "string" }
 
 -- Parts ------------------------------------------------------------------------------------
 
@@ -136,6 +138,7 @@ function ns.PartsPayload(profile, parts)
   for key, t in pairs(profile) do
     if want[key] or want[partOf(key)] then data[key] = t end
   end
+  if want.layout and data.hudLayout == nil then data.hudLayout = ns.HudLayout() end
   return ns.StampPayload(ns.WithoutClientState(data))
 end
 
@@ -322,6 +325,17 @@ local function merge(into, from, depth)
   return into
 end
 
+-- Merges one top-level key of a partial payload into the profile: a table key by key, a value
+-- SCALARS names when it has that type (the Centered layout is stored as nothing), anything else is dropped.
+local function mergeKey(profile, key, t)
+  local scalar = SCALARS[key]
+  if scalar then
+    if type(t) == scalar then profile[key] = t ~= "centered" and t or nil end
+  elseif type(t) == "table" then
+    profile[key] = merge(type(profile[key]) == "table" and profile[key] or {}, t, MERGE_DEPTH[key] or DEEP)
+  end
+end
+
 -- Merges a partial payload's tables into the profile, key by key: the string's values win,
 -- and settings it doesn't carry keep their local values. The listeners hear of it before
 -- (Situations puts the profile's own values back under an active override) and after; they hear of it
@@ -330,9 +344,7 @@ function ns.MergeParts(profile, data)
   local onScreen = profile == ns.Profile()
   if onScreen then ns.ProfileChanged() end
   for key, t in pairs(data) do
-    if not META[key] and type(t) == "table" then
-      profile[key] = merge(type(profile[key]) == "table" and profile[key] or {}, t, MERGE_DEPTH[key] or DEEP)
-    end
+    if not META[key] then mergeKey(profile, key, t) end
   end
   if onScreen then ns.ProfileChanged() end
 end

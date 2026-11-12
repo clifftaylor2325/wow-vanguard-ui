@@ -1303,3 +1303,28 @@ it("hunt H44-12-70: a nothing-to-export line in the open panel is cleared when t
   addon.eval("ns.ResetProfile()");
   expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText() }"), "after a reset the stale reason is gone").toEqual([true, ""]);
 });
+// A second account's addon, logged in, that imports text and answers { layout, stored hudLayout }.
+const importHud = (text) => {
+  const dst = loggedIn(CLICK_LUA);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  return dst;
+};
+it("hunt H46-22-50: a Layout string brings the HUD layout, Centered included, and only a string value is taken", () => {
+  const src = loggedIn(CLICK_LUA);
+  src.eval("ns.SetHudLayout('fort')");
+  const dst = importHud(src.eval("return ns.ExportProfile('layout')"));
+  expect(dst.eval("return ns.HudLayout()"), "a partial Layout string sets the HUD layout").toBe("fort");
+  src.eval("ns.SetHudLayout('centered')");
+  const back = loggedIn(CLICK_LUA);
+  back.eval("ns.SetHudLayout('fort')");
+  back.eval(`ns.ImportProfile(${JSON.stringify(src.eval("return ns.ExportProfile('layout')"))})`);
+  expect(back.eval("return { ns.HudLayout(), ns.Profile().hudLayout == nil }"), "Centered goes back to Centered, stored as nothing").toEqual(["centered", true]);
+  const plain = loggedIn(CLICK_LUA);
+  plain.eval("ns.SetHudLayout('standards')");
+  expect(importHud(plain.eval("return ns.ExportProfile('hudLayout')")).eval("return ns.HudLayout()"), "the hudLayout module string works too").toBe("standards");
+  const crafted = loggedIn(CLICK_LUA);
+  crafted.eval("ns.Settings('positions').X = { point = 'CENTER' } ns.Profile().hudLayout = 'fort'");
+  const text = crafted.eval("local S = ns.Serialize return S.Encode('profile', ns.StampPayload({ parts = { 'layout' }, positions = 0, hudLayout = { 1 } }))");
+  crafted.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(crafted.eval("return { type(ns.Profile().positions), ns.Profile().hudLayout }"), "a scalar over a table, or a table over the layout, is dropped").toEqual(["table", "fort"]);
+});
