@@ -246,19 +246,20 @@ const keystone = (addon) => addon.eval(`local f = Vanguard_Keystone
 const STACK_LUA = `local p1, p2, p4, b1, b2 = Vanguard_party1, Vanguard_party2, Vanguard_party4, Vanguard_boss1, Vanguard_boss2
   return { foot = p4:GetBottom(), p1 = p1:GetBottom(), p2tab = p2.tab:GetTop(), p2shown = p2.tab:IsShown(), b1 = b1:GetBottom(), b2tab = b2.tab:GetTop() }`;
 
-it("Tabs: the party and boss stacks spread by the tab's height so each tab stands in the gap, the party column's foot kept; a look change in a fight waits for it to end", () => {
+it("Tabs: the party and boss stacks spread by the tab's height so each tab stands in the gap, the party column's foot 12 units higher (clear of the focus's cast bar); a look change in a fight waits for it to end", () => {
   const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("plain"));
   const plainFoot = addon.eval(STACK_LUA).foot;
   addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
   const tabs = addon.eval(STACK_LUA);
   expect([tabs.p2shown, tabs.p2tab <= tabs.p1, tabs.b2tab <= tabs.b1], "party2 and boss2 wear tabs that stay under the frame above").toEqual([true, true, true]);
-  expect(Math.round(tabs.foot), "the party column ends where it did").toBe(Math.round(plainFoot));
+  expect(Math.round(tabs.foot), "the party column ends 12 units higher: the focus's lifted cast bar stands under it").toBe(Math.round(plainFoot) + 12);
+  expect(addon.eval("local bar = Vanguard_CastBar_focus return bar:GetTop() <= Vanguard_party4:GetBottom() + 0.01 or bar:GetLeft() >= Vanguard_party4:GetRight() or bar:GetRight() <= Vanguard_party4:GetLeft()"), "H45-3-R2: the focus's cast bar, lifted by the tab, does not cover the fourth party frame").toBe(true);
   setCombat(addon, true);
   addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
   expect(addon.eval(STACK_LUA).p1, "in a fight the secure frames wait").toBe(tabs.p1);
   setCombat(addon, false);
   const back = addon.eval(STACK_LUA);
-  expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot unchanged").toEqual([true, Math.round(plainFoot)]);
+  expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot back to its Plain place").toEqual([true, Math.round(plainFoot)]);
 });
 
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {

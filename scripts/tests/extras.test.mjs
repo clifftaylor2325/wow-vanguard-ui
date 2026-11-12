@@ -1061,3 +1061,27 @@ it("keep stocked: the add slot's accent edge follows the mouse: brighter on hove
   addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
   expect([hover !== rest, held !== rest, held !== hover, edges()], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
 });
+// H45-3-R1 (own find of the wave 3 review): the party column's top (party1's name tab included) and the pets-and-targets
+// column's foot, in screen units, under a HUD look with party frames `height` tall.
+const columnGap = (look, height) => {
+  const saved = `VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "${look}" }, PartyExtras = { show = true }, UnitFrames = { partyHeight = ${height} } } }`;
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: saved });
+  return addon.eval(`local p1 = Vanguard_party1 local top = p1.tab and p1.tab:IsShown() and p1.tab:GetTop() or p1:GetTop()
+    return { Vanguard_PartyExtras:GetBottom() - top, select(4, ns.MoverPoint("partyextras")) }`);
+};
+it("H45-3-R1: under the Tabs look the party pets and targets column's default spot rises with the party column, so tall party frames never reach it", () => {
+  const plain = columnGap("plain", 80);
+  const tabs = columnGap("tabs", 80);
+  expect(plain[0] >= 0 && tabs[0] >= 0, "the column's foot stays clear of the party column's top at Height 80, Plain and Tabs").toBe(true);
+  expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights and the 12 units the focus's cast bar needs").toBe(84);
+});
+it("H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
+  // The column's default spot's y now.
+  const y = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
+  const shield = y();
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(y() - shield, "Tabs lifts it by the party column's rise, 84").toBe(84);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  expect(y(), "back to Plain: the spot comes down again").toBe(shield);
+});
