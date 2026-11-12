@@ -84,6 +84,23 @@ it("a frame moved under a parent whose strata is inherited takes that strata, as
     return { mid:GetFrameStrata(), made:GetFrameStrata(), moved:GetFrameStrata() }`)).toEqual(["DIALOG", "DIALOG", "DIALOG"]);
 });
 
+// Blizzard_APIDocumentationGenerated/SimpleFontStringAPIDocumentation.lua SetFormattedText (both clients) sets the
+// formatted text; wow-aspects.lua lets the addon hand it a secret, which the text then holds.
+it("a font string's SetFormattedText sets the formatted text, a hook on it seeing the new text; a secret argument makes the text secret", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local fs = UIParent:CreateFontString() fs:SetFont("x", 10) local seen
+    hooksecurefunc(fs, "SetFormattedText", function(self) seen = self:GetText() end)
+    fs:SetFormattedText("%d TEST-ONLY %s", 5, "x")
+    return { fs:GetText(), seen }`)).toEqual(["5 TEST-ONLY x", "5 TEST-ONLY x"]);
+  expect(addon.eval(`local fs = UIParent:CreateFontString() local ok, e = pcall(fs.SetFormattedText, fs, "%d", 1) return { ok, tostring(e):match("Font not set") ~= nil }`),
+    "a font string with no font refuses, as SetText does").toEqual([false, true]);
+  const secret = addon.eval(`local fs = UIParent:CreateFontString() fs:SetFont("x", 10)
+    local ok = pcall(assert(loadstring("TestFs = ... TestFs:SetFormattedText('%d%%', __wfgWorld.secret(42))", "@Modules/TEST-ONLY.lua")), fs)
+    local text = fs:GetText()
+    return { ok, issecretvalue(text), rawget(text, "n") }`);
+  expect(secret, "the addon's secret: no error, the text a secret of the formatted words").toEqual([true, true, "42%"]);
+});
+
 it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
   const addon = createAddon();
   const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}

@@ -888,6 +888,23 @@ function methods:SetText(text)
   self.__text = text
   if changed and self.__kind == "EditBox" and not self.__typing then stub.runScript(self, "OnTextChanged", false) end
 end
+-- A value as the client formats it: a secret's plain value (the harness reads it with rawget), anything else as it is.
+local function formatValue(v)
+  if type(v) == "table" and rawget(v, "__secret") == true then return rawget(v, "n") end
+  return v
+end
+
+-- The text string.format(fmt, ...) makes, set as the client's SetFormattedText sets it (SimpleFontStringAPIDocumentation.lua
+-- SetFormattedText, both clients), through the stub's SetText so its rules hold (a font first, an edit box's change
+-- script); a hook on the widget's own SetText does not run, as SetFormattedText is its own call in game. A secret
+-- argument (wow-aspects.lua lets the addon hand one) makes the text a secret: string.format never meets the secret.
+function methods:SetFormattedText(fmt, ...)
+  local args = { n = select("#", ...), ... }
+  for i = 1, args.n do args[i] = formatValue(args[i]) end
+  local text = string.format(formatValue(fmt), unpack(args, 1, args.n))
+  if __wfgSecretAt(fmt, ...) then text = stub.world.secret(text) end
+  methods.SetText(self, text)
+end
 -- An edit box's letter limit (0: none). The stub's SetText doesn't cut to it; a test that needs the cut models it.
 function methods:SetMaxLetters(n) self.__maxLetters = n end
 -- The edit box's letter limit.
