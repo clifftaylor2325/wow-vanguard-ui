@@ -56,6 +56,14 @@ afterAll(() => {
   fs.writeFileSync(BASELINE, `${JSON.stringify(mergeWritten(baseline, written), null, 2)}\n`);
 });
 
+it("text fits: every audit in this file has its key in textfit-baseline.json, so a new audit's list is recorded on purpose (H46-35-2)", () => {
+  const src = fs.readFileSync(fileURLToPath(import.meta.url), "utf8");
+  const calls = src.match(/(?<!function )expectFits\(/g);
+  const names = [...src.matchAll(/expectFits\("([^"]+)"/g)].map((m) => m[1]);
+  expect(names.length, "every audit names its case with a plain string").toBe(calls.length);
+  expect(names.filter((name) => !(name in baseline)), "a case with no key would take any overflow it finds as its starting list").toEqual([]);
+});
+
 // Audits the setup wizard on each step in a client, as a list of findings.
 function wizardSteps(addon) {
   const findings = [];
