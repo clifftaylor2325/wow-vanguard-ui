@@ -2046,18 +2046,18 @@ local function emptyAuctionHouse()
 end
 world.ah = emptyAuctionHouse()
 
--- Clicks are hardware events: stub.hardware counts the clicks running now.
-stub.hardware = 0
-local rawClick = stub.runClick
--- The click itself, called by name so a restricted call's logged path still runs through rawClick.
-local function clickThrough(...) rawClick(...) end
--- A click, counted while it runs; a handler that raises still ends the count before its error goes on (pcall is a C
--- function, so wow-taint.lua's callerOf looks through it).
-function stub.runClick(...)
-  stub.hardware = stub.hardware + 1
-  local ok, err = pcall(clickThrough, ...)
-  stub.hardware = stub.hardware - 1
-  if not ok then error(err, 0) end
+-- Clicks are hardware events: a call is made in one while the stub's click (stub.runClick) is on the Lua stack. Read
+-- from the stack, not kept in a count, so a handler that raises leaves nothing behind and its error keeps its whole
+-- traceback. Limit: a call from a coroutine resumed inside a click reads as not clicked (the addon makes none).
+local runningClick = stub.runClick
+
+-- Whether a click is running: the stub's click function is a caller of the code asking.
+local function inClick()
+  for level = 2, math.huge do
+    local info = debug.getinfo(level, "f")
+    if not info then return false end
+    if info.func == runningClick then return true end
+  end
 end
 
 -- A query the addon may send at any time: recorded as { fn, args }.
@@ -2080,7 +2080,7 @@ end
 local function restricted(name)
   return function(...)
     local args = { ... }
-    table.insert(world.ah.restricted, { fn = name, args = args, clicked = stub.hardware > 0, path = debug.traceback("", 2) })
+    table.insert(world.ah.restricted, { fn = name, args = args, clicked = inClick(), path = debug.traceback("", 2) })
     if name ~= "PostItem" and name ~= "PostCommodity" then return end
     if world.ah.needsConfirm == true then return true end
     if world.ah.throttle then sendPost(args[1], args[3]) end

@@ -477,11 +477,27 @@ it("an aura container takes a group with no options, or options without a layout
   expect(out).toEqual([true, "nil", true, "nil", 2]);
 });
 
-// The harness's own counter (no client rule): a click whose handler raises still ends its hardware event.
+// The harness's own diagnostics (no client rule): a click whose handler raises leaves no click behind, so a
+// restricted call made after it reads as made outside any hardware event, and the error goes on unchanged.
 it("a click whose handler raises ends its hardware event and passes the error on", () => {
   const addon = createAddon();
   expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b:SetScript("OnClick", function() error("TEST-ONLY", 0) end)
-    local ok, err = pcall(__wfgStub.click, b) return { ok, err, __wfgStub.hardware }`)).toEqual([false, "TEST-ONLY", 0]);
+    local ok, err = pcall(__wfgStub.click, b) C_AuctionHouse.CancelAuction(7)
+    return { ok, err, __wfgWorld.ah.restricted[1].clicked }`)).toEqual([false, "TEST-ONLY", false]);
+});
+
+// The harness's own diagnostics (no client rule): the traceback of an error raised in a click handler keeps the
+// handler's own frames (H46-2-6).
+it("a click handler's error keeps the handler's stack in the traceback the test prints", () => {
+  const addon = createAddon();
+  let message = "";
+  try {
+    addon.eval(`local b = CreateFrame("Button", nil, UIParent)
+      b:SetScript("OnClick", function() local function TEST_ONLY_DEEP() error("TEST-ONLY boom") end TEST_ONLY_DEEP() end)
+      __wfgStub.click(b)`);
+  } catch (e) { message = String(e.message || e); }
+  expect(message).toContain("TEST-ONLY boom");
+  expect(message).toContain("TEST_ONLY_DEEP");
 });
 
 // Blizzard's own code leans on the client running an edit box's scripts for code-set text and focus:
