@@ -1186,3 +1186,23 @@ it("hunt H44-12-70: the export panel follows a profile that changed under it, an
   addon.eval("Vanguard_ExportDialog:Hide() ns.ResetProfile()");
   expect(addon.eval("return Vanguard_ExportDialog:IsShown()"), "a hidden panel is left alone by a profile change").toBe(false);
 });
+it("H44-12-2: after a spec change, a live profile switch follows the spec in use, so the new profile keeps the layouts picked after it", () => {
+  const off = `for _, name in ipairs(ns.ModuleNames()) do
+    if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules[name] = false end end
+  end`;
+  const a = specLayoutLogin(`VanguardDB = { version = 2, setupDone = true, profiles = { Dps = { modules = {} }, Healer = { modules = {} }, Other = { modules = {} } } }
+VanguardCharDB = { profile = "Dps", editModeProfile = "Dps", specProfiles = { [1] = "Dps", [2] = "Healer" } }`, off);
+  a.eval("__spec = 2 EditModeManagerFrame:UpdateLayoutInfo()");
+  a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(a.eval('return ns.PickProfile("Other")'), "applied at once").toBe(true);
+  expect(a.eval("return VanguardDB.profiles.Other.editMode and VanguardDB.profiles.Other.editMode.layout or 'none'"), "the switch remembers the layout of the spec in use").toBe("Heal");
+  a.eval("C_EditMode.SetActiveLayout(2)");
+  expect(a.eval("return { VanguardDB.profiles.Other.editMode.layout, VanguardDB.profiles.Dps.editMode.layout }"), "a later pick is saved into the new profile, the old one left").toEqual(["Classic", "Modern"]);
+});
+it("hunt H44-12-70: a nothing-to-export line in the open panel is cleared when the profile changes under it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("ns.ExportDialog() local real = ns.ExportProfile ns.ExportProfile = function() return nil, 'nothing saved for Layout yet' end local b = Vanguard_ExportDialog.export b:GetScript('OnClick')(b) ns.ExportProfile = real");
+  expect(addon.eval("return Vanguard_ExportDialog.problem:GetText()"), "the reason shows").toBe("Nothing to export: nothing saved for Layout yet.");
+  addon.eval("ns.ResetProfile()");
+  expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText() }"), "after a reset the stale reason is gone").toEqual([true, ""]);
+});
