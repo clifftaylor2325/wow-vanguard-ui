@@ -6376,6 +6376,54 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the Roll tracker lists that item and its rolls without waiting for a new roll.
 - If it fails, paste: the Roll tracker rows.
 
+### 33.726 A shared cheapest price on the Sell card (H45-31-101; WoW Forever and Retail)
+
+- Do: list 5 of a commodity at the cheapest price with Match, wait until someone else lists at that same price (or list it from a second character), then drop more of it on the Sell card. [Client: Forever and Retail.]
+- Expect: Cheapest shows that shared price, not the next one up.
+- If it fails, paste: the Sell card's four lines.
+
+### 33.727 An auction sale counted on the second day (H45-31-201; WoW Forever and Retail)
+
+- Do: sell the same item at the same price on two days; read the first sale's mail on day one, and on day two let the second one sell while you play. [Client: Forever and Retail.]
+- Expect: the info strip's AH figure counts the second sale.
+- If it fails, paste: the info strip's AH text.
+
+### 33.728 Warband bank reagents in the craft queue (H45-33-4; Retail)
+
+- Do: put a reagent the craft queue needs in the warband bank only, then open the craft queue (`/vg craft`). [Client: Retail.]
+- Expect: that reagent is not listed under Short of.
+- If it fails, paste: the Short of (or You have every reagent) line.
+
+### 33.729 A ranked reagent held at rank 2 (H45-31-R1; Retail)
+
+- Do: queue a recipe that takes a ranked reagent while you hold only rank 2 of it, then open the craft queue (`/vg craft`). [Client: Retail.]
+- Expect: the reagent is not listed as short.
+- If it fails, paste: the Short of line.
+
+### 33.730 A shield's upgrade line beside a ranged weapon (H45-33-102; Retail)
+
+- Do: wear a gun or crossbow alone in the main hand and hover a shield in your bags; then wear a wand alone and hover the shield again. [Client: Retail.]
+- Expect: with the gun there is no "Upgrade: fills an empty slot" line on the shield; with the wand the line says it fills an empty slot.
+- If it fails, paste: the tooltip line each time, or "none".
+
+### 33.731 Last run after a long stay and a reload (H45-34-101; WoW Forever and Retail)
+
+- Do: with the Dungeon card on, enter a dungeon you ran on an earlier day, stay inside over an hour, `/reload`, then open the card (`/vg prep`). [Client: Forever and Retail.]
+- Expect: the card says "Last run: N days ago", not "today".
+- If it fails, paste: the Last run line.
+
+### 33.732 A Trading Post popup keeps its panel (H45-40-1; Retail)
+
+- Do: open the Trading Post and click a button that raises a confirm popup, such as a purchase or a refund. [Client: Retail.]
+- Expect: the popup shows with its Vanguard panel behind it, not bare text and buttons over the scene.
+- If it fails, paste: /vg frame StaticPopup1 and a screenshot.
+
+### 33.733 A mid-screen raid roster keeps its line count (H45-40-101; WoW Forever and Retail)
+
+- Do: in a 40-player raid, unlock, drag the officer roster to the middle of the screen and lock it; then let the roster change twice (a member leaves, a subgroup swap). [Client: Forever and Retail.]
+- Expect: the roster shows the same number of lines each time, the last one reading "+N more".
+- If it fails, paste: the line count and the "+N more" line after each change.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
