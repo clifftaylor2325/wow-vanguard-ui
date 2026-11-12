@@ -550,15 +550,24 @@ end
 -- At login (before modules read settings), take the spec's profile quietly.
 ns.On("PLAYER_LOGIN", function() followSpec(true) end)
 
+-- The reload offer the last spec change made, so a swap back that leaves nothing to apply can withdraw it.
+local specOffer
+
+-- Takes back the reload offered for an earlier spec change when the swap back leaves nothing to apply.
+local function withdrawSpecOffer()
+  if specOffer and not ns.ProfileAfterReload() then ns.WithdrawReload(specOffer) end
+end
+
 -- On a spec change mid-session, switch to the spec's profile: at once when nothing waits for a reload (chat says so),
 -- else staged, with the reload that applies it offered (naming what differs, ns.SwitchWaitText, when that alone waits).
 local function onSpecChanged()
-  if not followSpec(false) then return end
+  if not followSpec(false) then return withdrawSpecOffer() end
   local profile = ns.SelectedProfileName()
   local why = ns.Format(L["Your specialization uses profile {profile}."], { profile = profile })
-  if not ns.PendingProfileName() then return ns.Chat(why) end
+  if not ns.PendingProfileName() then withdrawSpecOffer() return ns.Chat(why) end
   local wait = ns.SwitchWaitText(profile)
-  ns.OfferReload(wait and why .. " " .. wait or why)
+  specOffer = wait and why .. " " .. wait or why
+  ns.OfferReload(specOffer)
 end
 
 -- PLAYER_SPECIALIZATION_CHANGED names the unit that changed; only the player's matters.

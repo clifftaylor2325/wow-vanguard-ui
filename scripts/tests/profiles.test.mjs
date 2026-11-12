@@ -330,6 +330,39 @@ it("a staged hand pick of another spec's profile survives a swap there and back,
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardCharDB.ownProfile }"), "a swap there and back keeps it").toEqual(["Heal", "Heal"]);
 });
+// A character on Default whose spec 2 uses Heal (a module switch that differs when `waits`), logged in as spec 1.
+function offerCharacter(waits) {
+  const heal = waits ? "{ modules = { Bags = false } }" : "{}";
+  const sv = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = ${heal} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }`;
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  return addon;
+}
+for (const waits of [false, true]) {
+  it(`swapping back takes the spec's reload offer back${waits ? " (it named what waits)" : ""}`, () => {
+    const addon = offerCharacter(waits);
+    addon.eval("__spec = 2");
+    addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+    expect(addon.eval("return Vanguard_Reload:IsShown()"), "spec 2 offers it").toBe(true);
+    addon.eval("__spec = 1");
+    addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+    expect(addon.eval("return Vanguard_Reload:IsShown()"), "spec 1 withdraws it").toBe(false);
+  });
+}
+it("swapping back leaves a reload offered for another reason up", () => {
+  const addon = offerCharacter(false);
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("ns.OfferReload('Something else changed.')");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "still up").toBe(true);
+});
+it("ns.WithdrawReload does nothing before any reload was offered", () => {
+  const addon = offerCharacter(false);
+  expect(addon.eval("ns.WithdrawReload('x') return true")).toBe(true);
+});
 // The reload that applies a staged profile, with the client in `spec` (what login does first).
 function reloadInSpec(addon, spec) {
   addon.eval(`__spec = ${spec} ns.ApplyPendingProfile()`);
