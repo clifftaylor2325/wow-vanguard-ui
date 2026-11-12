@@ -610,3 +610,48 @@ it("H44-19-54 chat filter: the tab's label is Filtered in the player's language,
   expect(addon.eval("return { ns.GetModule('ChatFilter').TAB, __wfgWorld.chatWindows[3] }"), "the saved name used to find an old tab is untouched English").toEqual(["Filtered", "Spam"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+// TEST-ONLY model of the game's tab naming (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua): FCF_OpenNewWindow
+// calls FCF_SetWindowName(chatFrame, name), which ends in tab:SetText(name); FloatingChatFrame_Update calls it again
+// on every UPDATE_CHAT_WINDOWS (FCF_SetWindowName(chatFrame, name, true)).
+const NAMING_ENV = `
+  function FCF_SetWindowName(frame, name) _G[frame:GetName() .. "Tab"]:SetText(name) end
+  local open = FCF_OpenNewWindow
+  FCF_OpenNewWindow = function(name, ...)
+    local frame = open(name, ...)
+    FCF_SetWindowName(frame, name)
+    return frame
+  end`;
+
+// The module's tab text, once the soon-timer ran.
+const relabelled = (addon) => {
+  addon.update(0.5);
+  return tabName(addon);
+};
+
+it("H45-8-2 chat filter: a new Filtered tab reads the translated word and the count before anything is caught", () => {
+  const addon = loggedIn(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'");
+  addon.slash("filter on");
+  expect(relabelled(addon), "not the game's English name").toBe("Gefiltert (0)");
+});
+
+it("H45-8-2 chat filter: a tab found again (not made) is labelled too", () => {
+  const addon = filtering(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'; ns.GetModule('ChatFilter').window = nil; _G.ChatFrame3Tab:SetText('Filtered')");
+  addon.eval("ns.GetModule('ChatFilter').Prepare()");
+  expect(relabelled(addon)).toBe("Gefiltert (0)");
+});
+
+it("H45-8-2 chat filter: the game's own refresh of the chat windows is followed by the label, only for this tab", () => {
+  const addon = filtering(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'");
+  addon.update(0.5);
+  addon.eval("FCF_SetWindowName(ns.GetModule('ChatFilter').window, 'Filtered', true) FCF_SetWindowName(ChatFrame1, 'General', true)");
+  expect(addon.eval("return _G.ChatFrame3Tab:GetText()"), "the game wrote its saved name").toBe("Filtered");
+  expect(relabelled(addon), "the label is back").toBe("Gefiltert (0)");
+  addon.slash("filter off");
+  addon.eval("FCF_SetWindowName(ns.GetModule('ChatFilter').window, 'Filtered', true)");
+  addon.update(0.5);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
