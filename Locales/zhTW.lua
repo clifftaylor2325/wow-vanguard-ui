@@ -1100,7 +1100,7 @@ L["Low health: a soft tint round the screen edge that grows as your health drops
 L["Lower Blackrock Spire"] = "黑石塔下層"
 L["Lower the bid: it must be under the buyout."] = "降低競標價：它必須低於直購價。"
 L["Macro for {key}"] = "{key}的巨集"
-L["Macro names"] = "宏名稱"
+L["Macro names"] = "巨集名稱"
 L["Macro..."] = "巨集..."
 L["Macro: {text}"] = "巨集：{text}"
 L["Mail tools"] = "郵件工具"
