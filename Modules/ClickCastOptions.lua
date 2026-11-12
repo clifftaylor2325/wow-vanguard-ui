@@ -163,6 +163,14 @@ local function changed()
   if windowShown() then O.Refresh() end
 end
 
+-- The player changed a binding on the page: an offer that appears from it (a spell freed by a clear) is shown on the
+-- page, so it is marked told and not news for chat later; then the page is re-read. Events, Clear all, Import, Copy to,
+-- the swap and the game switch use changed() alone.
+local function edited()
+  CP.MarkShown()
+  changed()
+end
+
 -- A hover wash over a button.
 local function wash(b)
   W.Flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
@@ -217,7 +225,7 @@ end
 local function pickSpell(s, r)
   CC.Add(state.pickKey, "spell", s.name, r and r.spellID or s.spellID, r and r.rank or nil)
   closePicker()
-  changed()
+  edited()
 end
 
 -- Text without the spaces around it.
@@ -230,7 +238,7 @@ local function bindTyped(key, action, text)
   local ok, why = CC.Add(key, action, trim(text))
   if not ok then return ns.Chat(ns.Format(L["Can't bind: {why}."], { why = why })) end
   ns.HideText()
-  changed()
+  edited()
 end
 
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key. A Bind that CC.ForThisList
@@ -248,7 +256,7 @@ local function pickAction(action)
   if action == "macro" then return askText(key, "macro") end
   if action == "typed" then return askText(key, "spell") end
   CC.Add(key, action, nil)
-  changed()
+  edited()
 end
 
 -- What clicking a picker row does: a header nothing, a spell or rank binds, an action binds or asks.
@@ -464,10 +472,10 @@ end
 -- A click on a cell: a dropped spell binds, right-click clears, left opens the picker.
 local function cellClick(c, button)
   pinMore(c.key)
-  if dropSpell(c.key) then return changed() end
+  if dropSpell(c.key) then return edited() end
   if button == "RightButton" then
     CC.Remove(c.key)
-    return changed()
+    return edited()
   end
   openPicker(c, c.key)
 end
@@ -494,7 +502,7 @@ end
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
-  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then changed() end end)
+  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then edited() end end)
   c:SetScript("OnEnter", cellTooltip)
   c:SetScript("OnLeave", hideTooltip)
 end
@@ -620,7 +628,7 @@ local function keyRow(list, i)
   local row = W.Row(child, ROW_H, { width = child:GetWidth() })
   row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
   keyRowTexts(row)
-  row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) changed() end, 80)
+  row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) edited() end, 80)
   row.remove:SetPoint("RIGHT")
   return row
 end

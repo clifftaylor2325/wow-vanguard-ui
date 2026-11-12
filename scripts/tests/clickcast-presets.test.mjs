@@ -543,3 +543,42 @@ it("H46-19-50 a built Click casting page is read again after a switch there and 
   addon.update(0.1); addon.update(0.1);
   expect({ parts: pageParts(addon), errors: addon.eval("return #ns.errors") }).toEqual({ parts: [20, 1, 1, 0], errors: 0 });
 });
+
+// The page's grid cell for a key, clicked with a mouse button.
+const clickCell = (addon, key, button) => addon.eval(`local c for _, w in ipairs(__wfgStub.frames) do if w.key == "${key}" and w.iconFrame and w:IsVisible() then c = w end end
+  c.__scripts.OnClick(c, "${button}")`);
+
+it("H46-19-51 an offer the player's own grid clear frees is shown on the page and not told in chat at the next SPELLS_CHANGED", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  addon.eval(`${CP}.Apply("select") ns.Options.Show("clickcast")`);
+  clickCell(addon, "BUTTON3", "RightButton");
+  addon.update(0.1); addon.update(0.1);
+  const page = textsWith(addon, "Shift + Left click could cast Heal.").length;
+  addon.clearChat();
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([page, chatHas(addon, /you can put/)]).toEqual([1, false]);
+});
+
+it("H46-19-51 a spell learned on one talent group is told on it, and on the other group's list after the switch", () => {
+  const addon = loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1");
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  switchGroup(addon, 2, 1);
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 1, 2);
+  addon.eval(`${CP}.Apply("select")`);
+  addon.clearChat();
+  addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  const primary = chatHas(addon, /you can put Flash Heal on Middle click now/);
+  addon.clearChat();
+  switchGroup(addon, 2, 1);
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([primary, chatHas(addon, /you can put Flash Heal on Middle click now/)]).toEqual([true, true]);
+});

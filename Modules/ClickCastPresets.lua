@@ -396,6 +396,13 @@ local function markShown(rec)
   for _, o in ipairs(CP.Upgrades()) do rec.told[o.key .. ":" .. o.to] = true end
 end
 
+-- Marks the offers the page shows now on the list shown as told (Modules/ClickCastOptions.lua, after the player's own
+-- edit): one that appears because a binding was changed by hand is not news for chat either.
+function CP.MarkShown()
+  local rec = CP.Record()
+  if rec then markShown(rec) end
+end
+
 -- Puts an offered spell on its key (out of combat, like any change), as the preset's own: on a list still as the
 -- preset made it, picking a preset after it doesn't ask (a list with the player's own clicks still does). An offer the
 -- list no longer has (its record went) does nothing.
