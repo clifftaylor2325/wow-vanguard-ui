@@ -1136,11 +1136,13 @@ end
 
 -- A group: refused as the client refuses it (its asserts raise the message alone), else a first batch of ten buttons
 -- is made now and dressed by initializeFrame, whatever its maxFrameCount, which caps only how many show
--- (Blizzard_CustomAuraContainer.lua:286-304 calls CreateFrameBatch before RegisterAuraGroup).
+-- (Blizzard_CustomAuraContainer.lua:286-304 calls CreateFrameBatch before RegisterAuraGroup). No options, or no
+-- layout, take the client's defaults (:228-256); the stub's readers default each field, so it keeps an empty table.
 function methods:AddAuraGroup(key, filter, opts)
+  opts = opts or {}
   local refused = groupRefusal(self, key, filter, opts)
   if refused then error(refused, 0) end
-  local g = { key = key, filter = filter, opts = opts, buttons = {} }
+  local g = { key = key, filter = filter, opts = opts, layout = opts.layout or {}, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
   addAuraButtons(self, g, stub.auraFrameBatch)
@@ -1253,7 +1255,7 @@ end
 local function flowButtons(c)
   local grow, anchor, x, y, lineH = c.__flowGrow or { 1, 1 }, c.__flowAnchor or "TOPLEFT", 0, 0, 0
   for _, g in ipairs(c.__groups or {}) do
-    local gap, newLine = g.opts.layout.elementSpacing or 0, g.opts.layout.forceNewLine
+    local gap, newLine = g.layout.elementSpacing or 0, g.layout.forceNewLine
     for i, b in ipairs(g.buttons) do
       if b.__shown and x > 0 and ((i == 1 and newLine) or (c.__flowLine and x + b.__width > c.__flowLine)) then x, y, lineH = 0, y + lineH + gap, 0 end
       if b.__shown then b.__points = { [anchor] = { point = anchor, rel = c, relPoint = anchor, x = x * grow[1], y = y * grow[2] } } end

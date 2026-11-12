@@ -408,7 +408,7 @@ it("an aura container refuses a group the client's asserts refuse, with the clie
   const addon = createAddon();
   const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
     local function try(key, filter, opts)
-      opts.layout = opts.layout or {} local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
+      local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
     end
     return { try("a", "HELPFUL|!RAID PLAYER", { maxFrameCount = 2 }), try("a", "HELPFUL", { maxFrameCount = 2 }), try("", "HELPFUL", {}),
       try("b", "HELPFUL|TEST_ONLY_NO_SUCH", {}), try("b", "HELPFUL|!", {}), try("b", "HELPFUL", { maxFrameCount = 2.5 }),
@@ -419,6 +419,19 @@ it("an aura container refuses a group the client's asserts refuse, with the clie
     "Unknown aura filter component: 'TEST_ONLY_NO_SUCH'", "A negation prefix ('!') must be followed by a filter component.",
     "maxFrameCount must be a non-negative integer or infinity.", "elementSpacing must be a number.", "forceNewLine must be a boolean.",
     "elementWidth must be a non-negative number.", "sortMethod must be a valid AuraContainerSortMethod.", "initializeFrame must be a function or nil.", 1]);
+});
+
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:228-256 (forever and live identical): CopyAndValidateInboundTable
+// starts from the defaults and merges the caller's options only when given, and the layout is always a merged copy of
+// the layout defaults (Blizzard_AuraContainerShared.lua:127-165), so neither a missing options table nor a missing
+// layout is an error.
+it("an aura container takes a group with no options, or options without a layout (H46-2-2)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local a = { pcall(c.AddAuraGroup, c, "a", "HELPFUL") }
+    local b = { pcall(c.AddAuraGroup, c, "b", "HELPFUL", { maxFrameCount = 2 }) }
+    return { a[1], tostring(a[2]), b[1], tostring(b[2]), #c.__groups }`);
+  expect(out).toEqual([true, "nil", true, "nil", 2]);
 });
 
 // The harness's own counter (no client rule): a click whose handler raises still ends its hardware event.
