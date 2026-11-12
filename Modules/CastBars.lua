@@ -440,12 +440,19 @@ function CB.SweepMark(cd, spell)
   return plainMark(cd, spell)
 end
 
+-- True when the client plainly says you can't attack the unit; a hidden or missing answer is not a plain no, so an
+-- enemy's cast keeps its mark.
+local function friendly(unit)
+  return ns.PlainCall("UnitCanAttack", "player", unit) == false
+end
+
 -- Shows or hides the mark beside a bar, and sets how lit it is: nothing without an interrupt you know (or with the
--- switch off); gone while the cast can't be interrupted (a hidden answer goes to its opacity as it is).
+-- switch off), or beside a unit you can't attack; gone while the cast can't be interrupted (a hidden answer goes to
+-- its opacity as it is).
 function CB.PaintMark(bar, shielded)
   local mark, spell = bar.mark, CB.settings.interruptMark and CB.InterruptSpell()
   bar.vgShielded = shielded
-  mark:SetShown(spell and CB.SweepMark(mark.cd, spell) or false)
+  mark:SetShown(spell and not friendly(bar.unit) and CB.SweepMark(mark.cd, spell) or false)
   if ns.IsSecret(shielded) and mark.SetAlphaFromBoolean then return mark:SetAlphaFromBoolean(shielded, 0, 1) end
   mark:SetAlpha(isTrue(shielded) and 0 or 1)
 end

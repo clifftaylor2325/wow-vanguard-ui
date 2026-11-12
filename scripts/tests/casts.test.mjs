@@ -533,6 +533,24 @@ it("the interrupt mark: a diamond beside the target's and focus's cast bar while
   expect([mark(addon, "target").follows, addon.eval("return issecretvalue(Vanguard_CastBar_target.mark.__alphaFromBoolean)")], "a hidden answer goes to the mark's opacity as it is").toEqual([true, true]);
 });
 
+it("H46-16-51 the interrupt mark is left off a cast of a unit the client plainly says you can't attack", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(KNOWS(2139));
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.eval("UnitCanAttack = function() return false end");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").shown, "a friend's cast: no mark").toBe(false);
+  addon.eval("UnitCanAttack = function() return true end");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").shown, "an enemy's cast: the mark").toBe(true);
+  addon.eval("UnitCanAttack = function() return { __secret = true } end");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").shown, "a hidden answer keeps the mark, as the client's own flag does").toBe(true);
+  addon.eval("UnitCanAttack = nil");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").shown, "a client without the call keeps it too").toBe(true);
+});
+
 it("the interrupt mark follows your interrupt's cooldown, only while a cast shows", () => {
   const addon = loggedIn(CAST_ENV + MARK_ENV);
   addon.eval(KNOWS(2139));
