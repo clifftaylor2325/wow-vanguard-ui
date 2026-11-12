@@ -27,7 +27,9 @@ const CUES_ENV = `
   __wfgStub.methods.CreateAnimationGroup = function(self) if self.__kind == "Texture" or self.__kind == "Frame" then return fakeGroup(self) end return base and base(self) end
   function __endCues() for _, g in ipairs(__played) do if g.playing and g.loop ~= "REPEAT" then g.playing = false g.scripts.OnFinished() end end __played = {} end
 `;
-const ENV = UNITS_ENV + ACTIONS_ENV + CUES_ENV;
+// The cues follow health the world sets (world.setUnit), so the world's own UnitHealthPercent stays in place of the
+// stand-in UNITS_ENV brings (which reads its __units table).
+const ENV = "__worldHealthPercent = UnitHealthPercent\n" + UNITS_ENV + ACTIONS_ENV + CUES_ENV + "UnitHealthPercent = __worldHealthPercent\n";
 // An array from Lua's answer: an empty table comes back as an object.
 const asList = (v) => (Array.isArray(v) ? v : []);
 // The cues' groups now playing, as { loop, steps, shown } (steps: the longest one and how many).

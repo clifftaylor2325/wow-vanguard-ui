@@ -569,3 +569,12 @@ it("a linear or untyped curve blends between its points and clamps at the ends, 
       step:Evaluate(-1), mid.r, mid.g, mid.a, C_CurveUtil.CreateCurve():Evaluate(0) == nil }`);
   expect(out).toEqual([25, 0, 50, 0, 100, 0, 0.5, 0.25, 0.5, true]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_SharedXMLBase/CurveConstants.lua:3-24 (listed at
+// Blizzard_SharedXMLBase.toc:41 on both clients): ZeroToOne, ScaleTo100, Reverse and ReverseTo100.
+it("the world has the client's shared curves, CurveConstants", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local C = CurveConstants
+    return { C.ZeroToOne:Evaluate(0.3), C.ScaleTo100:Evaluate(0.25), C.Reverse:Evaluate(0.25), C.ReverseTo100:Evaluate(0.25) }`);
+  expect(out).toEqual([0.3, 25, 0.75, 75]);
+});

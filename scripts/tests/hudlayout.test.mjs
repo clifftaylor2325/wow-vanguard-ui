@@ -203,7 +203,7 @@ it("Standards under Hairline: a bare banner shows only the hairline's V at its h
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 
 it("Standards: on a client without the percent curve a banner shows the health text setting's form instead", () => {
-  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)" + UNITS_ENV + CLICK_LUA, onLayout("standards"));
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)" + UNITS_ENV + CLICK_LUA + " CurveConstants = nil", onLayout("standards"));
   addon.eval("ns.GetModule('UnitFrames').UpdateHealth(Vanguard_player)");
   const text = addon.eval("return { Vanguard_player.healthText:GetText(), ns.GetModule('UnitFrames').HealthText('player') }");
   expect(text[0], "no percent to show").not.toMatch(/%$/);

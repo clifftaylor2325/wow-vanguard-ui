@@ -751,6 +751,22 @@ C_CurveUtil = {
   end,
 }
 
+-- The client's shared curves, built as Blizzard_SharedXMLBase/CurveConstants.lua builds them (loaded on both
+-- clients: Blizzard_SharedXMLBase.toc:41).
+CurveConstants = {}
+-- A curve of the client's type through the points (x1, y1) and (x2, y2); no type leaves it unset, as ZeroToOne is.
+local function shareCurve(kind, y1, y2)
+  local c = C_CurveUtil.CreateCurve()
+  if kind then c:SetType(kind) end
+  c:AddPoint(0.0, y1)
+  c:AddPoint(1.0, y2)
+  return c
+end
+CurveConstants.ZeroToOne = shareCurve(nil, 0.0, 1.0)
+CurveConstants.ScaleTo100 = shareCurve(Enum.LuaCurveType.Linear, 0, 100)
+CurveConstants.Reverse = shareCurve(Enum.LuaCurveType.Linear, 1.0, 0.0)
+CurveConstants.ReverseTo100 = shareCurve(Enum.LuaCurveType.Linear, 100, 0)
+
 -- A numeric rule formatter, as Blizzard_APIDocumentationGenerated/StringUtilDocumentation.lua's
 -- C_StringUtil.CreateNumericRuleFormatter makes it (no argument; both clients): an object holding breakpoints, with
 -- NumericRuleFormatterAPIDocumentation.lua's methods only. The client formats with it on its own side (a duration

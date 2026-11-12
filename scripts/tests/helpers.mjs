@@ -96,6 +96,14 @@ export const UNITS_ENV = `
   UnitName = function(unit) return u(unit) and u(unit).name end
   UnitHealth = function(unit) return u(unit).hp end
   UnitHealthMax = function(unit) return u(unit).maxhp end
+  -- The percent the health above gives, through a curve when one is passed; hidden health gives a hidden answer.
+  UnitHealthPercent = function(unit, _, curve)
+    local x = u(unit)
+    if issecretvalue(x.hp) or issecretvalue(x.maxhp) then return { __secret = true } end
+    local fraction = x.maxhp > 0 and x.hp / x.maxhp or 0
+    if type(curve) == "table" and curve.Evaluate then return curve:Evaluate(fraction) end
+    return fraction
+  end
   UnitPower = function(unit) return u(unit).power end
   UnitPowerMax = function(unit) return u(unit).maxpower end
   UnitPowerType = function(unit) return 0, u(unit).ptype end

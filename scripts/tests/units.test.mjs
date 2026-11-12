@@ -17,7 +17,7 @@ it("unit frames", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   const player = ufState(addon, "player");
   expect(player.unit === "player" && player.type1 === "target" && player.type2 === "togglemenu", "player frame is a secure unit button").toBeTruthy();
-  expect(player.hp === 900 && player.max === 1000 && player.text === "900", "player health bar and text").toBeTruthy();
+  expect(player.hp === 900 && player.max === 1000 && player.text === "90%", "player health bar and text (Forever's default form is the percent)").toBeTruthy();
   expect(player.color[0] === 0.25 && player.color[2] === 0.92, "players get their class color").toBeTruthy();
   expect(player.power === 50 && isTok(addon, player.powerColor, "mana"), "power bar value and mana color").toBeTruthy();
   expect(player.name === "<name>" && !player.watched, "player name; player frame is always shown").toBeTruthy();
@@ -275,7 +275,7 @@ it("unit frames: a party member who goes offline or dies loses the power text, a
   addon.fire("GROUP_ROSTER_UPDATE");
   // The power text's shown state and text, and the health text, of party1's frame.
   const read = () => addon.eval("local f = Vanguard_party1 return { f.powerText:IsShown(), f.powerText:GetText(), f.healthText:GetText() }");
-  expect(read(), "alive: the power number shows").toEqual([true, "300", "400"]);
+  expect(read(), "alive: the power number shows").toEqual([true, "300", "80%"]);
   addon.world.setUnit("party1", { connected: false });
   expect(read().slice(1), "offline: health says Offline, the power text is empty").toEqual(["", "Offline"]);
   addon.world.setUnit("party1", { connected: true, dead: true, hp: 0 });
@@ -756,7 +756,7 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
   expect(text(), "a hidden ghost answer: Dead").toBe("Dead");
   addon.eval("__units.party1.ghost = nil __units.party1.feign = true");
   addon.fire("UNIT_HEALTH", "party1");
-  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
+  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0%");
 });
 
 it("an offline or dead unit's health bar goes dark, an online one keeps its class colour", () => {
