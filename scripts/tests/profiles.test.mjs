@@ -340,6 +340,19 @@ it("a staged hand pick of another spec's profile survives a swap there and back,
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardCharDB.ownProfile }"), "a swap there and back keeps it").toEqual(["Heal", "Heal"]);
 });
+it("H46-4-50 a staged hand pick survives a swap to a spec with its own profile and back to one with none", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Mine = { theme = { accent = { 0.9, 0.1, 0.1, 1 } } }, Heal = { modules = { Bags = false } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("ns.PickProfile('Mine')");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 2 stages its own profile").toBe("Heal");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, ns.LoadingProfileName() }"), "back in spec 1 the hand pick is staged again").toEqual(["Mine", "Mine"]);
+});
 // A character on Default whose spec 2 uses Heal (a module switch that differs when `waits`), logged in as spec 1.
 function offerCharacter(waits) {
   const heal = waits ? "{ modules = { Bags = false } }" : "{}";

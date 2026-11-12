@@ -539,12 +539,14 @@ local function ownTarget()
 end
 
 -- The profile the current spec switches to: its own, else (a spec with no profile of its own) the
--- character's, which also takes back a switch another spec staged. Nil when it stays as it is.
+-- character's, which also takes back a switch another spec staged (the character's is read first: taking the
+-- switch back moves what is selected). Nil when it stays as it is.
 local function specTarget()
   local name = ns.SpecProfile()
   if name then rememberOwn() return name end
+  local own = ownTarget()
   if specStaged() then ns.StageProfile(ns.ProfileName()) end
-  return ownTarget()
+  return own
 end
 
 -- Switches to the current spec's profile: at once mid-session when nothing waits for a reload (ns.SwitchProfileNow),
