@@ -303,13 +303,13 @@ local function backpackButton(frame)
 end
 
 -- Whether the game's gamepad interface is on (InputUtil, where the client has it).
-local function gamepadUI()
+function BG.GamepadUI()
   return type(InputUtil) == "table" and type(InputUtil.IsGamepadUIEnabled) == "function" and InputUtil.IsGamepadUIEnabled() == true
 end
 
 -- Hides the gamepad bar's backpack button while the gamepad interface is off.
 local function hideIdleBackpack(button)
-  if not gamepadUI() then button:Hide() end
+  if not BG.GamepadUI() then button:Hide() end
 end
 
 -- The gamepad bar's backpack button, kept hidden without a gamepad (as its other bag buttons are): the client

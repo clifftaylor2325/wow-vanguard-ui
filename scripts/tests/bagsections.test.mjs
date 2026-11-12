@@ -310,6 +310,17 @@ it("a switch under Bars and bags gives back the plain combined bag at once, and 
   expect(addon.eval("return ns.FrameState('vgSections')[ContainerFrameCombinedBags] == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
 });
 
+it("with the game's gamepad interface on the combined bag is the game's plain grid, and the sections return when it is off", () => {
+  // Forever's InputUtil.IsGamepadUIEnabled (Blizzard_SharedXML/Mainline/InputUtil.lua:11) is what BG.GamepadUI reads, on every layout.
+  const addon = loggedIn(BAG_ENV + "__pad = true InputUtil = { IsGamepadUIEnabled = function() return __pad end }");
+  addon.eval("__openBag()");
+  expect([headers(addon), spot(addon, "b0s1"), height(addon)], "gamepad on: the game's grid and height, no headers").toEqual([[], [343, 75], 186]);
+  addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:Hide() __openBag()");
+  expect([headers(addon), spot(addon, "b0s1")], "and it stays plain as the bag fills and opens").toEqual([[], [343, 75]]);
+  addon.eval("__pad = false ContainerFrameCombinedBags:Hide() __openBag()");
+  expect([headers(addon).length, spot(addon, "b0s1"), height(addon)], "gamepad off again: the sections are back").toEqual([7, [12, 160], 233]);
+});
+
 it("a client without the bag window's layout calls keeps the plain combined bag", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.eval("ContainerFrameCombinedBags:Show()");
