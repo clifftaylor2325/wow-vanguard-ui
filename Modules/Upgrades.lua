@@ -43,9 +43,25 @@ local function perClass(weights)
   end
 end
 
--- Weights kept per kind become weights kept per class (perClass).
+-- Drops every entry of t that is not a table, so a reader may index each one left.
+local function tablesOnly(t)
+  for key, value in pairs(t) do if type(value) ~= "table" then t[key] = nil end end
+end
+
+-- A saved table kept class -> kind -> stats (weights, caps) with a table at both levels: anything else there (a
+-- hand-edited file or a crafted string) is dropped, so the defaults stand in. Only this client's classes are
+-- opened: a per-kind entry of the other client's stays whole.
+local function cleanByClass(byClass)
+  if type(byClass) ~= "table" then return end
+  tablesOnly(byClass)
+  for class in pairs(W.CLASSES) do tablesOnly(byClass[class] or {}) end
+end
+
+-- Weights kept per kind become weights kept per class (perClass); wrong-shaped weights and caps are dropped.
 ns.Migrate("Upgrades", function(saved)
   if type(saved.weights) == "table" then perClass(saved.weights) end
+  cleanByClass(saved.weights)
+  cleanByClass(saved.caps)
 end)
 
 -- A change smaller than this (per cent) isn't shown.

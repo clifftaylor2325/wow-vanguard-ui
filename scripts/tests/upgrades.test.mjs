@@ -391,3 +391,22 @@ it("H45-22-81 upgrades: per-kind weights next to a class key that is not a table
   const addon = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { strength = { STR = 2 }, WARRIOR = 'x' } } } }" });
   expect(addon.eval("local w = ns.GetModule('Upgrades').settings.weights return { tostring(w.strength), w.WARRIOR.strength.STR }"), "the class key is rebuilt, the kind moved").toEqual(["nil", 2]);
 });
+
+// H45-40-204 and H45-40-R1: a saved weights or caps table with a non-table at the class or the kind level (a hand-edited
+// file or a crafted profile string) is cleaned on load, so every reader answers and the defaults stand in.
+it("H45-40-204 upgrades: wrong-shaped saved weights and caps do not break the readers", () => {
+  // Whether each reader answered (did not raise) for a warrior on a profile with these Upgrades settings.
+  const run = (saved) => {
+    const addon = loggedIn('__wfgWorld.units.player.class = "WARRIOR"', { savedVariables: `VanguardDB.profiles = { Default = { Upgrades = ${saved} } }` });
+    return addon.eval(`local UP = ns.GetModule('Upgrades') local out = {}
+      for _, f in ipairs({ function() return UP.Current() end, function() return UP.Cap('strength', 'HIT') end, function() return UP.SetCap('strength', 'HIT', 5) end, function() return UP.Own('strength') and 1 end, function() return UP.SetOwn('strength', { STR = 2 }) end }) do
+        out[#out + 1] = pcall(f) end return out`);
+  };
+  const all = [true, true, true, true, true];
+  expect({
+    weightsClass: run("{ weights = { WARRIOR = 7 } }"),
+    weightsKind: run("{ weights = { WARRIOR = { strength = 7, tank = 7 } } }"),
+    capsClass: run("{ caps = { WARRIOR = 7 } }"),
+    capsKind: run("{ caps = { WARRIOR = { strength = 7, tank = 7 } } }"),
+  }).toEqual({ weightsClass: all, weightsKind: all, capsClass: all, capsKind: all });
+});
