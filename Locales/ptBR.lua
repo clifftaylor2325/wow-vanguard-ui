@@ -1472,7 +1472,6 @@ L["Pick the reward that sells for most"] = "Escolher a recompensa que vende por 
 L["Picked feeds show in the broker strip along the top edge (up to {count}, in the order picked)."] = "Os feeds escolhidos aparecem na faixa de broker na borda superior (até {count}, na ordem escolhida)."
 L["Pinned (Shift-click in the tracker)"] = "Fixada (Shift-clique no rastreador)"
 L["Pinned (the quest you track on the map)"] = "Fixada (a missão que você acompanha no mapa)"
-L["Pixel-perfect"] = "Pixel-perfect"
 L["Pixel-perfect (sharpest)"] = "Pixel-perfect (mais nítido)"
 L["Pixel-perfect scale"] = "Escala pixel-perfect"
 L["Place new spells as I learn them"] = "Colocar feitiços novos quando eu os aprender"

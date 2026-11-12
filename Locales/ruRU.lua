@@ -1472,7 +1472,6 @@ L["Pick the reward that sells for most"] = "Выбирать награду с �
 L["Picked feeds show in the broker strip along the top edge (up to {count}, in the order picked)."] = "Выбранные ленты видны на полосе брокеров вдоль верхнего края (до {count}, в порядке выбора)."
 L["Pinned (Shift-click in the tracker)"] = "Закреплено (Shift-щелчок в списке отслеживания)"
 L["Pinned (the quest you track on the map)"] = "Закреплено (задание, отслеживаемое на карте)"
-L["Pixel-perfect"] = "Попиксельный"
 L["Pixel-perfect (sharpest)"] = "Попиксельный (самый четкий)"
 L["Pixel-perfect scale"] = "Попиксельный масштаб"
 L["Place new spells as I learn them"] = "Ставить новые заклинания, когда я их изучаю"
