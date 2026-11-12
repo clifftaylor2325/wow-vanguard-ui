@@ -37,7 +37,7 @@ local function perClass(weights)
   for kind, changes in pairs(legacy) do
     weights[kind] = nil
     for class in pairs(W.ClassesOf(kind)) do
-      weights[class] = weights[class] or {}
+      if type(weights[class]) ~= "table" then weights[class] = {} end
       weights[class][kind] = weights[class][kind] or ns.Copy(changes)
     end
   end

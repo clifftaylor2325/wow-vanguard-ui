@@ -1236,3 +1236,10 @@ it("A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking
   addon.update(0.4);
   expect(flash(addon, 1), "and the next").toBe(true);
 });
+
+it("H45-22-80 bars: a DataBars layout stamp that is not a number is migrated, not an error that stops the module", () => {
+  for (const layout of ["'x'", "{}"]) {
+    const addon = loggedIn(ACTIONS_ENV, { savedVariables: `VanguardDB.profiles = { Default = { DataBars = { layout = ${layout}, width = 476 } } }` });
+    expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('DataBars').settings.layout, ns.GetModule('DataBars').settings.width }"), `layout ${layout}`).toEqual([true, 2, 478]);
+  }
+});

@@ -386,3 +386,8 @@ it("H45-33-102: on Retail a wand is one-handed and a gun is two-handed, by the i
   const pct = (n) => retail.eval(`local p = ns.GetModule('Upgrades').Compare(__link(${n})) return p and math.floor(p + 0.5) or false`);
   expect([pct(27), pct(28)], "a wand (5 dps) against the main hand alone (3 dps); a gun (6 dps) against both hands (3 dps and a 2 str shield); Retail weighs dps at 0.5").toEqual([67, -14]);
 });
+
+it("H45-22-81 upgrades: per-kind weights next to a class key that is not a table still move to the class", () => {
+  const addon = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { strength = { STR = 2 }, WARRIOR = 'x' } } } }" });
+  expect(addon.eval("local w = ns.GetModule('Upgrades').settings.weights return { tostring(w.strength), w.WARRIOR.strength.STR }"), "the class key is rebuilt, the kind moved").toEqual(["nil", 2]);
+});
