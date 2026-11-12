@@ -236,15 +236,75 @@ it("events: a game handler that fails inside a failing handler keeps the record,
   expect(out, "the record is kept once, the second handler ran, the broken handler was called once").toEqual({ ran: 1, n: 1, text: expect.stringMatching(/TEST-ONLY first$/), calls: 1 });
   expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
 });
-it("events: a guarded call that passes inside the game's handler keeps the loop guard set, so a failing one after it is not forwarded", () => {
-  expectErrors("TEST-ONLY outer: x");
+it("events: a guarded call that fails inside the game's handler is kept, and the handler is not entered again for it", () => {
+  expectErrors("TEST-ONLY outer: x", "TEST-ONLY handler bad: y");
   const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function()
       __calls = __calls + 1
       if __calls > 5 then return end
       ns.Try("TEST-ONLY handler ok", function() end)
       ns.Try("TEST-ONLY handler bad", error, "y")
     end end`);
-  expect(addon.eval('ns.ClearErrors() __calls = 0 ns.Try("TEST-ONLY outer", error, "x") return { __calls, #ns.errors }'), "one error: the handler is entered once, and only the outer error is kept").toEqual([1, 1]);
+  expect(addon.eval('ns.ClearErrors() __calls = 0 ns.Try("TEST-ONLY outer", error, "x") return { __calls, #ns.errors }'), "one error: the handler is entered once, and both errors are kept").toEqual([1, 2]);
+});
+// Each kept error as "text xcount", with " quiet" when only ns.Quiet kept it, into a Lua local `texts`.
+const KEPT_TEXTS = `local texts = {} for _, e in ipairs(ns.errors) do texts[#texts + 1] = e.text .. " x" .. e.count .. (e.quiet and " quiet" or "") end`;
+it("events: guarded calls that fail inside the game's handler are each kept once and counted, with no chat line of their own", () => {
+  expectErrors("TEST-ONLY outer: x", "TEST-ONLY bad 1: y", "TEST-ONLY bad 2: y", "TEST-ONLY bad 3: y");
+  const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function()
+      __calls = __calls + 1
+      for i = 1, 3 do ns.Try("TEST-ONLY ok", function() end) ns.Try("TEST-ONLY bad " .. i, error, "y", 0) end
+    end end`);
+  const out = addon.eval(`ns.ClearErrors() __calls = 0
+    local said, chat = 0, ns.Chat
+    ns.Chat = function(...) said = said + 1 return chat(...) end
+    ns.Try("TEST-ONLY outer", error, "x", 0)
+    ns.Chat = chat
+    ${KEPT_TEXTS}
+    return { calls = __calls, said = said, kept = texts, loud = ns.LoudErrorCount() }`);
+  expect(out, "the handler is entered once, every failure is kept and counted by the badge, chat hears only the outer one").toEqual({ calls: 1, said: 1, kept: ["TEST-ONLY outer: x x1", "TEST-ONLY bad 1: y x1", "TEST-ONLY bad 2: y x1", "TEST-ONLY bad 3: y x1"], loud: 4 });
+});
+it("events: a repeating handler that fails only inside the game's handler is paused with its error kept", () => {
+  expectErrors("TEST-ONLY outer: x", "TEST-ONLY hook: TEST-ONLY hook broke");
+  const addon = loggedIn(`__calls = 0 __bad = function() error("TEST-ONLY hook broke", 0) end
+    geterrorhandler = function() return function()
+      __calls = __calls + 1
+      ns.Try("TEST-ONLY skin ok", function() end)
+      ns.TryRepeating("TEST-ONLY hook", __bad)
+    end end`);
+  const out = addon.eval(`ns.ClearErrors() __calls = 0
+    for i = 1, 12 do ns.Try("TEST-ONLY outer", error, "x", 0) end
+    ${KEPT_TEXTS}
+    local paused = {} for _, p in ipairs(ns.paused) do paused[#paused + 1] = p.where end
+    return { calls = __calls, kept = texts, paused = paused }`);
+  expect(out, "the handler is entered once per outer error, the hook's ten failures are kept, then it is paused").toEqual({ calls: 12, kept: ["TEST-ONLY outer: x x12", "TEST-ONLY hook: TEST-ONLY hook broke x10"], paused: ["TEST-ONLY hook"] });
+});
+it("events: a game handler that fails after a kept inner failure is not kept itself, and the guard is off for the next error", () => {
+  expectErrors("TEST-ONLY outer: x", "TEST-ONLY inner: y", "TEST-ONLY next: z");
+  const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function()
+      __calls = __calls + 1
+      ns.Try("TEST-ONLY inner", error, "y", 0)
+      error("TEST-ONLY handler broke")
+    end end`);
+  const out = addon.eval(`ns.ClearErrors() __calls = 0
+    ns.Try("TEST-ONLY outer", error, "x", 0)
+    ns.Try("TEST-ONLY next", error, "z", 0)
+    ${KEPT_TEXTS}
+    return { calls = __calls, kept = texts }`);
+  expect(out, "the handler is entered for both errors, its own failure is under no Vanguard site").toEqual({ calls: 2, kept: ["TEST-ONLY outer: x x1", "TEST-ONLY inner: y x2", "TEST-ONLY next: z x1"] });
+});
+it("events: a guarded call that fails inside the game's handler while ns.Report forwards is kept, and a quiet entry turns loud", () => {
+  expectErrors("TEST-ONLY site: reported", "TEST-ONLY q: y");
+  const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function()
+      __calls = __calls + 1
+      ns.Try("TEST-ONLY q", error, "y", 0)
+    end end`);
+  const out = addon.eval(`ns.ClearErrors() __calls = 0
+    ns.Quiet("TEST-ONLY q", error, "y", 0)
+    local before = ns.LoudErrorCount()
+    ns.Report("TEST-ONLY site", "reported")
+    ${KEPT_TEXTS}
+    return { calls = __calls, before = before, kept = texts, loud = ns.LoudErrorCount() }`);
+  expect(out, "the quiet entry is counted again and the badge counts it now").toEqual({ calls: 1, before: 0, kept: ["TEST-ONLY q: y x2", "TEST-ONLY site: reported x1"], loud: 2 });
 });
 it("secret checks: the client's check is chosen once and called bare, with no pcall per value", () => {
   const addon = loggedIn(`__asked = 0
