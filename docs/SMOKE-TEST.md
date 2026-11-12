@@ -6559,21 +6559,21 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
 
-### 35.1 Raid auras
+### 35.1 Raid debuffs and HoTs
 
-- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Do: in a group (or a raid), with Raid frames on, switch **Raid debuffs and HoTs** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
 - Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.2 Raid healing
+### 35.2 Raid heals and aggro
 
-- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid heals and aggro** off under `/vg` → Modules, then on again.
 - Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.3 Raid status
+### 35.3 Raid marks
 
-- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid marks** off under `/vg` → Modules, then on again. Run a ready check while it is off.
 - Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
@@ -6621,14 +6621,14 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 
 ### 35.11 Chat, quest and HUD modules switch off live (A4-2f)
 
-- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet, Quest dialog, Quest log, Cooldown keys, Cooldown glow, Data bars, Broker strip, HUD text and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
-- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet and HUD text print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after Data bars goes off.]
+- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet the game, Quest dialog, Quest log, Cooldown Manager keys, Cooldown Manager glow, XP and reputation, Broker strip, HUD text font and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
+- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet the game and HUD text font print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after XP and reputation goes off.]
 - If it fails, paste: the `/vg errors` text and the module's name.
 
-### 35.12 Data bars off: the game's own status bars, as the game would show them (review M6)
+### 35.12 XP and reputation off: the game's own status bars, as the game would show them (review M6)
 
-- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **Data bars** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with Data bars still off and look again. Switch Data bars on, watch one faction, switch Data bars off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
-- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with Data bars off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when Data bars goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
+- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **XP and reputation** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with XP and reputation still off and look again. Switch XP and reputation on, watch one faction, switch XP and reputation off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
+- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with XP and reputation off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when XP and reputation goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
 - If it fails, paste: a screenshot of the bottom of the screen right after the switch and one after the reload, your level, whether a faction is watched, and `/vg errors`.
 
 ## When you are done
