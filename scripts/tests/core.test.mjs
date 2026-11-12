@@ -839,3 +839,14 @@ it("a question asked over the reload offer comes to the front (H45-21-51)", () =
     return { Vanguard_Question:GetFrameLevel(), Vanguard_Reload:GetFrameLevel() }`);
   expect(levels[0], "the newest question is above the offer").toBeGreaterThan(levels[1]);
 });
+
+it("a dropdown shows the choice picked from it (H45-21-50)", () => {
+  const addon = loggedIn();
+  const text = addon.eval(`ns.Feedback.Open("feature")
+    local dd = Vanguard_Feedback.feature.area
+    dd:GetScript("OnClick")(dd)
+    local item = Vanguard_Menu.items[2]
+    item:GetScript("OnClick")(item)
+    return dd.text:GetText()`);
+  expect(text, "the box no longer reads Choose one").not.toBe("Choose one");
+});
