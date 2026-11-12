@@ -1159,14 +1159,34 @@ local function tokenEvent(token)
   return "UNIT_NAME_UPDATE", token
 end
 
--- Fires the events for the fields that changed on a unit.
-local function fireUnitChanges(token, fields)
+-- The power type a power or combo change names: UNIT_POWER_UPDATE's payload is unitTarget, powerType, neither
+-- nilable (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, UnitPowerUpdate). A power change names the
+-- unit's own power (true here: UnitPowerType's token).
+local POWER_TYPE_OF = { power = true, combo = "COMBO_POINTS" }
+
+-- The power type a changed field names on unit u, or nil when its event names none.
+local function powerTypeOf(field, u)
+  local named = POWER_TYPE_OF[field]
+  if named == true then return u.ptypeName or "MANA" end
+  return named
+end
+
+-- Fires an event for a unit, with the power type after the token when the change names one.
+local function fireForUnit(event, token, powerType)
+  if powerType == nil then return stub.fire(event, token) end
+  stub.fire(event, token, powerType)
+end
+
+-- Fires the events for the fields that changed on a unit u: one per event, and one per power type for a power
+-- event (a power and a combo change in one call fire UNIT_POWER_UPDATE twice, each with its type).
+local function fireUnitChanges(token, fields, u)
   local fired = {}
   for field in pairs(fields) do
-    local event = UNIT_EVENTS[field]
-    if event and not fired[event] then
-      fired[event] = true
-      stub.fire(event, token)
+    local event, powerType = UNIT_EVENTS[field], powerTypeOf(field, u)
+    local key = event and event .. " " .. tostring(powerType)
+    if key and not fired[key] then
+      fired[key] = true
+      fireForUnit(event, token, powerType)
     end
   end
 end
@@ -1180,7 +1200,7 @@ function world.setUnit(token, fields)
   for k, v in pairs(fields or {}) do u[k] = v end
   world.units[token] = u
   refreshWatches()
-  if new then stub.fire(tokenEvent(token)) else fireUnitChanges(token, fields or {}) end
+  if new then stub.fire(tokenEvent(token)) else fireUnitChanges(token, fields or {}, u) end
   return u
 end
 

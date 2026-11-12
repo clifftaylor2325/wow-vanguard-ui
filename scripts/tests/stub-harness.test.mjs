@@ -538,3 +538,17 @@ it("the deprecation fallbacks CVar reads on in the world that defines the fallba
     type(ChatFrame_AddMessageEventFilter) }`);
   expect(out).toEqual(["1", true, "function", "function"]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:4552-4561
+// (UnitPowerUpdate): the payload is unitTarget, powerType, neither nilable.
+it("a world power or combo change fires UNIT_POWER_UPDATE with its power type, one event per type", () => {
+  const addon = createAddon();
+  const out = addon.eval(`__wfgWorld.setUnit("player", { ptypeName = "MANA" })
+    local seen, f = {}, CreateFrame("Frame")
+    f:RegisterEvent("UNIT_POWER_UPDATE")
+    f:SetScript("OnEvent", function(_, _, unit, powerType) seen[#seen + 1] = unit .. " " .. tostring(powerType) end)
+    __wfgWorld.setUnit("player", { power = 10, combo = 2 })
+    table.sort(seen)
+    return seen`);
+  expect(out).toEqual(["player COMBO_POINTS", "player MANA"]);
+});
