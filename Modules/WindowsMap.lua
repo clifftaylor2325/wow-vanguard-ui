@@ -394,11 +394,11 @@ local function headerGlyph(header)
   vgHeaderGlyph[header]:SetTexture(T.Icon(headerCollapsed(header) and "Right" or "Down"))
 end
 
--- One zone header in the theme: the game's yellow bar (the collapseExpand atlas) and its button's art faded, the chevron.
+-- One zone header in the theme: the game's yellow bar (the collapseExpand atlas) and its button's art faded, the chevron made first so the fade spares it.
 local function skinZoneHeader(header)
-  T.FadeRegions(header)
-  T.FadeRegions(header.CollapseButton)
   headerGlyph(header)
+  T.FadeRegions(header, { [vgHeaderGlyph[header]] = true })
+  T.FadeRegions(header.CollapseButton)
 end
 
 -- The pictures a quest title row keeps (its quest type tag, storyline mark and task icon): the rest of its art is faded.
