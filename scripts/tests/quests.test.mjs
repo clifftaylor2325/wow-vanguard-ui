@@ -2917,3 +2917,25 @@ it("H46-27-51: a quest that asks for a currency shows it on the progress page, w
   addon.fire("QUEST_PROGRESS");
   expect([names(), addon.eval("return Vanguard_QuestDialog.captions.used")], "a page whose only required card is a currency keeps the caption").toEqual([["TEST-ONLY Marks"], 1]);
 });
+// H46-27-50: QuestFrameProgressItems_Update (Mainline/QuestFrame.lua) draws no required item while C_QuestOffer.GetHideRequiredItems()
+// is true, and skips a slot with IsQuestItemHidden(i) ~= 0; the shown ones keep their slot number (SetID(i)).
+it("H46-27-50: a quest's hidden required items are not on the progress page", () => {
+  const addon = loggedIn(`
+    C_QuestOffer = C_QuestOffer or {}
+    IsQuestItemHidden = function(i) return i == 2 and 1 or 0 end
+    __wfgWorld.npc = { quest = { title = "TEST-ONLY Hand", questID = 91900, progress = "x", complete = true,
+      required = { { name = "TEST-ONLY Shown" }, { name = "TEST-ONLY Hidden" }, { name = "TEST-ONLY Third" } } } }`);
+  addon.fire("QUEST_PROGRESS");
+  // The cards drawn, as name#slot.
+  const cards = () => Object.values(addon.eval("local f, out = Vanguard_QuestDialog, {} for i = 1, f.cards.used do out[i] = f.cards[i].name:GetText() .. '#' .. f.cards[i].item.index end return out"));
+  expect(cards(), "the hidden slot is skipped, the others keep their slot numbers").toEqual(["TEST-ONLY Shown#1", "TEST-ONLY Third#3"]);
+  addon.eval("IsQuestItemHidden = function() return { __secret = true } end");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards().length, "a secret answer keeps every slot").toBe(3);
+  addon.eval("IsQuestItemHidden = nil");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards().length, "a client without the call keeps every slot").toBe(3);
+  addon.eval("C_QuestOffer.GetHideRequiredItems = function() return true end");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards(), "a quest that hides them all shows none").toEqual([]);
+});

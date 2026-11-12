@@ -269,9 +269,21 @@ local function requiredCurrency(i)
   return { kind = "required", index = i, currency = true, name = info.name, texture = info.texture, quality = info.quality, count = ns.PlainNumber(info.requiredAmount) }
 end
 
+-- The required items the game draws (QuestFrameProgressItems_Update): none while the quest hides them all, and not a
+-- slot it hides (IsQuestItemHidden not 0); each keeps its slot number. A missing call or a secret answer keeps the slot.
+local function requiredItems()
+  local out = {}
+  if ns.IsTrue(ns.CallIf(C_QuestOffer, "GetHideRequiredItems")) then return out end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestItems")) or 0 do
+    local hidden = ns.PlainNumber(ns.CallIf(_G, "IsQuestItemHidden", i))
+    if hidden == nil or hidden == 0 then out[#out + 1] = slotCard("required", i) end
+  end
+  return out
+end
+
 -- What the progress page asks you to hand in: the items, then the currencies (the game's "Required items").
 function QD.Required()
-  local out = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems"))
+  local out = requiredItems()
   for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestCurrencies")) or 0 do out[#out + 1] = requiredCurrency(i) end
   return out
 end
