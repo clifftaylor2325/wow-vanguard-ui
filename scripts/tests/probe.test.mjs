@@ -187,6 +187,18 @@ it("H45-34-102 /vg probe fight: a fight under 3 s gets no 3 s block, and a secon
   addon.advance(1);
   expect(blocks(), "its own timer at 3 s").toBe(1);
 });
+it("H45-D-G3A3 a short armed fight and an unarmed one within 3 s: the first report gets no 3 s block", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(1);
+  setCombat(addon, false);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(2.5);
+  expect(addon.eval("local n = 0 for _, l in ipairs(ns.Probe.fight) do if l:find('3 s in', 1, true) then n = n + 1 end end return n"), "the kept report is the first fight's: no block from the second").toBe(0);
+});
 it("H45-34-103 the probe's Enum lines go in value order (10 after 5) and the restriction types by name", () => {
   const addon = loggedIn(PROBE_ENV + "Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5, Ten = 10 }");
   addon.slash("probe");

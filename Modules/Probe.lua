@@ -1031,14 +1031,16 @@ end
 local function fightDone()
   VanguardDB.probe = VanguardDB.probe or {}
   VanguardDB.probe.fight = P.fight
+  P.running = nil
   ns.Chat(L["Probe: the fight report is ready. /vg probe last shows it after the main report."])
 end
 
 -- The three-second snapshot of one fight: only while that fight is still on, so a short fight, or the next one,
--- never gets an out-of-combat block labelled "3 s in".
+-- never gets an out-of-combat block labelled "3 s in". P.running is cleared when the fight's report is saved, so
+-- a second fight starting within the 3 s cannot add its block to the first one's saved report.
 local function threeSecondSnap(fight)
   return function()
-    if ns.InCombat() and P.fight == fight then snap("3 s in") end
+    if ns.InCombat() and P.running == fight then snap("3 s in") end
   end
 end
 
@@ -1046,6 +1048,7 @@ end
 local function fightStarted()
   if not P.armed then return end
   P.armed, P.fight = false, {}
+  P.running = P.fight
   snap("start")
   if C_Timer and C_Timer.After then C_Timer.After(3, ns.Guard("probe fight snapshot", threeSecondSnap(P.fight))) end
   ns.AfterCombat(fightDone, "probefight")
