@@ -2596,33 +2596,23 @@ local function chatTab(i)
   return tab
 end
 
--- Makes window i and its tab the first time its number is used.
-local function makeChatWindow(i)
-  if _G["ChatFrame" .. i] then return end
-  _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
-  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
-  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
-end
-
 -- The last chat window number, Constants.ChatFrameConstants.MaxChatWindows (ChatConstantsDocumentation.lua:214, both
 -- clients).
 world.maxChatWindows = 10
 
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
--- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
--- used, and shown each time; returns the window and its number. Past the last window number there is none to take,
+-- so a closed window's number goes to the next one made. All ten windows exist from login (chatFrames), so it shows
+-- the one it takes and its tab; returns the window and its number. Past the last window number there is none to take,
 -- and it returns nothing (FCF_GetNextOpenChatWindowIndex stops at Constants.ChatFrameConstants.MaxChatWindows;
 -- Mainline/FloatingChatFrame.lua FCF_OpenNewWindow, forever :707-710 and :755, live :522-525 and :570). Two
 -- approximations: "shown" is frame:IsShown() where the game reads the saved shown flag, and the harness never docks a
 -- window it opens (the game does, FloatingChatFrame.lua:752).
 function FCF_OpenNewWindow(name)
   local i = 3
-  while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
+  while i <= world.maxChatWindows and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
   if i > world.maxChatWindows then return end
   world.chatWindows[i] = name
-  NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  makeChatWindow(i)
   _G["ChatFrame" .. i]:Show()
   _G["ChatFrame" .. i .. "Tab"]:Show()
   return _G["ChatFrame" .. i], i
@@ -2690,15 +2680,20 @@ function world.addChatBubble(text, opts)
   return #world.bubbles
 end
 
--- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
+-- The game's chat windows: ChatFrame1 to ChatFrame10 with tabs and edit boxes, all declared in
+-- Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml (forever :709-762, live :698-751) and so there from login,
+-- each listed in CHAT_FRAMES by its OnLoad. NUM_CHAT_WINDOWS is Constants.ChatFrameConstants.MaxChatWindows, 10
+-- (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:18). Windows 3 to 10 start hidden, as on a fresh character
+-- whose only windows are General and Combat Log.
 local function chatFrames()
   local new = stub.newWidget
-  NUM_CHAT_WINDOWS, CHAT_FRAMES = 2, { "ChatFrame1", "ChatFrame2" }
+  NUM_CHAT_WINDOWS, CHAT_FRAMES = world.maxChatWindows, {}
   for i = 1, NUM_CHAT_WINDOWS do
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")
-    chatTab(i)
-    new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    local tab, box = chatTab(i), new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    if i > 2 then f:Hide() tab:Hide() box:Hide() end
+    CHAT_FRAMES[i] = "ChatFrame" .. i
   end
   SELECTED_CHAT_FRAME = ChatFrame1
 end

@@ -458,6 +458,26 @@ it("FCF_OpenNewWindow gives the window and its number up to the tenth window, th
   expect(out).toEqual(["ChatFrame3 3", "ChatFrame10 10", 0]);
 });
 
+// ChatFrame1 to ChatFrame10 are declared in Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml (forever :709-762,
+// live :698-751), so all ten exist from login, each with its tab and edit box, and NUM_CHAT_WINDOWS is
+// Constants.ChatFrameConstants.MaxChatWindows (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:18;
+// ChatConstantsDocumentation.lua:214, Value 10). A fresh character shows only General and Combat Log.
+it("the world starts with the game's ten chat windows, 3 to 10 hidden", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local shown = {}
+    for i = 1, 10 do shown[i] = _G["ChatFrame" .. i]:IsShown() and _G["ChatFrame" .. i .. "Tab"]:IsShown() end
+    return { NUM_CHAT_WINDOWS, #CHAT_FRAMES, CHAT_FRAMES[10], ChatFrame10EditBox ~= nil, ChatFrame11 == nil, shown[1], shown[2], shown[3], shown[10] }`);
+  expect(out).toEqual([10, 10, "ChatFrame10", true, true, true, true, false, false]);
+});
+
+// With all ten windows made at login, FCF_OpenNewWindow shows the first hidden one from 3 instead of making a frame.
+it("FCF_OpenNewWindow shows a window that was there from login", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local before = ChatFrame3 local f = FCF_OpenNewWindow("TEST-ONLY")
+    return { f == before, f:IsShown(), ChatFrame3Tab:IsShown(), #CHAT_FRAMES, NUM_CHAT_WINDOWS }`);
+  expect(out).toEqual([true, true, true, 10, 10]);
+});
+
 // Blizzard_SharedXMLBase/CallbackRegistry.lua (both clients, identical): RegisterCallback raises for a non-string
 // event, then for a non-function func, before the owner rules (:112-117); TriggerEvent (:187-188) and
 // UnregisterCallback (:225-226) raise for a non-string event.

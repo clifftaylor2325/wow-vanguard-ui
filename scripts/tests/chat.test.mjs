@@ -613,9 +613,9 @@ it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is 
   const addon = loggedIn(UI_ENV + CLICK_LUA + CHAT_DOCK_ENV);
   // The six alphas, the second tab's alpha and how often the game's updater ran.
   const alphas = () => addon.eval("local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { out, ChatFrame2Tab:GetAlpha(), __alphaCalls }");
-  expect(alphas(), "on by default: all six are 1, each window's tab was updated").toEqual([[1, 1, 1, 1, 1, 1], 1, 2]);
+  expect(alphas(), "on by default: all six are 1, each window's tab was updated").toEqual([[1, 1, 1, 1, 1, 1], 1, 10]);
   addon.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
-  expect(alphas(), "off: the game's own values and fade come back, floored at 0.6 (the bar is visible at rest, so 0.2 is too faint)").toEqual([[1, 0.6, 1, 1, 0.6, 0.6], 0.6, 4]);
+  expect(alphas(), "off: the game's own values and fade come back, floored at 0.6 (the bar is visible at rest, so 0.2 is too faint)").toEqual([[1, 0.6, 1, 1, 0.6, 0.6], 0.6, 20]);
   addon.eval('ns.Options.Show("chat") __click("Keep chat tabs visible")');
   expect([addon.eval("return VanguardDB.profiles.Default.Chat.tabsVisible"), alphas()[0][5]], "the Chat page's switch turns it back on at once").toEqual([true, 1]);
   const bare = loggedIn(UI_ENV);
