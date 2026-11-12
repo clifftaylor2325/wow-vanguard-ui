@@ -199,6 +199,26 @@ it("H45-10-51 answering Sell after the merchant closed keeps the closed line, an
   expect([chatHas(addon, /Selling 2 stack/), chatHas(addon, /Nothing sold: the merchant is closed\./)]).toEqual([false, true]);
 });
 
+it("H45-32-R1 Sell answered after a listed stack left the bags counts and prices only what sold", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell 159");
+  addon.eval("__bag[6] = false");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "only the stack still there is used").toEqual([1]);
+  expect([chatHas(addon, /Selling 1 stack\(s\) for 0s 50c/), chatHas(addon, /Selling 2 stack/)]).toEqual([true, false]);
+});
+
+it("H45-32-R1 Sell answered after every listed stack left the bags sells nothing and claims no sale", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell 159");
+  addon.eval("__bag[1] = false __bag[6] = false");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "nothing used").toEqual({});
+  expect([chatHas(addon, /Selling \d/), chatHas(addon, /Nothing sold: those items are no longer in your bags\./)]).toEqual([false, true]);
+});
+
 it("/vg sell with a random-suffix link sells only that variant; an item ID sells every one", () => {
   const addon = loggedIn(BULK_ENV + `
     __wfgWorld.items[15001] = { name = "TEST-ONLY Heavy Cloak", sellPrice = 50 }

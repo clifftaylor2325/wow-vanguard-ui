@@ -224,13 +224,22 @@ local function notSold()
   ns.Chat(trading() and L["Nothing sold: the merchant shows its Buyback tab."] or L["Nothing sold: the merchant is closed."])
 end
 
+-- Sells the shown rows that still hold what was shown and says so for those only; with none left it sells
+-- nothing and says that, since the stacks were sold by hand, moved or used while the question was open.
+local function sellShown(rows)
+  local left = stillShown(rows)()
+  if #left == 0 then return ns.Chat(L["Nothing sold: those items are no longer in your bags."]) end
+  MC.SellRows(stillShown(rows), MC.RETRIES)
+  ns.Chat(soldLine(left))
+end
+
 -- Asks (a "danger" question, so Enter alone never answers it), then sells the rows that were shown and
 -- no others; says what the Buyback tab can undo (the last 12 stacks).
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
   ns.Irreversible({ question = MC.SellQuestion(rows), yes = L["Sell"], still = MC.Selling, gone = notSold,
-    act = function() MC.SellRows(stillShown(rows), MC.RETRIES) ns.Chat(soldLine(rows)) end })
+    act = function() sellShown(rows) end })
   return true
 end
 
