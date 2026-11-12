@@ -6771,7 +6771,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.791 Escape closes the options window like its close button (H46-23-4; WoW Forever and Retail)
 
-- Do: With Interface sounds on, open /vg and press Escape. [Client: Forever and Retail.]
+- Do: With Interface sounds on, open the options window (`/vg`), then press Escape. [Client: Forever and Retail.]
 - Expect: The same close sound and short fade as the close button.
 - If it fails, paste: whether you heard the sound and saw the fade.
 
