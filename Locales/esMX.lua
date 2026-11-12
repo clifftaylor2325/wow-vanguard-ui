@@ -1835,7 +1835,7 @@ L["Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale a
 L["Shield"] = "Escudo"
 L["Shield HUD look: frames point away from you"] = "HUD Escudo: marcos que apuntan lejos de ti"
 L["Shield corners on unit frames"] = "Esquinas de escudo en los marcos de unidad"
-L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."] = "Escudo: cada marco de unidad es un escudo que apunta lejos de ti, con el escudo de armas en un raíl entre tu marco y el de tu objetivo. Liso: marcos planos."
+L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."] = "Escudo: cada marco de unidad es un escudo que apunta lejos de ti, con el emblema en un raíl entre tu marco y el de tu objetivo. Sencillo: marcos planos."
 L["Shields (white, after incoming heals)"] = "Escudos (en blanco, tras las sanaciones entrantes)"
 L["Shields on your frames"] = "Escudos en tus marcos"
 L["Shift"] = "Mayús"
