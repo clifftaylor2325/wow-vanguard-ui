@@ -414,3 +414,12 @@ it("prep: the card is clamped to the screen, so a long list never pushes its tit
   expect(rows(addon).length, "a dozen Keep-stocked items short").toBeGreaterThanOrEqual(12);
   expect(addon.eval("return ns.GetModule('InstancePrep').card.__testClamped"), "the card keeps itself on the screen").toBe(true);
 });
+
+it("prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)", () => {
+  const addon = loggedIn(PREP_ENV + CLICK_LUA + BUFF_ENV + spellNames(BUFF_NAMES_DE), { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true");
+  buff(addon, "Haste of the Camp");
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /Deine 1 Stärkungszauber und die Instanzvorbereitung, für die jeder zählt:/), "the count line").toBe(true);
+  expect(chatHas(addon, /Haste of the Camp -> keine Prüfung/), "a buff no check counts it for").toBe(true);
+});
