@@ -145,10 +145,17 @@ local function tooltipRows()
   return append(append(tooltipSpotRows(), tooltipUnitRows()), tooltipItemRows())
 end
 
--- Your characters: level, money, rested XP and time played of each one remembered here (Modules/Inventory.lua).
+-- The text of line i of the Your characters overview, read again each time the page refreshes ("" for a character
+-- forgotten since the page was built).
+local function altLineAt(i)
+  return function() return ns.GetModule("Inventory").AltLines()[i] or "" end
+end
+
+-- Your characters: level, money, rested XP and time played of each one remembered here (Modules/Inventory.lua). One
+-- live line per character known when the page is built, then the total.
 local function altRows()
   local rows = { { "header", L["Your characters"] } }
-  for _, line in ipairs(ns.GetModule("Inventory").AltLines()) do rows[#rows + 1] = { "text", line } end
+  for i = 1, #ns.GetModule("Inventory").AltLines() do rows[#rows + 1] = { "text", altLineAt(i) } end
   rows[#rows + 1] = { "text", L["Read at login, as your bags change and at logout; the bank while it's open. /vg alts <name> lists one character's items."], "note" }
   return rows
 end

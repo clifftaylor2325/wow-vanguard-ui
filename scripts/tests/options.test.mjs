@@ -633,6 +633,21 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("options: the Your characters lines on Game windows follow the record when the window opens again (H45-23-50)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const total = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.GetText and w.source and w.source[1] == "text" and type(w:GetText()) == "string" and w:GetText():find("^All together") then out[#out + 1] = w:GetText() end end
+    return out[#out]`);
+  addon.eval('ns.Options.Show("windows")');
+  const first = total();
+  addon.eval('local r = ns.GetModule("Inventory").Mine() r.money = (r.money or 0) + 123450000');
+  addon.eval('Vanguard_Options:Hide() ns.Options.Show("windows")');
+  expect(total(), "the total follows the record").not.toBe(first);
+  expect(total(), "and is the overview's own line").toBe(addon.eval('local t = ns.GetModule("Inventory").AltLines() return t[#t]'));
+  addon.eval('local IV = ns.GetModule("Inventory") for name in pairs(IV.Characters()) do IV.Characters()[name] = nil end Vanguard_Options:Hide() ns.Options.Show("windows")');
+  expect(addon.eval("return #ns.errors"), "a character forgotten since the page was built leaves an empty line, no error").toBe(0);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
