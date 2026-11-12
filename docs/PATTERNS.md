@@ -5,18 +5,19 @@ The canonical shape of the things CLAUDE.md's rules ask for, each in ten lines o
 ## A module
 
 ```lua
--- Party pets and targets (off until you turn it on): what the player sees, in one paragraph.
+-- The game's always-on extras, put where they don't clutter the screen: what the player sees, in one paragraph.
 local ADDON, ns = ...
 
-local PX = ns.Module("PartyExtras", { defaults = { show = false } })
+local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true } })
 
--- Module entry point (Core/Modules.lua): built out of combat, and only when switched on.
-function PX.Enable(settings)
-  if settings.show then ns.OutOfCombat(build) end
+-- Module entry point (Core/Modules.lua): out of combat, since some of these hold secure buttons.
+function MS.Enable(settings)
+  MS.settings = settings
+  ns.OutOfCombat(function() buildStrip() end)
 end
 ```
 
-`ns.Module` registers the name and defaults; `Enable(settings)` gets the profile's table with defaults filled in. Functions the module exports hang on `PX`; everything else is `local`. The file is listed in `Vanguard.toc` after any module it calls `ns.GetModule` on at load time.
+`ns.Module` registers the name and defaults (the real `MenuStrip` has more of them and builds more in `Enable`); this one declares neither `live` nor `reload`, so it waits for a reload. `Enable(settings)` gets the profile's table with defaults filled in. Functions the module exports hang on `MS`; everything else is `local`. The file is listed in `Vanguard.toc` after any module it calls `ns.GetModule` on at load time.
 
 ## A module that goes on and off live
 
@@ -159,9 +160,12 @@ Leave room for a translation about a third longer than the English. A label on a
 ## A setting that changes shape
 
 ```lua
--- 0.6.0: `showPets` became `pets` (a number of rows, 0 for off).
-ns.Migrate("PartyExtras", function(saved)
-  if saved.showPets ~= nil then saved.pets, saved.showPets = saved.showPets and 4 or 0, nil end
+-- Every profile saved before "Automatic" held "dps", the old default, whether the player picked it or not:
+-- once, it becomes Automatic, which still says DPS for a damage dealer.
+ns.Migrate("GroupBoard", function(saved)
+  if saved.autoRole then return end
+  if saved.role == "dps" then saved.role = nil end
+  saved.autoRole = true
 end)
 ```
 
