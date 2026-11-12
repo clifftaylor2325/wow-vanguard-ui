@@ -143,7 +143,15 @@ function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end
 -- CVars live in world.cvars as strings, as the client keeps them.
 function GetCVar(name) return world.cvars[name] end
-function SetCVar(name, value) world.cvars[name] = tostring(value) end
+-- Stores a CVar's value as a string (C_CVar.SetCVar's value is a cstring, CVarDocumentation.lua:131-148).
+local function storeCVar(name, value) world.cvars[name] = tostring(value) end
+-- The client's SetCVar (Blizzard_SharedXMLBase/CvarUtil.lua:9-15, both clients): a boolean becomes "1" or "0".
+function SetCVar(name, value)
+  if type(value) == "boolean" then return storeCVar(name, value and "1" or "0") end
+  return storeCVar(name, value and tostring(value) or nil)
+end
+local worldSetCVar = SetCVar
+-- Whether a CVar is on.
 function GetCVarBool(name) local v = world.cvars[name] return v == "1" or v == true end
 -- A C_ namespace function that calls the global of the same name at call
 -- time, so a test that replaces (or removes) the global changes both.
@@ -155,7 +163,14 @@ local function viaGlobal(name)
 end
 world.viaGlobal = viaGlobal
 
-C_CVar = { GetCVar = viaGlobal("GetCVar"), SetCVar = viaGlobal("SetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+local globalSetCVar = viaGlobal("SetCVar")
+C_CVar = { GetCVar = viaGlobal("GetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+-- Stores the value as it comes (a boolean handed to C_CVar.SetCVar is not modelled: what the client does with it is
+-- game-only), or calls the global SetCVar when a test has replaced it.
+function C_CVar.SetCVar(name, value)
+  if _G.SetCVar == worldSetCVar then return storeCVar(name, value) end
+  return globalSetCVar(name, value)
+end
 -- Bitfield CVars (CVarDocumentation.lua): world.cvarBits[name][index] by lua index, as the
 -- client keeps them packed in the CVar's string. nil for a CVar the client lacks.
 world.cvarBits = { nameplateInfoDisplay = {} }

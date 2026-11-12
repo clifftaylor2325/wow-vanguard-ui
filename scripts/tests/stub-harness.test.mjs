@@ -316,3 +316,16 @@ it("the level colour uses the client's bands and colours and answers its highlig
     return { UnitLevel("player"), o, select("#", GetCreatureDifficultyColor(56)), lit.g }`);
   expect(out).toEqual([60, ["65:1,0.1,0.1", "63:1,0.5,0.25", "56:1,0.82,0", "55:0.25,0.75,0.25", "53:0.25,0.75,0.25", "52:0.5,0.5,0.5"], 2, 1]);
 });
+
+// Blizzard_SharedXMLBase/CvarUtil.lua:9-15 (forever and live, Blizzard_SharedXMLBase.toc:23): the global SetCVar turns
+// a boolean into "1" or "0" before C_CVar.SetCVar; a test's own SetCVar still hears C_CVar.SetCVar.
+it("the global SetCVar stores a boolean as 1 or 0, and C_CVar.SetCVar reaches a test's own SetCVar", () => {
+  const addon = createAddon();
+  const out = addon.eval(`SetCVar("TEST_ONLY_ON", true) SetCVar("TEST_ONLY_OFF", false) C_CVar.SetCVar("TEST_ONLY_RAW", 2)
+    local plain = { GetCVar("TEST_ONLY_ON"), GetCVarBool("TEST_ONLY_ON"), GetCVar("TEST_ONLY_OFF"), GetCVar("TEST_ONLY_RAW") }
+    local orig, heard = SetCVar, nil
+    SetCVar = function(name) heard = name end
+    C_CVar.SetCVar("TEST_ONLY_HEARD", "1") SetCVar = orig
+    return { plain, heard }`);
+  expect(out).toEqual([["1", true, "0", "2"], "TEST_ONLY_HEARD"]);
+});
