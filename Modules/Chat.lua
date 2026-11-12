@@ -1237,9 +1237,12 @@ do
   -- The size set in Edit Mode and not saved yet ({ width, height }), and the one the last revert threw away.
   local pending, reverted
 
-  -- Notes the size Edit Mode just gave the main window (only a window Vanguard places).
+  -- Notes the size Edit Mode just gave the main window (only a window Vanguard places), and only when both numbers
+  -- are plain: while its geometry is secret nothing is noted, so a save or a new layout keeps the size from before.
   local function noteSize(_, systemFrame)
-    if systemFrame == _G.ChatFrame1 and CH.settings.place then pending = { ns.PlainNumber(systemFrame:GetWidth()), ns.PlainNumber(systemFrame:GetHeight()) } end
+    if systemFrame ~= _G.ChatFrame1 or not CH.settings.place then return end
+    local width, height = ns.PlainNumber(systemFrame:GetWidth()), ns.PlainNumber(systemFrame:GetHeight())
+    pending = width and height and { width, height } or nil
   end
 
   -- Edit Mode saved its layouts: the noted size is kept while the window still has it (a switch to another layout

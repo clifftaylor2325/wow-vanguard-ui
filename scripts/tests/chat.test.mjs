@@ -2980,6 +2980,25 @@ it("H46-40-401 a new layout made from the one being edited (Save on a preset) ke
   expect(kept(imported), "the drag it threw away is not kept").toEqual([600, 300]);
 });
 
+// The main window in Edit Mode with its geometry held secret, as the client may: Vanguard reads no size from it.
+const secretInEditMode = () => {
+  const addon = inEditMode();
+  addon.eval("__wfgWorld.holdSecret(ChatFrame1, 'Anchoring')");
+  return addon;
+};
+it("H46-D-G3A1 a chat size saved in Edit Mode while the main window's geometry is secret keeps the size from before", () => {
+  const addon = secretInEditMode();
+  drag(addon, 700);
+  addon.eval("EditModeManagerFrame:SaveLayouts()");
+  expect([kept(addon), addon.eval("return #ns.errors")], "the kept size, and no errors").toEqual([[600, 300], 0]);
+});
+it("H46-D-G3A1 a new layout made in Edit Mode while the main window's geometry is secret keeps the size from before", () => {
+  const addon = secretInEditMode();
+  drag(addon, 720);
+  addon.eval('EditModeManagerFrame:MakeNewLayout({ 720, 300 }, 1, "Mine", false)');
+  expect([kept(addon), addon.eval("return #ns.errors")], "the kept size, and no errors").toEqual([[600, 300], 0]);
+});
+
 it("H46-29-1 chat window size: after a reload the kept size comes back over the layout's, and the General sliders' size is the one kept", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
     savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
