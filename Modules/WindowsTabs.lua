@@ -568,6 +568,14 @@ local function dressRowArt(row)
   iconSlot(row)
 end
 
+-- A side pane row's label: the text colour when the game left it gold (no colour given, or its own gold); a colour the
+-- game chose is kept, and the label's remembered token dropped so a theme refresh does not repaint over it.
+local function colorRowLabel(row, color)
+  if type(row.Label) ~= "table" then return end
+  if color == nil or color == _G.NORMAL_FONT_COLOR then return colorText(row.Label, "text") end
+  if row.Label.GetTextColor then T.ColorRGB(row.Label, row.Label:GetTextColor()) end
+end
+
 -- Hooks one row-adding method of a side pane: the row it added is dressed, and its label goes to the text colour
 -- when the game left it gold (no colour given, or the game's own gold).
 local function hookRows(pane, method, at)
@@ -576,7 +584,7 @@ local function hookRows(pane, method, at)
     local row, color = lastRow(pane), at > 0 and (select(at, ...)) or nil
     if not row then return end
     dressRowArt(row)
-    if color == nil or color == _G.NORMAL_FONT_COLOR then colorText(row.Label, "text") end
+    colorRowLabel(row, color)
   end))
 end
 

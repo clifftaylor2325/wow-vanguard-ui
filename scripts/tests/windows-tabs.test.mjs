@@ -1332,3 +1332,14 @@ it("tabs: a tab whose anchor offsets or checked state the client hides keeps its
     local y = tab.__points.TOPLEFT.y
     return { issecretvalue(y), y, #ns.errors }`), "the anchor is left as the game set it, no secret handed to SetPoint").toEqual([false, -20, 0]);
 });
+
+// Blizzard_TokenUI/Camelot/Blizzard_TokenUI.lua:551 (gold) and :555 (GREEN_FONT_COLOR) on the same pooled wrapped row
+// (CharacterFrame.lua:874-903 AcquireRow, AddWrappedRow).
+it("keeps the game's colour on a reused side pane row through a theme refresh", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  addon.eval(`tok = TokenFrame.DetailFrame first = tok:AddWrappedRow("Loss", NORMAL_FONT_COLOR)`);
+  expect(addon.eval("return __text(first.Label)")).toBe(true);
+  addon.eval(`tok:ResetRows() second = tok:AddWrappedRow("Account", GREEN_FONT_COLOR) ns.Theme.RefreshText()`);
+  expect(addon.eval("return { second == first, second.Label.__textColor[1], second.Label.__textColor[2] }")).toEqual([true, 0.1, 1]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
