@@ -134,3 +134,11 @@ it("the command line refuses to import a one-row CSV over a locale that has tran
   expect(run).toThrow(/import a full export/);
   expect(fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8")).toBe(before);
 });
+
+it("i18n: the yes labels of the Undo and Abandon confirms (a danger button beside No) are never the language's Cancel, No or Close", () => {
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    const refusals = ["Cancel", "No", "Close"].map((key) => entries.get(key));
+    for (const yes of ["Undo", "Abandon"]) expect(refusals, `${locale}: "${yes}" is "${entries.get(yes)}"`).not.toContain(entries.get(yes));
+  }
+});
