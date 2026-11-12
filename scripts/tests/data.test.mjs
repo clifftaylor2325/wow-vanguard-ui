@@ -195,3 +195,9 @@ it("a watched faction whose name the client hides shows that name alone on the b
   const text = addon.eval("local t = Vanguard_repbar.text:GetText() return { issecretvalue(t), Vanguard_repbar:IsShown() }");
   expect([text, addon.eval("return #ns.errors")], "the bar shows, its text the hidden name, and nothing raised").toEqual([[true, true], 0]);
 });
+
+it("the reputation bar's percent is written in the client's language, as the XP bar's is", () => {
+  const german = loggedIn(DATA_ENV, { client: '__wfgWorld.locale = "deDE"' });
+  expect(bars(german).repText).toBe("TEST-ONLY Faction  1.2K / 6.0K (20 %)");
+  expect(bars(loggedIn(DATA_ENV)).repText).toBe("TEST-ONLY Faction  1.2K / 6.0K (20%)");
+});
