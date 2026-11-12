@@ -10,6 +10,21 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.6", groups = {
+    { module = "Bags", label = "Bags and town", items = {
+      { text = "A profession bag's empty slots get their own section (\"Empty: herb bag\"), so the combined bag no longer counts them as room for anything." },
+      { text = "Train all runs once and its summary matches what you learned; Mail's Take all leaves game master mail." },
+      { text = "The auction house's Cancel question names the item, and Post waits for the price check." },
+    } },
+    { module = "Other", label = "Modules and options", items = {
+      { text = "Many modules switch off and on at once under Modules, with no reload; a switch made in a fight applies when it ends." },
+      { text = "Options search finds what you changed, Undo setup puts your UI scale back, and settings that need a reload carry the reload tag." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Fixes from a 30-wave bug hunt: unit frames, auras and nameplates, HUD layouts, key setup and click casting, quests, waypoints and chat tabs." },
+      { text = "Auto Shot shows its ammo on WoW Forever, and declining strangers' group invites works again." },
+    } },
+  } },
   { version = "0.9.5", groups = {
     { module = "UnitFrames", label = "The Shield look", items = {
       { text = "Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.", page = "general", row = "HUD look" },
