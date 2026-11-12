@@ -1142,10 +1142,24 @@ function methods:AddAuraGroup(key, filter, opts)
   self:UpdateAllAuras()
 end
 
--- The unit and whether the container is on; either change reads the auras again.
+-- The container's unit; a change reads the auras again.
 function methods:SetUnit(unit) self.__unit = unit self:UpdateAllAuras() end
 function methods:GetUnit() return self.__unit end
-function methods:SetEnabled(on) self.__enabled = on self:UpdateAllAuras() end
+
+-- SetEnabled: an aura container switches on or off and reads its auras again; every other kind that lists it (a
+-- button, an edit box, a slider) enables or disables itself through Enable or Disable, OnEnable, OnDisable and the
+-- label's font included (SimpleButtonAPIDocumentation.lua:336 SetEnabled(enabled), both clients). Plain calls, no tail
+-- call: wow-taint.lua's wrappers read the caller's stack frame.
+function methods:SetEnabled(on)
+  if self.__kind == "AuraContainer" then
+    self.__enabled = on
+    self:UpdateAllAuras()
+  elseif on then
+    self:Enable()
+  else
+    self:Disable()
+  end
+end
 
 -- Aura buttons: the regions the addon hands the client, recorded.
 function methods:SetIcon(t) self.__icon = t end

@@ -36,6 +36,24 @@ it("buttons, check buttons, sliders and edit boxes take OnEnable and OnDisable h
   expect(runs).toEqual({ Button: "off on", CheckButton: "off on", Slider: "off on", EditBox: "off on" });
 });
 
+// SetEnabled(enabled) is the button's own switch (Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua:336,
+// both clients; Blizzard_SharedXML/Shared/Frame/MainMenuFrameTemplates.lua:44 calls it on a button); the aura
+// container's SetEnabled is its own (the switched-off container case below).
+it("SetEnabled turns a button, check button, edit box or slider off and on, with its OnDisable and OnEnable hooks", () => {
+  const addon = createAddon();
+  const states = addon.eval(`local out = {}
+    for _, kind in ipairs({ "Button", "CheckButton", "EditBox", "Slider" }) do
+      local w, seen = CreateFrame(kind), {}
+      w:HookScript("OnDisable", function() seen[#seen + 1] = "off" end)
+      w:HookScript("OnEnable", function() seen[#seen + 1] = "on" end)
+      w:SetEnabled(false) local off = w:IsEnabled()
+      w:SetEnabled(true) out[kind] = { off, w:IsEnabled(), table.concat(seen, " ") }
+    end
+    return out`);
+  const on = [false, true, "off on"];
+  expect(states).toEqual({ Button: on, CheckButton: on, EditBox: on, Slider: on });
+});
+
 it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
   const addon = createAddon();
   const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}

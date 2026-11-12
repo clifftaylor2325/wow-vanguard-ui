@@ -29,6 +29,20 @@ it("documented protected methods are blocked on a secure button in combat and ru
   expect(addon.eval("return TestSecure:GetFrameLevel()"), "the level moved").toBe(77);
 });
 
+// SetEnabled is IsProtectedFunction on a button (Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua:336,
+// both clients): blocked in a fight even now that it runs Enable and Disable underneath.
+it("SetEnabled on a secure button is blocked in combat, once, and leaves the button as it was", () => {
+  const addon = createAddon();
+  addon.eval('CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate")');
+  addon.world.combat(true);
+  asAddon(addon, "TestSecure:SetEnabled(false)");
+  expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetEnabled on the protected frame TestSecure"]);
+  expect(addon.eval("return TestSecure:IsEnabled()")).toBe(true);
+  addon.world.combat(false);
+  asAddon(addon, "TestSecure:SetEnabled(false)");
+  expect(addon.eval("return { #__wfgStub.violations, TestSecure:IsEnabled() }"), "out of combat it lands").toEqual([0, false]);
+});
+
 // A game frame with a field the game set (layoutIndex), as test code stands in for the game's frames.
 const GAME_FRAME = 'CreateFrame("Frame", "TestGameFrame", UIParent).layoutIndex = 3';
 
