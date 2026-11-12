@@ -400,9 +400,9 @@ end
 -- Recording ------------------------------------------------------------------------------------
 
 -- Starts recording a situation's override: the base is kept, that situation's override shows, and
--- what you change until SI.StopRecording is kept. Refused in combat (like unlocking). True when started.
+-- what you change until SI.StopRecording is kept. Refused in combat (like unlocking) and while the module is off. True when started.
 function SI.StartRecording(name)
-  if not SI.LABELS[name] or ns.InCombat() then return false end
+  if not SI.LABELS[name] or ns.InCombat() or not running() then return false end
   if SI.recording then SI.StopRecording() end
   SI.RestoreBase()
   SI.applied, SI.base, SI.recording = nil, SI.Snapshot(), name
@@ -482,6 +482,7 @@ SI.UNKNOWN = ns.ClientData({
 -- Starts recording from a command or the options, and says how it went.
 local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
+  if not running() then return ns.Chat(SI.OFF_TEXT) end
   if not SI.StartRecording(name) then return ns.Chat(L["Recording can't start in a fight. Try again after it."]) end
   ns.Chat(ns.Format(L["Recording for {situation}: move frames (/vg unlock) and change settings, then /vg situation stop."], { situation = SI.LABELS[name] }))
   ns.Options.RebuildPage("situations")

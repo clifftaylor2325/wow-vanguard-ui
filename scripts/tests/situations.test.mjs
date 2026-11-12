@@ -614,3 +614,24 @@ it("situations: a call made with the profile's own values that raises still gets
   raid(addon, false);
   expect([savedSpot(addon), dps(addon)], "leaving the raid still puts the base back").toEqual([null, false]);
 });
+
+it("H46-30-1 situations: with the module off under Modules, Record for refuses and a logout leaves the profile as an ordinary change", () => {
+  const off = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = { Situations = false } } } }\n`;
+  const addon = loggedIn("", { savedVariables: off });
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  expect(addon.eval("return ns.GetModule('Situations').recording"), "no recording starts").toBe(null);
+  expect(chatHas(addon, /Situations is off under Modules/), "the chat says why").toBe(true);
+  addon.eval("ns.SetMoverScale('infostrip', 1.25)");
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("local p = VanguardDB.profiles.Default return { p.positions.infostrip.scale, tostring(p.Situations and p.Situations.overrides and p.Situations.overrides.raid) }"), "an ordinary profile change, no override").toEqual([1.25, "nil"]);
+});
+
+it("H46-30-1 situations: switched off live, the same refusal holds", () => {
+  const addon = situated();
+  addon.eval('ns.SetModuleEnabled("Situations", false)');
+  addon.advance(0.5);
+  expect(addon.eval("return ns.GetModule('Situations').StartRecording('raid')"), "StartRecording refuses").toBe(false);
+  addon.slash("situation record raid");
+  expect(addon.eval("return ns.GetModule('Situations').recording")).toBe(null);
+});
