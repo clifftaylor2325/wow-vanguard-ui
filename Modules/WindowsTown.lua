@@ -166,8 +166,9 @@ GW.Add("town", { "PetStableFrame" }, GW.SkinStable)
 
 -- Trainer -------------------------------------------------------------------------------------------
 
--- A skill row's text parts, in the theme font: the name, the requirements and the name's side note.
-local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText" }
+-- A skill row's text parts, in the theme font: the name, the requirements, the name's side note and (Forever's
+-- pet skills) the price in training points.
+local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText", "alternateCost" }
 -- The three pieces of a category header row's plate (faded; its label and fold icon stay).
 local TRAINER_PLATE = { "LeftPiece", "RightPiece", "CenterPiece" }
 -- What a skill row keeps of its art: the skill's icon, the lock on it and the grey shade over a skill you cannot learn.

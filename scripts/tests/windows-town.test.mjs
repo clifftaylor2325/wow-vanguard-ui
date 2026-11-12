@@ -200,6 +200,8 @@ const TRAINER_ENV = `${TOWN_READERS}
       row.plate, row.glow = row:CreateTexture(), row:CreateTexture()
       row.GetNormalTexture, row.GetHighlightTexture = function() return row.plate end, function() return row.glow end
       row.name, row.subText, row.nameSubText = __text(row), __text(row), __text(row)
+      -- Forever's pet skills show their price in training points here (ClassTrainerSkillButtonTemplate, Blizzard_TrainerUI.xml:98).
+      row.alternateCost = __text(row)
       row.selectedTex, row.icon, row.lock, row.disabledBG = row:CreateTexture(), row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
       if not sel then row.selectedTex:Hide() end
       row.money = __moneyLine(nil, row)
@@ -239,7 +241,7 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return { __themed(${f}.money.GoldButton.Text), __lit(${f}.trainingPoints.text, "small", "text"), __themed(ClassTrainerStatusBar.rankText), ${f}.ScrollBar.Track:GetRegions():GetAlpha() }`), "the money line, training points and rank text in the theme font, the scroll bar's track faded").toEqual([true, true, true, 0]);
   expect(addon.eval(`local bar = ClassTrainerStatusBar return { bar.__barTexture ~= nil, bar.__barColor[1] == ns.Theme.RGB("accent") }`), "the rank bar a flat track with the accent fill").toEqual([true, true]);
   expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { row.plate:GetAlpha(), row.glow:GetAlpha(), row.selectedTex:GetAlpha(), row.icon:GetAlpha(), row.lock:GetAlpha(), row.disabledBG:GetAlpha() }`), "a row there already: plates and strip faded, icon, lock and shade kept").toEqual([0, 0, 0, 1, 1, 1]);
-  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { __themed(row.name), __themed(row.subText), __themed(row.nameSubText), __themed(row.money.CopperButton.Text) }`), "its texts and price in the theme font").toEqual([true, true, true, true]);
+  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { __themed(row.name), __themed(row.subText), __themed(row.nameSubText), __themed(row.money.CopperButton.Text), select(2, row.alternateCost:GetFont()) == ns.Theme.RoleSize("small") }`), "its texts and price in the theme font, the training points price in the small role (its colour stays the game's)").toEqual([true, true, true, true, true]);
   expect(addon.eval(`local r = ${f}.ScrollBox.rows return { ns.Theme.RowParts(r[1]).rail:IsShown(), ns.Theme.RowParts(r[2]).rail:IsShown() }`), "the chosen skill shows the selected look, the other does not").toEqual([true, false]);
   expect(addon.eval(`return ns.Theme.RowParts(${f}.skillStepButton) ~= nil`), "the profession step above the list is a row too").toBe(true);
   addon.eval(`local box = ${f}.ScrollBox local skill, head = __row(false), __row(false, true)
