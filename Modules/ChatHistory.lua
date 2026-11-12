@@ -146,12 +146,15 @@ function CHH.Forget(frame, fallback)
   if index then CHH.Store()[index] = nil end
 end
 
--- Follows every permanent chat window (through the scope's gates), and the game closing one: that watch is installed
--- once a session and stays, since forgetting a closed window's lines is right whether or not the module runs.
+-- Follows every permanent chat window (through the scope's gates).
 function CHH.Watch(scope)
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i, scope) end
-  ns.OnChatWindowClosed("history", CHH.Forget)
 end
+
+-- The game closing a chat window, watched from load whether or not the module ever runs (it may be switched off since
+-- login), since forgetting a closed window's lines is always right; CHH.Forget reads only this character's store.
+-- FCF_Close is the game's own (Blizzard_ChatFrameBase, loaded before any addon).
+ns.OnChatWindowClosed("history", CHH.Forget)
 
 -- Restoring -----------------------------------------------------------------------------------
 

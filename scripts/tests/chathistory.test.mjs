@@ -16,6 +16,10 @@ const session = (on = true) => {
   if (on) addon.slash("history on");
   return addon;
 };
+// FCF_Close as the client has it before any addon loads (forever
+// Interface/AddOns/Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua:1766, a base addon of the UI), so the
+// history's close watch, installed as its file loads, finds it.
+const CLOSE_CLIENT = "FCF_Close = function() end";
 // The main window's and the second window's lines.
 const lines = (addon, i = 1) => Object.values(addon.eval(`return ChatFrame${i}.__messages or {}`));
 // The yes/no question: whether it shows, and its text.
@@ -43,7 +47,7 @@ it("chat history: off until switched on; nothing is saved, and nothing comes bac
 });
 
 it("chat history: closing a tab drops its saved lines, so the next tab to take that window number starts empty", () => {
-  const addon = loggedIn(`${CLOCK} FCF_Close = function() end`);
+  const addon = loggedIn(CLOCK, { client: CLOSE_CLIENT });
   addon.slash("history on");
   addon.eval(`ChatFrame1:AddMessage("main") ChatFrame2:AddMessage("trade") VanguardCharDB.chatHistory[3] = { "1|ffffff|loot" }`);
   addon.eval("ChatFrame2.__frameID = 2 FCF_Close(ChatFrame2) FCF_Close(DEFAULT_CHAT_FRAME) FCF_Close(nil, { GetID = function() return 3 end }) FCF_Close(nil) FCF_Close({})");
@@ -253,7 +257,7 @@ it("chat history: saved data from an older version (a string where a table goes,
 });
 
 it("H44-19-R4 chat history: a tab closed while the module is switched off still loses its saved lines", () => {
-  const addon = loggedIn(`${CLOCK} FCF_Close = function() end`);
+  const addon = loggedIn(CLOCK, { client: CLOSE_CLIENT });
   addon.slash("history on");
   addon.eval(`ChatFrame2.__frameID = 2 ChatFrame2:AddMessage("old tab line")`);
   expect(addon.eval("return #(VanguardCharDB.chatHistory[2] or {})"), "saved while on").toBe(1);
@@ -268,5 +272,19 @@ it("H46-29-R1 chat history: /vg history counts only real lists, so a damaged sav
   expect(chatHas(addon, /Saved chat lines: 1, in windows: 1\./), "only the list is counted").toBe(true);
   addon.slash("history clear");
   expect(question(addon), "the clear question counts the same").toEqual([true, "Forget all saved chat lines (lines: 1, windows: 1)? This can't be undone."]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H46-29-50 chat history: a tab closed with the module switched off since login still loses its saved lines", () => {
+  const addon = loggedIn("", {
+    client: CLOSE_CLIENT,
+    savedVariables: `VanguardDB.profiles.Default = { modules = { ChatHistory = false }, ChatHistory = { on = true } }
+VanguardCharDB.chatHistory = { [2] = { "1790000000|ffffff|old tab line" } }`,
+  });
+  addon.eval("ChatFrame2.__frameID = 2 FCF_Close(ChatFrame2)");
+  expect(addon.eval("return #(VanguardCharDB.chatHistory[2] or {})"), "closed while off from login: dropped").toBe(0);
+  addon.eval("ns.SetModuleEnabled('ChatHistory', true)");
+  addon.eval("ChatFrame3.__frameID = 3 VanguardCharDB.chatHistory[3] = { '1790000000|ffffff|x' } FCF_Close(ChatFrame3)");
+  expect(addon.eval("return #(VanguardCharDB.chatHistory[3] or {})"), "and after the module starts").toBe(0);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
