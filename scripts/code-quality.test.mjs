@@ -444,6 +444,13 @@ const WEAK_GUARDS = [
   `if InCombatLockdown() then return end\n  fn(function() ${SECURE_CALL_LINE} end)`,
   `${SECURE_CALL_LINE}\n  if InCombatLockdown() then return end`,
   `if not ns.InCombat() or x then ${SECURE_CALL_LINE} end`,
+  // H45-2-51: a guard in another branch of the same if, or a check read with the wrong sense.
+  `if x then\n    if InCombatLockdown() then return end\n  else\n    ${SECURE_CALL_LINE}\n  end`,
+  `if x then\n    if InCombatLockdown() then return end\n  elseif y then\n    ${SECURE_CALL_LINE}\n  end`,
+  `if not (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if not (x or ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() == false then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() ~= true then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
@@ -461,6 +468,10 @@ const STRICT_GUARDS = [
   `if not ns.InCombat() then ${SECURE_CALL_LINE} end`,
   `if not InCombatLockdown() and x then\n    ${SECURE_CALL_LINE}\n  end`,
   `if InCombatLockdown() then return elseif x then ${SECURE_CALL_LINE} end`,
+  // H45-2-51: the guard's own else, a guard and call in one else-branch, and a guard before an if whose else calls.
+  `if InCombatLockdown() then return else ${SECURE_CALL_LINE} end`,
+  `if x then\n    fn()\n  else\n    if ns.InCombat() then return end\n    ${SECURE_CALL_LINE}\n  end`,
+  `if ns.InCombat() then return end\n  if x then fn() else ${SECURE_CALL_LINE} end`,
 ];
 
 // H44-25-2: the shapes of a real guard pass.

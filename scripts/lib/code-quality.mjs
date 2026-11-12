@@ -26,9 +26,9 @@
 //      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
 //      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
 //      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
-//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`) whose branch ends in
-//      return and comes before the call in the same blocks of the same function, or a call inside
-//      `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
+//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`, not compared, not in a
+//      negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
+//      branch of an enclosing if) of the same function, or a call inside `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
 // cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
@@ -887,25 +887,59 @@ function firstBranch(tokens, t) {
   return { end: tokens.length, returns };
 }
 
+// The index of the ")" that closes the call of the combat check at words[at] (at itself when it is not called).
+function checkClose(words, at) {
+  if (words[at + 1] !== "(") return at;
+  let depth = 0;
+  for (let k = at + 1; k < words.length; k++) {
+    depth += words[k] === "(" ? 1 : words[k] === ")" ? -1 : 0;
+    if (depth === 0) return k;
+  }
+  return words.length;
+}
+
+// True when a bracket still open at words[head] has `not` in front of it, as in `not (InCombatLockdown())` or
+// `not (a or ns.InCombat())`, though the word right before the check is not `not`.
+function insideNot(words, head) {
+  let open = 0;
+  for (let k = head - 1; k >= 0; k--) {
+    if (words[k] === ")") open++;
+    else if (words[k] === "(" && open > 0) open--;
+    else if (words[k] === "(" && words[k - 1] === "not") return true;
+  }
+  return false;
+}
+
+// True when the word before the check does not give the condition's sense: the check's answer is compared
+// (`InCombatLockdown() == false`; the tokenizer gives `==` and `~=` as single characters) or it stands in a negated
+// bracket (H45-2-51).
+function senseUnclear(words, head, at) {
+  return ["=", "~"].includes(words[checkClose(words, at) + 1]) || insideNot(words, head);
+}
+
 // How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
 // joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
-// `or`), else null.
+// `or`), else null (also when its sense is unclear: compared, or in a negated bracket).
 function combatSense(tokens, a, b) {
   const words = tokens.slice(a, b).map((t) => t.text);
   const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
   if (at < 0) return null;
   const head = words[at - 1] === "." ? at - 2 : at;
+  if (senseUnclear(words, head, at)) return null;
   if (words[head - 1] === "not") return words.includes("or") ? null : "out";
   return words.includes("and") ? null : "in";
 }
 
-// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first.
+// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first. An else or
+// elseif ends one branch and opens the next, so it takes the place of its `if` (a guard in one branch does not count
+// for a call in another).
 function openersAt(tokens, from, i) {
   const open = [];
   for (let k = from; k < i; k++) {
     if (tokens[k].kind !== "word") continue;
     if (LUA_BLOCK_OPEN.has(tokens[k].text)) open.push(k);
     else if (LUA_BLOCK_CLOSE.has(tokens[k].text)) open.pop();
+    else if (tokens[k].text === "else" || tokens[k].text === "elseif") open.splice(-1, 1, k);
   }
   return open;
 }
