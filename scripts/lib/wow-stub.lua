@@ -416,11 +416,11 @@ function methods:SetTexCoord(...) self.__texCoord = { ... } end
 function methods:SetScale(s) self.__scale = s end
 function methods:GetScale() return self.__scale or 1 end
 -- The coordinates SetTexCoord gave, as the client answers them: the four corners ulX, ulY, llX, llY, urX, urY, lrX,
--- lrY (SimpleTextureBaseAPIDocumentation.lua, both clients), from a left, right, top, bottom set too. Nothing before
--- a set: what the client answers for an unset texture is not settled by its source.
+-- lrY (SimpleTextureBaseAPIDocumentation.lua, both clients), from a left, right, top, bottom set too. Never nothing:
+-- Blizzard passes an untouched texture's coordinates straight to SetTexCoord (forever FrameCloneManager.lua:119,
+-- AnchorUtil.lua:374-380, TextureUtil.lua:67); the whole texture before a set is the stub's guess for the numbers.
 function methods:GetTexCoord()
-  local c = self.__texCoord
-  if not c then return end
+  local c = self.__texCoord or { 0, 1, 0, 1 }
   if c[5] == nil then return c[1], c[3], c[1], c[4], c[2], c[3], c[2], c[4] end
   return stub.unpack(c, 1, 8)
 end

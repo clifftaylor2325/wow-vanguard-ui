@@ -261,8 +261,11 @@ it("a frame given a size and stretched between two anchors reports the stretched
 });
 
 // Blizzard_UIPanelTemplates/Shared/UIPanelTemplatesShared.lua:147-151 sets a button's normal and highlight textures and
-// reads each back; SimpleTextureBaseAPIDocumentation.lua's GetTexCoord answers the four corners (both clients).
-it("getters answer what their setter stored, HasScript the kind's script list and IsForbidden false; unset textures stay nil", () => {
+// reads each back; SimpleTextureBaseAPIDocumentation.lua's GetTexCoord answers the four corners (both clients), never
+// nothing: Blizzard hands an untouched texture's coordinates straight back to SetTexCoord (forever
+// Blizzard_SharedMapDataProviders/FrameCloneManager.lua:119, Blizzard_SharedXMLBase/AnchorUtil.lua:374-380,
+// TextureUtil.lua:67). The whole-texture corners for an unset one are the stub's guess.
+it("getters answer what their setter stored, HasScript the kind's script list and IsForbidden false; unset textures stay nil and unset coordinates are the whole texture", () => {
   const addon = createAddon();
   const out = addon.eval(`local b = CreateFrame("Button", nil, UIParent)
     local unset = b:GetNormalTexture() == nil and b:GetHighlightTexture() == nil
@@ -273,8 +276,8 @@ it("getters answer what their setter stored, HasScript the kind's script list an
     local t = b:CreateTexture() t:SetTexCoord(0.1, 0.9, 0.2, 0.8)
     local four = { t:GetTexCoord() }
     return { unset, n:GetObjectType(), first, h:GetDrawLayer(), b:GetNormalTexture() == n, n:GetTexture(), four,
-      b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), b:CreateTexture():GetTexCoord() == nil }`);
-  expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, true]);
+      b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), { b:CreateTexture():GetTexCoord() } }`);
+  expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, [0, 0, 0, 1, 1, 0, 1, 1]]);
 });
 
 // The client runs OnShow when a frame comes into view and OnHide when it leaves it, once each (Blizzard relies on it:
