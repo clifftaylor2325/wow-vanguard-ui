@@ -252,12 +252,6 @@ local function timerRows()
   return rows
 end
 
--- get/set for a raid frame setting the preview (Modules/RaidPreview.lua) shows at once; the real frames take a reload.
-local function previewedSetting(key)
-  local get, set, initial = reloadSetting("RaidFrames", key)
-  return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
-end
-
 -- get/set for the raid tiles' width or height: the real tiles resize at once (out of combat) and so does the preview.
 local function sizeSetting(key)
   local get, set, initial = setting("RaidFrames", key)
@@ -278,14 +272,21 @@ local function stackSetting()
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
 end
 
+-- get/set for a raid frame setting that changes how the grid is laid out (Groups as, Sort by role): the real
+-- frames are laid out again at once, out of combat (in a fight it waits for it to end), and so is the preview.
+local function layoutSetting(key)
+  local get, set, initial = setting("RaidFrames", key)
+  return get, function(v) set(v); ns.GetModule("RaidFrames").ApplyLayout(); ns.RaidPreview.Refresh() end, initial
+end
+
 -- Raid frames: party coverage, sorting, size. The essential rows (Core/OptionsFold.lua) are the ones that lay the
 -- whole feature out or replace the game's.
 local function raidRows()
   return {
     { "header", L["Raid frames"] },
     reloadRow(check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty"))), reloadRow(check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer"))),
-    essential(reloadRow(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole")))),
-    essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
+    essential(check(L["Sort by role (tanks, healers, damage)"], layoutSetting("sortByRole"))),
+    essential({ "cycle", L["Groups as"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, layoutSetting("layout") }),
     essential(check(L["Stack big raids at the left"], stackSetting())), essential(reloadRow(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
     essential({ "slider", L["Width"], raidRange("width"), sizeSetting("width") }),
@@ -298,7 +299,7 @@ local function raidPreviewRows()
   local RP = ns.RaidPreview
   return {
     { "header", L["Preview"] },
-    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width or height shows in the preview and on the real tiles at once (out of combat); sorting and Groups as show in the preview at once, the real frames take a reload. It ends when you join a group, enter combat or reload."] },
+    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width or height shows in the preview and on the real tiles at once (out of combat); sorting and Groups as show in the preview and on the real frames at once (out of combat). It ends when you join a group, enter combat or reload."] },
     { "cycle", L["Preview with sample players"], RP.CHOICES, function() return RP.size end, RP.Set },
   }
 end

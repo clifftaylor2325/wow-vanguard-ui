@@ -888,6 +888,17 @@ function RF.Arrange(n)
   RF.PlaceFor(n)
 end
 
+-- Lays the grid out again for the Groups as and Sort by role settings now, out of combat (in a fight it waits for
+-- it to end): with the layout key cleared, RF.Arrange sets the groups' direction and sorting and the holder's size,
+-- the path a roster change already takes.
+function RF.ApplyLayout()
+  if not RF.header then return end
+  ns.OutOfCombat(function()
+    RF.layoutKey = nil
+    RF.Fit()
+  end, "raidlayout")
+end
+
 -- The movable holder, where the grid starts: one group's size (a column of
 -- five tall, or a row of five wide).
 local function holder(s)

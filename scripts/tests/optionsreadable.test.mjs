@@ -268,7 +268,8 @@ it("hunt H44-13-50: every options row that waits for a reload wears the reload t
   }
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("raid")');
-  expect(addon.eval(`${FIND("Sort by role (tanks, healers, damage)")} return { w ~= nil, w.tag and w.tag.__text }`), "Sort by role wears the tag the window gives a marked row").toEqual([true, "reload"]);
+  expect(addon.eval(`${FIND("Hide the default raid frames")} return { w ~= nil, w.tag and w.tag.__text }`), "Hide the default raid frames wears the tag the window gives a marked row").toEqual([true, "reload"]);
+  expect(addon.eval(`${FIND("Sort by role (tanks, healers, damage)")} return { w ~= nil, w.tag == nil }`), "Sort by role applies at once: no tag").toEqual([true, true]);
 });
 
 it("hunt H44-13-1 and H44-13-R2: searching 'changed' lights the pages that hold a changed setting and dims the rest, with or without a space", () => {
