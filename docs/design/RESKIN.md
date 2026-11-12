@@ -50,10 +50,12 @@ extra button, a second frame to dress). So:
 -- Registers windows for a group. kind: "framed" (skinned now and on every show), "onDemand" (the first
 -- argument is the Blizzard addon that loads them), "popups". skin: a function(frame) or nil for GW.Skin.
 -- Called at file scope by Modules/Windows<Area>.lua; Windows.Enable (PLAYER_LOGIN) reads what was registered.
-function GW.Add(group, kind, names, skin)            -- GW.Add("social", "framed", { "OpenMailFrame" })
-function GW.Add(group, "onDemand", addon, names, skin)  -- GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
+function GW.Add(group, names, skin)                  -- GW.Add("social", { "OpenMailFrame" })
+function GW.AddOnDemand(group, addon, names, skin)    -- GW.AddOnDemand("map", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
 function GW.AddButtons(name, buttonNames)             -- push buttons a window keeps outside Button1-4 (today GW.EXTRA_BUTTONS)
 ```
+
+As built; the kind argument was dropped.
 
 - `GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }`; every
   group is a boolean in `GW.defaults` (`Modules/Windows.lua:16`) and a row under Game windows

@@ -48,7 +48,7 @@ Still not modelled, so a bug of this kind passes every test:
 - `GetTexCoord` and `GetCooldownTimes` have no implementation in the stub.
 - The checks fire only on paths a test drives with a secret. A getter no test feeds a secret is still unproven.
 - Whether the client holds the addon's own textures on a held button, and how long it holds a row, is the model's guess.
-- The test VM implements Lua 5.3; the game runs 5.1. PR #869 (merged) runs the suite on a real Lua 5.1 engine behind `VG_LUA_ENGINE=wasm`.
+- The suite runs on a real Lua 5.1 engine by default (wasm, PR #869; default since 2026-11-11); `VG_LUA_ENGINE=fengari` picks the old Lua 5.3 engine.
 
 Treated as raising, unconfirmed: `secret ~= nil`. Concatenating a secret still raises in the harness though the game allows it.
 

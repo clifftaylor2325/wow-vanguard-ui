@@ -22,7 +22,7 @@ The first login opens the setup wizard: pick a layout (Damage, Tanking or Healin
 ## What Vanguard does on its own
 
 - At a merchant it repairs with your own gold and sells your gray items. Both have a switch in the options (`/vg`).
-- On a character's first login it turns the game's enemy nameplates on, and the combined bags and Cooldown Manager switches follow Vanguard's Bags and Game tools pages.
+- On a character's first login with the game's enemy nameplates off it asks once whether to turn them on, and the combined bags and Cooldown Manager switches follow Vanguard's Bars and bags and Cooldowns pages.
 - Setup can change the game's UI scale, and `/vg graphics apply` changes graphics settings (`/vg graphics undo` puts them back).
 
 These are settings of the game itself, so they stay when you disable Vanguard. To go back, change them in the game's own options (turning Vanguard's Bags module off puts your bag layout back). Key bindings that Vanguard's action bars set are saved with the game's bindings too, and the "Filtered" chat tab the chat filter makes can be closed from its tab menu.

@@ -32,4 +32,4 @@ With a recipe open in the profession window, a Vanguard panel to its right (past
 
 ## Auction prices for other addons
 
-`Vanguard.API.v1` gives other addons this realm and faction's auction prices, vendor prices and disenchant values, tells them when new prices come in, makes and changes shopping lists, and searches the auction house through the Shop card (one search at a time, only while it is open), with the same function names as a widely used auction addon's API so an addon written for it can switch easily. It never posts, buys or cancels. Addon authors: see [docs/API.md](../API.md).
+`Vanguard.API.v1` gives other addons this realm and faction's auction prices, vendor prices and disenchant values, tells them when new prices come in, makes and changes shopping lists, and searches the auction house through the Shopping card (one search at a time, only while it is open), with the same function names as a widely used auction addon's API so an addon written for it can switch easily. It never posts, buys or cancels. Addon authors: see [docs/API.md](../API.md).

@@ -4,7 +4,7 @@
 
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-10-06 against commit `757c0c7` (v0.4.0, after PR #125).
 Design: `docs/design/RESKIN.md` (read it first; §5 there is the inventory every task below points at).
-Repo rules: `CLAUDE.md` applies, except where §0 below overrides it.
+Repo rules: `CLAUDE.md` applies; sections 0 and 10 below are kept as the record and are superseded by it.
 Every `file:line` is as of `757c0c7`; if a line has moved, grep for the identifier quoted next to it.
 
 ---
