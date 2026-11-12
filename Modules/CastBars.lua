@@ -54,7 +54,8 @@ local LAYOUT = {
 CB.MARKED = { target = true, focus = true }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
 CB.LAYOUT = LAYOUT
--- The game's own cast bars (their 12.x names), put away for good while the hideBlizzard setting is on (the default).
+-- The game's own cast bars (their 12.x names), put away for good while the hideBlizzard setting is on (the default)
+-- and your own cast bar is built; with yours unticked, the game's player and pet bars stay.
 local BLIZZARD = { "PlayerCastingBarFrame", "PetCastingBarFrame" }
 -- The art on the game's overlay cast bar (OverlayPlayerCastingBarFrame, CastingBarFrame.xml),
 -- faded by alpha; its finish flash is hidden instead (the game animates the flash's alpha).
@@ -790,7 +791,7 @@ function CB.Enable(settings)
   CB.settings = settings
   local units = createBars(settings)
   CB.FitLook()
-  if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
+  if settings.hideBlizzard and settings.player then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
   CB.SkinOverlay()
   listen(units)
   CB.ApplyRing()
