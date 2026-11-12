@@ -662,6 +662,20 @@ it("options: the Frame to size choice follows the frames you can move when a mod
   expect(addon.eval('ns.Options.Refresh() local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end return last.get() == ns.MoverList()[1].key'), "the picked key that is gone is ignored").toBe(true);
 });
 
+it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const listed = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.label and w.use ~= nil and w.card and ns.Options.RevealRow(w) then out[#out + 1] = w.label.__text end end table.sort(out) return out`);
+  addon.eval('ns.NewProfile("TEST-ONLY Raid") ns.Options.Show("profiles")');
+  expect(listed(), "built with the profiles there are").toEqual(["TEST-ONLY Raid"]);
+  addon.slash("profile new TEST-ONLY Tank");
+  expect(listed(), "/vg profile new: listed at once").toEqual(["TEST-ONLY Raid", "TEST-ONLY Tank"]);
+  addon.eval('ns.DeleteProfile("TEST-ONLY Raid")');
+  expect(listed(), "a deleted profile leaves the list").toEqual(["TEST-ONLY Tank"]);
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(listed(), "Reset profile's backup is listed").toEqual(["Default backup", "TEST-ONLY Tank"]);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");

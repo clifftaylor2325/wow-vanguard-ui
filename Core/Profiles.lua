@@ -24,6 +24,7 @@ function ns.NewProfile(name)
     return false
   end
   VanguardDB.profiles[name] = {}
+  ns.ProfileStagedChanged()
   return true
 end
 
@@ -59,6 +60,7 @@ function ns.DeleteProfile(name)
   end
   VanguardDB.profiles[name] = nil
   if type(VanguardDB.backupOf) == "table" then VanguardDB.backupOf[name] = nil end
+  ns.ProfileStagedChanged()
   return true
 end
 
@@ -229,6 +231,7 @@ function ns.BackupProfile(source)
   VanguardDB.profiles[name] = ownCopy(source == ns.ProfileName() and ns.Profile() or VanguardDB.profiles[source])
   VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
   VanguardDB.backupOf[name] = source
+  ns.ProfileStagedChanged()
   return name
 end
 
