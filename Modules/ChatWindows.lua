@@ -74,11 +74,18 @@ local function remember(frame)
   if type(FCF_SavePositionAndDimensions) == "function" then FCF_SavePositionAndDimensions(frame) end
 end
 
+-- Saves the window's new size: in the game's chat layout, and for the main window (whose size the game's Edit Mode
+-- sets again at every UI load) as the size Chat keeps for this character and puts back.
+local function sized(frame)
+  remember(frame)
+  if frame == _G.ChatFrame1 then ns.GetModule("Chat").KeepSize(widthOf(frame), heightOf(frame)) end
+end
+
 -- get/set for one window's width (its height kept as it is).
 function CW.WidthSetting(frame)
   return function() return widthOf(frame) end, function(v)
     frame:SetSize(v, heightOf(frame))
-    remember(frame)
+    sized(frame)
   end
 end
 
@@ -86,7 +93,7 @@ end
 function CW.HeightSetting(frame)
   return function() return heightOf(frame) end, function(v)
     frame:SetSize(widthOf(frame), v)
-    remember(frame)
+    sized(frame)
   end
 end
 

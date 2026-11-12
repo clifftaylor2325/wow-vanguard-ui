@@ -2844,10 +2844,57 @@ it("chat window size: the first size is each character's own: a new alt on a pro
   expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 188").toEqual([true, [524, 188]]);
 });
 
-it("chat window size: the first size is each character's own: a character that played before keeps the size it has, and the flags stay out of an export", () => {
+it("chat window size: the first size is each character's own: a character that played before keeps its flags, and the flags stay out of an export", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
-  expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
+  expect(addon.eval("return VanguardCharDB.chatSize.sized"), "the profile's old flags are taken as this character's (its size: H46-29-1 below)").toBe(true);
   expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
+});
+
+// TEST-ONLY: ChatFrame1 as the Edit Mode system it is (forever
+// Interface/AddOns/Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml:709 inherits EditModeChatFrameSystemTemplate):
+// applying a layout sets the window to the layout's size, 430 x 170 in the Modern preset
+// (Blizzard_EditMode/Shared/EditModeSystemTemplates.lua EditModeChatFrameSystemMixin:UpdateSystem and
+// UpdateSystemSettingWidth/Height, :2200-2274; Blizzard_EditMode/Mainline/EditModePresetLayouts.lua:502-507). The game
+// applies every setting at each UI load (EditModeSystemMixin:UpdateDirtySettings, :214-223, from
+// EditModeManager.lua EDIT_MODE_LAYOUTS_UPDATED, :193-197) and no longer restores the main window's own saved size
+// (FloatingChatFrame.lua FCF_RestorePositionAndDimensions, :1380-1384).
+const EDIT_MODE_ENV = "ChatFrame1.UpdateSystem = function(self) self:SetSize(430, 170) end";
+
+it("H46-29-1 chat window size: Vanguard's size comes back after Edit Mode applies its layout, and not while Edit Mode is open", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
+    savedVariables: "VanguardDB.profiles = { Default = { Chat = { windowScale = 1.5 } } } VanguardCharDB = { chatSize = { sized = true, shortened = true } }",
+  });
+  expect(size(addon), "a character from before sizes were kept gets its Chat window size choice (Larger) once").toEqual([786, 282]);
+  expect(addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }"), "and that size is kept for it").toEqual([786, 282]);
+  addon.eval("ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "Edit Mode applying a layout: the kept size comes back").toEqual([786, 282]);
+  addon.eval("ns.PausePins(true) ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "with Edit Mode open the layout's size is left alone").toEqual([430, 170]);
+  addon.eval("ns.PausePins(false) ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(size(addon), "a zone change leaves the window as it is").toEqual([600, 300]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H46-29-1 chat window size: after a reload the kept size comes back over the layout's, and the General sliders' size is the one kept", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
+    savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
+  });
+  expect(size(addon), "Edit Mode applied its layout before Vanguard watched: the kept size at login").toEqual([600, 300]);
+  addon.eval("local CW = ns.GetModule('ChatWindows') select(2, CW.WidthSetting(ChatFrame1))(650) select(2, CW.HeightSetting(ChatFrame1))(320) ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "the sliders' size is what comes back").toEqual([650, 320]);
+  addon.eval("local CW = ns.GetModule('ChatWindows') select(2, CW.WidthSetting(ChatFrame2))(300)");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "another window's slider keeps nothing").toBe(650);
+  addon.eval("ns.GetModule('Chat').settings.place = false ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "a window Vanguard does not place keeps the layout's size").toEqual([430, 170]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H46-29-1 chat window size: a damaged kept size is taken as none, and the Chat window size choice is applied once", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV, { savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 'x', height = 300 } }" });
+  expect(size(addon)).toEqual([524, 188]);
+  addon.eval("ns.GetModule('Chat').KeepSize(1, 2) ns.GetModule('Chat').settings = nil ns.GetModule('Chat').KeepSize(3, 4) ns.GetModule('Chat').settings = ns.Settings('Chat', ns.GetModule('Chat').defaults)");
+  expect(addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }"), "nothing is kept while the module is off").toEqual([1, 2]);
 });
 
 it("H27-4-5: the minimap drawer toggle's icon is text at rest and accent under the mouse, and T.Button's hover is kept", () => {
