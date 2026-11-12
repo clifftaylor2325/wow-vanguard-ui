@@ -333,6 +333,11 @@ function ns.ForgetMoverPoint(key)
   if type(p) ~= "table" or next(p) == nil then saved()[key] = nil end
 end
 
+-- Tells the ns.OnLayoutChanged listeners the HUD layout in force; one that fails is reported and the rest still run.
+local function tellLayoutListeners()
+  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
+end
+
 -- Sets the profile's HUD layout ("centered" or nil for the modules' own defaults), forgets the saved spots of the
 -- frames the old and new layouts place (so their spots apply; each keeps its scale, opacity and size), puts every
 -- frame at its spot again, and tells the ns.OnLayoutChanged listeners; one frame or listener that fails is reported
@@ -345,17 +350,18 @@ function ns.SetHudLayout(layout)
     for key in pairs(spots) do ns.ForgetMoverPoint(key) end
   end
   for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
-  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
+  tellLayoutListeners()
 end
 
 -- Puts the frames the HUD layout in force places at their spots again and tells the ns.OnLayoutChanged listeners,
--- after something the layout measures changed (bar 1's width: the keep's spread and the canvas it holds on). Each
--- frame waits for combat to end (the unit frames are secure); nothing to do under Centered.
+-- after something the layout measures changed (the bar stack's width: the keep's spread; the bag and menu bar's:
+-- the canvas it holds on). Each frame waits for combat to end (the unit frames are secure); nothing to do under
+-- Centered.
 function ns.RefitHudLayout()
   local spots = layoutSpots[ns.HudLayout()]
   if not spots then return end
   for key in pairs(spots) do ns.Try("place " .. key, ns.PlaceMover, key) end
-  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
+  tellLayoutListeners()
 end
 
 -- A copy of a default spot ({ point, relPoint, x, y, ... }) raised dy units (a cast bar's spot over a frame that

@@ -153,6 +153,73 @@ it("H46-13-101 the keep's frames move out with the bars' width, after the fight 
   expect([need, addon.eval("return ns.KeepNeed(1920)") - need], "and the canvas the keep needs (1856 at 38: 500 out, clear of the bag and menu bar's 428) grows by twice the spread").toEqual([1856, 2 * spread]);
 });
 
+// H46-B-G3-2: the keep's need reads the bag and menu bar's left edge, and the bar is built after the unit frames
+// (Vanguard.toc: Modules/MenuStrip.lua loads after Modules/UnitFrames.lua) and widens when the game lays its menu out.
+// Where the keep's frames stand against the layout's judgement now (TEST-ONLY reads): whether it holds, the wall
+// shown, your frame's point against ns.MoverPoint's, and your frame's width against its own layout's size.
+const JUDGED_LUA = `local q, want = Vanguard_player.__points.BOTTOM, { ns.MoverPoint("uf_player") }
+  local w = ns.LayoutSize("uf_player") or ns.GetModule("UnitFrames").FrameSize("player")
+  return { ns.LayoutHolds(), Vanguard_Keep ~= nil and Vanguard_Keep:IsShown(), q ~= nil and math.floor(q.x + 0.5) == math.floor(want[3] + 0.5), math.floor(Vanguard_player:GetWidth() + 0.5) == math.floor(w + 0.5) }`;
+
+it("H46-B-G3-2 the keep is judged again when the bag and menu bar is built, widens or is moved: at 1365 wide your frame stands at its Centered spot and size with no wall, and dragged away the keep holds", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UNITS_ENV + UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + MENU_LUA, onLayout("fort"));
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "logged in with the game's menu laid out: the keep doesn't hold, your frame at its Centered spot and size, no wall").toEqual([false, false, true, true]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -200)");
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "the bar dragged out of the corner: the keep holds, your frame at its spot and size, the wall up").toEqual([true, true, true, true]);
+  addon.eval("ns.ResetMovers('menustrip')");
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "reset into the corner: Centered again").toEqual([false, false, true, true]);
+});
+
+it("H46-B-G3-2 the keep is judged again when the game lays its menu out after login, and not in a fight", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UNITS_ENV + UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "__menuButtons(2)", onLayout("fort"));
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "a short menu: the keep holds").toEqual([true, true, true, true]);
+  setCombat(addon, true);
+  addon.eval(MENU_LUA);
+  addon.advance(1);
+  expect(addon.eval("return Vanguard_player.__points.BOTTOM.x < -360"), "the menu laid out in a fight: your frame waits (secure)").toBe(true);
+  setCombat(addon, false);
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "after the fight: your frame at its Centered spot and size, no wall").toEqual([false, false, true, true]);
+});
+
+// H46-B-G3-7: the keep's frames stand clear of the bottom stack's bars that stand in their own spots, so a bar dragged
+// away takes its width with it, and a wider bar left in the stack (a bar's own button size) spreads them.
+const BAR_SIZE_LUA = (n, size) => `local AB = ns.GetModule("ActionBars") AB.settings.bars[${n}].size = ${size} AB.SettingChanged(${n}, "size")`;
+// Whether the keep's frames stand out (a spread over 70: 72 at 50-unit buttons, less the pixel rounding) and your
+// frame's left edge moved back in by the spread (its drawn spot, 960 - 478, while it follows the spread), in whole units.
+const SPREAD_LUA = `local s = ns.KeepSpread() return { s > 70 and "out" or s, math.floor(Vanguard_player:GetLeft() + s + 0.5) }`;
+
+it("H46-B-G3-7 the keep's spread follows the widest bar of the stack standing in its spot: bar 1 dragged away takes its width with it, a reset brings it back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + ACTIONS_ENV, onLayout("fort"));
+  addon.eval(BAR_SIZE_LUA(1, 50));
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 at 50 (bars 2 and 3 at 38): your frame out by the spread").toEqual(["out", 482]);
+  addon.eval('ns.SetMoverPoint("bar1", "TOP", "TOP", 0, -40)');
+  addon.advance(1);
+  expect([addon.eval(SPREAD_LUA), addon.eval("return ns.KeepNeed(1920) == 1100")], "bar 1 dragged to the top: no spread, your frame at its drawn spot, the need down with it").toEqual([[0, 482], true]);
+  addon.eval('ns.ResetMovers("bar1")');
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 reset: out again").toEqual(["out", 482]);
+  addon.eval(BAR_SIZE_LUA(1, "nil") + "\n" + BAR_SIZE_LUA(2, 50));
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 at 38 and bar 2 at 50: the frames clear bar 2").toEqual(["out", 482]);
+});
+
+// H46-B-G3-4: the action bars remember the stack's width from the login build, so a bar change that leaves it as it
+// is (bar 3's buttons) places no HUD layout frame again; one that changes it (bar 1's button size) does.
+it("H46-B-G3-4 a bar change that keeps the stack's width refits no HUD layout, from the first one in a session", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + ACTIONS_ENV, onLayout("fort"));
+  addon.eval("__refits = 0 local refit = ns.RefitHudLayout ns.RefitHudLayout = function() __refits = __refits + 1 return refit() end");
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].buttons = 10 AB.SettingChanged(3, "buttons")');
+  expect(addon.eval("return __refits"), "bar 3 down to 10 buttons: bar 1 still the widest, nothing to refit").toBe(0);
+  addon.eval(BAR_SIZE_LUA(1, 50));
+  expect(addon.eval("return __refits"), "bar 1 at 50: the keep refits once").toBe(1);
+});
+
 // H46-13-100: the wall grows to hold what stands on it, at the game's UI scale and with your role's scale on your
 // frame and your target's (setup's Centered: healing gives both 0.9, so they stand inside the focus and the cast bar).
 it("H46-13-100 the keep's wall holds every frame on it and the bars, at the game's UI scale and with your frames scaled down", () => {
