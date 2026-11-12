@@ -37,6 +37,11 @@ function ns.MoverOptions()
   return ns.Settings("movers", DEFAULTS)
 end
 
+-- An unlock-mode option's default (grid, snap, editMode), for the options window's reset arrow.
+function ns.MoverDefault(key)
+  return DEFAULTS[key]
+end
+
 -- Saved positions in the active profile: key -> { point, relPoint, x, y, scale, alpha }
 -- (offsets in UIParent's units; scale and opacity left out while they are 1), plus a
 -- frame's links: rel, match, and its own w and h (Core/MoverLinks.lua).

@@ -582,6 +582,28 @@ const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frame
   if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then
     return { w.reset ~= nil and w.reset:IsShown(), w.reset ~= nil } end end`);
 
+it("options: General's look, motion and moving rows have their defaults: arrow, dot, changed and Reset this page follow (H45-23-1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("General")');
+  addon.eval(`local s = ns.Theme.Settings()
+    s.textScale = 1.1 s.font = "client" s.hudLook = "plain" s.variant = "contrast" s.sounds = false s.smoothBars = false ns.MoverOptions().snap = false
+    ns.Theme.Refresh() ns.Options.Refresh()`);
+  const captions = addon.eval('local out = {} for _, h in ipairs(ns.Options.FindSettings("changed")) do out[#out + 1] = h.caption end return out');
+  expect(Object.values(captions), "'changed' lists them").toEqual(expect.arrayContaining(["Text size", "Font", "HUD look", "Theme variant", "Interface sounds", "Smooth health and power bars", "Snap to other frames"]));
+  expect(addon.eval("return Vanguard_Options.nav.general.changed:IsShown()"), "the General nav dot shows").toBe(true);
+  expect(resetDot(addon, "Text size"), "Text size shows its arrow").toEqual([true, true]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w.label.__text == "Font" then w.reset:GetScript("OnClick")(w.reset) end end`);
+  expect(addon.eval("return ns.Theme.Settings().font"), "the Font arrow puts the default back").toBe("");
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval(`local s = ns.Theme.Settings() return { s.textScale, s.hudLook, s.variant, s.sounds, s.smoothBars, ns.MoverOptions().snap }`),
+    "Reset this page puts every changed one back").toEqual([1, "shield", "default", true, true, true]);
+  expect(addon.eval("return Vanguard_Options.nav.general.changed:IsShown()"), "and the dot goes").toBe(false);
+  addon.eval("ns.Theme.Settings().textScale = 0.7 ns.Options.Refresh()");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "Text size" and w.Step then w:Step(6) end end`);
+  expect(resetDot(addon, "Text size"), "stepping the slider back to 100% lands on the default exactly: no arrow").toEqual([false, true]);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
@@ -595,7 +617,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
-  expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
+  expect(resetDot(addon, "Snap to other frames"), "an unlock option has a default too: a dot, hidden while it is held").toEqual([false, true]);
   addon.eval('__click("Action bars") __click("Bar backing")');
   expect(resetDot(addon, "Bar backing"), "choices get one too").toEqual([true, true]);
   addon.eval(`local def = ns.GetModule("ActionBars").defaults.backing
