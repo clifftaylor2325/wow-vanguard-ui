@@ -100,3 +100,13 @@ it("H45-2-55 the options budget write keeps only the tabs already listed, and re
   expect(budgetWritten({ "chat / Chat": 9, "chat / Old": 12 }, { "chat / Chat": 8 })).toEqual({ "chat / Chat": 8 });
   expect(() => budgetWritten({ "chat / Chat": 9 }, { "chat / Chat": 9, "bags / New tab": 14 })).toThrow(/refuses 1 new tab.*bags \/ New tab \(14\)/s);
 });
+
+it("H45-2-56 a renamed count that rose fails though another dropped key keeps the total down; a split passes on its total", () => {
+  const hint = "(a rename carries one key's count; if two keys were merged, land the merge at the larger number or lower it first)";
+  expect(baselineRises("f.json", { "chat / Chat tabs": 15, "chat / Old": 9, "x / y": 10 }, { "chat / Tabs": 20, "x / y": 10 }), "15 and 9 -> 20")
+    .toEqual([`f.json: chat / Tabs in place of chat / Chat tabs, chat / Old: 15 -> 20 ${hint}`]);
+  expect(baselineRises("f.json", { a: 15, b: 9 }, { c: 14, d: 10 }), "15 and 9 -> 14 and 10").toEqual([`f.json: c, d in place of a, b: 9 -> 10 ${hint}`]);
+  expect(baselineRises("f.json", { a: 15, b: 9 }, { c: 15, d: 8 }), "renamed at the same or a lower number").toEqual([]);
+  expect(baselineRises("f.json", { a: 10 }, { b: 5, c: 5 }), "a split").toEqual([]);
+  expect(baselineRises("f.json", { a: 5, b: 7 }, { c: 12 }), "a merge").toEqual([`f.json: c in place of a, b: 7 -> 12 ${hint}`]);
+});

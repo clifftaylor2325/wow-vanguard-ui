@@ -5,7 +5,8 @@
 // the pull request's first parent. A number that rose, a line that is new under an existing key, or a key whose value
 // changed kind (a number and a list) fails; a new key is a new audit's starting record and is allowed, unless the same
 // commit drops a key: then the new keys stand in for the dropped ones (a rename), and their numbers may not add up to
-// more than the dropped ones' did, nor their lists hold a line the dropped lists lacked. In a file whose keys are all
+// more than the dropped ones' did, nor any of them, largest first, be above the dropped one in its place, nor their
+// lists hold a line the dropped lists lacked. In a file whose keys are all
 // items of one audit (ONE_AUDIT_FILES: the options budget, one key per tab over it) a new key is a new overflow, so it
 // fails there unless it stands in for a dropped one.
 
@@ -29,15 +30,30 @@ const numberTotal = (entries) => entries.reduce((sum, [, value]) => sum + (typeo
 // The list values among [key, value] pairs, as [key, list] pairs.
 const listsOf = (entries) => entries.filter(([, value]) => Array.isArray(value));
 
-// What the keys a commit added carry past the keys it dropped (a rename that raised a count): their numbers' total
-// above the dropped numbers' total, and each list line no dropped list held. Nothing when no key was dropped or added.
+// The numbers among [key, value] pairs, largest first.
+const numbersDown = (entries) => entries.map(([, value]) => value).filter((value) => typeof value === "number").sort((a, b) => b - a);
+
+// What the added keys' numbers carry past the dropped keys' (renameRises): their total above the dropped total, else
+// the first added number, largest first, above the dropped number in its place. A rename carries one key's count,
+// never the sum of several, so { 15, 9 } -> { 14, 10 } rose though the total fell; a split ({ 10 } -> { 5, 5 })
+// passes on its total, and a merge ({ 5, 7 } -> { 12 }) fails (H45-2-56).
+function renamedNumberRises(file, names, dropped, added) {
+  const [was, now] = [numberTotal(dropped), numberTotal(added)];
+  if (now > was) return [`${file}: ${names}: ${was} -> ${now}`];
+  const [old, fresh] = [numbersDown(dropped), numbersDown(added)];
+  const at = fresh.findIndex((n, i) => i < old.length && n > old[i]);
+  const hint = "(a rename carries one key's count; if two keys were merged, land the merge at the larger number or lower it first)";
+  return at < 0 ? [] : [`${file}: ${names}: ${old[at]} -> ${fresh[at]} ${hint}`];
+}
+
+// What the keys a commit added carry past the keys it dropped (a rename that raised a count): renamedNumberRises,
+// and each list line no dropped list held. Nothing when no key was dropped or added.
 function renameRises(file, base, head) {
   const dropped = keysOnlyIn(base, head);
   const added = keysOnlyIn(head, base);
   if (dropped.length === 0 || added.length === 0) return [];
-  const [was, now] = [numberTotal(dropped), numberTotal(added)];
   const names = `${added.map(([key]) => key).join(", ")} in place of ${dropped.map(([key]) => key).join(", ")}`;
-  const numbers = now > was ? [`${file}: ${names}: ${was} -> ${now}`] : [];
+  const numbers = renamedNumberRises(file, names, dropped, added);
   const oldLines = listsOf(dropped).flatMap(([, list]) => list);
   const lines = listsOf(added).flatMap(([key, list]) => list.filter((line) => !oldLines.includes(line)).map((line) => `${file}: ${key} (${names}): new line: ${line}`));
   return numbers.concat(lines);
