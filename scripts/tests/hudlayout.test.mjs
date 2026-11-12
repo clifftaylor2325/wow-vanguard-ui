@@ -186,6 +186,29 @@ it("H46-B-G3-2 the keep is judged again when the game lays its menu out after lo
   expect(addon.eval(JUDGED_LUA), "after the fight: your frame at its Centered spot and size, no wall").toEqual([false, false, true, true]);
 });
 
+// H46-B-G3-7: the keep's frames stand clear of the bottom stack's bars that stand in their own spots, so a bar dragged
+// away takes its width with it, and a wider bar left in the stack (a bar's own button size) spreads them.
+const BAR_SIZE_LUA = (n, size) => `local AB = ns.GetModule("ActionBars") AB.settings.bars[${n}].size = ${size} AB.SettingChanged(${n}, "size")`;
+// Whether the keep's frames stand out (a spread over 70: 72 at 50-unit buttons, less the pixel rounding) and your
+// frame's left edge moved back in by the spread (its drawn spot, 960 - 478, while it follows the spread), in whole units.
+const SPREAD_LUA = `local s = ns.KeepSpread() return { s > 70 and "out" or s, math.floor(Vanguard_player:GetLeft() + s + 0.5) }`;
+
+it("H46-B-G3-7 the keep's spread follows the widest bar of the stack standing in its spot: bar 1 dragged away takes its width with it, a reset brings it back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + ACTIONS_ENV, onLayout("fort"));
+  addon.eval(BAR_SIZE_LUA(1, 50));
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 at 50 (bars 2 and 3 at 38): your frame out by the spread").toEqual(["out", 482]);
+  addon.eval('ns.SetMoverPoint("bar1", "TOP", "TOP", 0, -40)');
+  addon.advance(1);
+  expect([addon.eval(SPREAD_LUA), addon.eval("return ns.KeepNeed(1920) == 1100")], "bar 1 dragged to the top: no spread, your frame at its drawn spot, the need down with it").toEqual([[0, 482], true]);
+  addon.eval('ns.ResetMovers("bar1")');
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 reset: out again").toEqual(["out", 482]);
+  addon.eval(BAR_SIZE_LUA(1, "nil") + "\n" + BAR_SIZE_LUA(2, 50));
+  addon.advance(1);
+  expect(addon.eval(SPREAD_LUA), "bar 1 at 38 and bar 2 at 50: the frames clear bar 2").toEqual(["out", 482]);
+});
+
 // H46-13-100: the wall grows to hold what stands on it, at the game's UI scale and with your role's scale on your
 // frame and your target's (setup's Centered: healing gives both 0.9, so they stand inside the focus and the cast bar).
 it("H46-13-100 the keep's wall holds every frame on it and the bars, at the game's UI scale and with your frames scaled down", () => {

@@ -34,12 +34,13 @@ end
 -- the keep holds on whatever the corners hold, and the mover in the bottom right corner the wall's end must clear.
 ns.KEEP = { pad = 12, parapet = "accentDim", bars = 239, reach = 500, least = 1100, corner = "menustrip" }
 
--- How far the keep's frames stand out past their drawn spots, on each side: by however much the bar stack's first
--- bar is wider than the bars the spots were drawn round (0 while it is narrower, off, or the action bars are).
+-- How far the keep's frames stand out past their drawn spots, on each side: by however much the bar stack's widest
+-- bar in its own spot is wider than the bars the spots were drawn round (0 while it is narrower, every bar is off or
+-- dragged away, or the action bars are off).
 ---@return number
 function ns.KeepSpread()
   local AB = ns.GetModule("ActionBars")
-  local half = AB and AB.Bar1HalfWidth() or 0
+  local half = AB and AB.StackHalfWidth() or 0
   return math.max(0, half - ns.KEEP.bars)
 end
 
