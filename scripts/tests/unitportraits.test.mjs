@@ -96,3 +96,19 @@ it("the focus target frame: its own mover and sliders, shown by the unit watch, 
     .toBeCloseTo(140, 0);
   expect(addon.eval("return ns.GetModule('UnitFrames').CALM_KEYS[6]"), "and it dims with the Calm HUD's frames").toBe("focustarget");
 });
+
+// H45-13-1: the corner limit is in screen pixels: a corner's size in units moves with the screen height and UI scale.
+const SHOWN = (addon) => addon.eval("return Vanguard_player.portrait:IsShown()");
+
+it("Rimmed's four-pixel round keeps its portrait on a low screen at a small UI scale", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1366, 768) " + UNITS_ENV, { savedVariables: ROOM().savedVariables.replace("hairline", "rimmed") });
+  addon.eval("UIParent:SetScale(0.8) ns.Theme.Refresh() ns.GetModule('UnitFrames').ApplyLook()");
+  expect(SHOWN(addon), "the round is one unit wide there, as many pixels as ever").toBe(true);
+});
+
+it("Plain with the shield corners hides the portrait on a 4K screen, where its eight-pixel cut is under four units", () => {
+  const saved = ROOM().savedVariables.replace('hudLook = "hairline"', 'hudLook = "plain", shield = true');
+  const addon = loggedIn("__wfgStub.setScreen(3840, 2160) " + UNITS_ENV, { savedVariables: saved });
+  addon.eval("ns.Theme.Refresh() ns.GetModule('UnitFrames').ApplyLook()");
+  expect(SHOWN(addon), "the cut is still eight pixels").toBe(false);
+});
