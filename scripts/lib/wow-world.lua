@@ -316,6 +316,27 @@ function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
+-- The game's alternate top-level frame, which a "full" panel (the housing editor, the barber shop) sets while it hides
+-- UIParent; GetAppropriateTopLevelParent answers it while it is shown, else UIParent, and setting or clearing it
+-- triggers UI.AlternateTopLevelParentChanged (Blizzard_SharedXMLBase/FrameUtil.lua, both clients).
+world.topLevel = nil
+-- Makes a frame the alternate top-level frame.
+function SetAlternateTopLevelParent(parent)
+  world.topLevel = parent
+  EventRegistry:TriggerEvent("UI.AlternateTopLevelParentChanged", parent)
+end
+-- Clears the alternate top-level frame.
+function ClearAlternateTopLevelParent()
+  world.topLevel = nil
+  EventRegistry:TriggerEvent("UI.AlternateTopLevelParentChanged")
+end
+-- The frame a top-level frame goes on now: the alternate one while it is shown (and not the one excluded), else UIParent.
+function GetAppropriateTopLevelParent(excluded)
+  local top = world.topLevel
+  if top and top:IsShown() and (not excluded or top ~= excluded) then return top end
+  return UIParent
+end
+
 -- EventRegistry: callbacks by event name, kept as Blizzard_SharedXMLBase/CallbackRegistry.lua's
 -- CallbackRegistryMixin keeps them (both clients): one callback per owner per event, a generated number owner for
 -- nil, a number owner refused, extra arguments kept for the call, and the owner returned.

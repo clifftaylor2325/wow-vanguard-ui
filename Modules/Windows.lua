@@ -144,13 +144,15 @@ do
   local vgBackdrop = ns.FrameState("vgBackdrop")
   local vgBackdropWhen = ns.FrameState("vgBackdropWhen")
 
-  -- Keeps a backdrop where it shows: on UIParent, and on the frame's own parent only while UIParent is hidden (the game
-  -- parents a popup to its alternate top-level frame while a "full" panel such as the housing editor or the barber shop
-  -- hides UIParent, and a panel left there would not show). Any other frame keeps its backdrop off the game's frames.
-  -- The backdrop is Vanguard's own frame, so this is safe in combat. SetParent resets strata and level; the caller sets both.
+  -- Keeps a backdrop where it shows: on UIParent, or on the game's alternate top-level frame while its frame sits there
+  -- (a "full" panel such as the housing editor or the barber shop hides UIParent and makes itself that frame, and
+  -- StaticPopup_Show parents a popup to it: Blizzard_SharedXMLBase/FrameUtil.lua GetAppropriateTopLevelParent). A
+  -- frame under any other parent keeps its backdrop off the game's frames, UIParent hidden or not. The backdrop is
+  -- Vanguard's own frame, so this is safe in combat. SetParent resets strata and level; the caller sets both.
   local function followParent(frame, back)
-    local parent = ns.IsTrue(UIParent:IsShown()) and UIParent or frame:GetParent()
-    if parent and back:GetParent() ~= parent then back:SetParent(parent) end
+    local top = GetAppropriateTopLevelParent and GetAppropriateTopLevelParent()
+    local parent = top and top ~= UIParent and frame:GetParent() == top and top or UIParent
+    if back:GetParent() ~= parent then back:SetParent(parent) end
   end
 
   -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another

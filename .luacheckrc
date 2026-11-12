@@ -87,7 +87,7 @@ read_globals = {
   -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).
   "GameTime_GetTime", "GameTime_GetGameTime", "GameTime_GetLocalTime",
   -- Info strip: the realm's date beside the realm time, and whether the game's clock shows local time.
-  "C_DateAndTime", "GetCVarBool",
+  "C_DateAndTime", "GetCVarBool", "GetAppropriateTopLevelParent",
   -- Reputation bar: the game's standing words in your character's form (its click uses ToggleCharacter, above).
   "GetText", "UnitSex",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
