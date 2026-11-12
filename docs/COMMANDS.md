@@ -9,7 +9,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg` | The options window (also `/vg options`, `/vg config`, the addons button by the minimap) |
 | `/vg setup` | The first-run setup again |
 | `/vg whatsnew` | What changed in this version |
-| `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
+| `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one (a part that can't switch at once says `/reload to apply`) |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
 | `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions, game windows by state (`/vg status windows` lists them) |
 
@@ -115,7 +115,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
 /vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
-/vg modules       the list of modules; /vg enable|disable <module>, then /reload
+/vg modules       the list of modules; /vg enable|disable <module> (a part that can't switch at once says /reload to apply)
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
 /vg profile [name]              switch (any case; a name that matches nothing asks before creating one); profile new|copy|delete <name> (copy and delete ask first), profile reset (asks and backs up first); a profile's exact name wins over these words
