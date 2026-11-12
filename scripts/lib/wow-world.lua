@@ -1961,11 +1961,15 @@ world.ah = emptyAuctionHouse()
 -- Clicks are hardware events: stub.hardware counts the clicks running now.
 stub.hardware = 0
 local rawClick = stub.runClick
--- A click, counted while it runs.
+-- The click itself, called by name so a restricted call's logged path still runs through rawClick.
+local function clickThrough(...) rawClick(...) end
+-- A click, counted while it runs; a handler that raises still ends the count before its error goes on (pcall is a C
+-- function, so wow-taint.lua's callerOf looks through it).
 function stub.runClick(...)
   stub.hardware = stub.hardware + 1
-  rawClick(...)
+  local ok, err = pcall(clickThrough, ...)
   stub.hardware = stub.hardware - 1
+  if not ok then error(err, 0) end
 end
 
 -- A query the addon may send at any time: recorded as { fn, args }.

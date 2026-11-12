@@ -405,3 +405,10 @@ it("an aura container refuses a group the client's asserts refuse, with the clie
     "maxFrameCount must be a non-negative integer or infinity.", "elementSpacing must be a number.", "forceNewLine must be a boolean.",
     "elementWidth must be a non-negative number.", "sortMethod must be a valid AuraContainerSortMethod.", "initializeFrame must be a function or nil.", 1]);
 });
+
+// The harness's own counter (no client rule): a click whose handler raises still ends its hardware event.
+it("a click whose handler raises ends its hardware event and passes the error on", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b:SetScript("OnClick", function() error("TEST-ONLY", 0) end)
+    local ok, err = pcall(__wfgStub.click, b) return { ok, err, __wfgStub.hardware }`)).toEqual([false, "TEST-ONLY", 0]);
+});
