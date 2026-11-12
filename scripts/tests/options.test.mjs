@@ -648,6 +648,20 @@ it("options: the Your characters lines on Game windows follow the record when th
   expect(addon.eval("return #ns.errors"), "a character forgotten since the page was built leaves an empty line, no error").toBe(0);
 });
 
+it("options: the Frame to size choice follows the frames you can move when a module is switched on or off (H45-23-R1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const listed = () => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end
+    for _, c in ipairs(last.choices) do if c[1] == "brokerstrip" then return true end end return false`);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", false) ns.Options.Show("general")');
+  expect(listed(), "a module that is off has no entry").toBe(false);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", true)');
+  expect(listed(), "switched on with the window open: its frame is offered").toBe(true);
+  addon.eval('ns.Options.sizedMover = "brokerstrip" ns.SetModuleEnabled("BrokerStrip", false)');
+  expect(listed(), "switched off again: it is gone").toBe(false);
+  expect(addon.eval("return ns.MoverLook(ns.MoverList()[1].key) == 1 and #ns.errors"), "and the sliders fall back to the first frame").toBe(0);
+  expect(addon.eval('ns.Options.Refresh() local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end return last.get() == ns.MoverList()[1].key'), "the picked key that is gone is ignored").toBe(true);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");

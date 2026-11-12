@@ -133,7 +133,10 @@ end
 -- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
 local function sizedMover()
   local list = ns.MoverList()
-  return O.sizedMover or (list[1] and list[1].key)
+  for _, m in ipairs(list) do
+    if m.key == O.sizedMover then return m.key end
+  end
+  return list[1] and list[1].key
 end
 
 -- Every movable frame as a { key, label } choice.
@@ -141,6 +144,26 @@ local function moverChoices()
   local out = {}
   for i, m in ipairs(ns.MoverList()) do out[i] = { m.key, m.label } end
   return out
+end
+
+-- The General page is built again when the frames you can move change (a module switched on or off, settled by
+-- ns.OnModulesChanged), so the Frame to size choice never offers a frame that is gone or misses a new one.
+do
+  local listed = ""
+
+  -- The movable frames' keys as one string.
+  local function moverKeys()
+    local keys = {}
+    for i, m in ipairs(ns.MoverList()) do keys[i] = m.key end
+    return table.concat(keys, ",")
+  end
+
+  ns.OnModulesChanged(function()
+    local now = moverKeys()
+    if now == listed then return end
+    listed = now
+    if O.Frame() then O.RebuildPage("general") end
+  end)
 end
 
 -- get/set for which frame the sliders size; picking one re-reads the sliders.
