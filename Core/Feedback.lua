@@ -34,9 +34,20 @@ local KINDS = { { "bug", L["Report a bug"] }, { "feature", L["Request a feature"
 
 -- Checks -------------------------------------------------------------------------------------
 
+-- A text without the spaces the site's trim() removes at either end: plain white space, the no-break space and the
+-- ideographic space (\194 and \227 are lead bytes, so no pattern here can cut inside another character).
+local function trim(s)
+  local before
+  repeat
+    before = s
+    s = s:match("^%s*(.-)%s*$"):gsub("^\194\160", ""):gsub("\194\160$", ""):gsub("^\227\128\128", ""):gsub("\227\128\128$", "")
+  until s == before
+  return s
+end
+
 -- A text trimmed and without the game's color codes (|cAARRGGBB and |r).
 local function clean(s)
-  return tostring(s or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):match("^%s*(.-)%s*$")
+  return trim((tostring(s or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
 end
 
 -- "2,000" for 2000 (the site's wording).
@@ -52,10 +63,11 @@ local function lengthError(field, value, label)
   if n > most then return ns.Format(L["{field} can be at most {most} characters (it has {count})."], { field = label, most = count(most), count = count(n) }) end
 end
 
--- The fields cleaned: kind and area as given, every text trimmed.
+-- The fields cleaned: kind and area as given, every text trimmed, the title on one line (as the block writes it).
 local function cleaned(f)
   local out = { kind = f.kind, area = f.area or "" }
   for field in pairs(LIMITS) do out[field] = clean(f[field]) end
+  out.title = (out.title:gsub("%s+", " "))
   return out
 end
 
@@ -102,7 +114,7 @@ end
 
 -- The lines of the block's head: the markers' start, the kind, the title on one line, and a feature's area.
 local function head(f)
-  local lines = { FB.START, "kind: " .. f.kind, "title: " .. (f.title:gsub("%s+", " ")) }
+  local lines = { FB.START, "kind: " .. f.kind, "title: " .. f.title }
   if f.kind == "feature" then lines[#lines + 1] = "area: " .. f.area end
   return lines
 end

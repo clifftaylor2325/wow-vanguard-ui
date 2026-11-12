@@ -68,6 +68,19 @@ it("/vg feedback opens the form on a bug, with the summary focused and the bug f
   expect(addon.eval(`return { ${BOX}.kind, ${BOX}.bug:IsShown(), ${BOX}.feature:IsShown() }`), "the kind row switches back").toEqual(["bug", true, false]);
 });
 
+// Whether the in-game check passes a bug with this title, and the title line the block writes for it.
+const titleCheck = (addon, title) => addon.eval(`local f = { kind = "bug", title = ${JSON.stringify(title)}, did = "x", happened = "y" }
+  return { ns.Feedback.Check(f) or "pass", ns.Feedback.Text(f):match("\\ntitle: ([^\\n]*)") }`);
+
+it("the summary is checked as the block writes it: runs of spaces count once, and the site's trim() spaces count for nothing", () => {
+  const addon = loggedIn();
+  const wide = "\\227\\128\\128";
+  expect(titleCheck(addon, "Map  lag")[0], "a double space").toBe("The short summary needs at least 8 characters.");
+  expect(titleCheck(addon, "Map  lags"), "written on one line").toEqual(["pass", "Map lags"]);
+  expect(addon.eval(`return ns.Feedback.Check({ kind = "bug", title = "ab" .. ("${wide}"):rep(6), did = "x", happened = "y" })`), "ideographic spaces at the end").toBe("The short summary needs at least 8 characters.");
+  expect(addon.eval(`return ns.Feedback.Check({ kind = "bug", title = "A long enough title", did = ("${wide}"):rep(3), happened = "y" })`), "a text of only wide spaces").toBe("What you did is required.");
+});
+
 it("Make report says what the site would, in its words, and keeps the form open", () => {
   const addon = loggedIn();
   open(addon);
