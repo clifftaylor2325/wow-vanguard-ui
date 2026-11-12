@@ -154,6 +154,22 @@ it("H44-25-1 text fits: the unlock bar's buttons at Text size 130%", () => {
   expect(lines(addon.textFit("Vanguard_UnlockBar")), "Save and lock and Exit without saving show whole").toEqual([]);
 });
 
+it("H45-7-1 text fits: the unlock bar built at 100%, then unlocked again at 130%", () => {
+  const addon = fitClient();
+  addon.slash("unlock");
+  addon.slash("lock");
+  atLargestText(addon);
+  addon.slash("unlock");
+  expect(lines(addon.textFit("Vanguard_UnlockBar")), "the buttons widened for the larger text").toEqual([]);
+});
+
+it("H45-7-1 text fits: the unlock bar's buttons when Text size is raised while the bar is shown", () => {
+  const addon = fitClient();
+  addon.slash("unlock");
+  atLargestText(addon);
+  expect(lines(addon.textFit("Vanguard_UnlockBar")), "the bar fits again at once").toEqual([]);
+});
+
 it("text fits: unlock mode's handles while a situation records", () => {
   const addon = fitClient();
   addon.slash("situation record raid");

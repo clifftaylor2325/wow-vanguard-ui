@@ -95,7 +95,7 @@
       "reagent and item counts show even at 0 and 1",
       "the bars touch at a UI scale where a button rounds up to a whole pixel (the 1440p preset), and re-stack when the scale changes",
       "the bottom stack follows per-bar size and rows, live",
-      "the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps",
+      "one cooldown event refreshes the sweeps",
       "the mouseover fade still follows hovering an action button",
       "the right-edge bars start off and show on mouseover when turned on"
     ],
@@ -178,6 +178,8 @@
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
     ],
     "scripts/tests/extras.test.mjs": [
+      "H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins",
+      "H45-3-R1: under the Tabs look the party pets and targets column's default spot rises with the party column, so tall party frames never reach it",
       "raid tools: calls, target icons and world markers for the leader and assistants",
       "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],
@@ -220,6 +222,9 @@
       "H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back",
       "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
       "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
+      "H45-6-1 Apply keeps the rank on the key's button when the spellbook lists no rank for the spells",
+      "H45-6-1 Apply still puts a known higher rank over a lower one on the key's button",
+      "H45-6-1 Update keeps the rank Vanguard placed when the spellbook lists no ranks",
       "Only this character: the plan is worked out in the character's own keys",
       "Only this character: the set switches first, Account keeps its keys, and the key rows go in the character's file",
       "Plan: a bar 2 or 3 entry finds its spell on its own bar first, then the other; a bar 1 entry stays on its own button",

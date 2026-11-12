@@ -252,27 +252,31 @@ local function timerRows()
   return rows
 end
 
--- get/set for a raid frame setting the preview (Modules/RaidPreview.lua) shows at once; the real frames take a reload.
-local function previewedSetting(key)
-  local get, set, initial = reloadSetting("RaidFrames", key)
-  return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
-end
-
 -- get/set for the raid tiles' width or height: the real tiles resize at once (out of combat) and so does the preview.
 local function sizeSetting(key)
   local get, set, initial = setting("RaidFrames", key)
   return get, function(v) set(v); ns.GetModule("RaidFrames").ApplySize(); ns.RaidPreview.Refresh() end, initial
 end
 
--- The raid tiles' width and height sliders: every step the choices used to have (72, 90, 100, 120 wide; 36, 40, 48, 56 tall)
--- lies on them, so no saved size changes.
-local RAID_WIDTHS = { min = 72, max = 120, step = 2 }
-local RAID_HEIGHTS = { min = 36, max = 56, step = 2 }
+-- A raid tile slider's range: the module's limits (read when the rows are built, as the module loads after this
+-- file), in steps of 2. Every step the choices used to have (72, 90, 100, 120 wide; 36, 40, 48, 56 tall) lies on them,
+-- so no saved size changes.
+local function raidRange(key)
+  local limits = ns.GetModule("RaidFrames").LIMITS[key]
+  return { min = limits[1], max = limits[2], step = 2 }
+end
 
 -- get/set for Stack big raids: the real frames and the preview follow at once, so no reload is waited for.
 local function stackSetting()
   local get, set, initial = setting("RaidFrames", "stackBig")
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
+end
+
+-- get/set for a raid frame setting that changes how the grid is laid out (Groups as, Sort by role): the real
+-- frames are laid out again at once, out of combat (in a fight it waits for it to end), and so is the preview.
+local function layoutSetting(key)
+  local get, set, initial = setting("RaidFrames", key)
+  return get, function(v) set(v); ns.GetModule("RaidFrames").ApplyLayout(); ns.RaidPreview.Refresh() end, initial
 end
 
 -- Raid frames: party coverage, sorting, size. The essential rows (Core/OptionsFold.lua) are the ones that lay the
@@ -281,12 +285,12 @@ local function raidRows()
   return {
     { "header", L["Raid frames"] },
     reloadRow(check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty"))), reloadRow(check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer"))),
-    essential(reloadRow(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole")))),
-    essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
+    essential(check(L["Sort by role (tanks, healers, damage)"], layoutSetting("sortByRole"))),
+    essential({ "cycle", L["Groups as"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, layoutSetting("layout") }),
     essential(check(L["Stack big raids at the left"], stackSetting())), essential(reloadRow(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
-    essential({ "slider", L["Width"], RAID_WIDTHS, sizeSetting("width") }),
-    essential({ "slider", L["Height"], RAID_HEIGHTS, sizeSetting("height") }),
+    essential({ "slider", L["Width"], raidRange("width"), sizeSetting("width") }),
+    essential({ "slider", L["Height"], raidRange("height"), sizeSetting("height") }),
   }
 end
 
@@ -295,7 +299,7 @@ local function raidPreviewRows()
   local RP = ns.RaidPreview
   return {
     { "header", L["Preview"] },
-    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width or height shows in the preview and on the real tiles at once (out of combat); sorting and Groups as show in the preview at once, the real frames take a reload. It ends when you join a group, enter combat or reload."] },
+    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width or height shows in the preview and on the real tiles at once (out of combat); sorting and Groups as show in the preview and on the real frames at once (out of combat). It ends when you join a group, enter combat or reload."] },
     { "cycle", L["Preview with sample players"], RP.CHOICES, function() return RP.size end, RP.Set },
   }
 end

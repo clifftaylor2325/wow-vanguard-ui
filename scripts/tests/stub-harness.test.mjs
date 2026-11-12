@@ -113,7 +113,9 @@ it("UnitInRange hands a secret range back as a secret, with a secret checked fla
 });
 
 // UnitHealthPercent is SecretReturns and SecretWhenCurveSecret on both clients
-// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden.
+// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden. Without a
+// curve it answers the percentage the curve would be given, 0 to 1 (Blizzard_SharedXMLBase/CurveConstants.lua:
+// ScaleTo100 "re-scales any percentage value from [0, 1] to [0, 100]", both clients).
 it("UnitHealthPercent answers hidden health with a secret percent, a secret number curve result or a hidden color", () => {
   const addon = createAddon();
   addon.world.setUnit("target", { name: "TEST-ONLY Mob", hp: 25, maxhp: 100 });
@@ -123,9 +125,9 @@ it("UnitHealthPercent answers hidden health with a secret percent, a secret numb
     local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
     return { look(UnitHealthPercent("target")), look(UnitHealthPercent("target", true, num)),
       look(UnitHealthPercent("target", true, col).r) }`);
-  expect(read(), "plain").toEqual([[false, 25], [false, 25], [false, 1]]);
+  expect(read(), "plain").toEqual([[false, 0.25], [false, 25], [false, 1]]);
   addon.eval("__wfgWorld.units.target.hp = __wfgWorld.secret(25)");
-  expect(read(), "hidden health").toEqual([[true, 25], [true, 25], [true, 1]]);
+  expect(read(), "hidden health").toEqual([[true, 0.25], [true, 25], [true, 1]]);
 });
 
 // UnitIsGroupLeader and UnitIsGroupAssistant are SecretWhenUnitIdentityRestricted, UnitIsAFK
@@ -288,4 +290,51 @@ it("a frame shown or hidden under a hidden parent runs its OnShow or OnHide only
     p:Hide() c:Hide() seen[#seen + 1] = "|" p:Show()
     return table.concat(seen, " ")`);
   expect(runs).toBe("hide | show | hide |");
+});
+
+// Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525 ParseAllAuras clears the groups and returns while
+// not IsEnabled(), before any aura source, Edit Mode's included; Blizzard_AuraContainer.lua:24-25 IsEnabled is
+// `self.enabled == true` (both clients).
+it("a switched-off aura container shows nothing in Edit Mode, though its preview is on", () => {
+  const addon = createAddon();
+  const shown = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    c:AddAuraGroup("x", "HELPFUL", { maxFrameCount = 1, layout = {}, initializeFrame = function(b) b:SetSize(20, 20) end })
+    c:SetUnit("player")
+    __wfgStub.editMode = true c:SetEnabled(false)
+    local off = c.__groups[1].buttons[1].__shown
+    c:SetEnabled(true)
+    return { off, c.__groups[1].buttons[1].__shown }`);
+  expect(shown).toEqual([false, true]);
+});
+
+// FCF_GetNextOpenChatWindowIndex looks only up to Constants.ChatFrameConstants.MaxChatWindows, 10, and answers nil
+// past it (Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:26-34, ChatConstantsDocumentation.lua:214); then
+// FCF_OpenNewWindow returns nothing, else `chatFrame, chatFrameIndex` (Mainline/FloatingChatFrame.lua, forever
+// :707-710 and :755, live :522-525 and :570).
+it("FCF_OpenNewWindow gives the window and its number up to the tenth window, then nothing", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local made = {}
+    for n = 1, 8 do local f, i = FCF_OpenNewWindow("TEST-ONLY " .. n) made[n] = f:GetName() .. " " .. i end
+    return { made[1], made[8], select("#", FCF_OpenNewWindow("TEST-ONLY full")) }`);
+  expect(out).toEqual(["ChatFrame3 3", "ChatFrame10 10", 0]);
+});
+
+// Blizzard_SharedXMLBase/CallbackRegistry.lua (both clients, identical): RegisterCallback raises for a non-string
+// event, then for a non-function func, before the owner rules (:112-117); TriggerEvent (:187-188) and
+// UnregisterCallback (:225-226) raise for a non-string event.
+it("EventRegistry refuses a missing callback and an event name that is not text, with the client's messages", () => {
+  const addon = createAddon();
+  const errs = addon.eval(`local function why(...) local ok, err = pcall(...) return ok and "ok" or err:match("CallbackRegistryMixin.*$") end
+    local R = EventRegistry
+    return { why(R.RegisterCallback, R, "TEST-ONLY", nil, {}), why(R.RegisterCallback, R, 5, function() end, {}),
+      why(R.RegisterCallback, R, 5, nil, 5), why(R.UnregisterCallback, R, 5, nil), why(R.TriggerEvent, R, 5),
+      why(R.TriggerEvent, R, "TEST-ONLY") }`);
+  expect(errs).toEqual([
+    "CallbackRegistryMixin::RegisterCallback 'func' requires function type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:UnregisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:TriggerEvent 'event' requires string type.",
+    "ok",
+  ]);
 });

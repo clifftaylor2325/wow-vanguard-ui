@@ -153,10 +153,11 @@ function fontRolesPass() {
 }
 
 // Statements outside the theme that write a color or a font size in a shape the first rule missed (H44-25-5).
-const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")'];
-const WRITTEN_SIZES = ["fs:SetTextHeight(14)", "fs:SetFont(p, x or 12, '')", "fs:SetFont(T.Font(T.Face(true)), 14, '')", "fs:SetFont(p, 12.5)"];
+const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")',
+  "local c = { b = 0, g = 0.82, r = 1 }", "local c = {g=0.5;r=1;x=2;b=0}"];
+const WRITTEN_SIZES = ["fs:SetTextHeight(14)", "fs:SetFont(p, x or 12, '')", "fs:SetFont(T.Font(T.Face(true)), 14, '')", "fs:SetFont(p, 12.5)", "fs:SetFont(p, 12 * scale)", "fs:SetFont(p, 12 + x, '')", "fs:SetTextHeight(x or 14)"];
 // Statements that look alike and are not a written color or size.
-const NOT_WRITTEN = ["local c = CreateColor(r, g, b)", "local c = { r = r, g = g, b = b }", "local c = { r = 200, g = 100, b = 50 }", "local c = CreateColorFromHexString(hex)", "font:SetFont(was[1], was[2], was[3])", "fs:SetFont(p, size + 2, '')", "fs:SetFont(p, size(fs) or other, '')", "GA.SetFont(fs, 12)", "fs:SetTextHeight(h)"];
+const NOT_WRITTEN = ["local c = CreateColor(r, g, b)", "local c = { r = r, g = g, b = b }", "local c = { r = 200, g = 100, b = 50 }", "local c = { b = b, g = 0.5, r = 1 }", "local c = { r = 1, g = { b = 0 }, b = x }", "local c = CreateColorFromHexString(hex)", "font:SetFont(was[1], was[2], was[3])", "fs:SetFont(p, size + 2, '')", "fs:SetFont(p, size(fs) or other, '')", "GA.SetFont(fs, 12)", "fs:SetTextHeight(h)", "fs:SetFont(p, ...)"];
 
 // A color or a font size written in one of the shapes the first rule missed fails outside the theme, and each of them has a line.
 function writtenShapesFail() {
@@ -444,6 +445,13 @@ const WEAK_GUARDS = [
   `if InCombatLockdown() then return end\n  fn(function() ${SECURE_CALL_LINE} end)`,
   `${SECURE_CALL_LINE}\n  if InCombatLockdown() then return end`,
   `if not ns.InCombat() or x then ${SECURE_CALL_LINE} end`,
+  // H45-2-51: a guard in another branch of the same if, or a check read with the wrong sense.
+  `if x then\n    if InCombatLockdown() then return end\n  else\n    ${SECURE_CALL_LINE}\n  end`,
+  `if x then\n    if InCombatLockdown() then return end\n  elseif y then\n    ${SECURE_CALL_LINE}\n  end`,
+  `if not (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if not (x or ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() == false then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() ~= true then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
@@ -461,6 +469,10 @@ const STRICT_GUARDS = [
   `if not ns.InCombat() then ${SECURE_CALL_LINE} end`,
   `if not InCombatLockdown() and x then\n    ${SECURE_CALL_LINE}\n  end`,
   `if InCombatLockdown() then return elseif x then ${SECURE_CALL_LINE} end`,
+  // H45-2-51: the guard's own else, a guard and call in one else-branch, and a guard before an if whose else calls.
+  `if InCombatLockdown() then return else ${SECURE_CALL_LINE} end`,
+  `if x then\n    fn()\n  else\n    if ns.InCombat() then return end\n    ${SECURE_CALL_LINE}\n  end`,
+  `if ns.InCombat() then return end\n  if x then fn() else ${SECURE_CALL_LINE} end`,
 ];
 
 // H44-25-2: the shapes of a real guard pass.

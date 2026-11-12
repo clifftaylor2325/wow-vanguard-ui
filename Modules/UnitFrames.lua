@@ -370,7 +370,7 @@ end
 UF.NAME_ROW = 14
 
 -- A unit frame's name tab under the Tabs look (Core/HudLook.lua): its height in units, and its least width.
-UF.TAB = { height = 18, min = 48 }
+UF.TAB = { height = 18, min = 48, partyClear = 12 }
 
 -- Whether a frame stands as a banner now: the Standards HUD layout (Core/HudLayout.lua) is in force and sizes the
 -- frame, one of the five it plants (Modules/UnitFrameLayouts.lua lays its parts out).
@@ -953,6 +953,27 @@ function UF.TabLift()
   return 0
 end
 
+-- How far the party column's default spot stands higher under the Tabs look than under the others, past the
+-- gaps its tabs open: its foot clears the focus's cast bar, which the tab lifts too (Modules/CastBars.lua).
+---@return number
+function UF.PartyClear()
+  return UF.TabLift() > 0 and UF.TAB.partyClear or 0
+end
+
+-- The party column's default spot lifts for the tabs it carries (a gap each between the frames) and for the focus's
+-- cast bar to stand clear of its foot.
+---@return number
+function UF.PartyLift()
+  return (PARTY_SIZE - 1) * UF.TabLift() + UF.PartyClear()
+end
+
+-- How far the party column's top rises under the Tabs look: its default spot's lift plus party1's own tab. What stands
+-- over the column (Modules/PartyExtras.lua) rises by as much.
+---@return number
+function UF.PartyRise()
+  return UF.PartyLift() + UF.TabLift()
+end
+
 -- The target of target's default spot for the look: on a narrow canvas it sits over the target's cast bar, so its
 -- narrow spot rises with that bar's under Tabs (Modules/CastBars.lua CB.FitLook).
 local function targetOfTargetDefault()
@@ -976,12 +997,12 @@ end
 
 -- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed), and moves the target
 -- of target's narrow spot with the look. The party and boss stacks spread by the tab under Tabs, party1's default
--- rising by as much so the column's foot stays put. Each frame under its own guard: one that fails is reported, the
--- rest still lay out. Always run out of combat (it re-anchors secure frames).
+-- rising by as much and a little more (UF.PartyClear), so the column's foot clears the focus's cast bar. Each frame
+-- under its own guard: one that fails is reported, the rest still lay out. Always run out of combat (it re-anchors secure frames).
 function UF.ApplyLook()
   for _, f in pairs(UF.frames) do ns.Try("unit frame layout", UF.PlaceParts, f) end
   ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
-  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, (PARTY_SIZE - 1) * UF.TabLift()))
+  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, UF.PartyLift()))
   restack("party", PARTY_SIZE, PARTY)
   restack("boss", UF.BOSS.count, UF.BOSS)
 end

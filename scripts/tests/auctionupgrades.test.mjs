@@ -161,7 +161,7 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   expect(addon.eval("return #ns.errors"), "gear changing with nothing seen: no error").toBe(0);
 });
 
-it("upgrades: a big scan is judged a hundred listings a frame, and closing the house stops it", () => {
+it("upgrades: a big scan is judged a hundred listings a frame, and closing the house pauses it", () => {
   const addon = warrior(`__rows = {}
     for i = 1, 150 do
       __wfgWorld.items[1000 + i] = { name = "TEST-ONLY Bracers " .. i, classID = 4, equipLoc = "INVTYPE_WRIST", stats = { ITEM_MOD_STRENGTH_SHORT = 11 } }
@@ -174,7 +174,7 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
   expect([addon.eval(`return ${HELPER}.scan == nil`), addon.eval(`return ${HELPER}.judging ~= nil`), card(addon)[1]], "the scan read in one frame, and a hundred of its listings judged in the same, the rest still to go").toEqual([true, true, 100]);
   addon.world.closeAuctionHouse();
   addon.update(0.01);
-  expect([addon.eval(`return ${HELPER}.judging == nil`), addon.eval(`return next(${HELPER}.upgrades) == nil`), addon.eval(`return ${HELPER}.judge:IsShown()`)], "closed: judging stops, the listings judged are kept").toEqual([true, false, false]);
+  expect([addon.eval(`return ${HELPER}.judging == nil`), addon.eval(`return next(${HELPER}.upgrades) == nil`), addon.eval(`return ${HELPER}.judge:IsShown()`)], "closed: the walk is paused (kept, not running), the listings judged are kept").toEqual([false, false, false]);
   addon.world.openAuctionHouse();
   addon.update(0);
   addon.eval("__now = __now + 1000");
@@ -293,4 +293,44 @@ it("H44-G3-2: after a gear change no upgrade judged against the old gear is list
   expect([card(addon)[1], row(addon, 1)[0]], "the best bracers worn: none of the 150 is shown before it is judged again").toEqual([0, false]);
   addon.update(0.01);
   expect([card(addon)[1], addon.eval(`return ${HELPER}.judging ~= nil`)], "a hundred judged, the rest still to go: still none").toEqual([0, true]);
+});
+// H45-10-1: reopen the house on the Upgrades list and run frames.
+const reopen = (addon) => {
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  for (let i = 0; i < 10; i++) addon.update(0.01);
+};
+it("H45-10-1: a gear change's walk cut short by closing the house goes on at the next visit", () => {
+  const addon = warrior(BRACERS_150);
+  scan(addon, "__rows");
+  addon.eval("__wfgWorld.worn[9] = __link(103)");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.update(0.01);
+  addon.world.closeAuctionHouse();
+  addon.update(0.01);
+  reopen(addon);
+  expect([card(addon)[1], addon.eval(`return ${HELPER}.judging == nil`)], "all 150 judged again").toEqual([150, true]);
+});
+it("H45-10-1: the Upgrades switch turned off mid-walk and on again judges the rest", () => {
+  const addon = warrior(BRACERS_150);
+  scan(addon, "__rows");
+  addon.eval("__wfgWorld.worn[9] = __link(103)");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.update(0.01);
+  addon.eval(`${HELPER}.settings.upgrades = false`);
+  addon.update(0.01);
+  addon.eval(`${HELPER}.settings.upgrades = true ${HELPER}.PaintUpgrades()`);
+  for (let i = 0; i < 5; i++) addon.update(0.01);
+  expect(card(addon)[1], "all 150 listed again").toBe(150);
+});
+it("H45-10-1: a gear change while the house is closed ends the walk and forgets the listings", () => {
+  const addon = warrior(BRACERS_150);
+  scan(addon, "__rows");
+  addon.eval("__wfgWorld.worn[9] = __link(103)");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.update(0.01);
+  addon.world.closeAuctionHouse();
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  expect(addon.eval(`return ${HELPER}.judging == nil and next(${HELPER}.upgrades) == nil`)).toBe(true);
 });
