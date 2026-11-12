@@ -1,11 +1,12 @@
-// The "only goes down" baselines against the base branch (scripts/lib/baselines.mjs, scripts/check-baselines.mjs).
+// The "only goes down" baselines and the "only goes up" coverage floor against the base branch (scripts/lib/baselines.mjs,
+// scripts/check-baselines.mjs).
 
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, expect, it } from "vitest";
-import { baselineRises, budgetWritten, checkBaselines } from "./lib/baselines.mjs";
+import { CHECKED_FILES, baselineRises, budgetWritten, checkBaselines, floorFalls } from "./lib/baselines.mjs";
 import { root } from "./check-zip.mjs";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-baselines-"));
@@ -109,4 +110,35 @@ it("H45-2-56 a renamed count that rose fails though another dropped key keeps th
   expect(baselineRises("f.json", { a: 15, b: 9 }, { c: 15, d: 8 }), "renamed at the same or a lower number").toEqual([]);
   expect(baselineRises("f.json", { a: 10 }, { b: 5, c: 5 }), "a split").toEqual([]);
   expect(baselineRises("f.json", { a: 5, b: 7 }, { c: 12 }), "a merge").toEqual([`f.json: c in place of a, b: 7 -> 12 ${hint}`]);
+});
+
+const FLOOR = "scripts/lua-coverage-floor.json";
+
+it("H46-36-R1 a coverage floor number that fell, went missing or changed kind is named; a raised, unchanged or new one passes", () => {
+  const base = { lines: 100, withoutRetail: 99.86 };
+  expect(floorFalls(FLOOR, base, { lines: 90, withoutRetail: 99.86 })).toEqual([`${FLOOR}: lines: 100 -> 90; the floor only goes up`]);
+  expect(floorFalls(FLOOR, base, { lines: 100 })).toEqual([`${FLOOR}: withoutRetail: 99.86 -> gone; the floor only goes up`]);
+  expect(floorFalls(FLOOR, base, { lines: "100", withoutRetail: 99.86 })).toEqual([`${FLOOR}: lines: was a number, now a string; the floor only goes up`]);
+  expect(floorFalls(FLOOR, base, { lines: 100, withoutRetail: 99.9, forever: 98 }), "raised, unchanged and new").toEqual([]);
+});
+
+it("H46-36-R1 the default check reads the coverage floor, so a commit that lowers it fails, and a floor new since the base passes", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-floor-"));
+  // Runs git in this test's own scratch repo.
+  const run = (...args) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", ...args], { cwd: dir, stdio: "pipe" });
+  // Writes one checked file there as JSON.
+  const put = (file, data) => (fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true }), fs.writeFileSync(path.join(dir, file), JSON.stringify(data)));
+  try {
+    for (const file of CHECKED_FILES) put(file, {});
+    run("init", "-q");
+    run("add", "-A");
+    run("commit", "-q", "-m", "base without a floor");
+    put(FLOOR, { lines: 100, withoutRetail: 99.86 });
+    expect(checkBaselines(dir, "HEAD"), "a floor the base had as {}").toEqual([]);
+    run("commit", "-qam", "the floor");
+    put(FLOOR, { lines: 90, withoutRetail: 80 });
+    expect(checkBaselines(dir, "HEAD")).toEqual([`${FLOOR}: lines: 100 -> 90; the floor only goes up`, `${FLOOR}: withoutRetail: 99.86 -> 80; the floor only goes up`]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
