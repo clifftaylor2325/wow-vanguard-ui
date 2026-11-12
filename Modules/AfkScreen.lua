@@ -115,6 +115,7 @@ function AFK.PaintPassage()
   f.by:SetShown(passage ~= nil)
   f.passageShade:SetShown(passage ~= nil)
   if not passage then return end
+  T.TextSize(f.passage, T.RoleSize("title") + AFK.PASSAGE_UP)
   f.passage:SetText(passage.text)
   f.by:SetText(passage.by)
   f.passage:SetTextColor(T.RGB(T.CRESTS[faction][2]))

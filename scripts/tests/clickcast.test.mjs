@@ -978,3 +978,14 @@ it("H45-19-51 a fight's end re-reads no options row while the window is closed, 
   addon.eval('ns.Options.Show("clickcast")');
   expect([closed, addon.eval("return __refreshes") > 0]).toEqual([0, true]);
 });
+
+// A spell's rank text can load after the catalog was built (forever Blizzard_APIDocumentationGenerated/
+// SpellDocumentation.lua:1144 SPELL_TEXT_UPDATE, payload spellID; SpellBookDocumentation.lua:1020 subName may be empty).
+it("H45-6-R2 the catalog is rebuilt when a spell's text loads", () => {
+  const addon = priest();
+  const before = addon.eval(`return #${CS}.Catalog().spells`);
+  addon.eval("C_SpellBook.GetNumSpellBookSkillLines = function() return 0 end");
+  expect(addon.eval(`return #${CS}.Catalog().spells`), "the cached catalog is kept until an event").toBe(before);
+  addon.fire("SPELL_TEXT_UPDATE", 9472);
+  expect(addon.eval(`return #${CS}.Catalog().spells`)).toBe(0);
+});

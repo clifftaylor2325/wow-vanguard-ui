@@ -195,11 +195,18 @@ local function spellKnown(_, row)
   if not knows(row.spell) then return "unchanged", "unknown" end
 end
 
+-- Whether the spellbook lists a rank for both spells and the first's is the higher (a rank whose text hasn't
+-- loaded has none, and a spell of the same name without a rank is never swapped).
+local function outranks(spell, other)
+  local rank, old = ns.ClickCastSpells.RankOf(spell), ns.ClickCastSpells.RankOf(other)
+  return rank ~= nil and old ~= nil and rank > old
+end
+
 -- Whether a plan may put a row's spell over another rank of it on the row's own button: not on a button this plan
 -- already wrote; with `plan.ranks` (KA.Update) only where it answers yes; else always (Apply lists it as a change
 -- of its own, which the player may untick to keep a lower rank).
-local function swapsRank(plan, slot, content)
-  return not plan.taken[slot] and (plan.ranks == nil or plan.ranks(slot, content.id))
+local function swapsRank(plan, row, content)
+  return not plan.taken[row.slot] and outranks(row.spell, content.id) and (plan.ranks == nil or plan.ranks(row.slot, content.id))
 end
 
 -- A spell already on the bars (a spell this plan moved aside too): the key is bound to that button (its slot
@@ -210,7 +217,7 @@ local function alreadyOnBars(plan, row)
   if not s then return nil end
   if plan.claimed[s] then return "unchanged", "used" end
   local content = viewOf(plan, s)
-  if s == row.slot and content.id ~= row.spell and swapsRank(plan, s, content) then
+  if s == row.slot and swapsRank(plan, row, content) then
     row.over, row.replaced = content.id, true
     return "place"
   end
@@ -782,9 +789,11 @@ local function keepSlots(run, slots, row)
   end
 end
 
--- Saves the record of a run that succeeded (each key once); answers how many keys changed.
+-- Saves the record of a run that succeeded (each key once), marked madeSet when the run switched the key set (for the
+-- note a put-back gives); answers how many keys changed.
 local function keep(run)
   local rec, slots, seen, count = ensureRecord(run.set), slotRecord(), {}, 0
+  rec.madeSet = rec.madeSet or run.from ~= nil or nil
   for _, row in ipairs(run.rows) do
     if KA.WRITES[row.kind] then
       if not seen[row.key] then keepKey(run, rec, row) count = count + 1 end
@@ -973,11 +982,22 @@ local function report(result)
   end
 end
 
--- Saves the keys, forgets an emptied record, and says what happened.
+-- Says the character keeps the key set Vanguard's Apply switched it to: putting back never switches it back (the game
+-- warns that the way back overwrites the character's keys).
+local function ownKeysNote()
+  local label = CHARACTER_SPECIFIC_KEYBINDINGS or L["Character Specific Keybindings"]
+  local text = L["This character still uses its own keys. To share your account's keys again, untick {label} in the game's key bindings."]
+  ns.Chat(ns.Format(text, { label = label }))
+end
+
+-- Saves the keys, forgets an emptied record, and says what happened (and, for an emptied record of a key set
+-- Vanguard's Apply made, that the character still has its own keys).
 local function finishPutBack(rec, result)
   SaveBindings(GetCurrentBindingSet())
-  if next(rec.keys) == nil and recordFor(rec.set) then storeFor(rec.set).keyRestore = nil end
+  local emptied = next(rec.keys) == nil and recordFor(rec.set)
+  if emptied then storeFor(rec.set).keyRestore = nil end
   report(result)
+  if emptied and rec.madeSet then ownKeysNote() end
 end
 
 -- Puts one key back as it was before Vanguard changed it ("Put back what I had"), with the spells it placed or moved.

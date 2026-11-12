@@ -564,3 +564,91 @@ it("H44-10-51 step 3: a character key set where only what a key does now differs
   expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), charKeys(addon, "TOGGLEBACKPACK")],
     "the character's F still opens the bags").toEqual([true, 1, ["F"]]);
 });
+
+it("H45-6-2 step 3: a key bound after the list was drawn, in the same key set, stops Apply and the list says (now ...)", () => {
+  const addon = warrior();
+  addon.world.setAction(61, { type: "spell", id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("[x] F: your Shield Bash on bar 2");
+  addon.eval('SetBinding("F", "TOGGLEBACKPACK") SaveBindings(1)');
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(keys(addon, ["F"]), "the player's own key stays").toEqual(["TOGGLEBACKPACK"]);
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, win(addon).step]).toEqual([true, 3]);
+  expect(ready(addon).join("\n")).toMatch(/F: .*\(now /);
+});
+
+it("H45-6-R1 step 3: a change the player unticked that stops being one (the key set by hand, then a fight) no longer blocks Apply", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __click("Apply")');
+  const command = keys(addon, ["F"])[0];
+  addon.eval('SetBinding("F", nil) SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: ");
+  addon.world.combat(true);
+  addon.eval(`SetBinding("F", "${command}") SaveBindings(1)`);
+  addon.world.combat(false);
+  expect(Object.values(ready(addon)).filter((r) => /^\[/.test(r)), "the entry is no change now, so no box is drawn").toEqual([]);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\./), chatHas(addon, /No key needs changing\./)]).toEqual([false, false, true]);
+});
+
+// The player's own switch in the game's Settings (forever Blizzard_Settings_Shared/Blizzard_Settings.lua:636-648):
+// Settings.SelectAccountBindings, and Settings.SelectCharacterBindings.
+const SELECT_ACCOUNT = "LoadBindings(1) SaveBindings(1)";
+const SELECT_CHARACTER = "SaveBindings(1) LoadBindings(2) SaveBindings(2)";
+
+it("H45-6-101 step 3: switching from this character's keys to the account's while Ready is open stops Apply", () => {
+  const addon = warrior("__wfgWorld.bindingSet = 2");
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()")).toBe(false);
+  addon.eval(SELECT_ACCOUNT);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, win(addon).step, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 3, 1, [""]]);
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()"), "Ready now offers the choice").toBe(true);
+});
+
+it("H45-6-101 step 3: All my characters picked, then switching to this character's own keys, stops Apply", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __choose(Vanguard_KeysWizard.steps.ready.scope, "all")');
+  addon.eval(SELECT_CHARACTER);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 2, [""]]);
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()"), "Ready no longer offers the choice").toBe(false);
+});
+
+it("H45-6-102 step 2: a change unticked on Ready is not drawn, listed or named as a change after Back", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: Shield Bash");
+  addon.eval('__click("Back")');
+  expect(cap(addon, "F").color, "F is faint like a key that stays").not.toBe("accentText");
+  expect(preview(addon).lines.join("|")).not.toContain("F: Shield Bash");
+  addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "F" then c.__scripts.OnEnter(c) end end`);
+  expect(tipText(addon)).toContain("F: stays as it is");
+  expect(tipText(addon)).not.toContain("Shield Bash added");
+});
+
+it("H45-6-R4 step 3: the gamepad interface switched on while Ready is open stops Apply and step 1 says why", () => {
+  const addon = warrior("__pad = false InputUtil = { IsGamepadUIEnabled = function() return __pad end }");
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  addon.eval("__pad = true");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(keys(addon, ["F"]), "no key changed").toEqual([""]);
+  expect([win(addon).shown, win(addon).step, win(addon).left]).toEqual([true, 1, "Close"]);
+  expect(addon.texts("You play with a gamepad, so Vanguard won't change your keys.").length).toBe(1);
+});

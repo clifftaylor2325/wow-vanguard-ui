@@ -213,14 +213,15 @@ local function paintHits(text, hit)
 end
 
 -- A lower-case line with each Latin-1 mark (guillemets, the no-break space) and each general punctuation character
--- (dashes, curly and low quotes, bullets, the ellipsis, thin spaces) replaced by as many \1 bytes as it has, so a word
--- of two-byte letters next to one still has a word start for the pattern's frontier (the last byte of these marks is
--- in the same range as a letter's). The length is kept, so every offset still fits the shown text.
+-- (dashes, curly and low quotes, bullets, the ellipsis, thin spaces) keeping its own last byte and followed by a byte
+-- outside the letter range (\1 after a two-byte mark, \2\2 after a three-byte one), so a word of two-byte letters next
+-- to one still has a word start for the pattern's frontier. The length is kept, so every offset still fits the shown
+-- text, and no two different marks come out equal (a phrase's sign never matches another sign).
 ---@param lower string
 ---@return string
 function CX.Unmarked(lower)
   if not lower:find("[\194\226]") then return lower end
-  return (lower:gsub("\194[\128-\191]", "\1\1"):gsub("\226\128[\128-\191]", "\1\1\1"))
+  return (lower:gsub("\194([\128-\191])", "%1\1"):gsub("\226\128([\128-\191])", "%1\2\2"))
 end
 
 -- A plain line (CX.Plain's: no codes left in it) with every match of the patterns (lower-case, none

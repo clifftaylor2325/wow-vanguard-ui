@@ -276,6 +276,23 @@ it("fading a frame's art: template textures go, Vanguard's own parts and kept on
   expect(out, "only the two template textures fade; a later call on another frame touches only that frame's").toEqual([2, 0, 1, 1, 0, 1]);
 });
 
+it("fading a shadowed panel's frame keeps its panel texture lit (H45-4-1)", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    T.Settings().panelTexture = "grain" T.Refresh()
+    local f = CreateFrame("Frame", nil, UIParent)
+    T.Panel(f, { shadow = true })
+    local path = T.PANEL_TEXTURES.grain.path
+    local function surfaceAlpha()
+      for _, r in ipairs({ f:GetRegions() }) do if r.GetTexture and r:GetTexture() == path then return r:GetAlpha() end end
+    end
+    local before = surfaceAlpha()
+    T.FadeRegions(f)
+    return { before, surfaceAlpha() }`);
+  expect(out[0], "the texture was drawn").toBeGreaterThan(0);
+  expect(out[1], "T.FadeRegions leaves it as painted").toBe(out[0]);
+});
+
 // TEST-ONLY: opens the options row's dropdown with this caption (its tab shown), and reads what its menu shows.
 const DROPDOWN_LUA = `
   function __dropdown(caption)

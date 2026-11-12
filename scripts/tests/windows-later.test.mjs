@@ -1115,3 +1115,22 @@ it("a scroll box with no view yet waits for its first show; a forbidden money bo
   expect(addon.eval("return { select('#', __own:GetRegions()) > 0, select('#', __locked:GetRegions()) }"), "a forbidden box gets nothing drawn on it").toEqual([true, 0]);
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+
+// H45-8-52: a window whose skin is left off (GW.SKIPPED, named under Left off) keeps the game's look, its tabs too.
+const BARE_TAB = `
+  function __tab(parent, name)
+    local b = CreateFrame("Button", name, parent)
+    for _, k in ipairs({ "Left", "Middle", "Right" }) do b[k] = b:CreateTexture(nil, "BACKGROUND") end
+    return b
+  end
+`;
+
+it("H45-8-52 windows: a window left off keeps the game's tabs, and a window with all its parts gets Vanguard's", () => {
+  const bare = loggedIn(`${WINDOWS_ENV}${BARE_TAB}__window("AuctionHouseFrame") __tab(AuctionHouseFrame, "AuctionHouseFrameTab1")`);
+  bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  bare.eval("AuctionHouseFrame:Show()");
+  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return AuctionHouseFrameTab1.Left.__alpha or -1")], "left off: no panel, the tab's art untouched").toEqual([false, -1]);
+  const whole = loggedIn(`${WINDOWS_ENV}${BARE_TAB}__window("CharacterFrame") __tab(CharacterFrame, "CharacterFrameTab1")`);
+  whole.eval("CharacterFrame:Show()");
+  expect(whole.eval("return CharacterFrameTab1.Left.__alpha"), "a whole window's tab art is faded").toBe(0);
+});

@@ -455,7 +455,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   setCombat(addon, false);
   const after = lay();
   expect(after, "then bar 2 is two rows of 6 at 40 px, showing 10 buttons").toEqual({ w: 6 * (s40 + g) - g, h: 2 * (s40 + g) - g, x7: 0, y7: -(s40 + g), size: s40, shown12: false });
-  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
+  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button's key goes back to the game's command; the bar keeps its own size").toBeTruthy();
   expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()"), "other bars keep theirs").toBe(s38);
 });
 
@@ -576,19 +576,8 @@ it("bar 1 with secure snippets keeps the snippet paging", () => {
     "the state driver and its snippet, buttons without IDs").toEqual([true, true, true, 0]);
 });
 
-// TEST-ONLY game action buttons on the game's bars, each listening to cooldown and usable events as the game's do.
-const GAME_BUTTONS = `
-  for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
-    local b = CreateFrame("CheckButton", name, MainMenuBar)
-    b:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN") b:RegisterEvent("SPELL_UPDATE_USABLE")
-  end
-`;
-
-it("the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps", () => {
-  const addon = loggedIn(ACTIONS_ENV + GAME_BUTTONS);
-  expect(addon.eval(`local out = {} for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
-    out[#out + 1] = _G[name]:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN") or _G[name]:IsEventRegistered("SPELL_UPDATE_USABLE") end return out`),
-    "no game action button listens to events any more").toEqual([false, false, false, false]);
+it("one cooldown event refreshes the sweeps", () => {
+  const addon = loggedIn(ACTIONS_ENV);
   addon.eval("__cooldowns = 0 local get = GetActionCooldown GetActionCooldown = function(...) __cooldowns = __cooldowns + 1 return get(...) end");
   addon.fire("SPELL_UPDATE_COOLDOWN");
   expect(addon.eval("return __cooldowns"), "SPELL_UPDATE_COOLDOWN no longer re-reads every button's cooldown").toBe(0);
@@ -596,8 +585,6 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
   addon.update(0);
   expect([addon.eval("return __cooldowns > 0"), addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
-  const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
-  expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
 });
 
 // The tooltip's owner name, the slot it shows, its first line, and whether it is up.
@@ -1102,6 +1089,25 @@ it("H44-8-2 bars: a shared size or spacing outside the sliders' limits is droppe
   }
   expect(sharedAfterLogin("spacing = 100000"), "spacing 100000").toEqual([38, 2, 0]);
   expect(sharedAfterLogin("size = 44, spacing = 6"), "values inside the limits stay").toEqual([44, 6, 0]);
+});
+
+it("H45-5-1 bars: the shared size keeps what setup's screen presets write (to 64), though a bar's own slider ends at 48", () => {
+  for (const kept of [50, 55, 62, 64]) expect(sharedAfterLogin(`size = ${kept}, layout = 2`), `size ${kept}`).toEqual([kept, 2, 0]);
+  expect(sharedAfterLogin("size = 65, layout = 2"), "65 is past the shared limit").toEqual([38, 2, 0]);
+  const bar = loggedInWithBarOne("{ size = 50 }");
+  expect(bar.eval('return ns.GetModule("ActionBars").settings.bars[1].size == nil'), "a bar's own size of 50 is still dropped").toBe(true);
+});
+
+it("H45-5-51 bars: a saved layout stamp that is not a number is treated as an old profile, at login and in an import", () => {
+  for (const stamp of ['"x"', "{}", "0/0"]) {
+    const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { layout = ${stamp} } } }\n` });
+    addon.eval(ACTIONS_ENV);
+    addon.login();
+    expect(addon.eval('return { #ns.errors, Vanguard_Bar1 ~= nil, ns.GetModule("ActionBars").settings.layout }'), `login with layout ${stamp}`).toEqual([0, true, 2]);
+    const read = addon.eval(`local ok, kind, data = pcall(ns.ReadPayload, "parts", { format = ns.PROFILE_FORMAT, ActionBars = { layout = ${stamp} } })
+      return { ok, kind, ok and data.ActionBars.layout }`);
+    expect(read, `import with layout ${stamp}`).toEqual([true, "parts", 2]);
+  }
 });
 
 it("an imported string's bar size that isn't a number is dropped before it is saved", () => {

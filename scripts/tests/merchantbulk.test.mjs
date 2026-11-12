@@ -177,16 +177,26 @@ it("H19-1-3 /vg sell never offers a purchase the merchant would still refund, as
 });
 
 it("H19-1-3 a sale answered while the merchant shows its Buyback tab sells nothing, as the game's bag click does", () => {
-  const addon = loggedIn(BULK_ENV + "MerchantFrame = { selectedTab = 1 }");
+  const addon = loggedIn(BULK_ENV + "MerchantFrame = { selectedTab = 1, IsShown = function() return true end }");
   addon.fire("MERCHANT_SHOW");
   addon.slash("sell 159");
   addon.eval("MerchantFrame.selectedTab = 2");
   addon.click("Vanguard_Question.confirm");
   expect(used(addon), "nothing used on the Buyback tab").toEqual({});
+  expect([chatHas(addon, /Selling 2 stack/), chatHas(addon, /Nothing sold: the merchant shows its Buyback tab\./)], "H45-10-51: no sale is claimed, the Buyback line says why").toEqual([false, true]);
   addon.eval("MerchantFrame.selectedTab = 1");
   addon.slash("sell 159");
   addon.click("Vanguard_Question.confirm");
   expect(used(addon), "the merchant tab sells").toEqual([1, 6]);
+});
+
+it("H45-10-51 answering Sell after the merchant closed keeps the closed line, and claims no sale", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell 159");
+  addon.fire("MERCHANT_CLOSED");
+  addon.click("Vanguard_Question.confirm");
+  expect([chatHas(addon, /Selling 2 stack/), chatHas(addon, /Nothing sold: the merchant is closed\./)]).toEqual([false, true]);
 });
 
 it("/vg sell with a random-suffix link sells only that variant; an item ID sells every one", () => {

@@ -16,7 +16,7 @@ The first login opens the setup wizard: pick a layout (Damage, Tanking or Healin
 
 - `/vg` opens the options window. Press Escape to close it.
 - `/vg unlock` shows drag handles on every Vanguard frame; `/vg lock` saves them. Right-click the addons button by the minimap does the same.
-- `/vg modules` lists the parts. Turn off anything you would rather another addon does: `/vg disable <module>`, then `/reload`.
+- `/vg modules` lists the parts. Turn off anything you would rather another addon does: `/vg disable <module>` (most parts switch off at once; one that can't says `/reload to apply`).
 - `/vg whatsnew` lists what changed in this version; click a line to open its setting.
 
 ## What Vanguard does on its own

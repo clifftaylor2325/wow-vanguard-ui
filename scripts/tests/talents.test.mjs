@@ -205,7 +205,7 @@ it("talent planner: a refused apply undoes the ranks it just bought, so the retr
 });
 
 // TEST-ONLY staging as the game keeps it, with the apply as Forever runs it: CommitConfig answering true only starts
-// a cast (forever/Interface/AddOns/Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua,
+// a cast (forever/Interface/AddOns/Blizzard_PlayerSpells/ClassTalents/Blizzard_ClassTalentsFrame.lua:933,
 // CanCommitInstantly false; .xml maximumCommitTime 6), which ends in TRAIT_CONFIG_UPDATED or CONFIG_COMMIT_FAILED
 // with the configID (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SharedTraitsDocumentation.lua).
 const CAST_ENV = `__applied = 0
@@ -254,6 +254,27 @@ it("talent planner: an apply cut short in a fight is undone when it ends", () =>
   expect(addon.eval("return __rollback == nil"), "nothing in the fight").toBe(true);
   setCombat(addon, false);
   expect([addon.eval("return __rollback"), chatHas(addon, /the game refused to apply talents just now/)], "after it").toEqual([501, true]);
+});
+
+// The game raises both outcome events inside the commit call (SynchronousEvent, forever Blizzard_APIDocumentationGenerated/
+// SharedTraitsDocumentation.lua:827, 873); that it does so for a commit is not proven, so this models the order only.
+it("H45-9-51 talent planner: a failure reported inside the commit call is undone once, said once, and the retry buys again", () => {
+  const addon = open(`${CAST_ENV}
+    C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __wfgStub.fire("CONFIG_COMMIT_FAILED", 501) return true end`);
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(addon.eval(`return { __rollback, C_Traits.ConfigHasStagedChanges(), ${TP}.committing == nil }`), "undone, nothing noted").toEqual([501, false, true]);
+  addon.eval(`C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __applied = #__bought return true end ${TP}.SpendPlanned()`);
+  expect(addon.eval("return { #__bought, C_Traits.ConfigHasStagedChanges() }"), "the retry buys the three ranks again").toEqual([3, false]);
+});
+
+it("H45-9-51 talent planner: a success reported inside the commit call leaves nothing pending to fail later", () => {
+  const addon = open(`${CAST_ENV}
+    C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __applied = #__bought __wfgStub.fire("TRAIT_CONFIG_UPDATED", 501) return true end`);
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(addon.eval(`return ${TP}.committing`), "nothing noted").toBe(null);
+  addon.eval("C_Traits.PurchaseRank(501, 102)");
+  addon.fire("CONFIG_COMMIT_FAILED", 501);
+  expect([addon.eval("return __rollback"), chatHas(addon, /the game refused to apply talents just now/)], "the game window's own failure is left to it").toEqual([null, false]);
 });
 
 it("talent planner: a commit call that throws is a refusal: the ranks are undone and chat says so", () => {

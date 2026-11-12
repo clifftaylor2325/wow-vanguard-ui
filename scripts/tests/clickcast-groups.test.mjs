@@ -300,3 +300,15 @@ it("H44-9-50 Retail: Copy to spec 3 asked on spec 1 and answered on spec 2 copie
   addon.click("Vanguard_Question.confirm");
   expect(three(), "asked on spec 2: Replace copies spec 2's list").toEqual(["BUTTON5"]);
 });
+
+it("H45-6-51 a typed spell's Bind answered after a talent group switch says so, binds nothing and puts the text dialog away", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(widget(addon, 'w.key == "shift-BUTTON2" and w.iconFrame ~= nil and w.empty ~= nil'));
+  addon.wheel("Vanguard_SpellPicker", -9);
+  addon.click(widget(addon, 'w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.text.__text == "Type a spell name..."'));
+  addon.type("Vanguard_TextEdit", "Renew");
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_TextDialog.primary");
+  expect([chatHas(addon, STALE), addon.eval("return Vanguard_TextDialog:IsShown()"), listSize(addon, 2)]).toEqual([true, false, 0]);
+});

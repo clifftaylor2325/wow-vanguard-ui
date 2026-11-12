@@ -411,6 +411,15 @@ it("options: search finds buttons, choice names, the note under a setting and re
   expect(found("backup")[1], "eight or fewer: no last line").toBe("");
 });
 
+it("H45-7-2 options: a search for the words of a Reset this page row lights no page and says no setting matches; reset still finds General", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('ns.Options.Search("this page")');
+  expect([addon.eval("return #ns.Options.matches"), addon.eval("return Vanguard_Options.results.none:IsShown()")], "no page matches through a reset row, and the list says so").toEqual([0, true]);
+  addon.eval('ns.Options.Search("reset")');
+  expect(addon.eval("return ns.Options.matched.general"), "Reset theme and Reset all positions are settings rows: General still lights").toBe(true);
+});
+
 it("options: a live row of a module that is off saves its value without an error", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');

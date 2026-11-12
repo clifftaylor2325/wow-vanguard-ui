@@ -1229,3 +1229,25 @@ it("H44-5-51 a fallback row probes its filters when it is made, so a first read 
   addon.eval("C_Secrets = { ShouldAurasBeSecret = function() return true end }");
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|PLAYER|!CROWD_CONTROL")'), "probed when made, with no unit to read yet").toBe("HARMFUL|PLAYER");
 });
+
+// Tile 1's indicator rows: where each sits now (TOPRIGHT offsets), and where the zones say slot n goes.
+const indicatorSpots = (addon) => addon.eval(`local RF, RA = ns.GetModule("RaidFrames"), ns.GetModule("RaidAuras")
+  local b, z, out = Vanguard_RaidUnitButton1, RF.TileZones(), {}
+  for n, row in ipairs(b.indRows) do
+    local p, spec = row.frame.__points.TOPRIGHT, RA.IndicatorSpec(b, z, n)
+    out[n] = { p.x, p.y, spec.point[4], spec.point[5] }
+  end
+  return out`);
+
+it("H45-5-2 raid auras: a Height change that keeps the icon size still moves the indicators to the new tile's corners", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, {
+    savedVariables: SETUP_DONE + 'VanguardDB.profiles = { Default = { RaidFrames = { height = 54 }, RaidAuras = { indicator3 = "mine" } } }' });
+  addon.eval('__spawn(1, "raid1")');
+  for (const height of [56, 54]) {
+    addon.eval(`local RF = ns.GetModule("RaidFrames") RF.settings.height = ${height} RF.ApplySize()`);
+    for (let i = 0; i < 6; i++) addon.update(0.1);
+    const spots = indicatorSpots(addon);
+    expect(spots.length, `height ${height}: the indicator rows are there`).toBeGreaterThan(0);
+    expect(spots.map((s) => s.slice(0, 2)), `height ${height}: every slot at the spot the zones give`).toEqual(spots.map((s) => s.slice(2, 4)));
+  }
+});

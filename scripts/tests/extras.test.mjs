@@ -784,11 +784,16 @@ it("junk selling stops when the merchant closes or a fight starts: no retry uses
   expect(addon.eval("return __used"), "nor one in combat").toEqual({});
 });
 it("H44-G3-4 a junk retry while the merchant shows its Buyback tab sells nothing, as the game's bag click does", () => {
-  const addon = loggedIn(MERCHANT_ENV + "MerchantFrame = { selectedTab = 1 } __sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
+  const addon = loggedIn(MERCHANT_ENV + "MerchantFrame = { selectedTab = 1, IsShown = function() return true end } __sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return __used"), "the first pass sells on the merchant tab").toEqual([1]);
   addon.eval("MerchantFrame.selectedTab = 2 local t = __later __later = {} for _, f in ipairs(t) do f() end");
   expect(addon.eval("return __used"), "the retry on the Buyback tab uses nothing").toEqual([1]);
+});
+it("H45-10-R1 a merchant opened while the hidden window's tab still reads Buyback sells the junk", () => {
+  const addon = loggedIn(MERCHANT_ENV + "MerchantFrame = { selectedTab = 2, IsShown = function() return false end }");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used[1]"), "the old tab is not showing: the gray item sells").toBe(1);
 });
 it("quiet the game: the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);
@@ -826,6 +831,14 @@ it("the AFK screen: a dimmed screen and a card while you're away", () => {
   addon.eval("__afk = false");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(afk().shown, "back: it goes").toBe(false);
+});
+it("the AFK screen's passage follows a Text size change like every other title (H45-4-R1)", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  const out = addon.eval(`local AFK = ns.GetModule("AfkScreen") local T = ns.Theme
+    T.Settings().textScale = 1.3 T.Refresh()
+    local _, size = AFK.frame.passage:GetFont()
+    return { size, T.RoleSize("title") + AFK.PASSAGE_UP }`);
+  expect(out[0], "title size plus the passage's step up, at the new Text size").toBe(out[1]);
 });
 it("the AFK screen fades in over 0.4 s and, when a fight starts, out in 0.15 s", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
@@ -1047,4 +1060,28 @@ it("keep stocked: the add slot's accent edge follows the mouse: brighter on hove
   const held = edges();
   addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
   expect([hover !== rest, held !== rest, held !== hover, edges()], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
+});
+// H45-3-R1 (own find of the wave 3 review): the party column's top (party1's name tab included) and the pets-and-targets
+// column's foot, in screen units, under a HUD look with party frames `height` tall.
+const columnGap = (look, height) => {
+  const saved = `VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "${look}" }, PartyExtras = { show = true }, UnitFrames = { partyHeight = ${height} } } }`;
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: saved });
+  return addon.eval(`local p1 = Vanguard_party1 local top = p1.tab and p1.tab:IsShown() and p1.tab:GetTop() or p1:GetTop()
+    return { Vanguard_PartyExtras:GetBottom() - top, select(4, ns.MoverPoint("partyextras")) }`);
+};
+it("H45-3-R1: under the Tabs look the party pets and targets column's default spot rises with the party column, so tall party frames never reach it", () => {
+  const plain = columnGap("plain", 80);
+  const tabs = columnGap("tabs", 80);
+  expect(plain[0] >= 0 && tabs[0] >= 0, "the column's foot stays clear of the party column's top at Height 80, Plain and Tabs").toBe(true);
+  expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights and the 12 units the focus's cast bar needs").toBe(84);
+});
+it("H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
+  // The column's default spot's y now.
+  const y = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
+  const shield = y();
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(y() - shield, "Tabs lifts it by the party column's rise, 84").toBe(84);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  expect(y(), "back to Plain: the spot comes down again").toBe(shield);
 });

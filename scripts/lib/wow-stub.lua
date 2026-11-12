@@ -1230,10 +1230,13 @@ local function growGroup(c, g, wanted)
 end
 
 -- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows), up to
--- its maxFrameCount.
+-- its maxFrameCount. A switched-off container shows nothing, samples included: ParseAllAuras returns while not
+-- IsEnabled(), before any aura source (Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525, both
+-- clients). Not modelled: the client moves a container to Edit Mode's source only on AURA_DATA_PROVIDER_SWITCH, so one
+-- made after Edit Mode opened keeps the unit's auras there; stub.editMode covers every container at once.
 local function fillGroup(c, g)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
-  local samples, cap = stub.editMode and c.__editModePreview ~= false, g.opts.maxFrameCount or math.huge
+  local samples, cap = stub.editMode and c.__enabled and c.__editModePreview ~= false, g.opts.maxFrameCount or math.huge
   if not samples then growGroup(c, g, aurasShown(c, g, get)) end
   for i, b in ipairs(g.buttons) do
     local aura = i <= cap and (samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter)) or nil

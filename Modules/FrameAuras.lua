@@ -96,11 +96,14 @@ end
 -- Building ---------------------------------------------------------------------------
 
 -- A row (or none) put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
+-- Retire dropped it from the follow set, so it follows the scale again and is refit once for any change made while it slept.
 local function wake(row, unit)
   if not (row and row.parked) then return end
   row.parked = nil
   row.frame:Show()
   row:SetUnit(unit)
+  ns.Auras.Follow(row.frame)
+  ns.Try("aura refit", ns.Auras.Refit, row.frame, ns.Auras.SameScale)
 end
 
 -- Gives a frame the row `spec` describes under `name` (no row for no spec). A row that already reads
