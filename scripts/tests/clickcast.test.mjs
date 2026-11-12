@@ -333,7 +333,7 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   addon.key(tile, "LSHIFT");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "a lone modifier waits").toBe("Press a key or click...");
   addon.key(tile, "F1");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F1 -> Target on Tester");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`).replace(/\|c[0-9a-f]{8}|\|r/g, ""), "H45-19-R2: a Target hover key says the game won't run it").toBe("F1 -> Target on Tester  (does nothing: the game won't run it from a key)");
   addon.click(tile, "MiddleButton");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Middle click -> Flash Heal on Tester");
   addon.click(tile, "RightButton");
@@ -346,7 +346,7 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   addon.eval("UnitName = nil ns.Options.Refresh()");
   addon.hover(tile);
   addon.key(tile, "F2");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F2 -> Target on you");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`).replace(/\|c[0-9a-f]{8}|\|r/g, "")).toBe("F2 -> Target on you  (does nothing: the game won't run it from a key)");
   addon.hover(null);
   // How many bindings this spec has.
   const count = () => addon.eval(`return #${CC}.Bindings()`);
@@ -572,6 +572,14 @@ it("H45-19-1 the test tile names a mouse button no binding takes, modifiers too,
   const unnumbered = tileSays(addon, "OddButton");
   addon.keys({ shift: false });
   expect({ plain, shifted, unnumbered }).toEqual({ plain: "Button 9 -> nothing bound", shifted: "Shift + Button 12 -> nothing bound", unnumbered: "Shift + OddButton -> nothing bound" });
+});
+
+it("H45-19-R2 the test tile says a binding the game won't run does nothing, as /vg binds does; one it runs has no note", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON3", "menu") ${CC}.Add("BUTTON1", "target") ns.Options.Show("clickcast")`);
+  const note = addon.eval(`return ns.Theme.Paint(ns.Format(ns.L["(does nothing: {why})"], { why = ${CC}.WontRun(${CC}.Binding("BUTTON3")) }), "warn")`);
+  expect([tileSays(addon, "MiddleButton"), tileSays(addon, "LeftButton")]).toEqual([`Middle click -> Unit menu on Tester  ${note}`, "Left click -> Target on Tester"]);
+  expect(note).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).

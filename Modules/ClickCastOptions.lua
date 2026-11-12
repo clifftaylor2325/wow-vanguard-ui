@@ -729,16 +729,24 @@ local function playerName()
   return type(name) == "string" and name or L["you"]
 end
 
+-- The note after a line whose binding Vanguard knows does nothing (as /vg binds says it), else "".
+local function wontRunNote(b)
+  local why = CC.WontRun(b)
+  return why and ("  " .. T.Paint(ns.Format(L["(does nothing: {why})"], { why = why }), "warn")) or ""
+end
+
 -- The line for a key or click with nothing bound on it, under its name for people.
 local function nothingBound(name)
   return ns.Format(L["{key} -> nothing bound"], { key = name })
 end
 
--- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", or that nothing is bound.
+-- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
+-- nothing, or that nothing is bound.
 local function describe(key)
   local b = CC.Binding(key)
   if not b then return nothingBound(CC.KeyName(key)) end
-  return ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
+  local line = ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
+  return line .. wontRunNote(b)
 end
 
 -- A key on the tile (W.HoverKeys keeps it from the game, so testing 1 casts nothing), as the binding it would be.
