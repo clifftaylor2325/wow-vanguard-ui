@@ -1065,6 +1065,15 @@ it("A1-5: with Vanguard's tracker and quest log both off, a zone folded in the g
   tracker.advance(0.25);
   expect(tracker.eval("return __log[4].isCollapsed"), "the tracker alone is enough to open it").toBe(false);
 });
+it("H45-G3-8: a saved profile with no QuestLog switch still counts as the quest log being in use, so zones are opened", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false }, QuestLog = { xp = false } } }" });
+  addon.advance(0.25);
+  // The profile table is replaced, as a profile switch does, so the settings cache refills from it.
+  addon.eval("__log[4].isCollapsed = true VanguardDB.profiles.Default.QuestLog = { xp = false }");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.25);
+  expect(addon.eval("return __log[4].isCollapsed"), "the log's own default (on) applies").toBe(false);
+});
 it("H45-27-1: with the tracker's own switch off, switching Vanguard's quest log off live stops zones being opened", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   addon.advance(0.25);

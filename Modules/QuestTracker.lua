@@ -105,7 +105,7 @@ end
 -- login in a fight builds only after it.
 local function foldsWanted()
   local tracker = ns.ModuleLive("QuestTracker") and QT.Shows(ns.Settings("QuestTracker", QT.defaults))
-  return tracker or (ns.ModuleLive("QuestLog") and ns.Settings("QuestLog").own == true)
+  return tracker or (ns.ModuleLive("QuestLog") and ns.Settings("QuestLog", ns.GetModule("QuestLog").defaults).own == true)
 end
 
 -- Opens the folds on the next frame when that is wanted and the Quests page's switch is on.
