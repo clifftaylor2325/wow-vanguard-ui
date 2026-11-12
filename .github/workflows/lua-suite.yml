@@ -159,8 +159,8 @@ jobs:
 
   quick:
     # The quick and hooks projects (the JS tests, the smoke, snapshot and freeze tests), with coverage like
-    # a shard, and the checks that need no test: code quality, the TOC, luacheck, Lua 5.1 syntax and the
-    # release zip. It runs beside the shards. The checks come first so a red test does not hide them; the
+    # a shard, and the checks that need no test: code quality, the TOC, luacheck, Lua 5.1 syntax, the media
+    # files against their sources and the release zip. It runs beside the shards. The checks come first so a red test does not hide them; the
     # hooks file plants a Lua file under Modules/ for a moment, so it must run after them (it also runs
     # after the quick files, by its group order).
     name: Quick tests and checks

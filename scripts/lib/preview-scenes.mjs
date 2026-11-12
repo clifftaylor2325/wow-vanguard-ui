@@ -499,7 +499,7 @@ export const SCENES = [
   { name: "vanguard-options-modules", caption: "Options window: Modules, each with what it does and what it needs", lua: 'ns.Options.Show("modules")' },
   { name: "vanguard-options-search", caption: "Options window: typing \"scale\" in the search box lists the settings that match, with their pages",
     lua: 'ns.Options.Show("general") local s = Vanguard_Options.search s:SetText("scale") s:GetScript("OnTextChanged")(s)' },
-  { name: "vanguard-options-changed", caption: "Options window: Unit frames with two settings changed; the dot left of each puts its default back", lua: 'ns.Settings("UnitFrames").healthText = false ns.Settings("PowerTicks").energy = false ns.Options.Show("unitframes")' },
+  { name: "vanguard-options-changed", caption: "Options window: Unit frames with two settings changed; the arrow left of each puts its default back", lua: 'ns.Settings("UnitFrames").healthText = false ns.Settings("PowerTicks").energy = false ns.Options.Show("unitframes")' },
   { name: "vanguard-options-profiles", caption: "Options window: Profiles, each with Use, Copy here and Delete (which ask first), and a box for a new one (TEST-ONLY profiles)",
     lua: 'ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Leveling") ns.Options.Show("profiles")' },
   { name: "vanguard-options-bars", caption: "Options window: Action bars", lua: 'ns.Options.Show("actionbars")' },

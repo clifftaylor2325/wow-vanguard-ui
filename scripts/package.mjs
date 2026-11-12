@@ -5,8 +5,8 @@
 //
 //   node scripts/package.mjs [--ref HEAD] [--out dist]
 //
-// Files come from git at --ref, not the working tree, so a locally pulled
-// HubCache.lua or an uncommitted edit never ships.
+// Files come from git at --ref, not the working tree, so an uncommitted
+// edit or an untracked file never ships.
 
 import fs from "node:fs";
 import path from "node:path";
