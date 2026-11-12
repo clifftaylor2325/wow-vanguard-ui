@@ -2414,7 +2414,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 28.1a The command with the module switched off
 
-- Do: switch the Cooldown glow module off in `/vg`, then type `/vg cdmglow on`.
+- Do: switch the Cooldown Manager glow module off in `/vg`, then type `/vg cdmglow on`.
 - Expect: chat says "Cooldown Manager glow is off: turn the module on in the options first." and `/vg errors` stays empty.
 - If it fails, paste: `/vg errors`.
 
