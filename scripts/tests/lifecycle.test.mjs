@@ -151,9 +151,12 @@ it("lifecycle: a live module whose Enable fails is reported and stays off; the n
   expectErrors("module TestBroken: broken on purpose");
   const addon = lifeAddon(off("TestBroken"), `${MODULES}
     local B = ns.Module("TestBroken", { defaults = {}, live = true })
-    function B.Enable() error("broken on purpose", 0) end`);
+    __tries, __broken = 0, true
+    function B.Enable() __tries = __tries + 1 if __broken then error("broken on purpose", 0) end end`);
   addon.eval('ns.SetModuleEnabled("TestBroken", true)');
   expect(live(addon, "TestBroken")).toEqual({ TestBroken: false });
+  addon.eval('__broken = false ns.SetModuleEnabled("TestBroken", false) ns.SetModuleEnabled("TestBroken", true)');
+  expect([addon.eval("return __tries"), live(addon, "TestBroken")]).toEqual([2, { TestBroken: true }]);
 });
 
 it("lifecycle: a module that requires one not registered before it is reported, and never runs", () => {
