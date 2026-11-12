@@ -1894,6 +1894,10 @@ function GetNumQuestChoices() return #(openQuest().choices or {}) end
 function GetNumQuestItems() return #(openQuest().required or {}) end
 function IsQuestCompletable() return openQuest().complete ~= false end
 function QuestGetAutoAccept() return openQuest().autoAccept == true end
+-- Whether the open offer came from an area trigger or an adventure map (QuestFrame_OnEvent, QUEST_DETAIL;
+-- Blizzard_UIPanels_Game/Mainline/QuestFrame.lua).
+function QuestIsFromAreaTrigger() return openQuest().areaTrigger == true end
+function QuestIsFromAdventureMap() return openQuest().adventureMap == true end
 -- A reward, choice or required item: name, icon, count, quality, usable.
 function GetQuestItemInfo(kind, i)
   local list = kind == "choice" and openQuest().choices or kind == "required" and openQuest().required or openQuest().rewards

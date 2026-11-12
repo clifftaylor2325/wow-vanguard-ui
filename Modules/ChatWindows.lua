@@ -162,6 +162,42 @@ local function watchDocking(scope)
   scope:Gate("dock frame", letDocked, function(gate) hooksecurefunc("FCF_DockFrame", ns.Guard("hook FCF_DockFrame", gate)) end)
 end
 
+-- The game opens a chat window (a tab's Create New Window): the Chat page offers it in its Tab choice and size rows.
+-- Hooks FCF_OpenNewWindow through a gate, and rebuilds the page once the game has named and docked the window (not set
+-- as the tab being edited: the player may be editing another one).
+local function watchNewWindows(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then return end
+  scope:Gate("new window", function() ns.Soon("chat page", function() ns.Options.RebuildPage("chat") end) end,
+    function(gate) hooksecurefunc("FCF_OpenNewWindow", ns.Guard("hook FCF_OpenNewWindow", gate)) end)
+end
+
+-- The game saved a window's size and spot (the end of a tab drop, FCF_StopDragging; the resize grip's release): a floating
+-- window with a handle keeps where it was put, or the next pin run (Edit Mode closing) would put it back where the
+-- handle still was. The offsets are multiplied by the window's scale, as the pin divides them.
+local function keepDropped(frame)
+  local key = CW.floating[frame]
+  if not key then return end
+  local point, _, relPoint, x, y = ns.PlainPoint(frame, 1)
+  if not (point and x and y) then return end
+  local scale = ns.PlainNumber(frame:GetScale()) or 1
+  ns.SetMoverPoint(key, point, relPoint, x * scale, y * scale)
+end
+
+-- Hooks FCF_SavePositionAndDimensions (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua :1417, and the resize
+-- grip in FloatingChatFrame.xml :478-497), through the same gate as the docking hook.
+local function watchSaved(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_SavePositionAndDimensions) ~= "function" then return end
+  scope:Gate("chat layout saved", keepDropped, function(gate)
+    hooksecurefunc("FCF_SavePositionAndDimensions", ns.Guard("hook FCF_SavePositionAndDimensions", gate))
+  end)
+end
+
+-- A floating window closed from its tab menu (FCF_Close never docks it, so FCF_DockFrame does not run): its handle and
+-- pin let go. The game closes the fallback window when it gives one.
+local function letClosed(frame, fallback)
+  letDocked(fallback or frame)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -319,9 +355,16 @@ local function shownAlready(shown, text)
   return shown[text] or shown[CX.Rewrite(text)] or shown[restored] or shown[CX.Rewrite(restored)]
 end
 
+-- Whether Chat history is switched on (the module running and its switch set; its settings are nil when the module was off at login).
+local function historyOn()
+  return ns.ModuleLive("ChatHistory") and ns.Settings("ChatHistory", ns.GetModule("ChatHistory").defaults).on == true
+end
+
 -- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more (as saved, or as Vanguard rewrote it on screen), oldest first.
+-- None while Chat history is off.
 local function savedLines(shown)
   local out, CHH = {}, ns.GetModule("ChatHistory")
+  if not historyOn() then return out end
   local store = CHH.Store()
   for i = 1, windowCount() do
     for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
@@ -362,7 +405,8 @@ function CW.Find(query)
   local CX = ns.GetModule("ChatExtras")
   local patterns = { CX.Escape(needle) }
   for i, line in ipairs(found) do found[i] = CX.Marked(line, patterns) end
-  return ns.Format(L['Chat: {count} lines with "{word}"'], { count = #found, word = needle }), table.concat(found, "\n")
+  local title = #found == 1 and L['Chat: 1 line with "{word}"'] or L['Chat: {count} lines with "{word}"']
+  return ns.Format(title, { count = #found, word = needle }), table.concat(found, "\n")
 end
 
 -- Opens the find box (Core/Dialog.lua): the word goes in the field at its top, the lines found under it.
@@ -395,8 +439,11 @@ end
 function CW.Enable(settings, scope)
   CW.settings = settings
   CW.ApplyFind()
+  watchNewWindows(scope)
   if not settings.movers then return end
   watchDocking(scope)
+  watchSaved(scope)
+  ns.OnChatWindowClosed("windows", letClosed)
   for _, window in ipairs(CW.Shown()) do
     if floating(window.index) then floatingMover(window) end
   end

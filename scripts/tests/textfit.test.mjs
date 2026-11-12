@@ -347,6 +347,21 @@ it("text fits: the options footer's error line stops short of the reload notice,
   }
 });
 
+it("text fits: the options footer's reload notice naming two modules stays between the version line and Reload now (H45-23-2)", () => {
+  for (const [locale, scale] of [["deDE", 1], ["deDE", 1.3], ["frFR", 1], ["frFR", 1.3]]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() ns.SetModuleEnabled("UnitFrames", false) ns.Options.Show("general")`);
+    const label = addon.eval('return ns.L["Reload now"]');
+    const [noticeLeft, noticeRight, versionRight, reloadLeft, text] = addon.eval(
+      "return { Vanguard_Options.notice:GetLeft(), Vanguard_Options.notice:GetRight(), Vanguard_Options.version:GetRight(), Vanguard_Options.reload:GetLeft(), Vanguard_Options.notice:GetText() }");
+    const where = `${locale} at ${scale * 100}%: ${text}`;
+    expect(noticeLeft, `${where}: the notice starts right of the version line`).toBeGreaterThanOrEqual(versionRight - 1e-6);
+    expect(noticeRight, `${where}: and ends before the Reload now button`).toBeLessThan(reloadLeft);
+    expect(addon.textFit("Vanguard_Options").filter((finding) => finding.text === label), `${where}: Reload now is not cut`).toEqual([]);
+  }
+});
+
 it("text fits: a long Keep-stocked name on the Instance prep card ends in an ellipsis before its count (H17-5-R1)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
   addon.login();

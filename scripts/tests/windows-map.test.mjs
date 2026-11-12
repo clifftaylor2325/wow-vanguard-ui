@@ -309,7 +309,7 @@ const HEADERS_ENV = QUEST_MAP_ENV + `
 const headers = (addon) => addon.eval(`local out = {}
   for _, h in ipairs({ QuestMapFrame.QuestsFrame.ScrollFrame.Contents:GetChildren() }) do
     if h.ButtonText then local g = ns.FrameState("vgHeaderGlyph")[h]
-      out[#out + 1] = { h.bar:GetAlpha(), h.CollapseButton.art:GetAlpha(), g and g:GetTexture() or "none" } end
+      out[#out + 1] = { h.bar:GetAlpha(), h.CollapseButton.art:GetAlpha(), g and g:GetTexture() or "none", g and g:GetAlpha() or "none" } end
   end
   return out`);
 
@@ -317,12 +317,14 @@ it("quest panel in the map: the zone headers lose the game's yellow bar for a ch
   const addon = loggedIn(HEADERS_ENV, { savedVariables: OWN_LOG_OFF });
   addon.eval("QuestMapFrame:Show()");
   const down = addon.eval('return ns.Theme.Icon("Down")'), right = addon.eval('return ns.Theme.Icon("Right")');
-  expect(headers(addon), "bar and button art faded; Down while open, Right while folded, Down when the entry is unknown").toEqual([[0, 0, down], [0, 0, right], [0, 0, down]]);
+  expect(headers(addon), "bar and button art faded; Down while open, Right while folded, Down when the entry is unknown").toEqual([[0, 0, down, 1], [0, 0, right, 1], [0, 0, down, 1]]);
   addon.eval("QuestLogQuests_Update()");
   expect(isTok(addon, addon.eval(`for _, h in ipairs({ QuestMapFrame.QuestsFrame.ScrollFrame.Contents:GetChildren() }) do
     local g = h.ButtonText and ns.FrameState("vgHeaderGlyph")[h] if g then return g.__vertexColor end end`), "text"), "the chevron is light text, not gold").toBe(true);
   expect(headers(addon).length, "a header the game makes on a redraw is dressed too").toBe(4);
-  expect(headers(addon)[3], "the new one").toEqual([0, 0, down]);
+  expect(headers(addon)[3], "the new one").toEqual([0, 0, down, 1]);
+  addon.eval("QuestMapFrame.QuestsFrame.ScrollFrame:Hide() QuestMapFrame.QuestsFrame.ScrollFrame:Show()");
+  expect(headers(addon).map((h) => h[3]), "the chevrons stay drawn after the list shows again").toEqual([1, 1, 1, 1]);
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);
 });
 

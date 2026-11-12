@@ -48,22 +48,22 @@ end
 -- Delete and Copy here, right to left: they change settings for good, so they ask first and say what they lose.
 local function addEditButtons(r, name)
   local lost = ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name })
-  r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
+  r.delete = W.Danger(r, L["Delete"], function() if not ns.DeleteProfile(name) then O.RebuildPage("profiles") end end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.delete)
   -- The page is built again on every staged switch and after setup forks a profile, so {into} is always the profile
   -- ns.CopyProfile writes into.
-  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
+  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.LoadingProfileName(), from = name })
   r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.copy)
 end
 
--- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload;
--- the one running until then (when a switch is staged) only gets Use, to take the switch back. Use is
+-- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload (unless it
+-- is also the running one); the one running until then (when a switch is staged) only gets Use, to take the switch back. Use is
 -- a plain button: the page's one accent button is Create.
 local function addProfileButtons(r, name)
-  if name == ns.SelectedProfileName() then return end
+  if name == ns.SelectedProfileName() or (name == ns.LoadingProfileName() and name ~= ns.ProfileName()) then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
   r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() if not ns.PickProfile(name) then O.NeedReload() end end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end

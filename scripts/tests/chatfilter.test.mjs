@@ -71,7 +71,12 @@ it("chat filter: the same window is found again, not made twice; say and yell ar
   expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "found by its name").toBe("ChatFrame3");
   expect(deliver(addon, GOLD, "Yeller", { event: "CHAT_MSG_YELL" }), "yell").toBe(true);
   expect(deliver(addon, GOLD, "Sayer", { event: "CHAT_MSG_SAY" }), "say").toBe(true);
-  expect(addon.eval("local n = 0 for _, e in ipairs({ 'CHAT_MSG_WHISPER', 'CHAT_MSG_GUILD', 'CHAT_MSG_PARTY', 'CHAT_MSG_RAID' }) do n = n + #(__wfgWorld.chatFilters[e] or {}) end local CF = ns.GetModule('ChatFilter') for _, fn in ipairs(__wfgWorld.chatFilters.CHAT_MSG_WHISPER or {}) do assert(fn ~= CF.Filter) end return n >= 0"), "the filter listens to no other event").toBe(true);
+  const others = ["CHAT_MSG_WHISPER", "CHAT_MSG_GUILD", "CHAT_MSG_PARTY", "CHAT_MSG_RAID"];
+  expect(others.map((event) => deliver(addon, GOLD, "Goldy", { event })), "the same gold line is let through on every other event").toEqual([false, false, false, false]);
+  const off = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { ChatFilter = false } }" });
+  // How many filters the four events have in all.
+  const count = (client) => client.eval(`local n = 0 for _, e in ipairs({ "${others.join('", "')}" }) do n = n + #(__wfgWorld.chatFilters[e] or {}) end return n`);
+  expect(count(addon) - count(off), "the filter listens to no other event").toBe(0);
 });
 
 it("chat filter: one line is judged once however many windows ask; your own lines and secret text pass", () => {

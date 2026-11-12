@@ -299,12 +299,40 @@ local function takeKeys()
   QD.frame:EnableKeyboard(QD.frame:IsShown())
 end
 
--- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk). An offer an
--- item started (QD.itemOffer) shows too, but no key answers it: you were looting, not asking.
+-- Whether this is an adventure map's offer, which has the map's own dialog (QuestFrame_OnEvent, QUEST_DETAIL branch,
+-- Blizzard_UIPanels_Game/Mainline/QuestFrame.lua): nothing is done for it.
+function QD.IsAdventureMapOffer(event)
+  return event == "QUEST_DETAIL" and ns.CallIf(_G, "QuestIsFromAdventureMap") == true
+end
+
+-- Whether this is a quest the game accepted on its own from an area trigger: it is already in the log, and the game
+-- closes the offer (CloseQuest) and opens no window. The game's tracker popup is not forwarded: that would run its
+-- tracker code from here.
+function QD.IsAutoAcceptedTriggerOffer(event)
+  if event ~= "QUEST_DETAIL" then return false end
+  return ns.CallIf(_G, "QuestGetAutoAccept") == true and ns.CallIf(_G, "QuestIsFromAreaTrigger") == true
+end
+
+-- Handles an offer the game shows no window for, and says whether it did: an adventure map's offer takes down a page
+-- still showing (that page is not this offer's) and is left to the map; an auto-accepted one is closed, as the game does.
+function QD.SkipWindowlessOffer(event)
+  if QD.IsAdventureMapOffer(event) then
+    QD.Quiet()
+    return true
+  end
+  if not QD.IsAutoAcceptedTriggerOffer(event) then return false end
+  ns.CallIf(_G, "CloseQuest")
+  return true
+end
+
+-- Shows a page (unless automation is about to answer it for you, the game shows no window for it, or the game's own
+-- window has the talk). An offer an item started (QD.itemOffer) shows too, but no key answers it: you were looting,
+-- not asking.
 function QD.Show(key, event, ...)
   if QD.Bypassed(event, ...) then return end
   local auto = ns.GetModule("QuestAuto")
   if auto and auto.Claims and auto.Claims(event, ...) then return end
+  if QD.SkipWindowlessOffer(event) then return end
   QD.itemOffer = QP.StartItem(event, ...)
   if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice, QD.event = key, QD.PAGES[key](), nil, event
@@ -345,7 +373,17 @@ local function eachGameWindow(fn)
   end
 end
 
--- Takes the gossip and quest events away from the game's windows, noting which of them had each.
+-- Whether the game's quest or gossip window shows a talk now (not the custom gossip manager, a frame that always shows).
+local function gameWindowOpen()
+  for _, name in ipairs({ "QuestFrame", "GossipFrame" }) do
+    local f = _G[name]
+    if type(f) == "table" and f.IsShown and f:IsShown() then return true end
+  end
+  return false
+end
+
+-- Takes the gossip and quest events away from the game's windows, noting which of them had each. A talk the game's
+-- window shows stays the game's until it ends (QD.gameTalk), so its pages and its end still reach that window.
 local function takeOver()
   QD.had = {}
   eachGameWindow(function(f, events, name)
@@ -355,6 +393,7 @@ local function takeOver()
       f:UnregisterEvent(e)
     end
   end)
+  QD.gameTalk, QD.closing = gameWindowOpen() or nil, nil
 end
 
 -- Gives the game's windows back the events they had before takeOver (they come for the next talk).

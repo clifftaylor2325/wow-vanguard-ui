@@ -440,6 +440,7 @@ function ns.Ask(text, yes, onYes, onNo, kind)
   f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
   f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))
   f:Show()
+  raiseLast(f)
 end
 
 -- Puts away the question whose No handler is onNo without answering it (the game ended what it asked about, as
@@ -583,10 +584,18 @@ end
 -- put away and comes back after).
 function ns.OfferReload(why)
   local f = reloadDialog()
+  f.why = why
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
   f:Show()
   raiseLast(f)
   local o = f.accept.reloadOverlay
   if o and not ns.InCombat() then cover(o) end
+end
+
+-- Takes an offered reload back when it was made for this reason and is still up (the change it waited for
+-- no longer needs one). An offer made for another reason stays. Vanguard's own dialog: safe in combat.
+---@param why string
+function ns.WithdrawReload(why)
+  if reload and reload:IsShown() and reload.why == why then reload:Hide() end
 end

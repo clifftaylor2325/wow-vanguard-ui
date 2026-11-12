@@ -591,6 +591,21 @@ it("guild info and news: titles, section heads, counts and links in the theme, t
   expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
 });
 
+// The game's own rename of the header (forever and live Blizzard_Communities/GuildInfo.lua:66-76, run from UpdateChallenges
+// at :83-106 when the guild has no challenges); the model only follows its SetText (whether a guild reaches that branch needs the game).
+const HIDE_CHALLENGES = `
+  function CommunitiesGuildInfoFrame_HideChallenges(self) if self then self.Header1Label:SetText("Message of the Day") end end`;
+
+it("guild info: the first header stays a section head after the game's HideChallenges renames it", () => {
+  const addon = loggedIn(PAGES_PARTS_ENV + HIDE_CHALLENGES);
+  addon.eval("CommunitiesFrame:Show() CommunitiesGuildInfoFrame_HideChallenges(CommunitiesFrame.GuildDetailsFrame.Info) CommunitiesGuildInfoFrame_HideChallenges()");
+  expect(addon.eval(`local h = CommunitiesFrame.GuildDetailsFrame.Info.Header1Label return { __looks(h, "section", "text2"), h:GetText() }`),
+    "the renamed header is a capitalised section head again").toEqual([true, "MESSAGE OF THE DAY"]);
+  const off = loggedIn(PAGES_PARTS_ENV + HIDE_CHALLENGES, OFF);
+  off.eval("CommunitiesFrame:Show() CommunitiesGuildInfoFrame_HideChallenges(CommunitiesFrame.GuildDetailsFrame.Info)");
+  expect(off.eval("return CommunitiesFrame.GuildDetailsFrame.Info.Header1Label:GetText()"), "with the group off the game's text stays").toBe("Message of the Day");
+});
+
 it("preferred play settings: the title, labels and dropdowns in the theme beside the Apply buttons", () => {
   const addon = loggedIn(PAGES_PARTS_ENV);
   addon.eval("CommunitiesFrame:Show()");

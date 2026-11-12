@@ -47,12 +47,13 @@ local function shownButtons()
   return shown
 end
 
--- Sizes the drawer to its grid, and shows the toggle once there's something in it.
+-- Sizes the drawer to its grid, and shows the toggle once there's something in it; with nothing left the drawer shuts.
 local function fit()
   local n = #shownButtons()
   local cols, rows = math.min(n, MB.PER_ROW), math.ceil(n / MB.PER_ROW)
   MB.drawer:SetSize(2 * MB.PAD + cols * MB.SIZE + (cols - 1) * MB.GAP, 2 * MB.PAD + rows * MB.SIZE + (rows - 1) * MB.GAP)
   MB.toggle:SetShown(n > 0)
+  if n == 0 then MB.drawer:Hide() end
 end
 
 -- The pin of a hidden button: it stays where it is until its addon shows it again.

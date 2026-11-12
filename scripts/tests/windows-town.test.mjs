@@ -15,6 +15,14 @@ const alphas = (addon, ...parts) => addon.eval(`return { ${parts.map((p) => `(${
 // Whether each Lua expression (a frame) has been given a Vanguard look: it has regions of its own now.
 const dressed = (addon, ...frames) => addon.eval(`return { ${frames.map((f) => `select('#', (${f}):GetRegions()) > 0`).join(", ")} }`);
 
+// Whether each Lua expression (a button) has the theme's flat button primitive (T.Button's hover parts), which only a skin gives.
+const flatButton = (addon, ...buttons) => addon.eval(`return { ${buttons.map((b) => `__button(${b})`).join(", ")} }`);
+
+// Each Lua expression (a button) as a theme arrow reads: { has the arrow glyph, it is the Right icon, its texture's left and right edge },
+// so { true, true, 1, 0 } is an arrow turned to point left and { true, true, 0, 1 } one pointing right (T.ArrowButton, Core/Theme.lua).
+const arrowTurn = (addon, ...buttons) => addon.eval(`return { ${buttons.map((b) => `(function() local a = ns.Theme.ArrowParts(${b}) if not a then return false end
+  return { true, a.glyph.__texture:find("Right", 1, true) ~= nil, a.glyph.__texCoord[1], a.glyph.__texCoord[2] } end)()`).join(", ")} }`);
+
 it("the town group loads cleanly on a client without its windows", () => {
   const addon = loggedIn("");
   expect(addon.eval("return ns.GetModule('Windows').settings.town"), "its switch is on by default").toBe(true);
@@ -192,6 +200,8 @@ const TRAINER_ENV = `${TOWN_READERS}
       row.plate, row.glow = row:CreateTexture(), row:CreateTexture()
       row.GetNormalTexture, row.GetHighlightTexture = function() return row.plate end, function() return row.glow end
       row.name, row.subText, row.nameSubText = __text(row), __text(row), __text(row)
+      -- Forever's pet skills show their price in training points here (ClassTrainerSkillButtonTemplate, Blizzard_TrainerUI.xml:98).
+      row.alternateCost = __text(row)
       row.selectedTex, row.icon, row.lock, row.disabledBG = row:CreateTexture(), row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
       if not sel then row.selectedTex:Hide() end
       row.money = __moneyLine(nil, row)
@@ -231,7 +241,7 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return { __themed(${f}.money.GoldButton.Text), __lit(${f}.trainingPoints.text, "small", "text"), __themed(ClassTrainerStatusBar.rankText), ${f}.ScrollBar.Track:GetRegions():GetAlpha() }`), "the money line, training points and rank text in the theme font, the scroll bar's track faded").toEqual([true, true, true, 0]);
   expect(addon.eval(`local bar = ClassTrainerStatusBar return { bar.__barTexture ~= nil, bar.__barColor[1] == ns.Theme.RGB("accent") }`), "the rank bar a flat track with the accent fill").toEqual([true, true]);
   expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { row.plate:GetAlpha(), row.glow:GetAlpha(), row.selectedTex:GetAlpha(), row.icon:GetAlpha(), row.lock:GetAlpha(), row.disabledBG:GetAlpha() }`), "a row there already: plates and strip faded, icon, lock and shade kept").toEqual([0, 0, 0, 1, 1, 1]);
-  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { __themed(row.name), __themed(row.subText), __themed(row.nameSubText), __themed(row.money.CopperButton.Text) }`), "its texts and price in the theme font").toEqual([true, true, true, true]);
+  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { __themed(row.name), __themed(row.subText), __themed(row.nameSubText), __themed(row.money.CopperButton.Text), select(2, row.alternateCost:GetFont()) == ns.Theme.RoleSize("small") }`), "its texts and price in the theme font, the training points price in the small role (its colour stays the game's)").toEqual([true, true, true, true, true]);
   expect(addon.eval(`local r = ${f}.ScrollBox.rows return { ns.Theme.RowParts(r[1]).rail:IsShown(), ns.Theme.RowParts(r[2]).rail:IsShown() }`), "the chosen skill shows the selected look, the other does not").toEqual([true, false]);
   expect(addon.eval(`return ns.Theme.RowParts(${f}.skillStepButton) ~= nil`), "the profession step above the list is a row too").toBe(true);
   addon.eval(`local box = ${f}.ScrollBox local skill, head = __row(false), __row(false, true)
@@ -243,8 +253,14 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return ns.Theme.RowParts(${f}.ScrollBox.skill).rail:IsShown()`), "the game fills the row with another skill: the look goes").toBe(false);
   addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitCategoryButton(b.head)`);
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "the game puts its gold label font back as it fills the row: the section look returns").toBe(true);
-  addon.eval(`local b = ${f}.ScrollBox b.head.Label:SetFont("TEST-ONLY-GAME", 14, "") __wfgStub.runScript(b.head, "OnEnter")`);
+  // The game's hover handlers (forever and live Blizzard_TrainerUI.lua:188-212) are SetScript'd on every fill and change the
+  // label only through SetFontObject; whether a SetScript drops a HookScript is game-only, so the skin follows SetFontObject.
+  addon.eval(`local b = ${f}.ScrollBox local h = b.head h:SetScript("OnEnter", function() h.Label:SetFont("TEST-ONLY-GAME-HI", 14, "") h.Label:SetFontObject("TEST-ONLY-HI") end)
+    h:SetScript("OnLeave", function() h.Label:SetFont("TEST-ONLY-GAME", 14, "") h.Label:SetFontObject("TEST-ONLY-LO") end)`);
+  addon.eval(`__wfgStub.runScript(${f}.ScrollBox.head, "OnEnter")`);
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when the mouse enters the row").toBe(true);
+  addon.eval(`__wfgStub.runScript(${f}.ScrollBox.head, "OnLeave")`);
+  expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when it leaves").toBe(true);
   addon.eval(`${f}:Hide() ${f}:Show()`);
   expect(windowState(addon, f).painted, "a second show paints nothing more").toBe(first.painted);
 });
@@ -354,17 +370,18 @@ it("S2.3 side dress-up, stack split and coin pickup: plates faded, buttons theme
   expect([first[0].art, first[1].art, first[2].art], "the game's plates faded").toEqual([0, 0, 0]);
   const d = "SideDressUpFrame";
   expect(alphas(addon, `${d}.BGTopLeft`, `${d}.BGBottomLeft`, "SideDressUpFrameTop", "SideDressUpFrameBackgroundBot"), "the dress-up window's named art").toEqual([0, 0, 0, 0]);
-  expect(dressed(addon, `${d}.ResetButton`, `${d}.ModelScene.ControlFrame.zoomInButton`), "Reset and the model's buttons themed").toEqual([true, true]);
+  expect(flatButton(addon, `${d}.ResetButton`, `${d}.ModelScene.ControlFrame.zoomInButton`), "Reset and the model's buttons are theme buttons").toEqual([true, true]);
   expect(addon.eval(`local b = ${d}.ModelScene.ControlFrame.rotateLeftButton return b.Icon:GetAlpha()`), "a model button keeps its icon").toBe(1);
   expect(addon.eval(`return { __faded(${d}.ModelScene), __sunk(${d}.ModelScene) }`), "the model sits on an inset: the game's art faded").toEqual([true, true]);
   const s = "StackSplitFrame";
   expect(alphas(addon, `${s}.SingleItemSplitBackground`, `${s}.MultiItemSplitBackground`, `${s}.FrameGlow`), "the stack window's plates and glow").toEqual([0, 0, 0]);
-  expect(dressed(addon, `${s}.OkayButton`, `${s}.CancelButton`, `${s}.LeftButton`, `${s}.RightButton`), "its four buttons themed").toEqual([true, true, true, true]);
-  expect(alphas(addon, `${s}.LeftButton.up`, `${s}.RightButton.off`), "the arrows stay visible").toEqual([0, 0]);
+  expect(flatButton(addon, `${s}.OkayButton`, `${s}.CancelButton`, `${s}.LeftButton`, `${s}.RightButton`), "its four buttons are theme buttons").toEqual([true, true, true, true]);
+  expect(arrowTurn(addon, `${s}.LeftButton`, `${s}.RightButton`), "the two arrows are theme arrows, the first turned to point left, the second right").toEqual([[true, true, 1, 0], [true, true, 0, 1]]);
+  expect(alphas(addon, `${s}.LeftButton.up`, `${s}.RightButton.off`), "the game's own arrow art is faded under the theme arrows").toEqual([0, 0]);
   expect(addon.eval(`return { ${s}.StackSplitText:GetFont() ~= nil, __lit(${s}.StackItemCountText, "number", "text") }`), "the amount in the theme font, the stack count in the text colour (not gold)").toEqual([true, true]);
   expect(addon.eval(`local field = ns.FrameState("vgAmountFields")[${s}] return { field ~= nil, field.__parent == ${s}, __sunk(field) }`), "a field round the amount, between the arrows: a thin border, no fill over the number").toEqual([true, true, false]);
-  expect(alphas(addon, "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupLeftButton.up"), "the coin icons and arrows stay").toEqual([1, 1, 1]);
-  expect(dressed(addon, "CoinPickupOkayButton", "CoinPickupCancelButton", "CoinPickupLeftButton"), "its buttons themed").toEqual([true, true, true]);
+  expect(alphas(addon, "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupLeftButton.up"), "the coin icons and the game's arrows stay visible").toEqual([1, 1, 1]);
+  expect(flatButton(addon, "CoinPickupOkayButton", "CoinPickupCancelButton", "CoinPickupLeftButton"), "its buttons are theme buttons (the arrows keep the game's glyph on them)").toEqual([true, true, true]);
   expect(addon.eval("return { CoinPickupText:GetFont() ~= nil, CoinPickupLabel:GetFont() ~= nil, ns.FrameState('vgAmountFields')[CoinPickupFrame] ~= nil }"), "its amount and the label beside it in the theme font, with a field round the amount").toEqual([true, true, true]);
   addon.eval("SideDressUpFrame:Hide() SideDressUpFrame:Show() StackSplitFrame:Hide() StackSplitFrame:Show() CoinPickupFrame:Hide() CoinPickupFrame:Show()");
   expect(windowState(addon, "CoinPickupFrame").painted, "showing them again paints nothing more").toBe(first[2].painted);
@@ -707,9 +724,10 @@ it("R1.3 the merchant: rows, buyback slot, repair tiles, page arrows and money l
   expect([merchantRow(addon, "MerchantItem1"), merchantRow(addon, "MerchantItem12"), merchantRow(addon, "MerchantBuyBackItem")], "first and last rows and the buyback slot: plates faded, slot in the bags' look, name and prices in the theme font, coin kept").toEqual([row, row, row]);
   expect(addon.eval("return { ns.Theme.HoverParts(MerchantRepairAllButton) ~= nil, ns.Theme.HoverParts(MerchantSellAllJunkButton) ~= nil, MerchantRepairAllButton.Icon:GetAlpha(), MerchantGuildBankRepairButton.Icon:GetAlpha(), ns.Theme.HoverParts(MerchantFrame.FilterDropdown) ~= nil }"), "the tiles and the filter button are theme buttons, the tiles keep their icon").toEqual([true, true, 1, 1, true]);
   expect([plateAlpha(addon, "MerchantRepairItemButton"), plateAlpha(addon, "MerchantSellAllJunkButton")], "the tiles' slot plates faded").toEqual([0, 0]);
-  expect(alphas(addon, "MerchantPrevPageButton.up", "MerchantNextPageButton.off", "MerchantMoneyBg", "MerchantExtraCurrencyBg", "MerchantMoneyInset.NineSlice"), "the page arrows kept; the money plates and the insets' art faded").toEqual([0, 0, 0, 0, 0]);
+  expect(alphas(addon, "MerchantPrevPageButton.up", "MerchantNextPageButton.off", "MerchantMoneyBg", "MerchantExtraCurrencyBg", "MerchantMoneyInset.NineSlice"), "the game's page arrow art faded under the theme arrows; the money plates and the insets' art faded").toEqual([0, 0, 0, 0, 0]);
   expect(addon.eval("local fs for _, r in ipairs({ MerchantPrevPageButton:GetRegions() }) do if r:GetObjectType() == 'FontString' then fs = r end end return { __lit(fs, 'label', 'text'), __lit(MerchantPageText, 'label', 'text'), MerchantMoneyFrame.SilverButton.Text:GetFont() ~= nil }"), "the arrow's caption and the page count in the label font and the text colour (not gold), the money line in the theme font").toEqual([true, true, true]);
-  expect(dressed(addon, "MerchantPrevPageButton", "MerchantMoneyInset", "MerchantExtraCurrencyInset"), "the arrows are theme buttons; dark panels under the money and token lines").toEqual([true, true, true]);
+  expect(arrowTurn(addon, "MerchantPrevPageButton", "MerchantNextPageButton"), "the page arrows are theme arrows pointing left and right").toEqual([[true, true, 1, 0], [true, true, 0, 1]]);
+  expect(dressed(addon, "MerchantMoneyInset", "MerchantExtraCurrencyInset"), "dark panels under the money and token lines").toEqual([true, true]);
   addon.eval("MerchantItem3.SlotTexture:SetAlpha(1) MerchantFrame_UpdateMerchantInfo()");
   expect(alphas(addon, "MerchantItem3.SlotTexture"), "a page turn runs the pass again").toEqual([0]);
   const painted = windowState(addon, "MerchantFrame").painted;

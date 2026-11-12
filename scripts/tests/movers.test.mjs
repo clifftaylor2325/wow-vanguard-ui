@@ -702,3 +702,25 @@ it("hunt H44-11-2: a screen change with the grid hidden draws no grid", () => {
   expect(addon.eval("return ns.Unlocked()"), "locked").toBe(false);
   expect(shown(), "the lines showing are the same as before").toBe(before);
 });
+
+// A link saved in the profile follows its target's size after a reload, whichever of the two registered first.
+const SAVED_MATCH = 'VanguardDB.profiles = { Default = { positions = { xpbar = { match = { width = "bar1" } } } } }';
+// Widens bar 1 by 100 and runs its OnSizeChanged script as the client would; gives the XP bar's width and bar 1's.
+const WIDEN_BAR1 = `local f = ns.MoverFrame("bar1") local w = f:GetWidth() + 100 f:SetWidth(w)
+  local s = f:GetScript("OnSizeChanged") if s then s(f, w, f:GetHeight()) end
+  return { Vanguard_xpbar:GetWidth(), f:GetWidth() }`;
+
+it("a saved match follows its target's size after a reload (H45-21-1)", () => {
+  const addon = loggedIn("", { savedVariables: SAVED_MATCH });
+  const [xp, bar] = addon.eval(WIDEN_BAR1);
+  expect(xp, "the XP bar widens with bar 1").toBe(bar);
+});
+
+it("a saved match is watched when the dependent registers before its target (H45-21-1)", () => {
+  const addon = loggedIn(`
+    __t = CreateFrame("Frame", nil, UIParent) __t:SetSize(100, 20)
+    __d = CreateFrame("Frame", nil, UIParent) __d:SetSize(100, 20)`, { savedVariables: 'VanguardDB.profiles = { Default = { positions = { h45d = { rel = { to = "h45t", side = "RIGHT", x = 0, y = 0 } } } } }' });
+  addon.eval(`ns.Mover(__d, "h45d", "D", { "CENTER", "CENTER", 0, 0 })
+    ns.Mover(__t, "h45t", "T", { "CENTER", "CENTER", 0, 100 })`);
+  expect(addon.eval(`return __t:GetScript("OnSizeChanged") ~= nil`), "the target's size is watched").toBe(true);
+});

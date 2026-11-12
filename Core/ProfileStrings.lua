@@ -349,10 +349,22 @@ local function same(a, b)
   return true
 end
 
+-- Gives a profile's top-level copy a copy of its theme carrying the payload's pixel-perfect switch and multiple
+-- (an import keeps this player's own, ownPixelScale, so they say nothing of which profile it matches).
+-- The saved theme is never written.
+local function withPayloadScale(carried, data)
+  if type(carried.theme) ~= "table" or type(data.theme) ~= "table" then return end
+  local theme = {}
+  for k, v in pairs(carried.theme) do theme[k] = v end
+  theme.pixelScale, theme.pixelMultiple = data.theme.pixelScale, data.theme.pixelMultiple
+  carried.theme = theme
+end
+
 -- True when a profile's settings equal a payload's, as a string carries them (this computer's own state left out).
 local function sameAsCarried(data, profile)
   local carried = {}
   for k, v in pairs(profile) do carried[k] = v end
+  withPayloadScale(carried, data)
   return same(data, ns.WithoutClientState(carried))
 end
 

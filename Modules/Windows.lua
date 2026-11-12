@@ -452,14 +452,28 @@ end
 -- a button each, its figure in Text beside its coin).
 GW.MONEY_PARTS = { "GoldButton", "SilverButton", "CopperButton" }
 
--- A money line (the merchant's and its rows' prices; for mail, trade and the bank too) in the theme font:
--- each denomination's figure in the number role, its colour left as the game sets it (red when you can't
--- pay), its coin kept. A frame the client lacks, or one without the parts, is skipped.
-function GW.SkinMoney(frame)
-  if type(frame) ~= "table" then return end
+-- The money lines GW.SkinMoney has dressed (a line the skins never dressed stays the game's).
+local vgMoneySkinned = ns.FrameState("vgMoneySkinned")
+
+-- Puts the number role on each denomination's figure of a money line, its colour left as the game sets it.
+local function refontMoney(frame)
   for _, key in ipairs(GW.MONEY_PARTS) do
     GW.SkinText(GW.Part(frame, key .. ".Text"), "number", false)
   end
+end
+
+-- A money line (the merchant's and its rows' prices; for mail, trade and the bank too) in the theme font:
+-- each denomination's figure in the number role, its colour left as the game sets it (red when you can't
+-- pay), its coin kept. A frame the client lacks, or one without the parts, is skipped. The game recolours a line
+-- by putting a font object on each denomination button (SetMoneyFrameColorByFrame, Blizzard_MoneyFrame), which
+-- takes the figure's font back, so a dressed line is re-fonted after every recolour.
+function GW.SkinMoney(frame)
+  if type(frame) ~= "table" then return end
+  vgMoneySkinned[frame] = true
+  GW.HookGlobalOnce("SetMoneyFrameColorByFrame", "money colour", function(line)
+    if vgMoneySkinned[line] then refontMoney(line) end
+  end)
+  refontMoney(frame)
 end
 
 -- A money line that sits in a gold coin box (ContainerMoneyFrameTemplate's Border: the stable's and the bags' foot):

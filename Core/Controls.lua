@@ -560,7 +560,9 @@ end
 function W.Dropdown(parent, choices, get, set, width)
   local d = T.Button(CreateFrame("Button", nil, parent))
   d:SetSize(width or W.COLUMN, T.CONTROL_H)
-  d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
+  d.choices, d.get, d.Refresh = choices, get, refreshDropdown
+  -- The caller's setter, then a redraw so the box shows what was picked.
+  d.set = function(value) set(value) d:Refresh() end
   addDropdownText(d)
   d:SetScript("OnClick", ns.Guard("click dropdown", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end))
   d:Refresh()

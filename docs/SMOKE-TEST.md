@@ -6220,6 +6220,162 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the list shows every setting again and the clear button hides.
 - If it fails, paste: a screenshot and /vg errors.
 
+### 33.700 A matched frame follows the other frame's size after a reload (H45-21-1; WoW Forever and Retail)
+
+- Do: /vg unlock, right-click the XP bar's handle, set Match width to Action bar 1, Save and lock, /reload, then raise Button spacing under Action bars from 2 to 8.
+- Expect: the XP bar widens along with bar 1.
+- If it fails, paste: /vg frame Vanguard_xpbar and bar 1's width.
+
+### 33.701 A hand-picked profile survives a spec swap and back (H45-22-1; WoW Forever and Retail)
+
+- Do: with spec 1 on Default and spec 2 set to Heal, pick Heal in the Profiles list, change to spec 2 and back to spec 1, then reload.
+- Expect: you are still on Heal, not Default.
+- If it fails, paste: the profile name shown on the Profiles page.
+
+### 33.702 Copy here writes into the profile the reload loads (H45-22-2; WoW Forever and Retail)
+
+- Do: with spec 2 using Heal and active, pick Raid by hand, then press Copy here on Default and answer Sure.
+- Expect: the tooltip and warning name Heal, and the Heal row has no Copy here.
+- If it fails, paste: the warning text.
+
+### 33.703 The spec reload offer closes when you swap back (H45-22-3; WoW Forever and Retail)
+
+- Do: on spec 1 with Default running, change to spec 2 so the reload offer appears, then change back to spec 1.
+- Expect: the reload offer closes by itself.
+- If it fails, paste: whether the dialog is still up.
+
+### 33.704 General rows show their reset arrow (H45-23-1; WoW Forever and Retail)
+
+- Do: set Text size to 110% and Interface sounds off on General.
+- Expect: both rows show the reset arrow, the General list entry has its dot, and Reset this page puts both back.
+- If it fails, paste: a screenshot of the General page.
+
+### 33.705 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
+
+- Do: in German or French at Text size 130%, switch Unit frames off.
+- Expect: the footer notice ends in "…" before the version line and Reload now is whole.
+- If it fails, paste: a screenshot of the footer.
+
+### 33.706 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
+
+- Do: switch Unit frames off, set Modules to Show: On, and click the greyed Target and focus auras row.
+- Expect: the list returns to All and Unit frames' row is marked.
+- If it fails, paste: what the page showed.
+
+### 33.707 A HUD layout picked in a fight shows at once (H45-23-4; WoW Forever and Retail)
+
+- Do: in a fight, click "Where the frames stand" twice, then leave the fight.
+- Expect: the row shows the second pick at once and that layout lands after the fight.
+- If it fails, paste: the layout name shown.
+
+### 33.708 A new chat tab shows in the Chat page's Tab choice (H45-23-51; WoW Forever and Retail)
+
+- Do: with the Chat page open, right-click a chat tab and choose Create New Window.
+- Expect: the Tab choice lists the new tab without reopening.
+- If it fails, paste: the Tab choice list.
+
+### 33.709 The Profiles page follows a profile made or reset (H45-23-80; WoW Forever and Retail)
+
+- Do: with Profiles open, run /vg profile new Test, then Reset profile.
+- Expect: Test shows at once, then a "Default backup" row.
+- If it fails, paste: the profile list.
+
+### 33.710 Setup offers no tile reload after /vg graphics apply (H45-24-1; WoW Forever and Retail)
+
+- Do: on a 1440p screen run /vg graphics apply, then open setup and click Next to the end with Keep everywhere.
+- Expect: Done closes setup with no reload offer.
+- If it fails, paste: the last chat line.
+
+### 33.711 A profile of its own with Keep everywhere offers no reload (H45-24-2; WoW Forever and Retail)
+
+- Do: on a new character pick "A profile of its own", Keep at every step, answer No to the export question.
+- Expect: no reload offer.
+- If it fails, paste: what Done showed.
+
+### 33.712 Clicking the accent or style already chosen changes nothing (H45-24-3; WoW Forever and Retail)
+
+- Do: on a rerun of setup, on the Look step click the already marked accent swatch and the marked style tile, then Next to All set.
+- Expect: "This run changed nothing" and no Undo setup.
+- If it fails, paste: the All set text.
+
+### 33.713 Required money keeps Vanguard's font (H45-25-1; WoW Forever and Retail)
+
+- Do: switch Vanguard's quest dialog off on the Modules page and reload; turn in a quest that asks for money from a giver with a greeting page; also open a guild bank tab you can buy (and a bank tab cost).
+- Expect: the money figures and tab cost are in Vanguard's font like the rest of the page, red while you can't pay.
+- If it fails, paste: /vg frame over the gold figure.
+
+### 33.714 Guild Info's first heading stays a section head (H45-26-1; WoW Forever)
+
+- Do: on a character in a guild with no challenges, open the guild window's Guild Info page.
+- Expect: the first header reads MESSAGE OF THE DAY in small capitals like the other headers, also after the page refreshes.
+- If it fails, paste: pass or fail.
+
+### 33.715 Trainer category headings keep their look after a hover (H45-26-50; WoW Forever)
+
+- Do: open a class trainer, hover a category header, then move off it.
+- Expect: its label keeps the small-capitals section look while hovered and after.
+- If it fails, paste: pass or fail.
+
+### 33.716 A pet trainer's training point price uses Vanguard's font (H45-26-R1; WoW Forever)
+
+- Do: as a hunter with a pet out, open a pet trainer.
+- Expect: each skill's training-point price is in Vanguard's font like the skill's name, red when you have too few.
+- If it fails, paste: pass or fail.
+
+### 33.717 Folded zones stay folded with the quest log off (H45-27-1; WoW Forever and Retail)
+
+- Do: Quests page, Vanguard's quest tracker off, reload; fold a zone in the game's quest log, untick Vanguard's quest log, then zone in (hearth or portal).
+- Expect: the zone stays folded.
+- If it fails, paste: /vg errors.
+
+### 33.718 An area quest the game accepts opens no dialog (H45-27-50; Retail, and WoW Forever where one exists)
+
+- Do: with Quest automation's accept switch off, walk into an area that gives an auto-accepted quest.
+- Expect: no Vanguard quest dialog opens and the quest is in your log.
+- If it fails, paste: whether a dialog opened, and /vg errors.
+
+### 33.719 The game's quest window closes after a hand-back toggle (H45-27-R1; WoW Forever and Retail)
+
+- Do: talk to a quest giver so Vanguard's dialog shows an offer, open the Quests page, tick then untick "Use the game's quest windows for now", then accept the quest in the game's window.
+- Expect: the game's window closes with the talk and Vanguard's dialog does not open beside it; the next talk opens Vanguard's dialog.
+- If it fails, paste: /vg errors.
+
+### 33.720 Quest panel zone headers show their fold chevron (H45-28-1; WoW Forever and Retail)
+
+- Do: open the world map's quest panel, fold and unfold a zone, then close and reopen the panel.
+- Expect: every zone header shows its fold chevron.
+- If it fails, paste: a screenshot.
+
+### 33.721 The minimap drawer closes with its last button (H45-28-2; WoW Forever and Retail)
+
+- Do: open the minimap addon drawer, then turn off the only addon minimap button from that addon's own setting.
+- Expect: the drawer closes along with its toggle.
+- If it fails, paste: a screenshot.
+
+### 33.722 A dragged floating chat window keeps its spot (H45-29-1; WoW Forever and Retail)
+
+- Do: with Movers for floating windows on, drag a floating chat window by its tab, size another by its corner, then open and close Edit Mode (or /reload).
+- Expect: both stay where you left them.
+- If it fails, paste: the window's spot before and after.
+
+### 33.723 A Find tile switched on late shows on the tab you see (H45-29-3; WoW Forever and Retail)
+
+- Do: show a docked tab other than General, then switch the Find button on under Chat.
+- Expect: Find appears at once on the shown tab's bar.
+- If it fails, paste: what you see.
+
+### 33.724 A closed floating chat window gives up its handle (H45-29-R1; WoW Forever and Retail)
+
+- Do: close a floating chat window from its tab menu, then open /vg unlock.
+- Expect: no handle for the closed window.
+- If it fails, paste: the handle list.
+
+### 33.725 The roll tracker shows loot already being rolled for (H45-30-50; WoW Forever)
+
+- Do: with a drop already being rolled for in a group, /reload (or switch Rolls off and on).
+- Expect: the Roll tracker lists that item and its rolls without waiting for a new roll.
+- If it fails, paste: the Roll tracker rows.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
