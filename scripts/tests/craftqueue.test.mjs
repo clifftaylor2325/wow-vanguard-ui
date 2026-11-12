@@ -246,6 +246,17 @@ it("the options have the switch and the pace", () => {
   expect(addon.find("^Seconds per craft").text, "the pace").toBe("Seconds per craft");
 });
 
+it("the options switch hides and shows the panel at once, as the Mail tools switch does (H45-33-3)", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then page = p end end
+    for _, row in ipairs(page.rows()) do if row[2] == "Craft queue and recipe ranking" then __set = row[4] end end`);
+  addon.eval("__set(false)");
+  expect(addon.eval(`return { ${CQ}.frame:IsShown(), ${CQ}.Active() }`), "off: the panel goes with the switch").toEqual([false, false]);
+  addon.eval("__set(true)");
+  expect(addon.eval(`return ${CQ}.frame:IsShown()`), "on: it is back with the profession window open").toBe(true);
+});
+
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {
   const addon = crafter("", ON, RETAIL_CLIENT);
   addon.world.openProfession(100);
