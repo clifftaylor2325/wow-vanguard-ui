@@ -1472,3 +1472,21 @@ it("H46-4-R3: on a spec with its own profile, Use it turns Pixel-perfect off in 
   expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "off in the imported profile and in Heal, which the reload loads").toEqual([false, false, "0.9"]);
   expect([chatHas(addon, /Created profile Imported\./), chatHas(addon, /will use it after a reload/), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "no promise and no reload offer").toEqual([true, false, false]);
 });
+// H46-10-11: a switch to Raid staged through /vg profile Raid, its reload offered; `back` takes it back.
+const takenBack = (back) => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  back(addon);
+  return addon.eval("return { ns.PendingProfileName() == nil, Vanguard_Reload:IsShown() }");
+};
+it("H46-10-11 /vg profile back to the running profile takes the staged switch's reload offer back", () => {
+  expect(takenBack((addon) => addon.slash("profile Default")), "nothing staged, no offer").toEqual([true, false]);
+});
+it("H46-10-11 any pick that takes the staged switch back (the Profiles page's Use) takes the offer back too", () => {
+  expect(takenBack((addon) => addon.eval('ns.PickProfile("Default")')), "nothing staged, no offer").toEqual([true, false]);
+});
+it("H46-10-11 a take-back leaves a reload offered for another reason up", () => {
+  const shown = takenBack((addon) => addon.eval("ns.OfferReload('Something else changed.')") || addon.slash("profile Default"));
+  expect(shown, "the other reason's offer stays").toEqual([true, true]);
+});

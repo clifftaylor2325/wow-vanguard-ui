@@ -442,6 +442,9 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
+-- The reload offer the last staged switch made, so a pick that takes the switch back can withdraw it.
+local stagedOffer
+
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
 -- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
 -- (ns.WarnSpecWins has said so).
@@ -450,8 +453,18 @@ local function switchTo(name)
   if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
   if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
-  ns.OfferReload(wait and why .. " " .. wait or why)
+  stagedOffer = wait and why .. " " .. wait or why
+  ns.OfferReload(stagedOffer)
 end
+
+-- A pick that takes the staged switch back (this command, the Profiles page's Use, the header picker) takes its
+-- reload offer back too. The listeners run before switchTo keeps a fresh offer, so a new stage is never withdrawn.
+ns.OnProfileStaged(function()
+  if stagedOffer and not ns.PendingProfileName() then
+    ns.WithdrawReload(stagedOffer)
+    stagedOffer = nil
+  end
+end)
 
 -- The existing profile a typed name means: its exact name, else the first (in name order) that differs
 -- only by case; nil when none does.
