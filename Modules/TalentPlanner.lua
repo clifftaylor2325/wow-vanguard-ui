@@ -786,9 +786,18 @@ function TP.OrderedIDs(tree, plan)
   return nodes
 end
 
--- A talent planned after the player set an order joins its end (a plan with no order stays top row first).
+-- Takes a talent out of the plan's order, so planning it again joins the end instead of its old place.
+local function leaveOrder(plan, nodeID)
+  for i = #plan.order, 1, -1 do
+    if plan.order[i] == nodeID then table.remove(plan.order, i) end
+  end
+end
+
+-- A talent planned after the player set an order joins its end, and one taken out of the plan leaves the order (a
+-- plan with no order stays top row first).
 function TP.KeepOrder(plan, nodeID)
-  if type(plan.order) ~= "table" or not plan.ranks[nodeID] then return end
+  if type(plan.order) ~= "table" then return end
+  if not plan.ranks[nodeID] then leaveOrder(plan, nodeID) return end
   if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
 end
 
