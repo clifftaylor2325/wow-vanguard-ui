@@ -13,7 +13,7 @@ Read this before touching anything. README.md and the feature pages in `docs/fea
 ## Commands
 
 ```sh
-npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
+npm install           # once; also turns on .githooks/pre-push (test:quick, quality, the baselines check, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); the fast run while iterating
 npm test              # all tests (JS + Lua harness)
 npm run test:slot -- <vitest args>   # npm test is this with no arguments; e.g. --project lua scripts/tests/chat.test.mjs
