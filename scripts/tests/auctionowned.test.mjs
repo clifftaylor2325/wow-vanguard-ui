@@ -938,3 +938,18 @@ it("H44-21-1: Recent keeps no alert on what it remembers, and its Filters dialog
     return { VanguardDB.ah.recent[1].alert == nil, r, AH.filterDialog.alert:IsShown() }`);
   expect(out, "no alert on the copy; the switch is hidden for Recent only").toEqual([true, false, true]);
 });
+
+it("H45-31-101 an auction is undercut by another seller who shares a price row with your other auction", () => {
+  // Blizzard_AuctionHouseUtil.lua AggregateSearchResultsByQuantity: units for sale = quantity - numOwnerItems.
+  const addon = atAuctionHouse(BAGS + `__wfgWorld.ah.owned = {
+    { auctionID = 501, itemKey = { itemID = 10940 }, status = 0, quantity = 5, buyoutAmount = 150 },
+    { auctionID = 502, itemKey = { itemID = 10940 }, status = 0, quantity = 5, buyoutAmount = 100 } }
+    __wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 25, numOwnerItems = 5, containsOwnerItem = true },
+      { unitPrice = 150, quantity = 5, numOwnerItems = 5, containsOwnerItem = true } }`);
+  addon.click(`${OWNED_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  const marks = addon.eval(`local out = {} for i, a in ipairs(${HELPER}.owned) do out[i] = { a.id, a.undercut == true } end return out`);
+  expect(marks, "501 is undercut by the other seller's 1s; 502 is at that price").toEqual([[501, true], [502, false]]);
+});
