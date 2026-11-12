@@ -317,7 +317,8 @@ end
 -- /vg feedback [bug|feature]: opens the form on the kind given, else on the kind last picked (a bug at first).
 function FB.Open(kind)
   local f = build()
-  if CHECKS[kind] then f.kind = kind end
+  local want = type(kind) == "string" and kind:lower()
+  if CHECKS[want] then f.kind = want end
   f.kindRow:Refresh()
   showKind()
   f:Show()

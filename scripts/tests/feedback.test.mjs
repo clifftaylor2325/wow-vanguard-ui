@@ -63,6 +63,10 @@ it("/vg feedback opens the form on a bug, with the summary focused and the bug f
   pressEscape(addon);
   expect(addon.frame(BOX).visible, "and so does Escape anywhere").toBe(false);
   open(addon, "feature");
+  addon.click(`${BOX}.kindRow.segments[1]`);
+  expect(open(addon, "Feature").visible && addon.eval(`return ${BOX}.kind`), "the kind is read in any case").toBe("feature");
+  addon.click(`${BOX}.kindRow.segments[1]`);
+  expect(open(addon, "FEATURE").visible && addon.eval(`return ${BOX}.kind`), "capitals too").toBe("feature");
   expect(open(addon, "nonsense").visible && addon.eval(`return ${BOX}.kind`), "an unknown word keeps the kind last picked").toBe("feature");
   addon.click(`${BOX}.kindRow.segments[1]`);
   expect(addon.eval(`return { ${BOX}.kind, ${BOX}.bug:IsShown(), ${BOX}.feature:IsShown() }`), "the kind row switches back").toEqual(["bug", true, false]);
