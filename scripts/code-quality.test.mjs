@@ -411,6 +411,64 @@ function secureIgnored() {
   expect(secured(inFn('b:SetAttribute("x", 1)'), "Modules/t.mjs")).toEqual([]);
 }
 
+const SECURE_CALL_LINE = 'b:SetAttribute("x", 1)';
+// Statements whose combat word is no guard: read and not tested, tested backwards, joined by and, too deep, nested, or after the call.
+const WEAK_GUARDS = [
+  `local c = InCombatLockdown()\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then print("busy") end\n  ${SECURE_CALL_LINE}`,
+  `if not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() and x then return end\n  ${SECURE_CALL_LINE}`,
+  `if x then\n    if InCombatLockdown() then return end\n  end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then\n    if y then return end\n  end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then return end\n  fn(function() ${SECURE_CALL_LINE} end)`,
+  `${SECURE_CALL_LINE}\n  if InCombatLockdown() then return end`,
+  `if not ns.InCombat() or x then ${SECURE_CALL_LINE} end`,
+];
+
+// H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
+function secureWeakGuards() {
+  for (const stmt of WEAK_GUARDS) expect(secured(inFn(stmt)), stmt).toEqual([SECURE]);
+}
+
+// Statements with a real guard: an early return in combat (any value, `or` chains, a deferral first), or the call inside a branch that runs out of combat.
+const STRICT_GUARDS = [
+  `if InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() then return false end\n  ${SECURE_CALL_LINE}`,
+  `if not b or ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() then ns.AfterCombat(fn) return end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then return end\n  if x then ${SECURE_CALL_LINE} end`,
+  `if not ns.InCombat() then ${SECURE_CALL_LINE} end`,
+  `if not InCombatLockdown() and x then\n    ${SECURE_CALL_LINE}\n  end`,
+  `if InCombatLockdown() then return elseif x then ${SECURE_CALL_LINE} end`,
+];
+
+// H44-25-2: the shapes of a real guard pass.
+function secureStrictGuards() {
+  for (const stmt of STRICT_GUARDS) expect(secured(inFn(stmt)), stmt).toEqual([]);
+}
+
+// H44-25-2: a function is trusted by its whole name, not its last word (V.ApplyState deferred does not clear X.ApplyState).
+function secureWholeName() {
+  const src = "-- doc\nfunction V.ApplyState(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nfunction W.ApplyState(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(V.ApplyState)\n";
+  expect(checkSource("Modules/t.lua", src).map((p) => p.line)).toEqual([7]);
+  expect(secured("-- doc\nfunction V:Apply(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(function() V.Apply(b) end)\n")).toEqual([]);
+  expect(secured("-- doc\nlocal M = {}\nM.Apply = function(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(M.Apply)\n")).toEqual([]);
+  expect(secured("-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(function() self.set(b) end)\n"), "self.set is not set").toEqual([SECURE]);
+}
+
+// H44-25-2: the SecureHandler method forms are secure calls on a frame; the bare words are not.
+function secureMethodForms() {
+  for (const call of ["fs:WrapScript(h, 'OnClick', 'x')", "fs:UnwrapScript(h, 'OnClick')", "fs:Execute('x')", "fs:SetFrameRef('a', f)"]) expect(secured(inFn(call)), call).toEqual([SECURE]);
+  expect(secured(inFn("Execute(x)\n  local WrapScript = 1\n  t.Execute(x)")), "a bare or dotted call is not a frame method").toEqual([]);
+  expect(secured(inFn("ns.OutOfCombat(function() fs:Execute('x') end)"))).toEqual([]);
+}
+
+// H44-25-2, a known limit: a function deferred once is trusted for every call of its name, a straight call from a combat handler included.
+function secureDeferredOnceLimit() {
+  const src = "-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nlocal function later(b)\n  ns.OutOfCombat(function() set(b) end)\nend\n-- doc\nlocal function onFight(b)\n  set(b)\nend\n";
+  expect(secured(src)).toEqual([]);
+}
+
 // The allow-list is explicit and starts empty.
 function secureAllowList() {
   expect([...SECURE_ALLOW]).toEqual([]);
@@ -473,6 +531,18 @@ describe(
     it("secure: a combat check before the call passes, after it does not", secureChecked);
     it("secure: load time, strings, mentions and other folders pass", secureIgnored);
     it("secure: the allow-list is explicit and starts empty", secureAllowList);
+  },
+);
+
+describe(
+  "code quality",
+  // Secure calls: the strict guard shapes (H44-25-2).
+  () => {
+    it("secure: a combat word read but not returned on, or tested backwards, is no guard", secureWeakGuards);
+    it("secure: an early return in combat, or a branch that runs out of combat, is a guard", secureStrictGuards);
+    it("secure: a function is trusted by its whole name, not its last word", secureWholeName);
+    it("secure: the SecureHandler method forms are read", secureMethodForms);
+    it("secure: a function deferred once stays trusted for every call of its name (a known limit)", secureDeferredOnceLimit);
   },
 );
 

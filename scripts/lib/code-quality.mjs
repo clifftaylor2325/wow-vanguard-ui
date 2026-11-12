@@ -22,8 +22,12 @@
 //      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
 //      within 2 of it). Locals inside a do ... end block or a function don't count.
 //   7. Addon Lua (Core/, Modules/) makes no secure call (SetAttribute, a state driver, an
-//      override binding, the panel manager's ShowUIPanel or HideUIPanel) outside a combat guard
-//      (report-only under #263 until it was quiet on main).
+//      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
+//      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
+//      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
+//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`) whose branch ends in
+//      return and comes before the call in the same blocks of the same function, or a call inside
+//      `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
 // cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
@@ -675,19 +679,32 @@ const SECURE_CALLS = new Set([
 // Files whose secure calls all run where the frame is made and set up, in the same safe
 // window. Add a file only after reading every call in it; empty means none is excused.
 export const SECURE_ALLOW = new Set([]);
-// Words that, before a secure call in the same function, mean it checks for combat first.
+// Words that make a condition a combat check.
 const COMBAT_CHECKS = new Set(["InCombatLockdown", "InCombat"]);
+// Calls that are secure only as a method on a frame (fs:WrapScript(...)): their bare names are common words.
+const SECURE_METHODS = new Set(["WrapScript", "UnwrapScript", "Execute", "SetFrameRef"]);
 
 // The last part of a dotted or method name ("ns.Bars:Apply" gives "Apply").
 const lastPart = (name) => name.split(/[.:]/).pop();
 
-// Every function in code tokens as { open, close, name }: token indexes of `function` and its `end`.
+// A function's whole name with ":" read as "." ("function V:Apply" and "V.Apply = function" both give "V.Apply").
+function fullName(tokens, i) {
+  if (tokens[i + 1]?.kind === "word") return luaFunctionName(tokens, i)?.replace(":", ".") ?? null;
+  const parts = [];
+  for (let k = i - 2; tokens[k]?.kind === "word" && tokens[i - 1]?.text === "="; k -= 2) {
+    parts.unshift(tokens[k].text);
+    if (![".", ":"].includes(tokens[k - 1]?.text)) break;
+  }
+  return parts.length ? parts.join(".") : null;
+}
+
+// Every function in code tokens as { open, close, name, full }: token indexes of `function` and its `end`.
 function functionSpans(tokens) {
   const stack = [];
   const spans = [];
   tokens.forEach((t, i) => {
     if (t.kind !== "word" || !(LUA_BLOCK_OPEN.has(t.text) || LUA_BLOCK_CLOSE.has(t.text))) return;
-    if (LUA_BLOCK_OPEN.has(t.text)) stack.push(t.text === "function" ? { open: i, name: luaFunctionName(tokens, i) } : null);
+    if (LUA_BLOCK_OPEN.has(t.text)) stack.push(t.text === "function" ? { open: i, name: luaFunctionName(tokens, i), full: fullName(tokens, i) } : null);
     else spans.push({ ...stack.pop(), close: i });
   });
   return spans.filter((s) => s.open !== undefined);
@@ -711,34 +728,118 @@ function deferRanges(tokens) {
   });
 }
 
-// True when the call at tokens[i] is one of SECURE_CALLS (not its definition or a mention).
+// True when the call at tokens[i] is a secure call (not its definition or a mention): one of SECURE_CALLS, or a
+// SECURE_METHODS name called on a frame with ":".
 function isSecureCall(tokens, i) {
-  return SECURE_CALLS.has(tokens[i].text) && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  if (tokens[i].kind !== "word" || tokens[i + 1]?.text !== "(" || tokens[i - 1]?.text === "function") return false;
+  return SECURE_CALLS.has(tokens[i].text) || (SECURE_METHODS.has(tokens[i].text) && tokens[i - 1]?.text === ":");
 }
 
-// The words of tokens[a..b].
-const wordsIn = (tokens, a, b) => tokens.slice(a, b + 1).filter((t) => t.kind === "word").map((t) => t.text);
+// The whole dotted names written in tokens[a..b] ("set", "M.Apply"; ":" read as "."), as a Set. A name after a "."
+// or ":" belongs to the run before it, so `self.set` is "self.set", never "set".
+function namesIn(tokens, a, b) {
+  const names = new Set();
+  for (let k = a; k <= b; k++) {
+    if (tokens[k].kind !== "word" || [".", ":"].includes(tokens[k - 1]?.text)) continue;
+    let end = k;
+    while ([".", ":"].includes(tokens[end + 1]?.text) && tokens[end + 2]?.kind === "word") end += 2;
+    names.add(tokens.slice(k, end + 1).filter((t) => t.kind === "word").map((t) => t.text).join("."));
+  }
+  return names;
+}
 
-// Functions that run out of combat: passed to ns.OutOfCombat, or named by a function that
-// does (inside its arguments, or in a function already known to run there; same file only).
+// Functions that run out of combat: passed to ns.OutOfCombat, or named by their whole name inside the arguments of
+// one that does (or of a function already known to run there; same file only). Known limit: a function trusted
+// because one deferred call names it is trusted for every call of that name, also a straight call from a combat
+// handler (a blocking "every caller is deferred" rule flagged 18 of 123 calls falsely: one name means two things in
+// two files, and public functions have callers in other files).
 function deferredSpans(tokens, spans, ranges) {
-  const names = new Set(ranges.flatMap(([a, b]) => wordsIn(tokens, a, b)));
+  const names = new Set(ranges.flatMap(([a, b]) => [...namesIn(tokens, a, b)]));
   const safe = new Set();
   for (let grew = true; grew; ) {
-    const more = spans.filter((s) => !safe.has(s) && (ranges.some(([a, b]) => a < s.open && s.close <= b) || (s.name && names.has(lastPart(s.name)))));
-    more.forEach((s) => safe.add(s) && wordsIn(tokens, s.open, s.close).forEach((w) => names.add(w)));
+    const more = spans.filter((s) => !safe.has(s) && (ranges.some(([a, b]) => a < s.open && s.close <= b) || (s.full && names.has(s.full))));
+    more.forEach((s) => safe.add(s) && namesIn(tokens, s.open, s.close).forEach((w) => names.add(w)));
     grew = more.length > 0;
   }
   return safe;
 }
 
-// True when the secure call at tokens[i] is at the top level (load time), or a function holding it
-// runs out of combat (deferredSpans) or checks for combat before it.
+// The innermost function span holding tokens[i], or null at the top level (load time).
+function innermost(spans, i) {
+  const holding = spans.filter((s) => s.open < i && i < s.close);
+  return holding.reduce((best, s) => (best && best.open > s.open ? best : s), null);
+}
+
+// The index of the `then` that ends the condition of the `if` at tokens[p].
+function thenOf(tokens, p) {
+  let k = p + 1;
+  for (let depth = 0; k < tokens.length && !(depth === 0 && tokens[k].text === "then"); k++) depth += nesting(tokens[k]);
+  return k;
+}
+
+// The first branch of the `if` whose `then` is tokens[t]: { end, returns }. end is the index of its else, elseif or
+// end; returns is true when a `return` stands at the branch's own level (it leaves the function).
+function firstBranch(tokens, t) {
+  let depth = 0;
+  let returns = false;
+  for (let k = t + 1; k < tokens.length; k++) {
+    const word = tokens[k].kind === "word" ? tokens[k].text : "";
+    if (depth === 0 && ["end", "else", "elseif"].includes(word)) return { end: k, returns };
+    depth += nesting(tokens[k]);
+    returns = returns || (depth === 0 && word === "return");
+  }
+  return { end: tokens.length, returns };
+}
+
+// How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
+// joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
+// `or`), else null.
+function combatSense(tokens, a, b) {
+  const words = tokens.slice(a, b).map((t) => t.text);
+  const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
+  if (at < 0) return null;
+  const head = words[at - 1] === "." ? at - 2 : at;
+  if (words[head - 1] === "not") return words.includes("or") ? null : "out";
+  return words.includes("and") ? null : "in";
+}
+
+// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first.
+function openersAt(tokens, from, i) {
+  const open = [];
+  for (let k = from; k < i; k++) {
+    if (tokens[k].kind !== "word") continue;
+    if (LUA_BLOCK_OPEN.has(tokens[k].text)) open.push(k);
+    else if (LUA_BLOCK_CLOSE.has(tokens[k].text)) open.pop();
+  }
+  return open;
+}
+
+// True when the `if` at tokens[p] guards the secure call at tokens[i] in function s: its condition is a combat
+// check whose then-branch returns, and the call comes after that branch in the same blocks of the same function;
+// or the call stands in the then-branch of a condition that holds only out of combat.
+function ifGuards(ctx, s, p, i) {
+  const then = thenOf(ctx.tokens, p);
+  const sense = combatSense(ctx.tokens, p + 1, then);
+  const branch = firstBranch(ctx.tokens, then);
+  if (sense === "out") return then < i && i < branch.end;
+  if (sense !== "in" || !branch.returns || i < branch.end) return false;
+  const [mine, theirs] = [openersAt(ctx.tokens, s.open, p), openersAt(ctx.tokens, s.open, i)];
+  return mine.every((k, n) => theirs[n] === k);
+}
+
+// True when function s holds a combat guard (ifGuards) for the secure call at tokens[i] in an `if` of its own,
+// not one in a function nested inside it.
+function guardedIn(ctx, s, i) {
+  const ifs = ctx.tokens.map((t, p) => (p > s.open && p < s.close && t.text === "if" && t.kind === "word" ? p : -1)).filter((p) => p >= 0);
+  return ifs.some((p) => innermost(ctx.spans, p) === s && ifGuards(ctx, s, p, i));
+}
+
+// True when the secure call at tokens[i] is at the top level (load time), or a function holding it runs out of
+// combat (deferredSpans), or the function it is in has a combat guard (guardedIn). A combat word read anywhere
+// earlier does not count.
 function isCombatSafeAt(ctx, i) {
-  const enclosing = ctx.spans.filter((s) => s.open < i && i < s.close);
-  // True when function s checks for combat before tokens[i].
-  const checks = (s) => ctx.tokens.slice(s.open, i).some((t) => COMBAT_CHECKS.has(t.text));
-  return !enclosing.length || enclosing.some((s) => ctx.safe.has(s) || checks(s));
+  const s = innermost(ctx.spans, i);
+  return !s || ctx.spans.some((h) => h.open < i && i < h.close && ctx.safe.has(h)) || guardedIn(ctx, s, i);
 }
 
 // Secure calls outside a combat guard: [{ rule, line, message }].
@@ -749,7 +850,7 @@ function unguardedSecureCalls(file, src) {
   const ctx = { tokens, spans, safe: deferredSpans(tokens, spans, deferRanges(tokens)) };
   const line = lineIndex(src);
   const hits = tokens.flatMap((t, i) => (isSecureCall(tokens, i) && !isCombatSafeAt(ctx, i) ? [t] : []));
-  const message = `outside a combat guard: run it through ns.OutOfCombat, or check InCombatLockdown() first`;
+  const message = `outside a combat guard: run it through ns.OutOfCombat, or return first when InCombatLockdown() / ns.InCombat()`;
   return hits.map((t) => ({ rule: SECURE_RULE, line: line(t.start), message: `${t.text}() ${message}` }));
 }
 
