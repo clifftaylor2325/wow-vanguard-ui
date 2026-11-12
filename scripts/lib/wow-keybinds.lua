@@ -240,8 +240,9 @@ end
 -- world.cursor is { type, id, subType } (a spell: "spell", id). A slot's action is world.actions[slot];
 -- an action picked up from a slot rides along as cursor.record.
 
--- The slots the client has: 1 to 180 (ActionBarFrameDocumentation.lua, IsEquippedAction). Raising for a bad slot in
--- PlaceAction and PickupAction is unverified (PutActionInSlot's entry has no RequiresValidActionSlot), and a
+-- The slots the client has: 1 to 180 (ActionBarFrameDocumentation.lua, RequiresValidActionSlot). Raising for a bad slot
+-- in PlaceAction and PickupAction, and its text, are the stub's guess (PutActionInSlot's entry has no
+-- RequiresValidActionSlot, and IsEquippedAction, which has it, answers nothing instead), and a
 -- stance's bonus bar, which remaps ACTIONBUTTON1 to a higher slot, is not modelled: a test on slots 1 to 12 does not
 -- cover the page driver.
 local function checkSlot(slot)

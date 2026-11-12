@@ -4,7 +4,8 @@
 // after first-run setup, and putting keys back from the card. Characters and icons here are test-only.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY spells a level-12 warrior knows, with their icons: { id, name }.
 const WARRIOR_SPELLS = [[78, "Heroic Strike"], [772, "Rend"], [7384, "Overpower"], [6343, "Thunder Clap"],
@@ -276,7 +277,7 @@ it("why it changes nothing: a bar addon, Vanguard's bars off, a gamepad; and ret
   const classless = warrior();
   classless.eval('__wfgWorld.setUnit("player", { class = "TEST-ONLY", className = "Tester" })');
   expect(classless.eval("return ns.KeybindsWizard.Blocked()")).toBe("Key setup has no layout for your class yet.");
-  const retail = loggedIn(CLICK_LUA, { client: RETAIL });
+  const retail = loggedIn(CLICK_LUA, { client: RETAIL_CLIENT });
   expect([open(retail), cardButton(retail, "Put everything back")], "no key setup buttons on retail").toEqual([false, false]);
   retail.eval("ns.KeybindsWizard.Open()");
   expect([retail.eval("return Vanguard_KeysWizard == nil"), chatHas(retail, /Vanguard's key setup is for WoW Forever only\.$/)]).toEqual([true, true]);

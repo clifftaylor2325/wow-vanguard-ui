@@ -1,8 +1,8 @@
 // units: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -17,7 +17,7 @@ it("unit frames", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   const player = ufState(addon, "player");
   expect(player.unit === "player" && player.type1 === "target" && player.type2 === "togglemenu", "player frame is a secure unit button").toBeTruthy();
-  expect(player.hp === 900 && player.max === 1000 && player.text === "900", "player health bar and text").toBeTruthy();
+  expect(player.hp === 900 && player.max === 1000 && player.text === "90%", "player health bar and text (Forever's default form is the percent)").toBeTruthy();
   expect(player.color[0] === 0.25 && player.color[2] === 0.92, "players get their class color").toBeTruthy();
   expect(player.power === 50 && isTok(addon, player.powerColor, "mana"), "power bar value and mana color").toBeTruthy();
   expect(player.name === "<name>" && !player.watched, "player name; player frame is always shown").toBeTruthy();
@@ -82,7 +82,7 @@ it("unit frames wait for combat", () => {
 });
 
 it("unit frame health text settings apply at once", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }", { client: RETAIL });
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }", { client: RETAIL_CLIENT });
   addon.slash("");
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Show health numbers") and Vanguard_player.healthText:GetText()'), "turning health numbers off clears them at once").toBe("");
@@ -247,7 +247,7 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
   expect(addon.eval("return Vanguard_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
-  const retail = loggedIn(UNITS_ENV, { ...NO_RAID, client: RETAIL });
+  const retail = loggedIn(UNITS_ENV, { ...NO_RAID, client: RETAIL_CLIENT });
   expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
@@ -275,7 +275,7 @@ it("unit frames: a party member who goes offline or dies loses the power text, a
   addon.fire("GROUP_ROSTER_UPDATE");
   // The power text's shown state and text, and the health text, of party1's frame.
   const read = () => addon.eval("local f = Vanguard_party1 return { f.powerText:IsShown(), f.powerText:GetText(), f.healthText:GetText() }");
-  expect(read(), "alive: the power number shows").toEqual([true, "300", "400"]);
+  expect(read(), "alive: the power number shows").toEqual([true, "300", "80%"]);
   addon.world.setUnit("party1", { connected: false });
   expect(read().slice(1), "offline: health says Offline, the power text is empty").toEqual(["", "Offline"]);
   addon.world.setUnit("party1", { connected: true, dead: true, hp: 0 });
@@ -376,9 +376,9 @@ it("combo points for rogues and druids", () => {
 });
 
 it("combo points on retail grow to your maximum, and WoW Forever stays at five", () => {
-  const retail = loggedIn(RETAIL + UNITS_ENV + `__units.player.class = "ROGUE" __cp, __max = 6, 7
+  const retail = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp, __max = 6, 7
     GetComboPoints = nil Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and __cp or 0 end
-    UnitPowerMax = function(unit, kind) return kind == 4 and __max or 0 end`, NO_RAID);
+    UnitPowerMax = function(unit, kind) return kind == 4 and __max or 0 end`, { ...NO_RAID, client: RETAIL_CLIENT });
   // The row's width, how many pips show, and how many are lit.
   const row = () => retail.eval(`local CP = ns.GetModule("ComboPoints") local shown, lit = 0, 0
     for _, p in ipairs(CP.pips) do if p:IsShown() then shown = shown + 1 end if p.fill:IsShown() then lit = lit + 1 end end
@@ -756,7 +756,7 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
   expect(text(), "a hidden ghost answer: Dead").toBe("Dead");
   addon.eval("__units.party1.ghost = nil __units.party1.feign = true");
   addon.fire("UNIT_HEALTH", "party1");
-  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
+  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0%");
 });
 
 it("an offline or dead unit's health bar goes dark, an online one keeps its class colour", () => {

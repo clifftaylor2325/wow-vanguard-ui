@@ -1,8 +1,8 @@
 // bars: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, RETAIL, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -375,7 +375,7 @@ it("Hidden bar bindings stay intact", () => {
 });
 
 it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
-  const addon = loggedIn(RETAIL + ACTIONS_ENV);
+  const addon = loggedIn(ACTIONS_ENV, { client: RETAIL_CLIENT });
   // What key 1 is bound to click (nil: nothing of Vanguard's).
   const keyOne = () => addon.eval("return __overrides['1']");
   expect([keyOne(), barVis(addon).raw], "outside a battle: key 1 clicks Vanguard's button, and the bar's driver hides it in a pet battle").toEqual(["Vanguard_Bar1Button1:LeftButton", "[petbattle] hide; show"]);

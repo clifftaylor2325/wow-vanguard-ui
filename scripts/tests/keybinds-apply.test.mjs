@@ -3,9 +3,9 @@
 // switch, a second character and the settings guard's backup. The presets here are test-only.
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { chatHas, expectErrors, loggedIn, RETAIL, SETUP_DONE, setCombat } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn, SETUP_DONE, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY spells the rogue knows: Attack, Sinister Strike, Kick, Gouge, Stealth; Eviscerate is not learned.
 const SPELLS = [[6603, "Attack"], [1752, "Sinister Strike"], [1766, "Kick"], [1776, "Gouge"], [1784, "Stealth"]];
@@ -253,7 +253,7 @@ it("Apply and put-back refuse, never queue: in combat, under a restriction, with
 });
 
 it("Apply on a retail client offers nothing and writes nothing", () => {
-  const addon = rogue("", RETAIL);
+  const addon = rogue("", RETAIL_CLIENT);
   const before = state(addon);
   expect(ka(addon, `return KA.Apply(${PRESET})`)).toBe(false);
   expect(chatHas(addon, /Vanguard's key setup is for WoW Forever only\.$/)).toBe(true);

@@ -48,6 +48,17 @@ it("retail professions: the specialisation page's dividers and footer fade and i
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
 });
 
+// live Blizzard_Professions/Blizzard_ProfessionsFrame.xml:7 and :28-30: one ProfessionsFrame holds the crafting,
+// specialisation and orders pages.
+it("retail professions: the crafting page is on the same window as the Retail pages, dressed beside them, and a profession opens on it", () => {
+  const addon = professions();
+  addon.world.openProfession(1);
+  const out = addon.eval(`local f = ProfessionsFrame
+    return { f.SpecPage ~= nil, f.OrdersPage ~= nil, __panel(f.CraftingPage.SchematicForm), f.CraftingPage.SchematicForm.currentRecipeInfo.recipeID,
+      __gameArt(f.SpecPage.VerticalDivider), #ns.errors }`);
+  expect(out, "the three pages on one window, the recipe form on an inset, the recipe shown, the spec page dressed, nothing caught").toEqual([true, true, true, 1, 0, 0]);
+});
+
 it("retail professions: the crafting orders page's tabs, lists, order view and money lines take the theme", () => {
   const addon = professions();
   addon.eval("ProfessionsFrame:Show()");
