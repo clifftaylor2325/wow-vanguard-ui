@@ -1346,14 +1346,11 @@ end
 -- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is thrown away, since
 -- a row may hold the old profile's table. Only the shown page is built again now, and by showPage alone: O.Show would
 -- read every page's rows, which fills tables into the profile just set (a reset one would not stay reset).
-ns.OnProfileChanged(function()
-  local current, scroll = O.current, pages[O.current] and pages[O.current]:GetVerticalScroll() or 0
+ns.OnProfileChanged(ns.Guard("options pages after a profile change", function()
   for key in pairs(pages) do O.DropPage(key) end
   forgetUnbuiltRows()
-  if not (window and window:IsShown() and current) then return end
-  showPage()
-  if pages[current] then pages[current]:ScrollTo(scroll) end
-end)
+  if window and window:IsShown() and O.current then showPage() end
+end))
 
 -- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
 local function firstRow(view, text)
