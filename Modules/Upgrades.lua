@@ -286,11 +286,23 @@ local function weakest(slots)
   return low, false, GetInventoryItemLink("player", at)
 end
 
--- What both hands are worth together, for a two-hander: main hand plus off hand (nil while either has no stats).
+-- The item level the worn pair counts twice (Retail's ILVL weight, once per item): half of both levels, so the pair
+-- carries the mean of its two, as a two-hander carries one. 0 where there is no ILVL weight, a hand is empty or the
+-- client gives no level for either.
+local function pairLevel()
+  local weight = (UP.Current()).ILVL
+  local main, off = GetInventoryItemLink("player", UP.MAIN_HAND), GetInventoryItemLink("player", UP.OFF_HAND)
+  if not (weight and main and off) then return 0 end
+  local a, b = itemLevel(main), itemLevel(off)
+  return a and b and weight * (a + b) / 2 or 0
+end
+
+-- What both hands are worth together, for a two-hander: main hand plus off hand, less the item level counted twice
+-- (nil while either has no stats).
 local function bothHands()
   local mh, empty = equipped(UP.MAIN_HAND)
   local oh = equipped(UP.OFF_HAND)
-  return mh and oh and mh + oh, empty, GetInventoryItemLink("player", UP.MAIN_HAND)
+  return mh and oh and mh + oh - pairLevel(), empty, GetInventoryItemLink("player", UP.MAIN_HAND)
 end
 
 -- Whether you can wear the item (the client's answers, where it has them).
@@ -548,11 +560,12 @@ function UP.OnGearChanged()
   if bag and bag:IsShown() then UP.MarkBag(bag) end
 end
 
--- Your group role changed, or you left the group: new weights, and the bag marked again.
-function UP.OnRolesChanged()
-  UP.Changed()
-  UP.OnGearChanged()
+-- The weights changed (any caller of UP.Changed, a start included) or the module went off: the combined bag is marked
+-- again, or left bare once the module reads as off (no settings). Not before the modules are built, at login.
+local function markOnChange()
+  if UP.settings and ns.ModulesBuilt() then UP.OnGearChanged() end
 end
+UP.OnChanged(markOnChange)
 
 -- /vg weights -----------------------------------------------------------------------------
 
@@ -722,13 +735,14 @@ local function hookBag(scope)
   scope:Gate("bag slots", markBagSafely, function(gate) hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", gate)) end)
 end
 
--- Re-scores and marks again when what is worn, the group role, the spec or an awaited item's data changes.
+-- Re-scores and marks again (UP.Changed tells markOnChange) when what is worn, the group role, the spec or an
+-- awaited item's data changes.
 local function watchChanges(scope)
   scope:On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   scope:On("GET_ITEM_INFO_RECEIVED", UP.OnItemInfo)
-  scope:On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
-  if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
-  scope:On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+  scope:On("PLAYER_ROLES_ASSIGNED", UP.Changed)
+  if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.Changed) end -- a new spec, new main stat
+  scope:On("GROUP_LEFT", UP.Changed) -- out of a group the role is none again, which no role event may say
 end
 
 -- Module entry point (Core/Modules.lua): everything goes through the scope; the tooltip line, the reward card
@@ -740,7 +754,6 @@ function UP.Enable(settings, scope)
   scope:Gate("reward cards", UP.MarkCard, ns.QuestParts.OnPaintCard)
   hookBag(scope)
   watchChanges(scope)
-  if ns.ModulesBuilt() then UP.OnGearChanged() end
 end
 
 -- Switched off: the arrows already drawn on bag slots and reward cards go, and the module reads as off again

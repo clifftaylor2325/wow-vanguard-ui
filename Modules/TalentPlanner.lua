@@ -6,7 +6,7 @@
 -- buy wears an accent ring, and a rank the plan can never reach (a talent it hangs from, or
 -- its row's points, missing from the plan) is marked red. Spend planned (or /vg talents spend)
 -- buys the next picks in a legal order, highest rows first, and applies them. At a level-up,
--- chat names the next pick; Spend by itself (off until you switch it on) buys them without
+-- chat names the next pick; Spend planned points at a level-up (off until you switch it on) buys them without
 -- asking. Plans are kept per character and spec group (Primary, Secondary) in VanguardCharDB,
 -- by talent node, with the hash of the tree they were made on: after a patch that moved the
 -- talents, the ones still there are kept and the rest dropped, with a line in chat. /vg talents
@@ -750,7 +750,7 @@ function TP.SpendPlanned(n)
   if bought > 0 then TP.Commit(tree.configID) end
 end
 
--- The level-up line: how many points wait and what the plan buys next; Spend by itself buys them instead.
+-- The level-up line: how many points wait and what the plan buys next; the level-up switch buys them instead.
 function TP.Prompt()
   if not TP.settings then return end
   local tree = TP.ReadTree()
@@ -786,9 +786,18 @@ function TP.OrderedIDs(tree, plan)
   return nodes
 end
 
--- A talent planned after the player set an order joins its end (a plan with no order stays top row first).
+-- Takes a talent out of the plan's order, so planning it again joins the end instead of its old place.
+local function leaveOrder(plan, nodeID)
+  for i = #plan.order, 1, -1 do
+    if plan.order[i] == nodeID then table.remove(plan.order, i) end
+  end
+end
+
+-- A talent planned after the player set an order joins its end, and one taken out of the plan leaves the order (a
+-- plan with no order stays top row first).
 function TP.KeepOrder(plan, nodeID)
-  if type(plan.order) ~= "table" or not plan.ranks[nodeID] then return end
+  if type(plan.order) ~= "table" then return end
+  if not plan.ranks[nodeID] then leaveOrder(plan, nodeID) return end
   if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
 end
 

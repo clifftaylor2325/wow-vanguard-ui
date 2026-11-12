@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { chatHas, isTok, loggedIn, px } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn, px } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 // TEST-ONLY gear for a warrior with no group role (strength weights: STR 1, DPS 2.5; SPI is worth
@@ -197,6 +197,12 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   click("Vanguard_WeightsWizard.defaults");
   click("Vanguard_WeightsWizard.save");
   expect(lua("return ns.GetModule('Upgrades').settings.weights.WARRIOR.strength == nil"), "saving the defaults keeps nothing").toBe(true);
+  addon.slash("weights wizard");
+  lua("local r = Vanguard_WeightsWizard.rows[5] r.exact(0.005) r:Refresh() r.box:GetScript('OnEditFocusLost')(r.box)");
+  expect(lua("return Vanguard_WeightsWizard.rows[5].get()"), "clicking in and out of a box leaves a weight the slider could not make as it is").toBe(0.005);
+  lua("local r = Vanguard_WeightsWizard.rows[5] r.box:SetText('0.714') r.box:GetScript('OnEnterPressed')(r.box)");
+  expect(lua("return Vanguard_WeightsWizard.rows[5].get()"), "a typed weight is kept to the digit").toBe(0.714);
+  click("Vanguard_WeightsWizard.cancel");
 });
 
 it("upgrades: the wizard names every stat, and says when Gear upgrades is off", () => {
@@ -237,6 +243,25 @@ it("upgrades: an item whose stats arrive late gets its arrow when the client sen
   expect(arrows(), "an item nobody waited for: nothing re-marked").toEqual([false, false]);
   addon.fire("GET_ITEM_INFO_RECEIVED", 2, true);
   expect(arrows(), "the waited item arrives: the better bracers get their arrow").toEqual([true, false]);
+});
+
+it("upgrades: changed weights and the bag switch mark the open combined bag at once (H46-33-102)", () => {
+  const addon = loggedIn(GEAR_ENV + BAG_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  // Whether the better bracers' slot shows its arrow.
+  const arrow = () => addon.eval("local a = ns.FrameState('vgUpgrade')[__buttons[1]] return a ~= nil and a:IsShown()");
+  addon.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(arrow(), "the better bracers have the arrow").toBe(true);
+  addon.slash("weights set str 0");
+  expect(arrow(), "strength worth nothing: they are no upgrade, and the arrow goes at once").toBe(false);
+  addon.slash("weights reset");
+  expect(arrow(), "the weights back: it returns").toBe(true);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Arrow on upgrades in the combined bag")');
+  expect(arrow(), "the bag switch off: the arrow goes at once").toBe(false);
+  addon.eval('__click("Arrow on upgrades in the combined bag")');
+  expect(arrow(), "on again: it returns").toBe(true);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  expect(arrow(), "Gear upgrades off: the arrow stays gone").toBe(false);
 });
 
 it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () => {
@@ -295,6 +320,24 @@ it("upgrades: on Retail a ranged weapon is judged against both hands, where Fore
   expect(retail.eval("return __line(19)"), "a weak bow is a downgrade, not an empty slot").toMatch(/^Downgrade -\d+% \(estimate\)/);
   const forever = loggedIn(BOW_ENV);
   expect(forever.eval("return __line(19)"), "Forever: the empty ranged slot 18").toBe("Upgrade: fills an empty slot");
+});
+
+// Retail counts item level as a weight (ILVL 1 per item). Worn: main hand 31 and off hand 32 (20 STR, level 250 each);
+// in the bags two-handers 33 (40 STR, level 250) and 34 (40 STR, level 280).
+const PAIR_ENV = GEAR_ENV + `
+  __gear[31] = { "INVTYPE_WEAPONMAINHAND", { ITEM_MOD_STRENGTH_SHORT = 20 }, 250 } __gear[32] = { "INVTYPE_WEAPONOFFHAND", { ITEM_MOD_STRENGTH_SHORT = 20 }, 250 }
+  __gear[33] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 40 }, 250 } __gear[34] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 40 }, 280 }
+  C_Item.GetDetailedItemLevelInfo = function(link) local g = __gear[tonumber(tostring(link):match("item:(%d+)"))] return g and g[3] end
+  __worn[16], __worn[17] = __link(31), __link(32)
+  function __cmp(n) return ns.GetModule("Upgrades").Compare(__link(n)) end
+`;
+
+it("upgrades: on Retail a two-hander's item level is weighed once against the pair it replaces (H46-33-103)", () => {
+  const retail = loggedIn(PAIR_ENV, { client: RETAIL_CLIENT });
+  expect(retail.eval("return math.floor(__cmp(33) + 0.5)"), "the same stats and level as the pair: no change").toBe(0);
+  expect(retail.eval("return __cmp(34) > 0"), "thirty levels more is an upgrade").toBe(true);
+  const forever = loggedIn(PAIR_ENV);
+  expect(forever.eval("return math.floor(__cmp(34) + 0.5)"), "Forever has no item level weight: equal stats, no change whatever the level").toBe(0);
 });
 
 // Sets the player's class, specialization (its role and primary stat as the client names them) and group role, and

@@ -1228,7 +1228,7 @@ L["News, help and other players: Vanguard's Discord server, and {handle} on X. C
 L["Next"] = "다음"
 L["Next scan in {minutes} min"] = "{minutes}분 후 다음 검색"
 L["Next step in the tracker"] = "추적기의 다음 단계"
-L["Next: {count} x {recipe}. Press Create in the profession window."] = "다음: {recipe} {count}회. 전문 기술 창에서 만들기를 누르세요."
+L["Next: {count} x {recipe}. Set the count in the profession window, then press Create."] = "다음: {recipe} {count}회. 전문 기술 창에서 수량을 정한 다음 만들기를 누르세요."
 L["Nine-slice shadows off after a /reload."] = "/reload 후 나인 슬라이스 그림자 꺼짐."
 L["Nine-slice shadows on after a /reload."] = "/reload 후 나인 슬라이스 그림자 켜짐."
 L["No"] = "아니요"

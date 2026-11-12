@@ -101,7 +101,7 @@ it("next opens the first recipe with its count typed in; stock raises Keep stock
   addon.eval(`${CQ}.Add(100, 4)`);
   expect(chatHas(addon, /Queued: 4 x recipe 100 \(1 in the queue\)/), "an entry without a name").toBe(true);
   addon.slash("craft next");
-  expect(chatHas(addon, /Next: 4 x recipe 100\. Press Create/), "no panel yet: still says it").toBe(true);
+  expect(chatHas(addon, /Next: 4 x recipe 100\. Set the count in the profession window, then press Create\./), "no panel yet: still says it").toBe(true);
   expect(addon.world.openedRecipe ?? addon.eval("return __wfgWorld.openedRecipe"), "the recipe opened").toBe(100);
   addon.world.openProfession(100);
   addon.eval(`${CQ}.Mine().queue[1].name = "TEST-ONLY Linen Bag"`);

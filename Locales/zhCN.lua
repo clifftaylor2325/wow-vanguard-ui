@@ -1228,7 +1228,7 @@ L["News, help and other players: Vanguard's Discord server, and {handle} on X. C
 L["Next"] = "下一个"
 L["Next scan in {minutes} min"] = "{minutes}分钟后下次扫描"
 L["Next step in the tracker"] = "追踪器中的下一步"
-L["Next: {count} x {recipe}. Press Create in the profession window."] = "下一个：{count} x {recipe}。请在专业窗口中点击“制造”。"
+L["Next: {count} x {recipe}. Set the count in the profession window, then press Create."] = "下一个：{count} x {recipe}。请在专业窗口中设置数量，然后点击“制造”。"
 L["Nine-slice shadows off after a /reload."] = "九宫格阴影将在 /reload 后关闭。"
 L["Nine-slice shadows on after a /reload."] = "九宫格阴影将在 /reload 后开启。"
 L["No"] = "否"

@@ -1228,7 +1228,7 @@ L["News, help and other players: Vanguard's Discord server, and {handle} on X. C
 L["Next"] = "Далее"
 L["Next scan in {minutes} min"] = "Следующее сканирование через {minutes} мин"
 L["Next step in the tracker"] = "Следующий шаг в списке заданий"
-L["Next: {count} x {recipe}. Press Create in the profession window."] = "Далее: {count} x {recipe}. Нажмите «Создать» в окне профессии."
+L["Next: {count} x {recipe}. Set the count in the profession window, then press Create."] = "Далее: {count} x {recipe}. Укажите количество в окне профессии, затем нажмите «Создать»."
 L["Nine-slice shadows off after a /reload."] = "Тени из девяти частей выключатся после /reload."
 L["Nine-slice shadows on after a /reload."] = "Тени из девяти частей включатся после /reload."
 L["No"] = "Нет"
