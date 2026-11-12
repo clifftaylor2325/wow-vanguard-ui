@@ -467,7 +467,7 @@ end
 
 -- /vg profile copy <from>: after asking, replaces the settings of the profile used after the reload.
 local function copyProfile(name)
-  local into = ns.SelectedProfileName()
+  local into = ns.LoadingProfileName()
   if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
   local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
   confirmProfile(ns.Format(warning, { into = into, from = name }), L["Copy here"], function()

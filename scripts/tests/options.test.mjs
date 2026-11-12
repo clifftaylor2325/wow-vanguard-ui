@@ -2390,3 +2390,15 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
     __s.track:GetScript("OnMouseDown")() __wfgStub.update(0.05) __wfgStub.update(0.05) __wfgStub.update(0.05)`);
   expect(addon.eval("return __sets"), "a locked slider is set once").toBe(1);
 });
+
+it("options: while the spec's profile overrides a staged pick, Copy here names the profile that loads and is not on its row", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {}, Raid = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval(CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval('ns.UseProfile("Raid") ns.Options.Show("profiles")');
+  expect(profileRow(addon, "Heal  (in use)").slice(1), "the loading profile has no buttons").toEqual([false, false, false]);
+  expect(profileRow(addon, "Raid")[2], "nor does the staged pick it overrides").toBe(false);
+  expect(profileHover(addon, "Default", "copy", "OnEnter")[1], "Copy here names the profile the reload loads")
+    .toBe("Replaces every setting in profile Heal with profile Default's. It can't be undone.");
+});

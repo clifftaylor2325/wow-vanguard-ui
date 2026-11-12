@@ -34,15 +34,15 @@ local function ownCopy(profile)
   return ns.Copy(profile)
 end
 
--- Copies another profile's settings over the one this character uses after the next reload: the
--- active one, or the one staged while a switch waits (so the profile running until then is never
--- overwritten). `into` names another profile to copy into (setup's Undo puts the profile it backed up
+-- Copies another profile's settings over the one this character loads after the next reload (ns.LoadingProfileName):
+-- the active one, or the one a staged switch or the spec's profile loads (so the profile running until then is never
+-- overwritten by a staged switch). `into` names another profile to copy into (setup's Undo puts the profile it backed up
 -- back, which a switch staged since is not). Returns the name copied into, or false.
 ---@param from string
 ---@param into string|nil
 function ns.CopyProfile(from, into)
   local source = VanguardDB.profiles[from]
-  into = into or ns.SelectedProfileName()
+  into = into or ns.LoadingProfileName()
   if not source or from == into then
     return false
   end
@@ -290,7 +290,7 @@ end
 -- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
 -- makes or picks a profile, so the running one is what a backup holds.
 local function importTarget(kind)
-  return kind == "parts" and ns.SelectedProfileName() or ns.ProfileName()
+  return kind == "parts" and ns.LoadingProfileName() or ns.ProfileName()
 end
 
 -- A partial string: its tables merge into the named profile, key by key; a theme it carries keeps
@@ -505,6 +505,13 @@ end
 function ns.ProfileAfterReload()
   local name = ns.SpecProfile() or ns.PendingProfileName()
   return name ~= ns.ProfileName() and name or nil
+end
+
+-- The profile the next login loads: the spec's or the staged one when it differs from the one in use, else the
+-- one in use. Copy here and a partial import write into it, so they change what the player will see.
+---@return string
+function ns.LoadingProfileName()
+  return ns.ProfileAfterReload() or ns.ProfileName()
 end
 
 -- Offers the reload when the spec's profile just set (/vg spec, or the Profiles page's button) is not the one in use.

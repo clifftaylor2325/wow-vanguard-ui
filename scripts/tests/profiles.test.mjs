@@ -363,6 +363,20 @@ it("ns.WithdrawReload does nothing before any reload was offered", () => {
   const addon = offerCharacter(false);
   expect(addon.eval("ns.WithdrawReload('x') return true")).toBe(true);
 });
+it("Copy here, a partial import and /vg profile copy write into the profile the reload loads, not a hand pick a spec overrides", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Raid = {}, Src = { theme = { accent = { 0, 0, 1 }, reduceMotion = true } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval("ns.UseProfile('Raid')");
+  expect(addon.eval("return { ns.ProfileName(), ns.LoadingProfileName() }"), "Heal runs and loads").toEqual(["Heal", "Heal"]);
+  expect(addon.eval("return ns.CopyProfile('Src')"), "Copy here writes into the loading profile").toBe("Heal");
+  const text = addon.eval('return ns.Serialize.Encode("parts", { format = 2, parts = { "global" }, theme = { sounds = false } })');
+  addon.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(addon.eval("return { VanguardDB.profiles.Heal.theme.accent[3], tostring(VanguardDB.profiles.Heal.theme.sounds), tostring(VanguardDB.profiles.Raid.theme) }"), "a partial import too, the pick untouched").toEqual([1, "false", "nil"]);
+  addon.slash("profile copy Default");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the typed command warns about the loading profile").toMatch(/profile Heal with profile Default/);
+});
 // The reload that applies a staged profile, with the client in `spec` (what login does first).
 function reloadInSpec(addon, spec) {
   addon.eval(`__spec = ${spec} ns.ApplyPendingProfile()`);
