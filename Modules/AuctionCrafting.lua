@@ -54,14 +54,13 @@ local function slotIDs(slot)
   return ids
 end
 
--- A recipe's basic reagents, as { id (the first rank), ids (every rank), qty } per slot (optional and finishing
+-- A recipe's basic reagents, as { id (the first rank you can read), ids (every rank), qty } per slot (optional and finishing
 -- reagents, a currency and a hidden count are left out).
 local function reagents(schematic)
   local out, basic = {}, (Enum.CraftingReagentType or {}).Basic or CR.BASIC
   for _, slot in ipairs(schematic.reagentSlotSchematics or {}) do
-    local r, qty = slot.reagents and slot.reagents[1], ns.PlainNumber(slot.quantityRequired)
-    local id = r and ns.PlainNumber(r.itemID)
-    if ns.PlainNumber(slot.reagentType) == basic and id and qty and qty > 0 then out[#out + 1] = { id = id, ids = slotIDs(slot), qty = qty } end
+    local ids, qty = slotIDs(slot), ns.PlainNumber(slot.quantityRequired)
+    if ns.PlainNumber(slot.reagentType) == basic and ids[1] and qty and qty > 0 then out[#out + 1] = { id = ids[1], ids = ids, qty = qty } end
   end
   return out
 end

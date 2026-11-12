@@ -427,3 +427,13 @@ it("H45-D-G2 on WoW Retail, /vg craft stock leaves out what another quality rank
   addon.slash("craft stock");
   expect(addon.eval("return ns.GetModule('Errands').StockList()[9001] or false"), "three held: nothing to keep stocked").toBe(false);
 });
+
+it("H45-D-G3A2 a slot whose first rank is secret reads the ranks it can (no error)", () => {
+  const addon = crafter(`
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Ore rank 1" } __wfgWorld.items[9002] = { name = "TEST-ONLY Ore rank 2" }
+    __wfgWorld.recipes[103] = { recipeID = 103, name = "TEST-ONLY Bar", outputItemID = 4238, quantityMin = 1, quantityMax = 1,
+      reagentSlotSchematics = { { reagents = { __wfgWorld.secret({ itemID = 9001 }), { itemID = 9002 } }, quantityRequired = 3, reagentType = 1 } } }
+    C_Item.GetItemCount = function(id) return id == 9002 and 3 or 0 end`, ON, RETAIL_CLIENT);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar")`);
+  expect(say(addon, "craft", /You have every reagent\./), "the three held of the readable id count").toBe(true);
+});
