@@ -27,3 +27,12 @@ it("an options scene shows the window, not setup or What's new over it, and its 
     news = Vanguard_WhatsNew ~= nil and Vanguard_WhatsNew:IsShown(), footer = Vanguard_Options.version:GetText() }`);
   expect(shown, "setup is done and this version's notes were read").toEqual({ setup: false, news: false, footer: `Vanguard ${TOC_VERSION}  ·  /vg` });
 });
+
+it("the changed-settings scene's caption names the mark its two changed rows draw: the reset arrow", () => {
+  const scene = SCENES.find((s) => s.name === "vanguard-options-changed");
+  const addon = buildScene(scene);
+  const marks = addon.eval(`local icons = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.reset and w.reset:IsShown() then icons[#icons + 1] = w.reset.mark.__texture:match("Icons\\\\(%a+)$") end end return icons`);
+  expect(marks, "each changed row shows the Reset icon").toEqual(["Reset", "Reset"]);
+  expect(scene.caption).toContain("the arrow left of each puts its default back");
+});
