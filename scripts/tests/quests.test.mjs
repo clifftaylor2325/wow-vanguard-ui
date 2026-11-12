@@ -2904,3 +2904,16 @@ it("H46-8-1: a custom frame that is hidden, forbidden or not a frame does not co
   addon.eval("_G.CustomGossipFrameManager = false");
   expect(talk("nil"), "no manager").toBeFalsy();
 });
+
+// Client rule: QuestFrame_OnEvent returns at once for an adventure map's QUEST_DETAIL (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua:42-45),
+// and the map's dialog takes the quest with C_AdventureMap.StartQuest, never AcceptQuest (Blizzard_AdventureMap/AM_QuestDialog.lua:257-261).
+it("H46-8-R1: quest automation's accept leaves an adventure map's offer to the map, and still accepts any other", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  addon.eval("QuestIsFromAdventureMap = function() return true end");
+  calls(addon);
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "nothing is accepted for the player").toEqual([]);
+  addon.eval("QuestIsFromAdventureMap = function() return false end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "an ordinary offer is accepted").toEqual(["accept nil"]);
+});
