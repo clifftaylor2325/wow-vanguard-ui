@@ -274,21 +274,23 @@ const PLACED = {
 // What the wall holds or stands behind on purpose: the frames on it, the bars and the vehicle exit beside bar 1, your
 // cast bar (in the gatehouse) and the rows that ride the frames on it.
 const ON_THE_WALL = new Set(["uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "bar1", "bar2", "bar3", "vehicleexit", "cast_player", "combo", "targetBuffs", "targetDebuffs", "focusDebuffs"]);
-// The rows' real reach (TEST-ONLY reads), in UIParent's units: each aura container's every icon (up to the client's
-// ten a group) flowed from its anchor corner at the line it was built with (Blizzard_SharedXMLBase/AnchorUtil.lua
-// AnchorUtil.ApplyFlowLayout: a new line when the next icon passes the line size), down for debuffs, up for buffs;
+// The rows' real reach (TEST-ONLY reads), in UIParent's units: each aura container's every icon it can show (the
+// first maxFrameCount of a group's buttons: the client makes them ten at a time whatever the cap, and the cap is all
+// that shows, Blizzard_CustomAuraContainer.lua:286-304) flowed from its anchor corner at the line it was built with
+// (Blizzard_SharedXMLBase/AnchorUtil.lua AnchorUtil.ApplyFlowLayout: a new line when the next icon passes the line
+// size), down for debuffs, up for buffs;
 // the combo points' row (Modules/ComboPoints.lua: 5 pips of 14 + 3, 2 over the frame's crown); the keep's wall.
 const RIDERS_LUA = `local UF, CP = ns.GetModule("UnitFrames"), ns.GetModule("ComboPoints")
   local function scale(f) return f:GetEffectiveScale() / UIParent:GetEffectiveScale() end
   local function extent(c)
     local line, x, w, h, lineH = c.__flowLine or math.huge, 0, 0, 0, 0
     for _, g in ipairs(c.__groups or {}) do
-      local gap = g.opts.layout.elementSpacing or 0
-      for _, b in ipairs(g.buttons) do
+      local gap, cap = g.opts.layout.elementSpacing or 0, g.opts.maxFrameCount or math.huge
+      for i, b in ipairs(g.buttons) do if i <= cap then
         if x > 0 and x + b:GetWidth() > line then h, x, lineH = h + lineH + gap, 0, 0 end
         x, lineH = x + b:GetWidth() + gap, math.max(lineH, b:GetHeight())
         w = math.max(w, x - gap)
-      end
+      end end
     end
     return w, h + lineH
   end
