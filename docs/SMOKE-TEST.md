@@ -2049,8 +2049,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6e Chat tabs
 
-- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click a chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
-- Expect: New chat tab says in chat to right-click a tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click the main chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
+- Expect: New chat tab says in chat to right-click the main chat tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
 ### 15.6f Chat search
