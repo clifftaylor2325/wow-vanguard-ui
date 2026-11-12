@@ -231,27 +231,37 @@ local function buffGroupOf()
   return groupOf
 end
 
--- The watched buff group for a key, made and listed in w.groups the first time.
-local function watchedGroup(w, key)
+-- Adds a name to a watched group: its list of names to look up, and the set a buff list is read through.
+local function addToGroup(w, g, name)
+  if w.set[name] then return end
+  g.names[#g.names + 1] = name
+  w.set[name] = g
+end
+
+-- The watched buff group for a key, made the first time and listed in w.groups, holding every name that
+-- groupOf maps to the key (watched or not: a player with another version of the buff has it).
+local function watchedGroup(w, groupOf, key)
   if not w.byKey[key] then
     w.byKey[key] = { names = {} }
     w.groups[#w.groups + 1] = w.byKey[key]
+    for name, groupKey in pairs(groupOf) do
+      if groupKey == key then addToGroup(w, w.byKey[key], name) end
+    end
   end
   return w.byKey[key]
 end
 
 -- Adds one watched name to its buff's group (groupOf: buffGroupOf).
 local function watchName(w, groupOf, name)
-  local g = watchedGroup(w, groupOf[name] or name)
-  g.names[#g.names + 1] = name
+  local g = watchedGroup(w, groupOf, groupOf[name] or name)
+  addToGroup(w, g, name)
   g.give = g.give or (known(name) and name or nil)
   w.give = w.give or g.give
-  w.set[name] = g
 end
 
 -- What the buff watch looks for: { groups = the watched buffs in list order, each { names, give = the first of its
--- names you know, or nil }, set = name -> its group, give = any buff you know }. Worked out once and kept until the
--- list or your spells change (RH.Forget), not per unit or per update.
+-- names you know, or nil; names = every name of the buff }, set = name -> its group, give = any buff you know }.
+-- Worked out once and kept until the list or your spells change (RH.Forget), not per unit or per update.
 local function watched()
   if RH.watch then return RH.watch end
   local w, groupOf = { groups = {}, byKey = {}, set = {} }, buffGroupOf()

@@ -235,6 +235,20 @@ it("H40-4-1: a Forever paladin's watch counts Blessing of Sanctuary, normal or g
   expect(healing(addon, 1).missing, "no blessing: marked").toBe("TEST-ONLY-ICON-Blessing of Might");
 });
 
+it("H46-B-G3-1 buff watch: a version of a watched buff that is not on the list still counts (group version, any blessing)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + FOREVER_ENV + AURA_LIST + `
+    __names = { [1243] = "Power Word: Fortitude", [21562] = "Prayer of Fortitude", [19740] = "Blessing of Might", [20217] = "Blessing of Kings" }
+    __known = { ["Power Word: Fortitude"] = true, ["Blessing of Might"] = true }`);
+  addon.eval(`__spawn(1, "raid1") ns.Settings("RaidHealing").buffs = "Power Word: Fortitude"
+    ns.GetModule("RaidHealing").Forget() ns.GetModule("RaidFrames").UpdateAll()`);
+  expect(markWith(addon, "{ ['Prayer of Fortitude'] = true }"), "only Fortitude is listed, the player has the group version: it still counts").toBe(false);
+  expect(markWith(addon, "{}"), "neither: marked").toBe("TEST-ONLY-ICON-Power Word: Fortitude");
+  addon.eval(`ns.Settings("RaidHealing").buffs = "Blessing of Might" ns.GetModule("RaidHealing").Forget()`);
+  expect(markWith(addon, "{ ['Blessing of Kings'] = true }"), "any blessing counts for a watched blessing").toBe(false);
+  addon.eval("C_UnitAuras.GetAuraDataBySpellName = nil");
+  expect(markWith(addon, "{ ['Blessing of Kings'] = true }"), "and from the aura list too").toBe(false);
+});
+
 // A1-6 (M1): the raid add-ons' unit events are each tile's own, not every unit's.
 it("A1-6: heal prediction, shields, threat and auras are heard per tile, so another unit's events run nothing here", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
