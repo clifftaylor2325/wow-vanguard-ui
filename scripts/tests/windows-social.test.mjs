@@ -1384,7 +1384,8 @@ it("H44-16-2 social dialogs: the news filters flyout sits clear of the guild win
       if prev then tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -20) else tab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -36) end
       prev = tab
     end
-    UpdateUIPanelPositions = function() local nf = CommunitiesGuildNewsFiltersFrame nf:ClearAllPoints() nf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 900, -100) end`;
+    UpdateUIPanelPositions = function() local nf = CommunitiesGuildNewsFiltersFrame nf:ClearAllPoints() nf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 900, -100) end
+    UpdateScaleForFitForOpenPanels = UpdateUIPanelPositions`;
   const addon = loggedIn(DIALOG_PARTS_ENV + tabs);
   addon.eval("CommunitiesFrame:Show() CommunitiesGuildNewsFiltersFrame:Show()");
   // How many side tabs the news filter flyout covers.
@@ -1395,6 +1396,10 @@ it("H44-16-2 social dialogs: the news filters flyout sits clear of the guild win
   expect(covered(), "no side tab under the flyout, which starts past the window's right edge").toEqual([0, true]);
   addon.eval("UpdateUIPanelPositions()");
   expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == CommunitiesFrame"), "after the game's layout pass it is beside the window again").toBe(true);
+  // H45-8-4: UI_SCALE_CHANGED -> UpdateScaleForFitForOpenPanels -> the delegate's UpdateUIPanelPositions re-places the panels
+  // (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua), which the hook on the global UpdateUIPanelPositions misses.
+  addon.eval("CommunitiesGuildNewsFiltersFrame:ClearAllPoints() CommunitiesGuildNewsFiltersFrame:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 900, -100) UpdateScaleForFitForOpenPanels()");
+  expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == CommunitiesFrame"), "after a scale-fit pass it is beside the window again").toBe(true);
   addon.eval("CommunitiesGuildNewsFiltersFrame:Hide() UpdateUIPanelPositions()");
   expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == UIParent"), "a hidden flyout is left alone").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
