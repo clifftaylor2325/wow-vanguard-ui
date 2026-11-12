@@ -68,7 +68,7 @@ L["A painted scene behind the AFK screen: a keep for the Alliance, a red canyon 
 L["A phrase can be at most {max} characters."] = "字詞最多{max}個字元。"
 L["A phrase can't hold the | character."] = "字詞不能包含 | 字元。"
 L["A player"] = "一名玩家"
-L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "預設需要一個名稱和一個角色，例如：Smith Bobalt iron"
+L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "預設需要一個名稱和一個角色，例如：Smith Bobalt 鐵"
 L["A profile of its own: {profile}"] = "獨立的設定檔：{profile}"
 L["A rare nearby: a sound and a chat line, out of combat"] = "附近有稀有怪：非戰鬥中播放音效並顯示一行聊天訊息"
 L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."] = "一排圖示，顯示遊戲管理器遺漏的內容：主動使用的飾品、你選擇的物品和法術（在下方清單中）、寵物技能和圖騰。"

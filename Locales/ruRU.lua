@@ -68,7 +68,7 @@ L["A painted scene behind the AFK screen: a keep for the Alliance, a red canyon 
 L["A phrase can be at most {max} characters."] = "Фраза может быть не длиннее {max} символов."
 L["A phrase can't hold the | character."] = "Фраза не может содержать символ |."
 L["A player"] = "Игрок"
-L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "Для шаблона нужны название и персонаж, например: Smith Bobalt iron"
+L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "Для шаблона нужны название и персонаж, например: Smith Bobalt руда"
 L["A profile of its own: {profile}"] = "Собственный профиль: {profile}"
 L["A rare nearby: a sound and a chat line, out of combat"] = "Редкий монстр рядом: звук и строка в чате, вне боя"
 L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."] = "Ряд значков для того, что пропускает менеджер игры: используемые аксессуары, предметы и заклинания на ваш выбор (в списке ниже), способности питомца и тотемы."

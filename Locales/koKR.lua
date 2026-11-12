@@ -68,7 +68,7 @@ L["A painted scene behind the AFK screen: a keep for the Alliance, a red canyon 
 L["A phrase can be at most {max} characters."] = "문구는 최대 {max}자입니다."
 L["A phrase can't hold the | character."] = "문구에 | 문자를 넣을 수 없습니다."
 L["A player"] = "플레이어"
-L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "프리셋에는 이름과 캐릭터가 필요합니다. 예: Smith Bobalt iron"
+L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "프리셋에는 이름과 캐릭터가 필요합니다. 예: Smith Bobalt 철"
 L["A profile of its own: {profile}"] = "전용 프로필: {profile}"
 L["A rare nearby: a sound and a chat line, out of combat"] = "근처 희귀 몹: 소리와 대화 한 줄, 비전투 중"
 L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."] = "게임 관리자가 놓치는 것을 위한 아이콘 줄: 사용 효과 장신구, 선택한 아이템과 주문(아래 목록), 소환수 기술과 토템."

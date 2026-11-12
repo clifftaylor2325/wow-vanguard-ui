@@ -68,7 +68,7 @@ L["A painted scene behind the AFK screen: a keep for the Alliance, a red canyon 
 L["A phrase can be at most {max} characters."] = "Una frase può avere al massimo {max} caratteri."
 L["A phrase can't hold the | character."] = "Una frase non può contenere il carattere |."
 L["A player"] = "Un giocatore"
-L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "Un preset richiede un nome e un personaggio, per esempio: Smith Bobalt iron"
+L["A preset needs a name and a character, such as: Smith Bobalt iron"] = "Un preset richiede un nome e un personaggio, per esempio: Smith Bobalt ferro"
 L["A profile of its own: {profile}"] = "Un profilo tutto suo: {profile}"
 L["A rare nearby: a sound and a chat line, out of combat"] = "Un raro nelle vicinanze: un suono e una riga in chat, fuori dal combattimento"
 L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."] = "Una fila di icone per ciò che il gestore del gioco non mostra: monili a uso, oggetti e incantesimi che scegli tu (nella lista sotto), abilità dei famigli e totem."
