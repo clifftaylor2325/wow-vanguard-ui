@@ -26,7 +26,7 @@ import { root } from "./lib/lua-harness.mjs";
 import { anyClientPaths, clientPaths, readToc } from "./lib/toc.mjs";
 import { balancedOption, expectedTestFiles, hitsFilesUnder, junitTotals, mergeOption, mergeProblems, planMergeProblems, planOption, shardOption } from "./lib/coverage-shards.mjs";
 import { currentPlan } from "./lib/shard-plan.mjs";
-import { coverageReport, formatReport, loadHitFiles, loadHits } from "./lib/lua-coverage.mjs";
+import { coverageReport, formatNeverEntered, formatReport, loadHitFiles, loadHits } from "./lib/lua-coverage.mjs";
 import { appendJobSummary } from "./lib/lua-summary-reporter.mjs";
 import { runInSlot } from "./lib/test-slot.mjs";
 
@@ -84,6 +84,7 @@ function judge(heading) {
   fs.writeFileSync(path.join(root, "coverage/lua-coverage.json"), `${JSON.stringify(report, null, 2)}\n`);
   console.log(`\n${heading} (floor ${floor}%)\n${formatReport(report)}`);
   appendJobSummary(`${heading} (floor ${floor}%)`, formatReport(report).split("\n"));
+  console.log(`\n${formatNeverEntered(report)}`);
   if (report.pct + 1e-9 < floor) stop(`\nLua coverage ${report.pct.toFixed(2)}% is below the floor of ${floor}%.`);
 }
 

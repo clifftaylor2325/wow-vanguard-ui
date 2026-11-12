@@ -144,6 +144,15 @@ function syncSources(vm) {
   for (let i = vm.sources.length; i < vm.exports.vg_source_count(); i++) vm.sources.push(cString(vm, vm.exports.vg_source_name(i)));
 }
 
+// The shim's HIT_ENTRY flag on a hit's line.
+const ENTRY_FLAG = 1 << 23;
+
+// The line a slot's low 24 bits hold: a line run as it is, a one-line function's entry as the negative of its line,
+// which lua-coverage.mjs keeps beside the lines run.
+function hitLine(bits) {
+  return bits & ENTRY_FLAG ? -(bits & (ENTRY_FLAG - 1)) : bits;
+}
+
 // The shim's hit slots as source index -> lines. A slot is two words: the low one holds the source's index + 1 in its
 // top 8 bits and the line in the rest, the high one the index's higher bits; an empty slot is zero.
 function hitsBySource(vm) {
@@ -153,7 +162,7 @@ function hitsBySource(vm) {
     if (words[i] === 0 && words[i + 1] === 0) continue;
     const source = ((words[i + 1] << 8) | (words[i] >>> 24)) - 1;
     if (!out.has(source)) out.set(source, []);
-    out.get(source).push(words[i] & 0xffffff);
+    out.get(source).push(hitLine(words[i] & 0xffffff));
   }
   return out;
 }
@@ -240,6 +249,15 @@ export function wasmExecutableLines(source, chunkName) {
   const vm = (shared.tool ??= toolVm());
   const [nameLen, len] = writeChunk(vm, chunkName, source);
   if (vm.exports.vg_lines(nameLen, len) !== 0) throw outError(vm, chunkName, 1);
+  const text = decoder.decode(outBytes(vm)).trim();
+  return new Set(text ? text.split(" ").map(Number) : []);
+}
+
+// The `function` lines of the one-line functions in a Lua source (the shim's proto_one_liners).
+export function wasmOneLiners(source, chunkName) {
+  const vm = (shared.tool ??= toolVm());
+  const [nameLen, len] = writeChunk(vm, chunkName, source);
+  if (vm.exports.vg_one_liners(nameLen, len) !== 0) throw outError(vm, chunkName, 1);
   const text = decoder.decode(outBytes(vm)).trim();
   return new Set(text ? text.split(" ").map(Number) : []);
 }

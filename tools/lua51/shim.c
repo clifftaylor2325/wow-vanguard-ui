@@ -261,10 +261,19 @@ static void hit_insert (uint64_t key) {
   if (!hits[i]) { hits[i] = key; hit_count++; }
 }
 
+/* A function whose body is all on its `function` line: line coverage cannot tell it ran from it being defined. */
+static int one_liner (const Proto *p) { return p->linedefined > 0 && p->linedefined == p->lastlinedefined; }
+
+/* The flag a hit's line carries when it records a one-line function being entered (its first instruction), not a line run. */
+#define HIT_ENTRY (1u << 23)
+
 static void on_line (lua_State *L, int line) {
   Proto *p = ci_func(L->ci)->l.p;
+  uint64_t source;
   if (!p->source || getstr(p->source)[0] != '@') return;
-  hit_insert(((uint64_t)(source_index(p->source) + 1) << 24) | (uint32_t)line);
+  source = (uint64_t)(source_index(p->source) + 1) << 24;
+  hit_insert(source | (uint32_t)line);
+  if (one_liner(p) && pcRel(L->savedpc, p) == 0) hit_insert(source | HIT_ENTRY | (uint32_t)line);
 }
 
 /* The hits as JS reads them straight from memory: the slot table (a zero slot is empty; a full one holds
@@ -301,6 +310,14 @@ static void proto_lines (const Proto *p) {
     if (GET_OPCODE(p->code[pc]) == OP_CLOSURE) pc += p->p[GETARG_Bx(p->code[pc])]->nups;
   }
   for (pc = 0; pc < p->sizep; pc++) proto_lines(p->p[pc]);
+}
+
+/* The `function` line of every function inside a compiled one whose body is all on that line (one_liner). */
+static void proto_one_liners (const Proto *p) {
+  int i;
+  char b[16];
+  if (one_liner(p)) { snprintf(b, sizeof b, "%d ", p->linedefined); out_s(b); }
+  for (i = 0; i < p->sizep; i++) proto_one_liners(p->p[i]);
 }
 
 static void hook (lua_State *L, lua_Debug *ar) {
@@ -488,6 +505,17 @@ EXPORT("vg_lines") int vg_lines (size_t name_len, size_t len) {
   out_len = 0;
   if (luaL_loadbuffer(L, scratch + name_len + 1, len, scratch) != 0) { put_error(L); lua_pop(L, 1); return 1; }
   proto_lines(clvalue(L->top - 1)->l.p);
+  lua_pop(L, 1);
+  return 0;
+}
+
+/* Compiles the chunk in scratch and writes the lines of its one-line functions, separated by spaces
+   (proto_one_liners); returns 0, or 1 and the error text. */
+EXPORT("vg_one_liners") int vg_one_liners (size_t name_len, size_t len) {
+  lua_State *L = state;
+  out_len = 0;
+  if (luaL_loadbuffer(L, scratch + name_len + 1, len, scratch) != 0) { put_error(L); lua_pop(L, 1); return 1; }
+  proto_one_liners(clvalue(L->top - 1)->l.p);
   lua_pop(L, 1);
   return 0;
 }

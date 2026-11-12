@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import fengari from "fengari";
-import { ENGINE, wasmExecutableLines } from "./lua-wasm.mjs";
+import { ENGINE, wasmExecutableLines, wasmOneLiners } from "./lua-wasm.mjs";
 
 const { lua, lauxlib, to_luastring, to_jsstring } = fengari;
 
@@ -88,7 +88,8 @@ function fold() {
   protos.length = 0;
 }
 
-// Adds lines run in a chunk ("@<file>") to the record: the wasm engine's hits, which it takes after each call.
+// Adds lines run in a chunk ("@<file>") to the record: the wasm engine's hits, which it takes after each call. A
+// negative number is a one-line function entered, by its line (lua-wasm.mjs).
 export function addHits(chunkName, lines) {
   if (!executed.has(chunkName)) executed.set(chunkName, new Set());
   const set = executed.get(chunkName);
@@ -146,12 +147,20 @@ export function attachCoverage(L) {
   lua.lua_sethook(L, lineHook(), lua.LUA_MASKLINE, 0);
 }
 
-// Coverage of one file: { file, total, covered, missing[] }.
+// The lines of a file's one-line functions that no test entered (the wasm engine only: fengari records no entries). A
+// function on a line the tests reach counts as run to line coverage even when nothing calls it.
+function neverEntered(source, chunkName, hit) {
+  if (ENGINE !== "wasm") return [];
+  return [...wasmOneLiners(source, chunkName)].filter((line) => !hit.has(-line)).sort((a, b) => a - b);
+}
+
+// Coverage of one file: { file, total, covered, missing[], neverEntered[] }.
 function fileCoverage(root, file) {
-  const lines = executableLines(fs.readFileSync(path.join(root, file), "utf8"), `@${file}`);
+  const source = fs.readFileSync(path.join(root, file), "utf8");
+  const lines = executableLines(source, `@${file}`);
   const hit = executed.get(`@${file}`) ?? new Set();
   const missing = [...lines].filter((line) => !hit.has(line)).sort((a, b) => a - b);
-  return { file, total: lines.size, covered: lines.size - missing.length, missing };
+  return { file, total: lines.size, covered: lines.size - missing.length, missing, neverEntered: neverEntered(source, `@${file}`, hit) };
 }
 
 // Coverage of every file, plus the totals.
@@ -172,6 +181,14 @@ export function lineRanges(lines) {
     else out.push([line, line]);
   }
   return out.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(",");
+}
+
+// The one-line functions no test entered, one row per file: line coverage cannot see them (report only, no floor).
+export function formatNeverEntered(report) {
+  const rows = report.files.filter((f) => f.neverEntered.length);
+  const count = rows.reduce((n, f) => n + f.neverEntered.length, 0);
+  const lines = rows.map((f) => `  ${f.file.padEnd(NAME_WIDTH)} ${lineRanges(f.neverEntered)}`);
+  return [`One-line functions never entered: ${count}`, ...lines].join("\n");
 }
 
 // A text table: one row per file below 100%, then the total.
