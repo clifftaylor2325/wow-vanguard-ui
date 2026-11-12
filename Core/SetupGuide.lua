@@ -41,7 +41,7 @@ end
 -- The rows of each guided step, in order. A row is a caption, the options row(s) it sets ({ page key, English
 -- caption }; a cycle row gives the value that counts as on and the one off is), or setup's own get and set; recommend
 -- is true, or a function answering for the role or the client; game marks the game's own settings, which start on
--- what the game has now on a first run too. A row with no recommend is offered and left as it is by Use recommended.
+-- what the game has now on a first run too. A row with no recommend, or whose function says no, is offered and left as it is by Use recommended.
 -- The chat filter and key setup are offered, not recommended (decision D4 of docs/handoff/A-GRADE-PLAN.md): the
 -- filter's words are English only and key setup's data is not yet confirmed in game.
 G.ROWS = {
@@ -165,9 +165,10 @@ local function setOn(spec, on)
   for _, a in ipairs(spec.access) do a.set(v) end
 end
 
--- What Vanguard recommends for the row now: true or false, or nil for a row it only offers.
+-- What Vanguard recommends for the row now: true, or nil for a row it only offers (a row whose condition is off is
+-- offered, never recommended off, so Use recommended doesn't switch it off).
 local function recommended(spec)
-  if type(spec.recommend) == "function" then return spec.recommend() == true end
+  if type(spec.recommend) == "function" then return spec.recommend() == true or nil end
   return spec.recommend
 end
 

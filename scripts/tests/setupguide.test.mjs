@@ -375,3 +375,41 @@ it("H46-24-2: a screen preset's text size is not listed on All set as a Larger t
   expect(pixelPerfectToAllSet(big).join("|"), "and the mirror: Larger on, then a 4K preset at 100%, no Off line either").not.toContain("Larger text");
   expect(big.eval("return ns.Theme.Settings().textScale"), "the preset did take the text back to 100%").toBe(1);
 });
+
+// Presses a guided step's Use recommended button.
+const useRecommended = (addon, step) => addon.eval(`local b = Vanguard_Setup.pages.${step}.use b:GetScript("OnClick")(b)`);
+// A profile that has finished setup, with the given settings.
+const setUp = (profile) => `VanguardDB = { setupDone = true, version = 2, profiles = { Default = { ${profile} } } }\nVanguardCharDB = { profile = 'Default' }`;
+
+it("H46-24-1: Use recommended leaves Larger text alone when no controller recommends it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: setUp("theme = { textScale = 1.15 }") });
+  addon.slash("setup");
+  nexts(addon, 3);
+  useRecommended(addon, "comfort");
+  setupClick(addon, "next");
+  expect(addon.eval("return ns.Theme.Settings().textScale"), "an offered row stays as set").toBe(1.15);
+});
+
+it("H46-24-1: Use recommended leaves a damage dealer's Group threat panel on, and still switches it on for a tank", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: setUp("GroupThreat = { show = true }") });
+  addon.slash("setup");
+  nexts(addon, 6);
+  useRecommended(addon, "combat");
+  setupClick(addon, "next");
+  expect(addon.eval("return ns.Settings('GroupThreat').show"), "the panel the player had on stays on").toBe(true);
+  const tank = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  tank.eval('__click("Centered: tanking")');
+  nexts(tank, 6);
+  useRecommended(tank, "combat");
+  expect(rows(tank, "combat")[3], "a tank's Use recommended picks the panel").toEqual(["threat", true, true]);
+});
+
+it("H46-24-1: Pixel-perfect's larger text survives Use recommended on Comfort", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval('__click("Pixel-perfect (sharpest)")');
+  nexts(addon, 2);
+  useRecommended(addon, "comfort");
+  setupClick(addon, "next");
+  expect(addon.eval("return ns.Theme.Settings().textScale"), "Pixel-perfect's 130% at 1440p stays").toBe(1.3);
+});
