@@ -112,3 +112,13 @@ it("Plain with the shield corners hides the portrait on a 4K screen, where its e
   addon.eval("ns.Theme.Refresh() ns.GetModule('UnitFrames').ApplyLook()");
   expect(SHOWN(addon), "the cut is still eight pixels").toBe(false);
 });
+
+it("H45-13-2: the Versus deck hides both portraits and the bars keep their room; switching it off brings them back", () => {
+  const addon = loggedIn(UNITS_ENV, ROOM());
+  const state = () => addon.eval("local P = ns.GetModule('UnitFrames').Portrait return { Vanguard_player.portrait:IsShown(), Vanguard_target.portrait:IsShown(), P.Room(Vanguard_player), P.Room(Vanguard_target) }");
+  expect(state().slice(0, 2), "Hairline gives both room").toEqual([true, true]);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  expect(state(), "the deck holds the pair: no portraits, no room").toEqual([false, false, 0, 0]);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
+  expect(state().slice(0, 2), "deck off, back under Hairline").toEqual([true, true]);
+});

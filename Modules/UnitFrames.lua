@@ -389,6 +389,7 @@ end
 local function decked(f)
   return deckOn() and UF.COMBAT.keys[f.key] == true
 end
+UF.Decked = decked
 
 -- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
 -- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
