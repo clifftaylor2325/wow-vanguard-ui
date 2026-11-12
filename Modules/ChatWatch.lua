@@ -352,9 +352,10 @@ local function list()
   ns.Chat(ns.Format(L["Watching chat for: {phrases}"], { phrases = table.concat(all, ", ") }))
 end
 
--- /vg watch [add <phrase> | remove <phrase> | list | clear].
+-- /vg watch [add <phrase> | remove <phrase> | list | clear], the word in any case and the phrase as typed.
 function CW.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
+  verb = verb:lower()
   if verb == "add" then return CW.Add(arg) end
   if verb == "remove" then return CW.Remove(arg) end
   if verb == "clear" then ns.Settings("ChatWatch", CW.defaults).phrases = {} phrasesChanged() return ns.Chat(L["Chat watch has no phrases now."]) end

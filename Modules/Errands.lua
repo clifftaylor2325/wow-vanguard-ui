@@ -325,11 +325,11 @@ local function setStock(id, amount)
   ns.Chat(ns.Format(L["{item} is off your stock list."], { item = itemName(id) }))
 end
 
--- /vg stock [<item> <amount> | clear]: list, set or clear the stock list.
+-- /vg stock [<item> <amount> | clear]: list, set or clear the stock list; clear in any case.
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then ER.ClearStock() return ns.Chat(L["Your stock list is empty."]) end
+  if rest:lower() == "clear" then ER.ClearStock() return ns.Chat(L["Your stock list is empty."]) end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
   if not (id and amount) then return ns.Chat(L["Usage: /vg stock <shift-click an item> <amount>  (0 removes it)"]) end
   setStock(id, amount)
