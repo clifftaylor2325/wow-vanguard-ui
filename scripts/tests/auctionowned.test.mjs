@@ -570,7 +570,7 @@ it("deals: a scan lists what's under 70 % of the 7-day market or under vendor pr
   pickTab(addon, 4);
   expect(dealsCard(addon).slice(0, 3), "the entry, with no count yet; a list shown").toEqual([true, 0, "Shopping"]);
   pick(addon, `${HELPER}.DEALS`);
-  expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New", "Import"], false]);
+  expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New list", "Import"], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
     { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
   expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: the middle of 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1140);

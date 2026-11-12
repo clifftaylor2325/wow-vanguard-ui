@@ -69,6 +69,12 @@ it("click presets: Click to heal moves the heals to Left and Right and Target an
   });
 });
 
+it("click presets: the first modifier column is headed No modifier, not the HUD look's Plain", () => {
+  const addon = knowsAll("PALADIN");
+  picked(addon, "Healer: click to select");
+  expect([textsWith(addon, "No modifier").length + textsWith(addon, "NO MODIFIER").length > 0, textsWith(addon, "Plain").length + textsWith(addon, "PLAIN").length], "the column says No modifier; no Plain").toEqual([true, 0]);
+});
+
 it("click presets: a paladin's emergency spells sit on Ctrl + Shift, and the grid opens with those columns", () => {
   const addon = knowsAll("PALADIN");
   const list = picked(addon, "Healer: click to select");

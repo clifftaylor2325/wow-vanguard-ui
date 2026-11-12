@@ -3754,7 +3754,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 10.9b Talent plan order (WoW Forever)
 
 - Do: open the talents window, switch Plan on and plan two talents in different rows. Press Order... on the bar. Press Up on the lower one, then Top row first. Set the order again and, with points to spend, press Spend planned.
-- Expect: the list shows each planned talent numbered with the points still to buy; Up and Down reorder it at once; Top row first puts it back top row first; Spend planned buys in the list's order (a talent whose row is not open yet waits) and applies as before; nothing changes in a fight; no error.
+- Expect: the list shows each planned talent numbered with the points still to buy; Move up and Move down reorder it at once; Top row first puts it back top row first; Spend planned buys in the list's order (a talent whose row is not open yet waits) and applies as before; nothing changes in a fight; no error.
 - If it fails, paste: `/vg errors`.
 
 ### 33.194 Talent planner on the other spec's tab and either-or parents (WoW Forever)

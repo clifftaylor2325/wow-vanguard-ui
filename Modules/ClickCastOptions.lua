@@ -20,7 +20,7 @@ local O = ns.Options
 
 local PAGE = "clickcast"
 local MOUSE = { L["Left click"], L["Right click"], L["Middle click"], L["Button 4 click"], L["Button 5 click"] }
-local MODS = { { "", L["Plain"] }, { "shift-", L["Shift"] }, { "ctrl-", L["Ctrl"] }, { "alt-", L["Alt"] } }
+local MODS = { { "", L["No modifier"] }, { "shift-", L["Shift"] }, { "ctrl-", L["Ctrl"] }, { "alt-", L["Alt"] } }
 local MORE_MODS = { { "ctrl-shift-", L["Ctrl + Shift"] }, { "alt-shift-", L["Alt + Shift"] }, { "alt-ctrl-", L["Alt + Ctrl"] } }
 local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ICON_SIZE = 40, 92, 8, 12, 24
 -- The grid's band of column headers: two lines tall, since seven columns leave a long modifier name little room.
@@ -513,12 +513,12 @@ local function cell(grid, key, width)
   return c
 end
 
--- A column header's text: centred over its column, on the band's bottom line, and wrapping upward onto a second line
--- when it runs longer than the column.
+-- A column header's text: centred over the column's full width (No modifier is one long word), on the band's bottom line,
+-- and wrapping upward onto a second line when it runs longer than the column.
 local function wrapHeader(h)
   h.text:ClearAllPoints()
-  h.text:SetPoint("BOTTOMLEFT", T.SPACE.tight, 0)
-  h.text:SetPoint("BOTTOMRIGHT", -T.SPACE.tight, 0)
+  h.text:SetPoint("BOTTOMLEFT", 0, 0)
+  h.text:SetPoint("BOTTOMRIGHT", 0, 0)
   h.text:SetWordWrap(true)
   h.text:SetJustifyH("CENTER")
 end

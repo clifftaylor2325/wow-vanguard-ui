@@ -42,7 +42,7 @@ AH.ACTION_W = (AH.PANE_W - 2 * AH.PAD - 2 * AH.INSET - (AH.ACTION_COLS - 1) * T.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
 AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
-AH.ACTIONS = { { AH.NEW, L["New"] }, { AH.RENAME, L["Rename"] }, { AH.COPY, L["Copy"] }, { AH.DELETE, L["Delete"] }, { AH.IMPORT, L["Import"] }, { AH.EXPORT, L["Export"] } }
+AH.ACTIONS = { { AH.NEW, L["New list"] }, { AH.RENAME, L["Rename"] }, { AH.COPY, L["Copy"] }, { AH.DELETE, L["Delete"] }, { AH.IMPORT, L["Import"] }, { AH.EXPORT, L["Export"] } }
 -- Enum.AuctionHouseFilter's ExactMatch and PoorQuality (AuctionHouseEnumsDocumentation.lua): the
 -- quality filters run on from PoorQuality in Enum.ItemQuality's order (Poor 0 ... Legendary 5).
 AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6

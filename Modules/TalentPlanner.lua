@@ -781,8 +781,8 @@ function TP.KeepOrder(plan, nodeID)
   if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
 end
 
--- The order window: the rows its list shows before it scrolls, its width, and its Up and Down buttons' width.
-TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 380, 52
+-- The order window: the rows its list shows before it scrolls, its width, and its Move up and Move down buttons' width.
+TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 380, 84
 
 -- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
 function TP.MoveInOrder(nodeID, step)
@@ -813,12 +813,12 @@ local function orderText(row)
   row.text:SetWordWrap(false)
 end
 
--- An order row: the talent's place and name, with the points still to buy, and Up and Down buttons.
+-- An order row: the talent's place and name, with the points still to buy, and Move up and Move down buttons.
 local function orderRow(parent)
   local row = W.Row(parent, T.ROW.height, { width = TP.ORDER_WIDTH - 2 * T.SPACE.pad })
   orderText(row)
-  row.down = W.Button(row, L["Down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON)
-  row.up = W.Button(row, L["Up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON)
+  row.down = W.Button(row, L["Move down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON)
+  row.up = W.Button(row, L["Move up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON)
   row.down:SetPoint("RIGHT", row, "RIGHT", 0, 0)
   row.up:SetPoint("RIGHT", row.down, "LEFT", -T.SPACE.tight, 0)
   return row

@@ -253,15 +253,15 @@ const pick = (addon, key) => addon.eval(`${HELPER}.PickEntry(${key})`);
 const heading = (addon) => addon.eval(`return { ${HELPER}.shopCard.title:GetText(), ${TABLE}.status:GetText() }`);
 it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold", () => {
   const addon = atAuctionHouse();
-  expect([choices(addon), actions(addon), heading(addon)], "no lists yet: make one or import (Deals and Upgrades are always there)").toEqual([["Deals", "Upgrades"], ["New", "Import"], ["Shopping", "No lists yet: New makes one, Import pastes one."]]);
+  expect([choices(addon), actions(addon), heading(addon)], "no lists yet: make one or import (Deals and Upgrades are always there)").toEqual([["Deals", "Upgrades"], ["New list", "Import"], ["Shopping", "No lists yet: New makes one, Import pastes one."]]);
   addon.click(`${HELPER}.shopCard.add`);
   addon.type("Vanguard_TextEdit", "Strange Dust");
   addon.click("Vanguard_TextDialog.primary");
   expect([addon.eval("return VanguardDB.ah.lists.Shopping"), addon.frame("Vanguard_TextDialog").visible], "+ Add with no list makes Shopping").toEqual([["Strange Dust"], false]);
-  act(addon, "New");
+  act(addon, "New list");
   addon.type("Vanguard_TextEdit", "  TEST-ONLY B  ");
   addon.click("Vanguard_TextDialog.primary");
-  expect([choices(addon), heading(addon), actions(addon)], "made and picked, empty").toEqual([["Shopping", "TEST-ONLY B", "Deals", "Upgrades"], ["TEST-ONLY B", "+ Add takes an item link, an item ID or a name."], ["New", "Rename", "Copy", "Delete", "Import", "Export"]]);
+  expect([choices(addon), heading(addon), actions(addon)], "made and picked, empty").toEqual([["Shopping", "TEST-ONLY B", "Deals", "Upgrades"], ["TEST-ONLY B", "+ Add takes an item link, an item ID or a name."], ["New list", "Rename", "Copy", "Delete", "Import", "Export"]]);
   // Pane row i: [name, count, marked as the one shown].
   const paneRow = (i) => addon.eval(`local r = ${HELPER}.pane.rows[${i}] return { r.name:GetText(), r.count:GetText(), r.rail:IsShown() }`);
   expect([paneRow(1), paneRow(2)], "each list with its count; the one shown marked").toEqual([["Shopping", "1", false], ["TEST-ONLY B", "", true]]);
@@ -548,7 +548,7 @@ it("list management from the pane's buttons: rename, duplicate, export, and dele
   addon.eval(`for i = 1, 19 do ${HELPER}.NewList("TEST-ONLY " .. i) end ${HELPER}.NewList("TEST-ONLY Herbs") ${HELPER}.DuplicateList()`);
   expect(addon.eval("return { VanguardDB.ah.lists['TEST-ONLY Herbs copy'] == nil, VanguardDB.ah.list }"), "no copy past 20 lists").toEqual([true, "TEST-ONLY Herbs"]);
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs") for i = 1, 19 do ${HELPER}.DeleteList("TEST-ONLY " .. i) end`);
-  expect([choices(addon), actions(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["Deals", "Upgrades"], ["New", "Import"], null]);
+  expect([choices(addon), actions(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["Deals", "Upgrades"], ["New list", "Import"], null]);
 });
 it("a list delete shows the list in use from its top", () => {
   const addon = atAuctionHouse(DUSTS);
@@ -597,12 +597,12 @@ it("/vg ah rename, duplicate, delete, export and import act on the list in use",
 });
 it("Recent: the last 20 terms searched, newest first, kept for the account", () => {
   const addon = atAuctionHouse(DUSTS, { savedVariables: 'VanguardDB.ah = { recent = { "TEST-ONLY Old" } }' });
-  expect([choices(addon), heading(addon)[0], actions(addon)], "kept from before: Recent in the pane; nothing shown yet").toEqual([["Recent", "Deals", "Upgrades"], "Shopping", ["New", "Import"]]);
+  expect([choices(addon), heading(addon)[0], actions(addon)], "kept from before: Recent in the pane; nothing shown yet").toEqual([["Recent", "Deals", "Upgrades"], "Shopping", ["New list", "Import"]]);
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust", "2589" }');
   addon.click(`${HELPER}.shopCard.search`);
   expect(addon.eval("return VanguardDB.ah.recent"), "each term searched, the last first").toEqual([2589, "Soul Dust", "Strange Dust", "TEST-ONLY Old"]);
   pick(addon, `${HELPER}.RECENT`);
-  expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1]), actions(addon)], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "Deals", "Upgrades"], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"], ["New", "Copy", "Clear", "Import", "Export"]]);
+  expect([choices(addon), [1, 2, 3, 4].map((i) => shopRow(addon, i)[1]), actions(addon)], "Recent in use: its rows, and what can be done with it").toEqual([["TEST-ONLY Mats", "Recent", "Deals", "Upgrades"], ["Linen Cloth", "Soul Dust", "Strange Dust", "TEST-ONLY Old"], ["New list", "Copy", "Clear", "Import", "Export"]]);
   addon.advance(5);
   addon.click(`${HELPER}.shopCard.search`);
   expect([addon.eval("return VanguardDB.ah.recent[1]"), progress(addon)], "searching Recent leaves its order").toEqual([2589, "0 of 4"]);

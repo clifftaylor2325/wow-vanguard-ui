@@ -526,6 +526,7 @@ it("talent planner: the order window lists the plan, moves talents up and down, 
   expect(addon.eval(`return { ${TP}.orderFrame:IsShown(), ${TP}.orderFrame.empty:IsShown() }`), "opens with nothing planned").toEqual([true, true]);
   addon.eval(`${TP}.SetPlanning(true)`);
   addon.eval("__click(101) __click(101) __click(102)");
+  expect(addon.eval(`local r = ${TP}.orderFrame.rows[1] return { r.up.text:GetText(), r.down.text:GetText() }`), "the buttons say what they do, not Up and Down").toEqual(["Move up", "Move down"]);
   expect(orderRows(addon), "top row first at first").toEqual(["1. Unbreakable Will (2)", "2. Wand Specialization (1)"]);
   addon.eval("local f = " + TP + ".orderFrame f.rows[2].up:GetScript('OnClick')(f.rows[2].up)");
   expect(orderRows(addon), "Up on the second row").toEqual(["1. Wand Specialization (1)", "2. Unbreakable Will (2)"]);
