@@ -488,6 +488,22 @@ it("bag categories: your own sections above the built-in ones, in list order, fi
   expect(chat(), "the list names each category and its items").toMatch(/Mix: /);
 });
 
+it("H46-32-101 bag remove takes a link whose item name holds spaces; add with a link alone is still refused", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
+  const link = "|cffffffff|Hitem:159::::::::60:::::|h[TEST-ONLY Spring Water]|h|r";
+  // Whether the first category holds the item.
+  const holds = () => addon.eval(`local c = ns.Settings("Bags").categories[1] return c ~= nil and c.items[159] == true`);
+  addon.slash("bag add " + link);
+  expect(addon.eval(`return #ns.Settings("Bags").categories`), "no category name: usage line, no group").toBe(0);
+  addon.slash("bag add Potions " + link);
+  expect(holds()).toBe(true);
+  addon.slash("bag remove " + link);
+  expect(holds(), "the linked item left its group").toBe(false);
+  addon.slash("bag add Potions 159");
+  addon.slash("bag remove Potions 159");
+  expect(holds(), "a category name before the item still works").toBe(false);
+});
+
 it("bag categories saved under names that fold to one key show as one section holding both groups' items", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
   addon.eval(`local c = ns.Settings("Bags").categories

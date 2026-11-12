@@ -215,12 +215,14 @@ function BG.RemoveHeld()
 end
 
 -- What a command line holds: the verb, the rest after it, the first word of that (a category name), and
--- the item ID of its last part (a link, "item:123" or a number), when it has one.
+-- the item ID of its last part (a link, "item:123" or a number), when it has one. Remove also reads a link from
+-- the whole argument, since a link's item name may hold spaces and it takes no category name.
 local function parse(rest)
   local verb, arg = (rest or ""):match("^%s*(%a*)%s*(.-)%s*$")
   local name, item = arg:match("^(%S+)%s+(.+)$")
   local text = item or arg
-  return verb, arg, name, tonumber(text:match("item:(%d+)") or text:match("^(%d+)$"))
+  local id = text:match("item:(%d+)") or text:match("^(%d+)$") or (verb == "remove" and arg:match("item:(%d+)"))
+  return verb, arg, name, tonumber(id)
 end
 
 -- Runs the command; false when it is not one.
