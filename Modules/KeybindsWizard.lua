@@ -36,7 +36,8 @@ WZ.onApply = {}
 -- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live and full
 -- (the plans of the ticked entries and of every entry), off ({ [entry id] = true } for an unticked change, by
 -- entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit (the chord pressed last), placeNew
--- (step 3's tick box for new spells), shown (the signature of the plan the list was last drawn from).
+-- (step 3's tick box for new spells), shown (the signature of the plan the list was last drawn from), shared (whether
+-- the game shared the account's keys when step 3 was drawn, so the scope choice was or was not offered).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -621,6 +622,7 @@ end
 -- keys (the list takes its room when it is hidden).
 local function showReady(s)
   local shared = KA.SharesKeys()
+  state.shared = shared
   s.shared:SetShown(shared)
   s.shared:SetText(SCOPE_TEXT[state.scope])
   s.scope:SetShown(shared)
@@ -676,12 +678,19 @@ local function relist()
   WZ.Show(state.step)
 end
 
+-- Says the key set changed since step 3 was drawn, changes nothing and draws the list again.
+local function stale()
+  ns.Chat(L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."])
+  return relist()
+end
+
 -- Applies the kept changes in the scope picked, as the list shows them (KA.Apply changes nothing when its plan is
 -- not the list's); on success the window closes, placing new spells is told of the preset and its tick box, and the
 -- listeners hear of it. With every change unticked it says so and stays; with nothing to change it closes and keeps
 -- the tick box.
 local function apply()
-  local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
+  if KA.SharesKeys() ~= state.shared then return stale() end
+  local set = state.shared and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined, keys = kept()
   if changes == 0 and #declined > 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set, state.shown) then return relist() end

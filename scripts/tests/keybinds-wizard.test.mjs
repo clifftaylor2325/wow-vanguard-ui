@@ -585,3 +585,33 @@ it("H45-6-R1 step 3: a change the player unticked that stops being one (the key 
   addon.eval('__click("Apply")');
   expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\./), chatHas(addon, /No key needs changing\./)]).toEqual([false, false, true]);
 });
+
+// The player's own switch in the game's Settings (forever Blizzard_Settings_Shared/Blizzard_Settings.lua:636-648):
+// Settings.SelectAccountBindings, and Settings.SelectCharacterBindings.
+const SELECT_ACCOUNT = "LoadBindings(1) SaveBindings(1)";
+const SELECT_CHARACTER = "SaveBindings(1) LoadBindings(2) SaveBindings(2)";
+
+it("H45-6-101 step 3: switching from this character's keys to the account's while Ready is open stops Apply", () => {
+  const addon = warrior("__wfgWorld.bindingSet = 2");
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()")).toBe(false);
+  addon.eval(SELECT_ACCOUNT);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, win(addon).step, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 3, 1, [""]]);
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()"), "Ready now offers the choice").toBe(true);
+});
+
+it("H45-6-101 step 3: All my characters picked, then switching to this character's own keys, stops Apply", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __choose(Vanguard_KeysWizard.steps.ready.scope, "all")');
+  addon.eval(SELECT_CHARACTER);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 2, [""]]);
+  expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()"), "Ready no longer offers the choice").toBe(false);
+});
