@@ -947,8 +947,11 @@ it("H36-1-2: the test client's stack text is the game's: text, empty under two s
     { auraInstanceID = 3, applications = 120 }, { auraInstanceID = 4, applications = __wfgWorld.secret(5) } }`);
   const out = addon.eval(`local A = ns.Auras
     local text = function(id) return A.StackText("player", { auraInstanceID = id }) end
-    return { text(1), text(2), text(3), text(9), ns.IsSecret(text(4)), C_UnitAuras.GetAuraApplicationDisplayCount("player", 1, 1) }`);
-  expect(out, "one stack '', three '3', past 99 '*', no aura '', hidden stays hidden, a minimum of 1 shows '1'").toEqual(["", "3", "*", "", true, "1"]);
+    return { text(1), text(2), text(3), text(9) == nil, select("#", C_UnitAuras.GetAuraApplicationDisplayCount("player", 9, 2, 99)),
+      ns.IsSecret(text(4)), C_UnitAuras.GetAuraApplicationDisplayCount("player", 1, 1) }`);
+  // No aura answers nothing: UnitAuraDocumentation.lua:128-148 GetAuraApplicationDisplayCount is
+  // RequiresValidUnitAuraInstance, whose FailureMode is ReturnNothing (UnitAuraSharedDocumentation.lua:39-41).
+  expect(out, "one stack '', three '3', past 99 '*', no aura nothing, hidden stays hidden, a minimum of 1 shows '1'").toEqual(["", "3", "*", true, 0, true, "1"]);
 });
 
 it("a hidden aura id is never handed to the client's color, stack or duration calls (it refuses one from addons); the plain fallbacks show", () => {

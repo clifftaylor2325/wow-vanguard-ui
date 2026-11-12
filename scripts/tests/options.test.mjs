@@ -200,6 +200,19 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
+it("H46-4-4 the footer's reload notice follows the staged profile switch: gone when Use takes it back, shown when a command stages one", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = {}, Raid = {} }\n" });
+  addon.slash("profile Raid");
+  addon.eval('ns.Options.Show("profiles")');
+  // The staged switch, whether the footer's notice and Reload button show, and the notice's text.
+  const notice = () => addon.eval("return { tostring(ns.ProfileAfterReload()), Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText(), Vanguard_Options.reload:IsShown() }");
+  expect(notice(), "a switch staged by /vg shows the notice when the window opens").toEqual(["Raid", true, "Some changes need a reload", true]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Default") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice(), "Use on the running profile takes the switch back and the notice goes").toEqual(["nil", false, "", false]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Raid") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice()[1], "Use on another profile shows it again").toBe(true);
+});
+
 it("options: after Copy here or Reset profile on the profile in use, the footer says to reload before changing more", () => {
   // The footer's reload notice: shown, and its text.
   const notice = (addon) => addon.eval("return { Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText() }");
@@ -643,6 +656,16 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("H46-4-2 a HUD layout picked in a fight is dropped when Reset profile replaces the profile before the fight ends", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("HUD layout")');
+  addon.world.combat(true);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.caption == "Where the frames stand" and ns.Options.RevealRow(w) then w:GetScript("OnClick")(w, "LeftButton") end end`);
+  addon.eval("ns.ResetProfile()");
+  addon.world.combat(false);
+  expect(addon.eval("return { tostring(ns.Profile().hudLayout), ns.HudLayout() }"), "the reset profile keeps its own layout").toEqual(["nil", "centered"]);
+});
+
 it("options: a HUD look picked in a fight shows on its row, waits for the fight's end and keeps its default (H45-40-501)", () => {
   const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
   addon.eval('ns.Options.Show("general")');
@@ -696,6 +719,28 @@ it("options: switching a module that has no movable frame does not build the Gen
   const before = rows();
   addon.eval('ns.SetModuleEnabled("ChatFilter", false)');
   expect(rows(), "the first switch with the same frames builds nothing").toBe(before);
+});
+
+it("H46-4-3 the Frame to size choice follows a frame registered or let go of on its own, one rebuild a frame however many", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The newest Frame to size choice's keys, and how many of them have been built.
+  const state = () => addon.eval(`local last, n = nil, 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w n = n + 1 end end
+    local keys = {} for _, c in ipairs(last.choices) do keys[#keys + 1] = c[1] end return { table.concat(keys, ","), n }`);
+  addon.eval('ns.Options.Show("general")');
+  const [start, built] = state();
+  addon.eval(`__m1 = CreateFrame("Frame", nil, UIParent) __m1:SetSize(50, 20) ns.Mover(__m1, "h46m1", "M1", { "CENTER", "CENTER", 0, 0 })
+    __m2 = CreateFrame("Frame", nil, UIParent) __m2:SetSize(50, 20) ns.Mover(__m2, "h46m2", "M2", { "CENTER", "CENTER", 0, 0 })`);
+  expect(state()[1], "nothing is rebuilt before the next frame").toBe(built);
+  addon.advance(0.1);
+  const added = state();
+  expect(added[0].includes("h46m1") && added[0].includes("h46m2"), "both are offered").toBe(true);
+  expect(added[1], "two movers, one rebuild").toBe(built + 1);
+  addon.eval('ns.ReleaseMover("h46m1") ns.ReleaseMover("h46m2")');
+  addon.advance(0.1);
+  expect(state()[0], "let go: the choice is as it was").toBe(start);
+  addon.eval('ns.ReleaseMover("h46nothing")');
+  addon.advance(0.1);
+  expect(state()[1], "a key that is not a mover tells no one").toBe(built + 2);
 });
 
 it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {

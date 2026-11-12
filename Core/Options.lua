@@ -162,7 +162,8 @@ local function moverChoices()
 end
 
 -- The General page is built again when the frames you can move change (a module switched on or off, settled by
--- ns.OnModulesChanged), so the Frame to size choice never offers a frame that is gone or misses a new one.
+-- ns.OnModulesChanged, or a frame registered or let go on its own: ns.OnMoversChanged), so the Frame to size choice
+-- never offers a frame that is gone or misses a new one.
 do
   local listed = ""
 
@@ -176,12 +177,17 @@ do
   -- Records the frames the Frame to size choice was built with, so the first change is compared with them.
   function noteListed() listed = moverKeys() end
 
-  ns.OnModulesChanged(function()
+  -- Builds the General page again when the frames you can move are not the ones it was built with.
+  local function relist()
     local now = moverKeys()
     if now == listed then return end
     listed = now
     if O.Frame() then O.RebuildPage("general") end
-  end)
+  end
+
+  ns.OnModulesChanged(relist)
+  -- A settle pass or a profile switch lets go of and registers many movers in one frame: one rebuild, next frame.
+  ns.OnMoversChanged(function() ns.Soon("frame to size", relist) end)
 end
 
 -- get/set for which frame the sliders size; picking one re-reads the sliders.
@@ -322,6 +328,18 @@ do
   -- A pick made for one profile is not carried to another that takes over before the fight ends.
   ns.OnProfileChanged(function() queued = nil end)
 
+  -- A theme reset made in a fight: the look in use is put back in the same frame (the plates and the bars stay
+  -- together) and the reset's look waits for the fight's end, replacing any pick made earlier in it.
+  ---@param look string the look in use before the reset
+  function O.KeepLookInFight(look)
+    queued = nil
+    if not ns.InCombat() or look == initial then return end
+    T.Settings().hudLook = look
+    T.Refresh()
+    queued = initial
+    ns.OutOfCombat(applyQueuedLook, "HUD look")
+  end
+
   -- The row's getter, setter and default: the queued pick (if any) or the look in use.
   function hudLookSetting()
     return O.Tag(function() return queued or get() end, "theme", "hudLook"),
@@ -355,6 +373,9 @@ do
     queued = nil
     if pick then ns.SetHudLayout(pick) end
   end
+
+  -- A pick made for one profile is not carried to another that takes over (or is reset) before the fight ends.
+  ns.OnProfileChanged(function() queued = nil end)
 
   -- The row's getter and setter: the queued pick (if any) or the layout in use.
   function hudLayoutSetting()
@@ -414,8 +435,9 @@ end
 -- Puts every theme setting back to its default (T.Reset); when that changed a reload-only one, the options
 -- window shows its reload notice. Returns true then.
 function O.ResetTheme()
-  local before = reloadThemeValues()
+  local before, look = reloadThemeValues(), T.Settings().hudLook
   T.Reset()
+  O.KeepLookInFight(look)
   local after = reloadThemeValues()
   for i, value in ipairs(before) do
     if value ~= after[i] then O.NeedReload() return true end
@@ -621,14 +643,6 @@ function O.ModuleTitle(name)
   return (O.MODULE_INFO[name] or { name })[1]
 end
 
--- The first module a module requires that is not wanted (its row is greyed and points there), or nil.
-function O.MissingParent(name)
-  local def = ns.GetModule(name)
-  for _, parent in ipairs(def and def.requires or {}) do
-    if not ns.ModuleWanted(parent) then return parent end
-  end
-end
-
 -- Whether a module's row has a note beside its name: one with its own switch inside, one that goes on and off live
 -- (its switch can wait for a fight), and one that needs another module.
 function O.HasModuleNote(name)
@@ -640,7 +654,7 @@ end
 -- with a reload-only parent switched off until the reload; it needs a module that is off; its own switch is off.
 function O.ModuleNote(name)
   if ns.ModuleAwaitsFight(name) then return L["Applies after the fight"] end
-  local parent = O.MissingParent(name)
+  local parent = ns.ModuleMissingParent(name)
   local values = { module = parent and O.ModuleTitle(parent) }
   if parent and ns.ModuleLive(name) then return ns.Format(L["Off with {module} after a reload"], values) end
   if parent then return ns.Format(L["Needs {module}"], values) end

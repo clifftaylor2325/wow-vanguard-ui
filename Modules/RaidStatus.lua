@@ -385,6 +385,13 @@ end
 -- The raid frames' tile hook lists this module is on while it runs, each with its function.
 RS.HOOKS = { { RF.setupHooks, attach }, { RF.updateHooks, update }, { RF.sizeHooks, resized } }
 
+-- A ready check already under way when the module starts: the client keeps answering statuses after
+-- READY_CHECK_FINISHED, so one is under way only while time is left (Blizzard_UnitFrame/Shared/CompactUnitFrame.lua:1367).
+local function readyCheckUnderWay()
+  local timeLeft = plain(ns.CallIf(_G, "GetReadyCheckTimeLeft"))
+  return RS.ReadyStatus("player") ~= nil and type(timeLeft) == "number" and timeLeft > 0
+end
+
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen. The hooks stay on
 -- the parent's lists only while the module runs (RS.Disable), so a tile update pays nothing for the lifecycle.
 function RS.Enable(settings, scope)
@@ -395,6 +402,7 @@ function RS.Enable(settings, scope)
   scope:Gate("scale", RS.PlaceShadows, T.OnScale)
   RS.PlaceShadows()
   resized()
+  RS.readyRunning = readyCheckUnderWay()
   followHeader()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end

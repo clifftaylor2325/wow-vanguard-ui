@@ -133,8 +133,23 @@ it("the editor's globals list holds every global .luacheckrc lets the addon set 
   expect(missing, "add these to Lua.diagnostics.globals in .vscode/settings.json").toEqual([]);
 });
 
-it("the luacheck config lists no game global the addon never reads (ChatFrame_RemoveAllMessageGroups and FCF_PopInWindow were two)", () => {
-  const rc = fs.readFileSync(path.join(root, ".luacheckrc"), "utf8");
-  expect(rc).not.toContain("ChatFrame_RemoveAllMessageGroups");
-  expect(rc).not.toContain("FCF_PopInWindow");
+// The quoted names of .luacheckrc's read_globals table (comments left out).
+function luacheckReadGlobals(rc) {
+  const block = /^read_globals\s*=\s*\{([\s\S]*?)^\}/m.exec(rc)[1].replace(/--[^\n]*/g, "");
+  return [...block.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
+}
+
+// Every word in the addon's own Lua that the TOC loads (Core/, Modules/, Locales/), comments left out, so a name kept
+// only in a comment counts as unread.
+function addonWords() {
+  const toc = parseToc(fs.readFileSync(path.join(root, "Vanguard.toc"), "utf8"));
+  const own = toc.files.map((f) => f.path).filter((p) => /^(Core|Modules|Locales)\//.test(p));
+  const code = own.map((p) => fs.readFileSync(path.join(root, p), "utf8").replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, "").replace(/--[^\n]*/g, ""));
+  return new Set(code.join("\n").match(/[A-Za-z_]\w*/g));
+}
+
+it("the luacheck config lists no game global the addon never reads (ChatFrame_RemoveAllMessageGroups, FCF_PopInWindow and SecureHandlerUnwrapScript were three)", () => {
+  const words = addonWords();
+  const unread = luacheckReadGlobals(fs.readFileSync(path.join(root, ".luacheckrc"), "utf8")).filter((name) => !words.has(name));
+  expect(unread, "drop these from read_globals in .luacheckrc: no file the TOC loads names them outside a comment").toEqual([]);
 });

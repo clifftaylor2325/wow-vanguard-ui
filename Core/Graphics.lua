@@ -234,7 +234,8 @@ end
 -- Sets one setting, first keeping its old value in undo; false when the client refuses it.
 local function put(set, undo, name, value)
   keep(undo, name)
-  return (pcall(set, name, tostring(value)))
+  local ok, took = pcall(set, name, tostring(value))
+  return ok and took ~= false
 end
 
 -- A detail setting's value for a Graphics Quality step from the game's own table, or nil.

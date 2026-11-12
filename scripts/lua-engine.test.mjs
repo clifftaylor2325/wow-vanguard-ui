@@ -297,7 +297,7 @@ it("the auction house: queries recorded, restricted calls logged with the click 
   addon.eval("C_AuctionHouse.SendBrowseQuery({ searchString = 'TEST-ONLY' }) C_AuctionHouse.CancelAuction(7)");
   addon.click("TESTONLY_Post");
   expect(addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].searchString }"), "a query is only recorded").toEqual(["SendBrowseQuery", "TEST-ONLY"]);
-  const log = addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = { c.fn, c.clicked, c.path:find('rawClick') ~= nil } end return out");
+  const log = addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = { c.fn, c.clicked, c.path:find('runClick') ~= nil } end return out");
   expect(log, "the cancel came from no click, the post from the button's click (its path runs through the click)").toEqual([["CancelAuction", false, false], ["PostCommodity", true, true]]);
   addon.world.closeAuctionHouse();
   expect(addon.eval("return AuctionHouseFrame:IsShown()")).toBe(false);

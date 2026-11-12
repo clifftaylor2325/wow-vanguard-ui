@@ -178,24 +178,57 @@ function CR.Crafts(text)
   return math.min(CR.MAX_CRAFTS, math.max(1, math.floor(tonumber(text or "") or 1)))
 end
 
--- Raises each reagent's Keep-stocked count to what n crafts need (a larger count stays); the
--- reagents as chat text, "Linen Cloth x10, Coarse Thread x5".
+-- How many of a reagent you hold the way the game counts it for a craft: Retail through ItemUtil (bags, reagent bank and
+-- warband bank), Forever in the bags and bank, as the Quest tracker counts a reagent.
+local function held(id)
+  if ns.IsForever() then return ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0 end
+  return ns.PlainNumber(ns.CallIf(ItemUtil, "GetCraftingReagentCount", id)) or 0
+end
+
+-- How many of a reagent slot you hold across every quality rank (the game counts them all toward a craft).
+---@param ids number[] the item IDs of every quality rank of the slot
+---@return number
+function CR.Held(ids)
+  local have = 0
+  for _, id in ipairs(ids) do have = have + held(id) end
+  return have
+end
+
+-- The Keep-stocked goal (a count of one item in the bags) for a need of qty: qty less what the banks and the
+-- slot's other ranks hold, so it is what Short of says is missing, and the full need when it all sits in the bags.
+---@param id number the item to keep stocked
+---@param ids number[] the item IDs of every quality rank of its slot
+---@param qty number how many the crafts need
+---@return number
+function CR.StockGoal(id, ids, qty)
+  local carried = ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id)) or 0
+  return qty - (CR.Held(ids) - carried)
+end
+
+-- Raises each reagent still short to its Keep-stocked goal for n crafts (a larger count stays); the
+-- reagents raised as chat text, "Linen Cloth x10, Coarse Thread x5", empty when you hold them all.
 local function keepStocked(list, data, n)
   local out = {}
-  for i, r in ipairs(data.reagents) do
-    list[r.id] = math.max(list[r.id] or 0, r.qty * n)
-    out[i] = string.format("%s x%d", (itemLook(r.id)), list[r.id])
+  for _, r in ipairs(data.reagents) do
+    local goal = CR.StockGoal(r.id, r.ids, r.qty * n)
+    if goal > 0 then
+      list[r.id] = math.max(list[r.id] or 0, goal)
+      out[#out + 1] = string.format("%s x%d", (itemLook(r.id)), list[r.id])
+    end
   end
   return table.concat(out, ", ")
 end
 
--- Add reagents: the reagents for the crafts typed join Keep stocked, then the Restock list is made
--- of what's short (and searched at the auction house).
+-- Add reagents: what the crafts typed still need in your bags joins Keep stocked, then the Restock list is
+-- made of what's short (and searched at the auction house).
 function CR.AddReagents()
   local data, ER = CR.data, ns.GetModule("Errands")
   if not ER.settings then return ns.Chat(L["Keep stocked is part of Errands, which is off (/vg > Modules)."]) end
   local n = CR.Crafts(CR.frame.crafts:GetText())
-  ns.Chat(ns.Format(L["Keep stocked for {count} x {recipe}: {reagents}."], { count = n, recipe = data.name or L["this recipe"], reagents = keepStocked(ER.StockList(), data, n) }))
+  local raised = keepStocked(ER.StockList(), data, n)
+  local recipe = data.name or L["this recipe"]
+  local line = L["Keep stocked for {count} x {recipe}: {reagents}."]
+  ns.Chat(raised == "" and L["You have every reagent."] or ns.Format(line, { count = n, recipe = recipe, reagents = raised }))
   ER.StockWindow.Refresh()
   AH.Restock()
 end

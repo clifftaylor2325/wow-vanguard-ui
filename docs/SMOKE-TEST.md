@@ -6443,6 +6443,144 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the row shows Shield at once, the frames keep Hairline until the fight ends, then the plate and the bars change together.
 - If it fails, paste: /vg errors.
 
+### 33.737 The focus cast bar clears the raid grid under Tabs (H46-3-1, H46-A-G2; WoW Forever and Retail)
+
+- Do: default profile, HUD look Tabs, join a party (then a raid of ten), focus a caster and let it cast; then switch General > HUD layout > Where the frames stand to The keep and back. [Client: Forever and Retail.]
+- Expect: the focus's cast bar stands clear under the raid grid's bottom tile, and the grid and the Party pets and targets column move at once when the layout changes; in a raid of 25 or 40 it still reaches the grid's foot (known: Cliff's option B).
+- If it fails, paste: /vg frame on Vanguard_CastBar_focus and Vanguard_RaidHolder.
+
+### 33.738 Party pets and targets stay put over the raid frames under Tabs (H46-3-2; WoW Forever and Retail)
+
+- Do: default profile (raid frames show your party), Unit frames > Party pets and targets on, HUD look Tabs, join a 5-player party. [Client: Forever and Retail.]
+- Expect: the pets and targets column stands just over the top party tile, as under Plain, not about 84 units higher.
+- If it fails, paste: /vg frame on Vanguard_PartyExtras and Vanguard_RaidHolder.
+
+### 33.739 Cast bars over untabbed frames under Tabs (H46-13-3; WoW Forever and Retail)
+
+- Do: HUD look Tabs, Unit frames > Versus deck on, target a caster; then deck off, HUD layout The keep, focus a caster. [Client: Forever and Retail.]
+- Expect: with the deck on, the target's cast bar sits as close over the target frame as under Plain; under The keep the focus's cast bar sits as close over the focus frame as under Plain.
+- If it fails, paste: /vg frame on Vanguard_CastBar_target and Vanguard_CastBar_focus.
+
+### 33.740 Reset theme in a fight waits for the fight to end (H46-4-1; WoW Forever and Retail)
+
+- Do: set HUD look to Hairline out of combat, start a fight (a training dummy), open General and press Reset theme, and watch your frame until the fight ends. [Client: Forever and Retail.]
+- Expect: the frames stay Hairline until the fight ends, then turn Shield in one step (bars and plates together).
+- If it fails, paste: what the player frame looked like during the fight, and /vg errors.
+
+### 33.741 The footer errors line keeps to its count when the room is short (H46-4-5, H46-A-G1, H46-A-C1; WoW Forever)
+
+- Do: on a German client at Text size 130%, after any error (/vg errors lists one), switch Unit frames, Minimap and Chat off on Modules, then change General > Frame to size once. [Client: Forever.]
+- Expect: the footer still shows the red errors line as its bare count (the number of errors, or of paused parts when one is paused), hovering shows the full sentence, clicking it lists the errors, and the reload notice is shortened instead.
+- If it fails, paste: a screenshot of the footer.
+
+### 33.742 Leaving unlock without saving keeps the new profile's frames (H46-4-51; WoW Forever)
+
+- Do: turn every module that needs a reload off in two profiles (so a pick applies at once), give profile B a moved frame, /vg unlock on profile A, /vg profile B, then Exit without saving on the unlock bar, and /reload. [Client: Forever.]
+- Expect: profile B's moved frame is still where B had it.
+- If it fails, paste: /vg frame on that frame before and after.
+
+### 33.743 /vg profile names the profile the reload loads (H46-4-100, H46-4-R2; WoW Forever)
+
+- Do: on a character whose current spec has its own profile (say Heal, mapped with /vg spec Heal and in use), type /vg profile Mine, then /vg profile with no name. [Client: Forever.]
+- Expect: chat says the spec's profile takes over at the reload and never that this character will use Mine after it; the listing reads 'Profile: Heal   (all: ...)' with nothing after a reload; no reload is offered.
+- If it fails, paste: the chat lines.
+
+### 33.744 /vg report carries the paused parts and blocked calls (H46-4-101; WoW Forever and Retail)
+
+- Do: after /vg errors shows a paused part or a blocked call (or any error), type /vg report and read the copy box. [Client: Forever and Retail.]
+- Expect: the 'Paused after ...' and 'Calls the game blocked from Vanguard:' lines, when /vg errors has them, sit after the Errors line and before the first error.
+- If it fails, paste: those lines.
+
+### 33.745 An imported UI scale survives the spec's own profile (H46-4-R3; WoW Forever)
+
+- Do: on a spec whose own profile is in use with Pixel-perfect on, /vg import a whole-profile string with a UI scale, answer Use it, then /reload. [Client: Forever.]
+- Expect: the UI scale you accepted is still the game's scale after the reload, chat says 'Created profile Imported.' and no reload is offered.
+- If it fails, paste: the /vg status line before and after the reload.
+
+### 33.746 Raid status switched on during a ready check (H46-5-1, H46-A-C2; WoW Forever and Retail)
+
+- Do: in a raid or party, switch Raid status off under Modules, have the leader start a ready check, then switch Raid status on before answering; after that check ends, switch Raid status off and on again within a few seconds. [Client: Forever and Retail.]
+- Expect: during the check every tile shows its tick or waiting mark at once and tiles that never answered turn to the cross when it ends; switched on after the check ended, no tile shows a ready mark.
+- If it fails, paste: /run print(GetReadyCheckStatus("player"), GetReadyCheckTimeLeft()) during the check, and /vg errors.
+
+### 33.747 Two unticked keys on Ready (H46-6-1; WoW Forever)
+
+- Do: on a level 12 or higher warrior put Shield Bash on bar 2 button 2 and bind T to Toggle Character Pane; open Set up keys, Show me, Next; tick Place new spells as I learn them; untick the F line, then the T line; Apply; then train any spell. [Client: Forever.]
+- Expect: once F is unticked the T line reads "T: Hamstring, and Shield Bash moves to bar 3" and keeps that line with an empty box when unticked; after the training T still opens the character pane, bar 2 button 2 still holds Shield Bash, and chat has no "Hamstring is now on T".
+- If it fails, paste: the Ready list's F and T lines and the chat lines.
+
+### 33.748 A window docked again forgets its old spot (H46-7-50; WoW Forever and Retail)
+
+- Do: Movers for floating windows on (reload); drag Loot out of the dock and /reload; in /vg unlock leave its handle somewhere; drag Loot back into the dock, then drag it out again to a different spot; /reload. [Client: Forever and Retail.]
+- Expect: Loot is where you last dropped it.
+- If it fails, paste: where it sits after the reload, and /vg errors.
+
+### 33.749 A gossip level picker closes with the talk (H46-8-1; Retail)
+
+- Do: talk to a Skoldus Hall gossip NPC so the game's level picker opens, tick then untick the hand-back for the session (or switch Quests off and on), then walk away from the NPC. [Client: Retail.]
+- Expect: the game's picker closes with the talk.
+- If it fails, paste: pass or fail, and /vg errors.
+
+### 33.750 Quest automation leaves adventure map offers alone (H46-8-R1; Retail)
+
+- Do: with Quests automation 'accept quests' on, click a quest pin on an adventure map (a scouting or zone-choice map) to read its offer. [Client: Retail.]
+- Expect: the quest is not accepted until you press the map's own Accept; no 'Accepted:' chat line.
+- If it fails, paste: pass or fail, and /vg errors.
+
+### 33.751 Up now's shared cheapest price undercuts it (H46-9-1; WoW Forever and Retail)
+
+- Do: at the auction house, put a commodity you have listed on the Sell card where another seller shares your cheapest price, then click that row in Up now. [Client: Forever and Retail.]
+- Expect: Your price is 1 under that row (as the suggestion), not the row's price.
+- If it fails, paste: the Up now row and the Price line.
+
+### 33.752 A reagent held at another rank counts as held (H46-9-2; Retail)
+
+- Do: open a recipe that has quality ranks while holding the slot's reagents as another rank, type 1 beside Add reagents and click it. [Client: Retail.]
+- Expect: chat says You have every reagent. and Keep stocked (/vg stock) gains nothing for that reagent.
+- If it fails, paste: the chat line and /vg stock.
+
+### 33.753 Banked reagents are not bought again (H46-9-50; WoW Forever and Retail)
+
+- Do: queue a craft whose reagents sit only in your bank (warband bank on Retail), run /vg craft stock, then visit a merchant that sells one of them. [Client: Forever and Retail.]
+- Expect: Keep stocked gains nothing for it and the merchant buys none.
+- If it fails, paste: /vg craft, /vg stock and the chat.
+
+### 33.754 Graphics apply names the value the client kept (H46-10-2; WoW Forever and Retail)
+
+- Do: /vg graphics apply, then /dump GetCVar('graphicsQuality'). [Client: Forever and Retail.]
+- Expect: the 'Set Graphics Quality N' line names the value the dump shows, or says the client refused it.
+- If it fails, paste: both lines.
+
+### 33.755 Chat history keeps no hidden-message placeholder (H46-10-4; WoW Forever and Retail)
+
+- Do: chat history on, wait for a stranger's channel line the game hides ('click to show'), then /reload. [Client: Forever and Retail.]
+- Expect: the restored block does not hold that placeholder line (an older save's one is plain text with no click-to-show link).
+- If it fails, paste: the restored lines around it.
+
+### 33.756 A pet line's detail closes on a second click (H46-10-5; WoW Forever and Retail)
+
+- Do: Vanguard meter on, out of combat after a fight with a pet or guardian line, click that line, wait a second, click it again. [Client: Forever and Retail.]
+- Expect: the second click closes the panel.
+- If it fails, paste: whether it closed.
+
+### 33.757 Your line's detail closes on a second click in a fight (H46-10-6; WoW Forever and Retail)
+
+- Do: Vanguard meter on, in a fight click your own line, wait a second, click it again; then do the same on a Deaths line. [Client: Forever and Retail.]
+- Expect: the panel closes; on Deaths one recap line prints, not two.
+- If it fails, paste: whether it closed or reopened.
+
+### 33.758 /vg enable says when a module waits for its parent (H46-10-10; WoW Forever and Retail)
+
+- Do: turn Unit frames off and reload, then /vg enable ComboPoints. [Client: Forever and Retail.]
+- Expect: the line says it starts once UnitFrames is on, not that it is enabled.
+- If it fails, paste: the line.
+
+### 33.759 The fight recap leaves out Deaths 0 (H46-10-51; WoW Forever and Retail)
+
+- Do: Combat tools, tick Recap in chat after each fight; kill one mob without dying, then type /vg recap. [Client: Forever and Retail.]
+- Expect: the Fight recap line has no 'Deaths 0' part.
+- If it fails, paste: the Fight recap line.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

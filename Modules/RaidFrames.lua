@@ -48,6 +48,8 @@ RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -500, 344 }
 RF.CLEAR_LEFT = 148
 -- The big-raid spots made for narrow canvases, by their x, so the same canvas gets the same table (RF.PlaceFor compares them).
 RF.narrowSpots = {}
+-- The party and ten-player spot raised for the Tabs look (RF.Lift), by spot and lift, for the same reason.
+RF.raisedSpots = {}
 -- How large the grid is drawn now: the compact size for the group times the raid mover's Scale (RF.Fit sets it).
 RF.tileScale = 1
 -- How close two scales must be to count as the same: the client keeps a scale as a float32, so GetScale
@@ -723,9 +725,28 @@ function RF.BigSpotFor(width)
   return RF.narrowSpots[x]
 end
 
--- The grid's default spot for n players (a saved spot wins over it).
+-- How far the grid's spot over your player frame (RF.SPOT: a party, a raid of ten) stands higher under the Tabs look:
+-- as far as the party column's foot (Modules/UnitFrames.lua UF.TAB.partyClear) while the focus wears its tab, so the
+-- focus's cast bar, which the tab lifts, stays clear of the grid's foot. A big raid's spot keeps its place: raised, its
+-- grid's top would meet the main tanks at 1365 x 768.
+---@return number
+function RF.Lift()
+  local UF = ns.GetModule("UnitFrames")
+  return UF and UF.TabLift(UF.frames.focus) > 0 and UF.TAB.partyClear or 0
+end
+
+-- The spot raised lift units, made once per spot and lift (RF.raisedSpots); with no lift, the spot itself.
+local function raisedSpot(spot, lift)
+  if lift == 0 then return spot end
+  RF.raisedSpots[spot] = RF.raisedSpots[spot] or {}
+  RF.raisedSpots[spot][lift] = RF.raisedSpots[spot][lift] or ns.RaisedDefault(spot, lift)
+  return RF.raisedSpots[spot][lift]
+end
+
+-- The grid's default spot for n players under the HUD look now (a saved spot wins over it).
 function RF.SpotFor(n)
-  return big(n) and RF.BigSpotFor(UIParent:GetWidth()) or RF.SPOT
+  if big(n) then return RF.BigSpotFor(UIParent:GetWidth()) end
+  return raisedSpot(RF.SPOT, RF.Lift())
 end
 
 -- Takes every tile's anchors off (out of combat: the tiles are secure), so the header's next update anchors them anew.
@@ -882,10 +903,18 @@ function RF.SizeHolder(f, s, key)
   if key == "rows" then f:SetSize(across, s.height) else f:SetSize(s.width, RF.GROUP * (s.height + s.spacing) - s.spacing) end
 end
 
--- Moves the holder to the default spot for n players when that changed (a saved spot still wins).
+-- Moves the holder to the default spot for n players when that changed (a saved spot still wins), and keeps n for
+-- RF.PlaceAgain.
 function RF.PlaceFor(n)
   local spot = RF.SpotFor(n)
+  RF.placedFor = n
   if spot ~= RF.spot then RF.spot = spot ns.SetMoverDefault("raid", spot) end
+end
+
+-- Moves the holder to its default spot for the group it was last placed for, under the HUD look now (a look change).
+-- Out of combat only: the secure header is anchored to the holder.
+function RF.PlaceAgain()
+  if RF.placedFor then RF.PlaceFor(RF.placedFor) end
 end
 
 -- Sets the groups' direction and the holder's size for n players when the layout changed, then the
@@ -998,4 +1027,8 @@ function RF.Enable(settings)
   ns.OnMoverPlaced(function(key) if key == "raid" then RF.Fit() end end)
   -- A new text size or UI scale: the texts' sizes and the top line's pixel follow.
   T.OnChanged(function() ns.OutOfCombat(RF.PlaceAllTexts, "raidtexts") end)
+  -- A new HUD look: the party and ten-player spot rises or comes down with the Tabs look (RF.Lift).
+  T.OnChanged(function() ns.OutOfCombat(RF.PlaceAgain, "raid look") end)
+  -- A new HUD layout: the focus wears its tab or not (UF.TabLift), so the spot rises or comes down the same way.
+  ns.OnLayoutChanged(function() ns.OutOfCombat(RF.PlaceAgain, "raid layout") end)
 end

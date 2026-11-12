@@ -96,6 +96,10 @@ if math.type then string.format = fivePointOneFormat end
 local stub = { frames = {}, chat = {}, now = 1000, inCombat = false }
 __wfgStub = stub
 
+-- How many aura buttons the client's frame provider makes at a time (Blizzard_AuraContainerShared.lua:105
+-- FrameCreationBatchSize).
+stub.auraFrameBatch = 10
+
 -- 5.3's table.pack and table.unpack for the harness's own files, which run on both engines (5.1 has only unpack).
 stub.pack = table.pack or function(...) return { n = select("#", ...), ... } end
 stub.unpack = table.unpack or unpack
@@ -1150,15 +1154,18 @@ local function groupRefusal(c, key, filter, opts)
   return optionsRefusal(opts)
 end
 
--- A group: refused as the client refuses it (its asserts raise the message alone), else its first buttons are made
--- now and dressed by initializeFrame, as the client does.
+-- A group: refused as the client refuses it (its asserts raise the message alone), else a first batch of ten buttons
+-- is made now and dressed by initializeFrame, whatever its maxFrameCount, which caps only how many show
+-- (Blizzard_CustomAuraContainer.lua:286-304 calls CreateFrameBatch before RegisterAuraGroup). No options, or no
+-- layout, take the client's defaults (:228-256); the stub's readers default each field, so it keeps an empty table.
 function methods:AddAuraGroup(key, filter, opts)
+  opts = opts or {}
   local refused = groupRefusal(self, key, filter, opts)
   if refused then error(refused, 0) end
-  local g = { key = key, filter = filter, opts = opts, buttons = {} }
+  local g = { key = key, filter = filter, opts = opts, layout = opts.layout or {}, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
-  addAuraButtons(self, g, math.min(opts.maxFrameCount or 10, 10))
+  addAuraButtons(self, g, stub.auraFrameBatch)
   self:UpdateAllAuras()
 end
 
@@ -1260,7 +1267,7 @@ end
 -- Makes whole batches of ten buttons until the group has one for each aura it shows: the client's AcquireFrame makes a
 -- batch when none is free (Blizzard_AuraContainerShared.lua:100-106 FrameCreationBatchSize = 10).
 local function growGroup(c, g, wanted)
-  while #g.buttons < wanted do addAuraButtons(c, g, 10) end
+  while #g.buttons < wanted do addAuraButtons(c, g, stub.auraFrameBatch) end
 end
 
 -- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows), up to
@@ -1282,7 +1289,7 @@ end
 local function flowButtons(c)
   local grow, anchor, x, y, lineH = c.__flowGrow or { 1, 1 }, c.__flowAnchor or "TOPLEFT", 0, 0, 0
   for _, g in ipairs(c.__groups or {}) do
-    local gap, newLine = g.opts.layout.elementSpacing or 0, g.opts.layout.forceNewLine
+    local gap, newLine = g.layout.elementSpacing or 0, g.layout.forceNewLine
     for i, b in ipairs(g.buttons) do
       if b.__shown and x > 0 and ((i == 1 and newLine) or (c.__flowLine and x + b.__width > c.__flowLine)) then x, y, lineH = 0, y + lineH + gap, 0 end
       if b.__shown then b.__points = { [anchor] = { point = anchor, rel = c, relPoint = anchor, x = x * grow[1], y = y * grow[2] } } end

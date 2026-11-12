@@ -161,7 +161,10 @@ metrics, so no other test changes.
 returns what does not fit, `{ kind, text, place, other, size }` each (`text` in English):
 
 - `cut`: pinned across its box (a width, or anchors on both sides), the text is wider than one line it can't
-  wrap, needs more lines than its max lines, or is taller than a fixed height: the client cuts it short.
+  wrap, needs more lines than its max lines, or is taller than a fixed height: the client cuts it short. Also
+  `squeezed to no width` (or `height`): the text, or a frame it hangs on through its anchors, is pinned on both
+  sides with its far edge on or before its near one, so none of it draws (H46-2-R1). A text hung on a 0 x 0 frame
+  set that size on purpose is hidden, not squeezed, and is no finding.
 - `spill`: the text is partly inside its parent frame and runs out over an edge (a caption wholly outside, beside
   a check box, is fine).
 - `overlap`: the text draws over another text or a control (a button, check box, edit box or slider that shows

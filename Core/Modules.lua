@@ -113,6 +113,16 @@ function ns.ModuleWanted(name)
   return modules[name] ~= nil and ns.ModuleEnabled(name) and parentsPass(modules[name], ns.ModuleWanted)
 end
 
+-- The first module a module requires that is not wanted (its options row is greyed and points there), or nil.
+---@param name string
+---@return string|nil
+function ns.ModuleMissingParent(name)
+  local def = modules[name]
+  for _, parent in ipairs(def and def.requires or {}) do
+    if not ns.ModuleWanted(parent) then return parent end
+  end
+end
+
 -- Whether a module's frames are on screen this session: built (at login, or since by a live switch), or, while the
 -- login pass has not reached it yet, wanted. For code that places itself against another module's frames.
 ---@param name string

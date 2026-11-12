@@ -274,18 +274,32 @@ local function reclaim(frame, key)
   return m
 end
 
+-- Functions told when the list of movable frames changed (a mover registered or let go).
+local listListeners = {}
+
+-- Registers fn() to run after a frame joined or left the movable frames.
+---@param fn fun()
+function ns.OnMoversChanged(fn)
+  listListeners[#listListeners + 1] = ns.Guard("movers changed", fn)
+end
+
+-- Tells the listeners that the list of movable frames changed.
+local function listChanged()
+  for _, fn in ipairs(listListeners) do fn() end
+end
+
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent. One registered while the frames are
 -- unlocked (a module switched on meanwhile) gets its handle at once.
 function ns.Mover(frame, key, label, default)
   local m = reclaim(frame, key)
   m.label, m.default = label or key, default
-  if not movers[key] then
-    order[#order + 1] = key
-  end
+  local added = not movers[key]
+  if added then order[#order + 1] = key end
   movers[key] = m
   place(m)
   ns.MoverLinks.Registered(key)
   if unlocked then showHandle(m, editUnlocked and "HIGH" or nil) end
+  if added then listChanged() end
   return m
 end
 
@@ -299,8 +313,10 @@ function ns.OnLayoutChanged(fn)
 end
 
 -- Forgets where a frame stands in the profile, its point and offsets and its anchor link (a link is a position too),
--- and keeps the rest of its entry: its scale, its opacity and a matched or own size. An entry left empty goes.
-local function forgetSpot(key)
+-- and keeps the rest of its entry: its scale, its opacity and a matched or own size. An entry left empty goes. For a
+-- frame whose handle is gone and whose next spot is the game's to choose, as well as a layout's frames.
+---@param key string
+function ns.ForgetMoverPoint(key)
   local p = saved()[key]
   if type(p) == "table" then
     for _, field in ipairs({ "point", "relPoint", "x", "y", "rel" }) do p[field] = nil end
@@ -317,7 +333,7 @@ function ns.SetHudLayout(layout)
   local before = ns.HudLayout()
   ns.Profile().hudLayout = layoutSpots[layout] and layout or nil
   for _, spots in ipairs({ layoutSpots[before] or {}, layoutSpots[ns.HudLayout()] or {} }) do
-    for key in pairs(spots) do forgetSpot(key) end
+    for key in pairs(spots) do ns.ForgetMoverPoint(key) end
   end
   for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
   for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
@@ -841,6 +857,13 @@ local function unfade(m)
   vgFading[m.frame] = false
 end
 
+-- The movers' order without one key.
+local function orderWithout(key)
+  local kept = {}
+  for _, k in ipairs(order) do if k ~= key then kept[#kept + 1] = k end end
+  return kept
+end
+
 -- Takes a stopped module's mover out of unlock mode (Core/ModuleScope.lua): its handle hides and it leaves the
 -- movers the handles, the resets and the Layout card walk. Its saved spot stays in the profile, so the frame comes
 -- back where it was when the module starts again and registers it (ns.Mover gives it its handle back).
@@ -853,9 +876,8 @@ function ns.ReleaseMover(key)
   unfade(m)
   if selected == m then selectMover(nil) end
   released[key], movers[key] = m, nil
-  local kept = {}
-  for _, k in ipairs(order) do if k ~= key then kept[#kept + 1] = k end end
-  order = kept
+  order = orderWithout(key)
+  listChanged()
 end
 
 -- True while the handles are showing.

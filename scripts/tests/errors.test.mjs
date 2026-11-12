@@ -559,6 +559,14 @@ it("error budget: the same function under another site, or another function at t
   expect(addon.eval("for i = 1, 20 do ns.Try('TEST-ONLY b', __fail) end return { #ns.paused, (ns.Try('TEST-ONLY b', __fail)) }"), "a plain ns.Try (one helper over many frames) is never paused").toEqual([1, false]);
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text == 'TEST-ONLY b: TEST-ONLY boom' then return e.count end end"), "and it still ran each time").toBe(22);
 });
+it("H46-A-C1 error budget: the footer's short count is the paused parts when any are paused, as its sentence counts them", () => {
+  expectErrors("TEST-ONLY site: TEST-ONLY boom", "TEST-ONLY loud: one", "TEST-ONLY loud: two");
+  const addon = loggedIn(`__fail = function() error("TEST-ONLY boom", 0) end`);
+  addon.eval("ns.Report('TEST-ONLY loud', 'one') ns.Report('TEST-ONLY loud', 'two') for i = 1, 10 do ns.TryRepeating('TEST-ONLY site', __fail) end");
+  addon.advance(0.5);
+  addon.slash("");
+  expect(addon.eval("return { #ns.paused, ns.ErrorBadge.footer.shortText, ns.ErrorBadge.footer.fullText }"), "one part paused beside the errors: the count is 1, not the sum").toEqual([1, "1", "1 part paused after repeated errors: click to list them"]);
+});
 it("error budget: the footer, /vg errors and the Feedback page show the paused parts, and the page's button resumes them", () => {
   expectErrors("TEST-ONLY site: TEST-ONLY boom", "TEST-ONLY other site: TEST-ONLY boom");
   const addon = loggedIn(CLICK_LUA + `__fail = function() error("TEST-ONLY boom", 0) end`);

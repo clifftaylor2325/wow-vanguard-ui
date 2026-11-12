@@ -147,11 +147,13 @@ end
 
 -- The game docks a window (its tab dropped into the dock; FCF_DockFrame ends in FCFDock_AddChatFrame, which clears
 -- its anchors and sets them all to the dock's): its handle and pin let go, or the next pin run would pull the
--- docked window back out to its old spot. The released handle keeps its saved spot.
+-- docked window back out to its old spot. Its saved spot is forgotten (scale and opacity stay), so a window pulled out
+-- again, or a new tab on a closed window's number, stays where the game or the player puts it after the next reload.
 local function letDocked(frame)
   local key = CW.floating[frame]
   if not key then return end
   ns.ReleaseMover(key)
+  ns.ForgetMoverPoint(key)
   ns.Unpin(frame)
   CW.floating[frame] = nil
 end

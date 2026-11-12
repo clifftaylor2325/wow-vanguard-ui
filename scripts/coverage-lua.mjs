@@ -61,19 +61,23 @@ async function runTests() {
   if (status !== 0) process.exit(status);
 }
 
+// Whether this run leaves the Retail-only tests out: a local test run with VG_SKIP_RETAIL set. Never a merge, which
+// judges a full set of shards (expectedTestFiles lists every test file whatever the variable says).
+const withoutRetail = Boolean(process.env.VG_SKIP_RETAIL) && !mergeOption(args);
+
 // The addon's own Lua that at least one client loads (a file the TOC's game-type tags keep to one
 // client counts once, covered by that client's cases); the vendored libraries in Libs/ are not counted.
-// With VG_SKIP_RETAIL (a local run without the Retail-only tests) only the Lua Forever loads counts.
+// A run without the Retail-only tests (withoutRetail) counts only the Lua Forever loads.
 function countedFiles() {
-  const tocLua = process.env.VG_SKIP_RETAIL ? clientPaths(readToc(root), "forever") : anyClientPaths(readToc(root));
+  const tocLua = withoutRetail ? clientPaths(readToc(root), "forever") : anyClientPaths(readToc(root));
   return tocLua.filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
 }
 
 // The floor to hold. Without the Retail-only tests the Retail branches of shared files go unrun, so that run has
-// its own floor (withoutRetail, which only goes up too); the weekly and release runs hold every line to "lines".
+// its own floor (withoutRetail, which only goes up too); every other run, a merge included, holds every line to "lines".
 function floorToHold() {
   const floors = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8"));
-  return process.env.VG_SKIP_RETAIL ? floors.withoutRetail : floors.lines;
+  return withoutRetail ? floors.withoutRetail : floors.lines;
 }
 
 // Reports the loaded hits against the floor and fails below it; `heading` names what was judged.
