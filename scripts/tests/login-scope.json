@@ -168,6 +168,7 @@
       "Instance prep switched off inside a dungeon ends the visit it was tracking",
       "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "a reload inside a dungeon more than an hour after the way in is the same visit, not 'Last run: today'",
+      "a reload or log out with the card switched off inside a dungeon still ends the visit at that time",
       "a run earlier the same calendar day reads today, even 21 hours before",
       "a wipe in a long run: the way back in within the hour of leaving is the same visit, not 'Last run: today'",
       "an item the client has not cached shows by its number; without a map listing, a dungeon shows its tagged quests",

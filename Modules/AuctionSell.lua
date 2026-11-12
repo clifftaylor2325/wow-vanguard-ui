@@ -602,8 +602,9 @@ end
 
 -- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next. The
 -- game's earlier answer goes, and a refusal of the confirm within AH.POST_ANSWER_TIME is reported.
+-- AH.postSale is already s: sending() set it for the post the game asked about, and a sale never comes back.
 local function confirmPost(s, p)
-  AH.postAt, AH.postSale, s.answer = GetTime(), s, nil
+  AH.postAt, s.answer = GetTime(), nil
   C_AuctionHouse["ConfirmPost" .. p.kind](unpack(p.args, 1, p.args.n))
   posted(s, p.args[3])
 end

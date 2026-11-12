@@ -483,3 +483,13 @@ it("H46-34-105 /vg lfg probe: a German client's lines hold no English word of th
     expect.stringContaining("(Filter Alle Beiträge, nur meine Stufe aus)"),
   ]);
 });
+
+it("H46-G2-5 the probe's channel words are the options' check captions, in the options' order", () => {
+  const addon = board();
+  const pair = addon.eval(`local GB, captions, names = ns.GetModule("GroupBoard"), {}, {}
+    for _, row in ipairs(GB.Rows()) do if row[1] == "check" then captions[#captions + 1] = row[2] end end
+    for i, key in ipairs(GB.CHANNEL_ORDER) do names[i] = GB.CHANNEL_NAMES[key] end
+    return { captions, names }`);
+  expect(pair[0], "four channel switches, Numbered channels first").toEqual(["Numbered channels", "Yell", "Say", "Guild"]);
+  expect(pair[1], "GB.CHANNEL_NAMES in GB.CHANNEL_ORDER").toEqual(pair[0]);
+});

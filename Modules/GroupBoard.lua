@@ -38,7 +38,8 @@ ns.Options.MODULE_INFO.GroupBoard = { L["Group board"], L["Looking-for-more and 
 GB.MAX = 40
 -- Chat events -> the channel switch that reads them.
 GB.EVENTS = { CHAT_MSG_CHANNEL = "channel", CHAT_MSG_YELL = "yell", CHAT_MSG_SAY = "say", CHAT_MSG_GUILD = "guild" }
--- The channels in the order the options list them, and the words the options and the probe call them.
+-- The channels in the order the options list them, and the words the probe calls them. GB.Rows writes the same four
+-- captions as literals (the site's settings reader needs string captions); the groupboard test pins the pair.
 GB.CHANNEL_ORDER = { "channel", "yell", "say", "guild" }
 GB.CHANNEL_NAMES = { channel = L["Numbered channels"], yell = L["Yell"], say = L["Say"], guild = L["Guild"] }
 -- The roles, in the order a row shows them.

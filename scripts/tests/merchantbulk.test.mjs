@@ -297,6 +297,9 @@ it("the merchant helpers switched off live take the drawer off the open quantity
   expect(split(addon)[0], "Stack shows on the merchant's item").toBe(true);
   addon.eval('ns.SetModuleEnabled("Merchant", false)');
   expect([split(addon), addon.eval("return ns.FrameState('vgSplitBulk')[StackSplitFrame].drawer:IsShown()")], "off: the drawer and its buttons and line hidden").toEqual([[false, false, false, "Max 40 for 0s 80c"], false]);
+  // MERCHANT_SHOW opens the merchant interaction (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+  // MerchantFrameDocumentation.lua:112; the window opens through MerchantFrame_MerchantShow, Blizzard_UIPanels_Game/
+  // Mainline/MerchantFrame.lua:89). That no second one comes while the window stays up is game-only.
   addon.eval('MerchantFrame = { selectedTab = 1, IsShown = function() return true end }');
   addon.eval('ns.SetModuleEnabled("Merchant", true)');
   addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
