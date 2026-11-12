@@ -798,7 +798,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.5 Enemy nameplates (#377)
 
 - Do: log in on a character, stand near a hostile creature and look for its plate. Type `/vg plates`. Open `/vg` > Nameplates, untick Enemy nameplates, then tick it again; do the same with Friendly players' and Friendly NPCs' nameplates. Press V, `/reload`, and check that the plates stay as V left them.
-- Expect: hostile creatures in range have a Vanguard plate at the first login without pressing anything. `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
+- Expect: with the game's enemy nameplates on, hostile creatures in range have a Vanguard plate (a new character is asked once whether to turn them on: step 33.422). `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
 - If it fails, paste: the `/vg plates` line, a screenshot, and `/vg errors`.
 
 ### 7.5a Health numbers on enemy plates
@@ -3379,7 +3379,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.131 Whether enemy nameplates are set once per account or per character
 
 - Do: on a brand-new character (never logged in with Vanguard), log in, then type `/dump C_CVar.GetCVarInfo("nameplateShowEnemies")` and `/dump GetCVar("nameplateShowEnemies")`. Press V to turn enemy nameplates off, log out, log in a second new character and type the same two lines again.
-- Expect: nothing is decided by this step; it records the third value of the first line (true when the game stores the setting once for the whole account, false when each character has its own) and whether the second new character's `GetCVar` came back as 1 although you turned them off on the first (Vanguard turns enemy nameplates on once at a character's first login).
+- Expect: nothing is decided by this step; it records the third value of the first line (true when the game stores the setting once for the whole account, false when each character has its own) and whether the second new character's `GetCVar` came back as 1 although you turned them off on the first (Vanguard asks once per character and changes the setting only on a yes).
 - If it fails, paste: both new characters' output of both lines, in order, and `/vg errors`.
 
 ### 33.132 Setup open while the UI is hidden or an intro cinematic plays
