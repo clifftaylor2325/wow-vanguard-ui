@@ -2869,3 +2869,14 @@ it("H46-27-1: with Vanguard's quest log switched off live, the game's button, a 
   addon.eval("WorldMapFrame:Hide() ToggleQuestLog()");
   expect(addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown() }"), "switched back on, the button opens Vanguard's log again").toEqual([true, false]);
 });
+// H46-27-2: a tracker click opening another quest sets QL.selected before the render, so Select saw no change and kept the old scroll.
+it("H46-27-2: a tracker click opening another quest starts its details at the top", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + ` GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 600) end`);
+  addon.eval("ns.GetModule('QuestLog').Open(90051)");
+  addon.eval("local s = Vanguard_QuestLog.detailScroll s.__scripts.OnMouseWheel(s, -3)");
+  expect(addon.eval("return Vanguard_QuestLog.detailScroll:GetVerticalScroll()"), "the first quest's text scrolls").toBeGreaterThan(0);
+  addon.eval("ns.GetModule('QuestLog').Open(90052)");
+  expect(addon.eval("return { ns.GetModule('QuestLog').selected, Vanguard_QuestLog.detailScroll:GetVerticalScroll() }"), "another quest starts at the top").toEqual([90052, 0]);
+  addon.eval("local s = Vanguard_QuestLog.detailScroll s.__scripts.OnMouseWheel(s, -3) ns.GetModule('QuestLog').Open(90052)");
+  expect(addon.eval("return Vanguard_QuestLog.detailScroll:GetVerticalScroll()"), "reopening the same quest keeps the scroll").toBeGreaterThan(0);
+});
