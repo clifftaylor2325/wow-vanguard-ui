@@ -129,15 +129,15 @@ it("H26-1-2 modules: ns.ModuleLive answers whether a module's frames are built t
   expect(addon.eval("return { ns.ModuleLive('TESTONLY_Late'), ns.ModuleLive('TESTONLY_Off') }"), "a switch changed this session waits for the reload").toEqual([true, false]);
 });
 it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
-  expectErrors(/^module DataBars: Modules\/DataBars\.lua:\d+: attempt to compare number with string$/, "module TESTONLY_Broken: eval:3: attempt to compare number with string");
+  expectErrors("module TESTONLY_Broken: eval:3: attempt to compare number with string");
   const addon = loggedIn(`
     ns.Migrate("TESTONLY_Broken", function(saved) return saved.layout >= 2 end)
     ns.Module("TESTONLY_Broken", { defaults = {}, Enable = function() __broken = true end })
     ns.Module("TESTONLY_After", { Enable = function() __after = true end })
   `, { savedVariables: 'VanguardDB.profiles = { Default = { TESTONLY_Broken = { layout = "TEST-ONLY" }, DataBars = { layout = "TEST-ONLY" } } }' });
   expect(addon.eval("return { __broken == nil, __after, ns.GetModule('TESTONLY_Broken').enabled, ns.GetModule('TESTONLY_After').enabled }"), "the broken module is off, the next one loads").toEqual([true, true, false, true]);
-  expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('Tooltips').enabled, ns.GetModule('ClickCast').enabled }"), "a damaged DataBars table stops DataBars only").toEqual([false, true, true]);
-  expect(addon.eval("local t = {} for _, e in ipairs(ns.errors) do t[#t + 1] = e.text:match('^[^:]+') end return t"), "each failure is reported under its module").toEqual(["module DataBars", "module TESTONLY_Broken"]);
+  expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('Tooltips').enabled, ns.GetModule('ClickCast').enabled }"), "a text layout stamp in DataBars is upgraded, not an error (H45-22-80), and the real modules load").toEqual([true, true, true]);
+  expect(addon.eval("local t = {} for _, e in ipairs(ns.errors) do t[#t + 1] = e.text:match('^[^:]+') end return t"), "the failure is reported under its module").toEqual(["module TESTONLY_Broken"]);
 });
 it("combat queue", () => {
   const addon = loggedIn();
