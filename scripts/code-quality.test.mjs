@@ -153,7 +153,7 @@ function fontRolesPass() {
 }
 
 // Statements outside the theme that write a color or a font size in a shape the first rule missed (H44-25-5).
-const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")'];
+const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")', "cd:SetSwipeColor(0.1, 0.2, 0.3, 0.8)"];
 const WRITTEN_SIZES = ["fs:SetTextHeight(14)", "fs:SetFont(p, x or 12, '')", "fs:SetFont(T.Font(T.Face(true)), 14, '')", "fs:SetFont(p, 12.5)"];
 // Statements that look alike and are not a written color or size.
 const NOT_WRITTEN = ["local c = CreateColor(r, g, b)", "local c = { r = r, g = g, b = b }", "local c = { r = 200, g = 100, b = 50 }", "local c = CreateColorFromHexString(hex)", "font:SetFont(was[1], was[2], was[3])", "fs:SetFont(p, size + 2, '')", "fs:SetFont(p, size(fs) or other, '')", "GA.SetFont(fs, 12)", "fs:SetTextHeight(h)"];
@@ -703,6 +703,7 @@ const ENGLISH_SHAPES = [
   'ns.Chat(string.format("Sold %d items", n))', 'ns.Chat(("Sold %d items"):format(n))', 'ns.Chat(ns.Format("Sold {n} items", { n = n }))',
   'fs:SetFormattedText("%d items left", n)', 'chatFrame:AddMessage("Hello there")', 'ns.Ask("Delete it?", yes)', 'ns.AskText("Name it", ok)',
   'ns.DialogButton(parent, "Reload now", f)', 'tip:AddLine(key .. " to open")',
+  'fs:SetText(n .. (on and "On" or "Off"))',
 ];
 // Statements that look alike and are not English text to translate.
 const NOT_ENGLISH = [

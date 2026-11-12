@@ -156,7 +156,8 @@ end
 
 -- The one chat line when snippets are off, with the probe's error when it threw.
 local function warnNoSnippets(err)
-  ns.Chat(L["This client can't run secure snippets: hover keys are off; bar 1 pages and the raid frames are set up without them."] .. (err and ("  (probe: " .. err .. ")") or ""))
+  local detail = err and ns.Format(L["  (probe: {error})"], { error = err }) or ""
+  ns.Chat(L["This client can't run secure snippets: hover keys are off; bar 1 pages and the raid frames are set up without them."] .. detail)
 end
 
 -- Functions waiting for the probe's answer (C.WhenSnippetsKnown).

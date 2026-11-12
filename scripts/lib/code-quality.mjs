@@ -384,7 +384,7 @@ function functionProblems(fn, kinds, documented) {
 const COLOR_SCOPE = /^(Core|Modules)\/.+\.lua$/;
 const COLOR_HOME = "Core/Theme.lua";
 // A color setter called with a number as its first argument.
-const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor|CreateColor)\s*\(\s*[-\d.]/g;
+const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor|SetSwipeColor|CreateColor)\s*\(\s*[-\d.]/g;
 
 // A table of three or four numbers (checked below to be 0-1: a color).
 const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
@@ -1065,13 +1065,36 @@ function printsText(arg, k, depth) {
   return own || pattern || method;
 }
 
+// True when the "(" at arg[k] only groups an expression: nothing before it, or an operator or keyword, not a name, a
+// string or a closing bracket (those make it a call or an index).
+function isGroupingParen(arg, k) {
+  const before = arg[k - 1];
+  if (!before) return true;
+  if (before.kind === "string") return false;
+  if (before.kind === "word") return ["and", "or", "not", "return"].includes(before.text);
+  return !")]}".includes(before.text);
+}
+
+// The depth change of arg[k] for shapeLiterals; `open` is the stack of brackets still open, true for a grouping one,
+// which adds no depth (so `n .. (on and "On" or "Off")` is still the argument's own level).
+function depthStep(arg, k, open) {
+  const t = arg[k];
+  if (t.kind === "punct" && t.text === "(") open.push(isGroupingParen(arg, k));
+  else if (t.kind === "punct" && "[{".includes(t.text)) open.push(false);
+  else if (t.kind === "punct" && "])}".includes(t.text)) return open.pop() ? 0 : -1;
+  else return nesting(t);
+  return open[open.length - 1] ? 0 : 1;
+}
+
 // The text literals in a sink's text argument (tokens): the string tokens printsText accepts that read as English. A
 // literal that is the whole start of the argument of a sink the narrow rule reads (`narrow`) is its finding, not this one's.
+// A value passed through ns.Format's table or returned by a helper is not read.
 function shapeLiterals(arg, narrow) {
   let depth = 0;
+  const open = [];
   return arg.filter((t, k) => {
     const hit = t.kind === "string" && printsText(arg, k, depth) && isShapeText(t.text) && !(narrow && k === 0 && isWords(t.text));
-    depth += nesting(t);
+    depth += depthStep(arg, k, open);
     return hit;
   });
 }
