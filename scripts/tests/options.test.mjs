@@ -196,7 +196,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
   addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
-  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
+  expect(addon.eval("return { (VanguardDB.profiles.Default.Chat or {}).background ~= false, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload (the open page is built again and may read the default back in)").toEqual([true, false, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
@@ -2621,4 +2621,17 @@ it("options: the addons button's tooltip counts what the badge counts, not a fal
   const lines = () => addon.eval(`local b = CreateFrame("Button") Vanguard_OnAddonCompartmentEnter("Vanguard", b)
     local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
   expect([addon.eval("return { ns.LoudErrorCount(), #ns.errors }"), lines().length], "one quiet entry kept, no error line").toEqual([[0, 1], 2]);
+});
+
+it("options: pages built before a profile change are built again, so the Damage style row and the chat lists follow the new profile (H46-23-50)", () => {
+  const addon = loggedIn('__wfgWorld.units.player.class = "DRUID" __wfgWorld.units.player.className = "Druid"\n' + CLICK_LUA);
+  addon.eval('ns.Settings("ChatWatch").phrases = { "TEST-ONLY old phrase" } ns.Options.Show("town") ns.Options.Show("chat")');
+  const style = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "town" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Damage style" then row = r end end end end`;
+  addon.eval(`VanguardDB.profiles.Other = { Upgrades = { styles = { DRUID = "balance" } }, ChatWatch = { phrases = { "TEST-ONLY new phrase" } } }`);
+  addon.eval('VanguardDB.profiles.Default = VanguardDB.profiles.Other ns.ProfileChanged() ns.Options.Show("town")');
+  expect(addon.eval(`${style} row[5]("feral") return { row[4](), ns.Settings("Upgrades").styles.DRUID, VanguardDB.profiles.Other.Upgrades.styles.DRUID }`), "the row writes the profile in use")
+    .toEqual(["feral", "feral", "feral"]);
+  addon.eval('ns.Options.Show("chat")');
+  expect([addon.eval('return __click("Remove: TEST-ONLY old phrase")'), addon.eval('return __click("Remove: TEST-ONLY new phrase")')], "the Chat page lists the new profile's phrase, not the old one").toEqual([false, true]);
 });

@@ -142,8 +142,9 @@ local function styleRows()
   if not styles then return {} end
   local choices = {}
   for _, s in ipairs(styles) do choices[#choices + 1] = { s, UP.Word(s) } end
-  local saved = O.ModuleSettings("Upgrades").styles
-  return { { "cycle", L["Damage style"], choices, function() return W.Style(class, saved[class]) end, function(v) saved[class] = v UP.Changed() end } }
+  -- Read on each call: a profile switch that applies at once leaves this row built, and the table is the new profile's.
+  local function styles() return O.ModuleSettings("Upgrades").styles end
+  return { { "cycle", L["Damage style"], choices, function() return W.Style(class, styles()[class]) end, function(v) styles()[class] = v UP.Changed() end } }
 end
 
 -- Gear upgrades: the role (and damage style) the weights are for, and where upgrades show.

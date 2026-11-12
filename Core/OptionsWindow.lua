@@ -1337,6 +1337,15 @@ function O.RebuildPage(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
 end
 
+-- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is built again, since
+-- a row may hold the old profile's table, and the shown one stays where it was.
+ns.OnProfileChanged(function()
+  local keys = {}
+  for key in pairs(pages) do keys[key] = true end
+  for key in pairs(rowCache) do keys[key] = true end
+  for key in pairs(keys) do O.RebuildPage(key) end
+end)
+
 -- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
 local function firstRow(view, text)
   for _, w in ipairs(widgets) do
