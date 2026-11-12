@@ -588,10 +588,11 @@ it("H45-19-R3 with nothing bound on plain Left or Right click, the test tile say
   const plain = [tileSays(addon, "LeftButton"), tileSays(addon, "RightButton"), tileSays(addon, "MiddleButton")];
   addon.keys({ shift: true });
   const shifted = tileSays(addon, "LeftButton");
+  const shiftedRight = tileSays(addon, "RightButton");
   addon.keys({ shift: false });
-  expect({ plain, shifted }).toEqual({
+  expect([shifted.split("  ")[0], shiftedRight.split("  ")[0]], "the frame's own *type1 and *type2 apply under every modifier (SecureButton_GetModifiedAttribute)").toEqual(["Shift + Left click -> Target on Tester", "Shift + Right click -> Unit menu on Tester"]);
+  expect({ plain }).toEqual({
     plain: ["Left click -> Target on Tester", "Right click -> Unit menu on Tester", "Middle click -> nothing bound"],
-    shifted: "Shift + Left click -> nothing bound",
   });
 });
 

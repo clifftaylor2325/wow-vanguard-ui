@@ -742,11 +742,13 @@ end
 -- (Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifiedAttribute).
 local FRAME_CLICKS = { BUTTON1 = "target", BUTTON2 = "menu" }
 
--- The binding a key or click would run on a frame: the list's, else the frame's own plain click, else nil.
+-- The binding a key or click would run on a frame: the list's, else the frame's own click (the tiles' *type1 and
+-- *type2 apply under every modifier, so it is looked up by the button part of the key), else nil.
 local function tileBinding(key)
   local b = CC.Binding(key)
-  if b or not FRAME_CLICKS[key] then return b end
-  return { key = key, action = FRAME_CLICKS[key] }
+  local own = FRAME_CLICKS[key:match("[^%-]+$")]
+  if b or not own then return b end
+  return { key = key, action = own }
 end
 
 -- The note after a line whose binding Vanguard knows does nothing (as /vg binds says it), else "".
