@@ -5945,7 +5945,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.567 A chat window dragged back into the dock stays in the dock (H44-19-1)
 
-- Do: for Forever and Retail: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
+- Do: for Forever and Retail: with `/vg` > Chat > Movers for floating windows (reload) on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
 - Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
 - If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
 
