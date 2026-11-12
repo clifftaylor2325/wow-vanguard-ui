@@ -462,6 +462,7 @@
       "in-combat mark: your target's edge follows the client's answer, a hidden one counting as no",
       "one unit frame that fails to paint or lay out is reported, and every other frame still does",
       "power ticks: energy every two seconds, and forms switch",
+      "power ticks: switches, and no player frame",
       "power ticks: the energy spark stops its timer when no tick comes (full energy)",
       "power ticks: the five-second rule after a mana spell",
       "power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame",
