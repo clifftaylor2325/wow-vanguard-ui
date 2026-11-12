@@ -421,3 +421,17 @@ it("H45-31-201 a new sale's notice after an earlier mail-only sale at the same p
   addon.world.openMailbox();
   expect(addon.eval("return ns.AuctionLedger.SessionSales()"), "its own mail joins it, still one sale this session").toBe(4000);
 });
+
+const TWIN_OWNED = `__wfgWorld.ah.owned = {
+  { auctionID = 502, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 503, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4000 } }`;
+
+it("H45-D-G1 two same-price auctions up together, one's mail read, a /reload, the other's sold row: two sales", () => {
+  const addon = atAuctionHouse(TWIN_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.eval(`__now = __now + 60 __wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 4000, 1, 28)} }`);
+  addon.world.openMailbox();
+  addon.eval("__now = __now + 120 ns.AuctionLedger.since = __now __wfgWorld.ah.owned[2].status = 1");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect(records(addon).map((r) => r.slice(4, 7)), "the mail's sale and the second auction's own").toEqual([[4000, false, true], [4000, 503, false]]);
+});

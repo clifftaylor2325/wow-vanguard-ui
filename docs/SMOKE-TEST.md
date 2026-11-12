@@ -6386,7 +6386,8 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 - Do: sell the same item at the same price on two days; read the first sale's mail on day one, and on day two let the second one sell while you play. [Client: Forever and Retail.]
 - Expect: the info strip's AH figure counts the second sale.
-- If it fails, paste: the info strip's AH text.
+- Also try the reload order: read the first sale's mail, /reload, then let the second one sell (open the auction house while its sold row is listed). Expect: Your history counts two sales, not one and not three.
+- If it fails, paste: the info strip's AH text and Your history's sold count.
 
 ### 33.728 Warband bank reagents in the craft queue (H45-33-4; Retail)
 
