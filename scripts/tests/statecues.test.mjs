@@ -94,7 +94,7 @@ it("state cues: a cooldown ending flashes the button once, only after a real coo
   const update = (info) => addon.eval(`__info = ${info} __played = {} ns.GetModule("ActionBars").UpdateButton(Vanguard_Bar1Button2) local c = Vanguard_Bar1Button2.cooldown c:GetScript("OnCooldownDone")(c)`);
   update("{ isOnGCD = true }");
   expect(playing(addon).length, "the global cooldown: no flash").toBe(0);
-  update("{ isOnGCD = { __secret = true } }");
+  update("{ isOnGCD = __wfgWorld.secret(false) }");
   expect(playing(addon).length, "a hidden answer: no flash").toBe(0);
   update("{ isOnGCD = false }");
   const flash = playing(addon);
