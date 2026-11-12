@@ -239,6 +239,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: out of combat, where you usually play, type `/vg graphics` and wait five seconds. Open Options → Graphics and note which Graphics Quality is marked Recommended. Then do it once in a city. Then start it and pull a mob before it ends.
 - Expect: `Checking this computer and your frame rate for 5 s: ...`, then four lines: `Frame rate: N fps on average over 5 s.`, `Graphics card: <your card> (dedicated)` (or `(built-in, low power)` on a laptop chip) `. Graphics Quality Q of 10 (the game recommends R for this computer), render scale S%.` (Q is the number on Options → Graphics → Graphics Quality; R is the one the game marks Recommended there), a suggestion (`Suggested: lower Graphics Quality to ...`, `Suggested: Graphics Quality ... this computer has room for it.` or `Your Graphics Quality suits this computer and screen.`) and `Screen W x H: setup suggests the 1440p sizes (UI scale 70%); ...` for your screen; on a 4K screen under 30 fps a fifth line suggests Render Scale 80%. A last line names `/vg graphics apply` and `/vg graphics undo`. Nothing in the game's settings changes. In combat the readings stop, so a check ended in a fight reports only the seconds before it.
 - If it fails, paste: the lines it printed, your screen size and what the Graphics Quality slider shows.
+
 ### 1.5b Apply and undo the graphics suggestion
 
 - Do: after 1.5a, note Options → Graphics (Graphics Quality, Shadow Quality, View Distance, Render Scale) and the UI Scale. Type `/vg graphics apply`, then open Options → Graphics again. Play a minute. Then type `/vg graphics undo` and open Options → Graphics once more. Try `/vg graphics apply` in combat too.
@@ -599,6 +600,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Town and gear → Instance prep, switch on "Buff checks on the card" (and "World buffs among them"). Out of combat, without a flask, food buff, weapon oil or poison, or your class's raid buffs, type `/vg prep`. Then get each one and type `/vg prep` again; then start a ready check in a group, type `/vg prep buffs` (with a flask, a food buff and a raid buff on, and one unrelated buff), and finally type `/vg errors`.
 - Expect: the card lists Flask, Food buff, Fortitude, Mark of the Wild, Arcane Intellect, a weapon row and (with a weapon in the off hand) an off-hand row, each "missing" in red; each row goes when you have the buff. World buffs shows only while you have none. In an instance during combat no buff row appears; `/vg status` saying `aura values hidden right now` also means none. `/vg prep buffs` prints each of your buffs as `name -> Flask` (or Food buff, Fortitude, ...) or `-> no check`, then the names each check looks for, as your client names them; note any buff that should count and says `no check`, and any check whose list looks wrong: those are spell ids to fix. No Lua error.
 - If it fails, paste: a screenshot, `/vg errors`, the `/vg prep buffs` lines, and the names of the buffs you have (the spell ids in the code are from the classic database and unchecked on Forever).
+
 ### 6.5b Wanted amounts window
 
 - Do: `/vg` → Town and gear → Instance prep → **Set wanted amounts...** (or `/vg prep setup`), out of combat. On step 1 drag the food slider, click **Use suggested**, then Next through to Done. Try `/vg prep want potions 7` afterwards, and `/vg prep`.
@@ -3217,16 +3219,19 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: on Forever, in a dungeon with a party member, turn on friendly nameplates and their buffs in the game's nameplate settings, with Vanguard's tooltip anchor at its default (the corner). Mouse over a buff icon on the party member's nameplate, then over your own player frame. Run `/vg errors`.
 - Expect: the buff's tooltip opens where the game puts it (beside the icon, not in Vanguard's corner), the error badge stays off and `/vg errors` is empty; over the player frame the tooltip is in the corner as usual. [Needs in-game check: that the client restricts the tooltip's anchoring or forbids its owner there, so the hook leaves the tooltip alone, and that no "forbidden object" error reaches `/vg errors`.]
 - If it fails, paste: `/vg errors` and where the buff's tooltip opened.
+
 ### 33.105 Raid target icons on the raid tools bar
 
 - Do: lead a party (a second character or a friend), so the raid tools bar shows. Target a mob or your party member. On the bar's second row, click the skull, then click the skull again, then another icon, then the last button on the row. Do the same once during a fight. Run `/vg errors`.
 - Expect: the skull lands on your target and stays when clicked again, the other icon replaces it, the last button clears it, in the fight too; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: that the game's secure raidtarget action sets and clears a mark from Vanguard's buttons on Forever, since SetRaidTarget is reserved for secure code there.]
 - If it fails, paste: which button did nothing or what the game's message said word for word, and `/vg errors`.
+
 ### 33.106 Talking head and loss of control on their spots, then Edit Mode
 
 - Do: with Loss of control on and Talking head set to "move" (the defaults), type `/console taintLog 1` and `/reload`. Trigger a talking head (a quest or story line that plays one) and a loss of control (a stun or fear from a mob). Open Edit Mode (Escape, Edit Mode), move any game frame, click Save and close it. Run `/vg errors`, then `/console taintLog 0` and open `Logs/taint.log` in the game folder.
 - Expect: both alerts show on their Vanguard spots (the talking head at the top left, the loss of control band just above the screen's centre), before Edit Mode and again after it closes; no "Interface action failed because of an AddOn" message names Vanguard while Edit Mode is open or in the next fight; `/vg errors` is empty; the taint log has no line naming Vanguard and `editModeSystemAnchorDirty`. [Needs in-game check: that the client's SetPointBase exists on the two frames once loaded, so Vanguard's placing never runs Edit Mode's SetPoint override, and that the taint log stays clear of it.]
 - If it fails, paste: the game's message word for word, the taint log lines naming Vanguard, and `/vg errors`.
+
 ### 33.107 Craft cooldowns noted on opening a profession
 
 - Do: turn on `/vg` → Town and gear → Craft queue. On a character with a profession recipe on a cooldown (a transmute, a cloth speciality, a daily craft), open that profession window, then type `/vg craft cd`. Run `/vg errors`.
@@ -5367,7 +5372,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.485 The Vanguard button stays first in the game menu
 
-- Do: log in and press Escape. Close the menu and open it again.
+- Do: log in and press Escape. Close the menu and open it again. [Client: Forever and Retail.]
 - Expect: the Vanguard button is at the top of the game menu, above Options, with the usual gap under it, both times, and chat shows no "Interface action failed" message. [Needs in-game check: the button's place after login without the addon refreshing the menu's layout itself.]
 - If it fails, paste: a screenshot of the menu, and `/vg errors`.
 
@@ -5796,13 +5801,14 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: open the mail, the social window (friends cards with a presence dot), the guild window and your bags (with a currency tracked under the money line), wait for a talking head, and with `/vg` > Chat > Movers for floating windows (reload) on and reloaded pull a chat tab out of the dock; keep `/vg errors` in mind throughout. [Client: Forever and Retail.]
 - Expect: each window's close button sits in its corner, the friends cards' dots sit beside the names, the bag's search box and Sort fit the search row and the money line sits the padding inside the bag, the toasts stack clear of the talking head, the pulled-out chat window gets a handle under `/vg unlock`; `/vg errors` has no `attempt to compare a secret value` or `attempt to use a secret value` line from `Windows.lua`, `WindowsSocial.lua`, `GameAlerts.lua`, `Bags.lua`, `BagSections.lua` or `ChatWindows.lua`.
 - If it fails, paste: a screenshot of the window that looks wrong, and `/vg errors`.
+
 ### 33.664a Does the game run OnHide when a shown frame is moved under a hidden parent (H44-30-102)
 
 - Do: `/run local p=CreateFrame("Frame") p:Hide() local f=CreateFrame("Frame",nil,UIParent) f:SetScript("OnHide",function() print("hide") end) f:SetScript("OnShow",function() print("show") end) f:SetParent(p) f:SetParent(UIParent)` [Client: Forever and Retail.]
 - Expect: a fact for the test harness, no right answer: chat prints `hide` at the first SetParent and `show` at the second, or prints nothing.
 - If it fails, paste: the chat lines (or that nothing printed), and the client.
 
-Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
+Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. When it lands, its step gets the next free section-33 id.
 
 ### 33.456 Guided setup: the recommended settings on a first run
 
@@ -6308,7 +6314,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 ### 34.16 Own-frame modules switch off and on without a reload (A4-2b)
 
-- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them)), Vanguard meter (open a line's spell panel first; target of target moves back to its wide spot), Roll tracker (after a `/roll`; `/vg rolls` still lists it)), Instance prep (with `/vg prep` and the wanted-amounts window open)), Quest arrow (with a quest watched; the tracker's accent line goes with it)), Quest spots on the minimap (with a quest on the map you are on), Cooldown gaps (and its Gaps row and Cooldown Manager's cooldowns rows under Cooldowns: no reload tag, the row appears and goes at once)), Chat watch (say a watched phrase in a channel you tick, then switch it off and say it again: no sound, no toast).
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them), Vanguard meter (open a line's spell panel first; target of target moves back to its wide spot), Roll tracker (after a `/roll`; `/vg rolls` still lists it), Instance prep (with `/vg prep` and the wanted-amounts window open), Quest arrow (with a quest watched; the tracker's accent line goes with it), Quest spots on the minimap (with a quest on the map you are on), Cooldown gaps (and its Gaps row and Cooldown Manager's cooldowns rows under Cooldowns: no reload tag, the row appears and goes at once), Chat watch (say a watched phrase in a channel you tick, then switch it off and say it again: no sound, no toast).
 - Expect: each goes at once, with nothing of its own left on screen (no panel, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. A switch made in a fight applies when the fight ends. [Needs in-game check.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
