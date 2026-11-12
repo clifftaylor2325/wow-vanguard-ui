@@ -92,13 +92,26 @@ it("click presets: damage or tanking keeps Target and the menu, with a class's h
   expect(picked(warrior, "Damage or tank"), "Target, the menu, Focus and Assist").toEqual({ BUTTON1: "target", BUTTON2: "menu", ...SHARED });
 });
 
+// Puts a picked layout on through its guide's button when the pick showed the guide (the harness client's game click
+// profile has Target and the menu on plain Left and Right only, so Click to heal shows it), saying Replace if asked.
+function throughGuide(addon) {
+  for (const button of ["Put heals on Left and Right", "Put the layout on"]) {
+    if (addon.texts(button).length > 0) addon.eval(`__click(${JSON.stringify(button)})`);
+  }
+  if (addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()")) addon.click("Vanguard_Question.confirm");
+}
+
 it("click presets: every class's layouts bind only spells the character knows, none twice", () => {
   for (const cls of ["PRIEST", "PALADIN", "DRUID", "SHAMAN", "MAGE", "WARLOCK", "WARRIOR", "ROGUE", "HUNTER"]) {
     const addon = knowsAll(cls);
-    for (const label of choices(addon)) {
-      const spells = Object.values(picked(addon, label)).filter((v) => v.startsWith("TEST-ONLY"));
+    const ids = addon.eval(`local out = { "" } for _, c in ipairs(${CP}.Choices()) do out[#out + 1] = c[1] end return out`).slice(1);
+    choices(addon).forEach((label, i) => {
+      picked(addon, label);
+      throughGuide(addon);
+      expect(addon.eval(`return ${CP}.Applied().id`), `${cls} ${label}: the layout checked is the one picked (H46-19-57)`).toBe(ids[i]);
+      const spells = Object.values(shortBindings(addon)).filter((v) => v.startsWith("TEST-ONLY"));
       expect(new Set(spells).size, `${cls} ${label}: no spell twice`).toBe(spells.length);
-    }
+    });
   }
   const unknown = knowsAll("PRIEST");
   unknown.eval("__wfgWorld.units.player.class = 'TEST-ONLY'");
