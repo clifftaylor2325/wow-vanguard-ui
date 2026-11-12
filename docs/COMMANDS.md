@@ -118,7 +118,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg modules       the list of modules; /vg enable|disable <module> (a part that can't switch at once says /reload to apply)
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
-/vg profile [name]              switch (any case; a name that matches nothing asks before creating one); profile new|copy|delete <name> (copy and delete ask first), profile reset (asks and backs up first); a profile's exact name wins over these words
+/vg profile [name]              switch (any case; a name that matches nothing asks before creating one); profile new|copy|delete <name> (copy and delete ask first), profile reset (asks and backs up first); a profile's exact name wins over these words; /vg spec, profile copy and profile delete match a name in any case too
 /vg export [part ...|pick] | import   profile strings: the whole profile, or only some parts (layout, situations, global, a module's name); pick opens a switch for each part
 /vg spec [profile|off]          use a profile whenever you're in this specialization
 /vg binds                       this spec's click-casting and hover-key bindings

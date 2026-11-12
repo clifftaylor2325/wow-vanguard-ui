@@ -469,6 +469,7 @@ end
 
 -- /vg profile copy <from>: after asking, replaces the settings of the profile used after the reload.
 local function copyProfile(name)
+  name = findProfile(name) or name
   local into = ns.LoadingProfileName()
   if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
   local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
@@ -482,6 +483,7 @@ end
 
 -- /vg profile delete <name>: after asking, deletes a profile that is neither in use, staged nor loaded next.
 local function deleteProfile(name)
+  name = findProfile(name) or name
   local refused = L["Can't delete that one (missing, or in use)."]
   local inUse = name == ns.ProfileName() or name == ns.SelectedProfileName() or name == ns.LoadingProfileName()
   if not VanguardDB.profiles[name] or inUse then return chat(refused) end
@@ -608,10 +610,11 @@ local function specCommand(rest)
   if not spec then return chat(L["No specialization on this character yet."]) end
   if rest == "" then return chat(ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"])) end
   local off = rest:lower() == "off" and (rest == "off" or not VanguardDB.profiles[rest])
-  if not off and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
-  ns.SetSpecProfile(not off and rest or nil, spec)
-  chat(off and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
-  if not off then ns.OfferSpecReload(rest) end
+  local name = not off and findProfile(rest)
+  if not off and not name then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
+  ns.SetSpecProfile(name or nil, spec)
+  chat(off and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, name))
+  if name then ns.OfferSpecReload(name) end
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).
