@@ -202,6 +202,13 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
   fallback.eval('__spawn(1, "raid1") __spawn(2, "raid2")');
   const heard = unitEvents(fallback, "UNIT_AURA");
   expect([heard.plain, /raid1/.test(heard.subs) && /raid2/.test(heard.subs)], "A1-6: on the fallback too nothing takes every unit's UNIT_AURA; each tile hears its own unit's").toEqual([0, true]);
+  // H45-15-52: switched off, no tile hears its unit's UNIT_AURA (RF.PauseTileUnit); back on, each hears it once again.
+  const tiles = () => (unitEvents(fallback, "UNIT_AURA").subs.match(/raid\d/g) || []).length;
+  const on = tiles();
+  fallback.eval('ns.SetModuleEnabled("RaidAuras", false)');
+  const off = tiles();
+  fallback.eval('ns.SetModuleEnabled("RaidAuras", true)');
+  expect({ off, again: tiles() }, "off: none; on again: as many as before").toEqual({ off: 0, again: on });
 });
 
 it("H45-15-4 a target or raid aura count that is not a whole number is rounded, as the client's aura container takes only whole ones", () => {
