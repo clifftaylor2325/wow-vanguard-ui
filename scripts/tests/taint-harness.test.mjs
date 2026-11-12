@@ -123,6 +123,27 @@ it("world.holdAccess holds a frame and what hangs from it back from addon code w
   expect(tryAddon("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "released: open again").toEqual([true, true]);
 });
 
+// Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86 (both clients): a new frame gets the container's
+// access restriction right after its (possibly tainted) initializeFrame runs; Blizzard_AuraContainerUtil.lua:403-419
+// applies it at once once logged in.
+it("an aura button a held container makes is held once the addon's initializeFrame has dressed it, and released with the container", () => {
+  const addon = createAddon();
+  asAddon(addon, `TestInit = function(b) b:SetSize(10, 10) b.TestFace = b:CreateTexture() end`);
+  addon.eval(`TestBox = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    TestBox:AddAuraGroup("g", "HELPFUL", { maxFrameCount = 40, layout = {}, initializeFrame = TestInit })
+    TestBox:SetUnit("player") TestBox:SetEnabled(true) __wfgWorld.holdAccess(TestBox)
+    for i = 1, 15 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 700 + i }) end
+    TestBox:UpdateAllAuras() TestLate = TestBox.__groups[1].buttons[15]`);
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(addon.eval("return { #TestBox.__groups[1].buttons, TestLate:GetWidth(), #__wfgStub.violations }"), "a second batch, dressed by the addon without a refusal").toEqual([20, 10, 0]);
+  expect(tryAddon("return TestLate:CanBeAccessedInContext()"), "the new button is held").toEqual([true, false]);
+  expect(tryAddon("TestLate:SetAlpha(0.5)")[0], "and refuses the addon").toBe(false);
+  expect(tryAddon("TestLate.TestFace:SetAlpha(0.5)")[0], "so does the texture initializeFrame put on it").toBe(false);
+  addon.eval("__wfgWorld.releaseAccess(TestBox)");
+  expect(tryAddon("TestLate:SetAlpha(0.5) return TestLate:CanBeAccessedInContext()"), "released with the container").toEqual([true, true]);
+});
+
 it("a secret answers type() as the value it hides, to the addon and to test code; the harness reads the raw type", () => {
   const addon = createAddon();
   expect(addon.eval(`local s, t = __wfgWorld.secret(5), __wfgWorld.secret("TEST-ONLY")

@@ -669,6 +669,14 @@ function world.holdAccess(frame)
   end
 end
 
+-- A button an aura container makes while it is held is held too, once its initializeFrame has run: the client applies
+-- the container's access restriction to each new frame right after the post-creation callback
+-- (Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86, Blizzard_AuraContainerUtil.lua:403-419,
+-- both clients).
+function stub.auraButtonMade(container, button)
+  if held[container] then world.holdAccess(button) end
+end
+
 -- Lets a held frame and everything under it go again (aura information is plain again).
 function world.releaseAccess(frame)
   for w in pairs(held) do

@@ -1051,7 +1051,8 @@ function methods:SetFlowLayoutGrowthDirection(h, v) self.__flowGrow = { h, v } e
 function methods:SetFlowLayoutMaximumLineSize(size) self.__flowLine = size end
 
 -- Makes count more buttons for a group, each dressed by initializeFrame as it is made, as the client's frame provider
--- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame).
+-- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame), then handed to stub.auraButtonMade (wow-taint.lua puts
+-- the container's access hold on it there, after initializeFrame, as the client's :82-86 does).
 local function addAuraButtons(c, g, count)
   for _ = 1, count do
     local b = newWidget("AuraButton", nil, c)
@@ -1061,6 +1062,7 @@ local function addAuraButtons(c, g, count)
     b.__forbiddenScripts = { OnEnter = true, OnLeave = true }
     g.buttons[#g.buttons + 1] = b
     if g.opts.initializeFrame then g.opts.initializeFrame(b) end
+    if stub.auraButtonMade then stub.auraButtonMade(c, b) end
   end
 end
 
