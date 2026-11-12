@@ -783,3 +783,37 @@ it("H44-10-1 Apply puts the top rank over a lower rank on the key's own button, 
   ka(addon, "KA.PutBackAll()");
   expect(slots(addon, [1])).toEqual([116]);
 });
+
+// A spellbook item's subName "May be empty ... if spell's data isn't loaded yet" (forever
+// Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua:1020), so a rank can be unknown to the catalog.
+function frostbolts(withRanks) {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, withRanks ? { name: "Frostbolt", rank } : { name: "Frostbolt" });
+  addon.eval("__wfgWorld.setAction(2, { id = 837 })");
+  return addon;
+}
+
+it("H45-6-1 Apply keeps the rank on the key's button when the spellbook lists no rank for the spells", () => {
+  const addon = frostbolts(false);
+  addon.eval('SetBinding("2", nil) SaveBindings(1)');
+  const entries = `{ { key = "2", spell = 116, slot = 2 } }`;
+  expect(ka(addon, `local r = KA.Plan(${entries}) return { r[1].kind, r[1].over }`), "the key goes to the button as it is").toEqual(["bind"]);
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect([slots(addon, [2]), keys(addon, ["2"])]).toEqual([[837], ["ACTIONBUTTON2"]]);
+});
+
+it("H45-6-1 Update keeps the rank Vanguard placed when the spellbook lists no ranks", () => {
+  const addon = frostbolts(false);
+  addon.eval("VanguardCharDB.slotRestore = { [2] = { before = false, layers = { { key = '2', after = 837, set = 1 } } } }");
+  ka(addon, "KA.Update({ { key = '2', spell = 116, slot = 2 } }, {})");
+  expect(slots(addon, [2])).toEqual([837]);
+});
+
+it("H45-6-1 Apply still puts a known higher rank over a lower one on the key's button", () => {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.eval("__wfgWorld.setAction(1, { id = 116 }) __wfgWorld.setAction(62, { id = 205 })");
+  const entries = `{ { key = "1", spell = 837, slot = 1 }, { key = "F", spell = 837, slot = 61 } }`;
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect(slots(addon, [1])).toEqual([837]);
+});
