@@ -149,9 +149,9 @@ it("chat history: /vg history says what is kept, clears it, and turns it on and 
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage("one") ChatFrame2:AddMessage("two")`);
   addon.slash("history");
-  expect(chatHas(addon, /Chat history is on: up to 200 lines per window for 3 days; whispers are not kept\./) && chatHas(addon, /2 lines saved in 2 windows\./), "status").toBe(true);
+  expect(chatHas(addon, /Chat history is on: up to 200 lines per window for 3 days; whispers are not kept\./) && chatHas(addon, /Saved chat lines: 2, in windows: 2\./), "status").toBe(true);
   addon.slash("history clear");
-  expect(question(addon), "clear asks first, naming what goes").toEqual([true, "Forget the 2 saved chat lines in 2 windows? This can't be undone."]);
+  expect(question(addon), "clear asks first, naming what goes").toEqual([true, "Forget all saved chat lines (lines: 2, windows: 2)? This can't be undone."]);
   addon.click("Vanguard_Question.no");
   expect(Object.keys(saved(addon)).length, "No keeps it").toBe(2);
   addon.slash("history clear");
@@ -204,7 +204,7 @@ it("chat history: a line printed at login, before the world is entered, is not r
   next.fire("PLAYER_ENTERING_WORLD", true, false);
   const shown = lines(next);
   expect(shown.filter((l) => l === "SomeAddon loaded").length, "shown once").toBe(1);
-  expect(shown.some((l) => /1 lines, until Mon 1790000000/.test(l)), "the block counts and dates only the old line").toBe(true);
+  expect(shown.some((l) => /1 line, until Mon 1790000000/.test(l)), "the block counts and dates only the old line").toBe(true);
   expect(saved(next)[0], "kept after the restored line, for the next session").toEqual(["1790000000|ffffff|old session line", "1790003600|ffffff|SomeAddon loaded"]);
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });

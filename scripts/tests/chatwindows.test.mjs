@@ -324,9 +324,9 @@ it("chat find: the Find button opens the find box with the word field at the top
   expect(addon.eval(FIND).slice(1), "Enter finds: the title says how many, the field keeps the word, and the lines show as words with each match lit (case does not matter)")
     .toEqual(['Chat: 2 lines with "sword"', "  SWORD ", true, `[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`]);
   addon.eval("Vanguard_FindDialog.query:SetText('WORLD') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
-  expect(addon.eval(FIND).slice(1, 2).concat(addon.eval(FIND).slice(4)), "a second search from the same box, by the Find button").toEqual(['Chat: 1 lines with "world"', `[General] Hello Sword ${lit(addon, "world")}`]);
+  expect(addon.eval(FIND).slice(1, 2).concat(addon.eval(FIND).slice(4)), "a second search from the same box, by the Find button").toEqual(['Chat: 1 line with "world"', `[General] Hello Sword ${lit(addon, "world")}`]);
   addon.eval("Vanguard_FindDialog.query:SetText('  ') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
-  expect([addon.eval(FIND)[1], chatHas(addon, /Type something to find\./)], "an empty word says so in chat and leaves the last lines").toEqual(['Chat: 1 lines with "world"', true]);
+  expect([addon.eval(FIND)[1], chatHas(addon, /Type something to find\./)], "an empty word says so in chat and leaves the last lines").toEqual(['Chat: 1 line with "world"', true]);
   addon.eval("local b = Vanguard_FindDialog.close b.__scripts.OnClick(b)");
   expect(addon.eval(FIND)[0], "Close shuts it").toBe(false);
   addon.eval("ns.GetModule('ChatWindows').AskFind()");
@@ -356,7 +356,7 @@ it("chat find: saved history that no window shows is searched too, and only the 
   const sword = lit(addon, "Sword");
   expect(addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))"), "the old saved line first, the duplicate of a showing line once").toBe(`old ${sword} talk\n[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`);
   addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1");
-  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
+  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 line with "sword"');
 });
 
 it("H45-29-2 chat find: saved lines are listed only while Chat history is on and its module runs", () => {
@@ -380,7 +380,7 @@ it("chat find: a saved channel line that a window shows shortened is listed once
   const find = (addon) => addon.eval("return { ns.GetModule('ChatWindows').Find('wts') }");
   const lines = '__lines1 = { "|Hchannel:CHANNEL:2|h[2]|h Bob: wts sword" } ChatFrame1.GetNumMessages = function() return 1 end ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end';
   const on = loggedIn(ENV + lines, { savedVariables: saved });
-  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 lines with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
+  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 line with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
   const off = loggedIn(ENV + lines, { savedVariables: saved });
   off.eval("ns.SetModuleEnabled('ChatExtras', false)");
   expect(find(off)[0], "with the module off nothing is rewritten, so both lines are listed").toBe('Chat: 2 lines with "wts"');
@@ -417,7 +417,7 @@ const DOCKED_ENV = `
 `;
 it("chat windows: a docked tab behind the selected one is still a window: Find reads the hidden docked tab's lines", () => {
   const addon = loggedIn(DOCKED_ENV);
-  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))")).toBe('Chat: 1 lines with "sword"');
+  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))")).toBe('Chat: 1 line with "sword"');
 });
 
 it("chat windows: a docked tab behind the selected one is still a window: the Tab choice offers every docked tab, and Lock locks them all", () => {
@@ -464,6 +464,6 @@ it("chat windows: Find lists a restored player line once, though the window show
   next.eval(history);
   next.login();
   const found = next.eval("return { ns.GetModule('ChatWindows').Find('sword') }");
-  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 lines with "sword"');
+  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 line with "sword"');
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });

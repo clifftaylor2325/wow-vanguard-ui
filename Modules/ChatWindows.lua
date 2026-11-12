@@ -405,7 +405,8 @@ function CW.Find(query)
   local CX = ns.GetModule("ChatExtras")
   local patterns = { CX.Escape(needle) }
   for i, line in ipairs(found) do found[i] = CX.Marked(line, patterns) end
-  return ns.Format(L['Chat: {count} lines with "{word}"'], { count = #found, word = needle }), table.concat(found, "\n")
+  local title = #found == 1 and L['Chat: 1 line with "{word}"'] or L['Chat: {count} lines with "{word}"']
+  return ns.Format(title, { count = #found, word = needle }), table.concat(found, "\n")
 end
 
 -- Opens the find box (Core/Dialog.lua): the word goes in the field at its top, the lines found under it.

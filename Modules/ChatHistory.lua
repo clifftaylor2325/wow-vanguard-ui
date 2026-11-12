@@ -191,7 +191,8 @@ local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
   if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" or #list == 0 or CHH.Skipped(index) then return end
   local newest = CHH.Unpack(list[#list])
-  frame:AddMessage(rule(ns.Format(L["Chat from your last session ({count} lines, until {time})"], { count = #list, time = when(newest) })))
+  local words = #list == 1 and L["Chat from your last session (1 line, until {time})"] or L["Chat from your last session ({count} lines, until {time})"]
+  frame:AddMessage(rule(ns.Format(words, { count = #list, time = when(newest) })))
   for _, line in ipairs(list) do
     local _, r, g, b, text = CHH.Unpack(line)
     frame:AddMessage(CHH.Unnumbered(text), r, g, b)
@@ -227,7 +228,7 @@ end
 -- /vg history clear and Clear saved chat: asks first (a "danger" question: it can't be undone), then forgets it all.
 function CHH.AskClear()
   local lines, windows = CHH.Counts()
-  local question = ns.Format(L["Forget the {lines} saved chat lines in {windows} windows? This can't be undone."], { lines = lines, windows = windows })
+  local question = ns.Format(L["Forget all saved chat lines (lines: {lines}, windows: {windows})? This can't be undone."], { lines = lines, windows = windows })
   ns.Ask(question, L["Clear"], CHH.Clear, nil, "danger")
 end
 
@@ -247,7 +248,7 @@ local STATUS = {
 local function status()
   local s, lines, windows = ns.Settings("ChatHistory", CHH.defaults), CHH.Counts()
   ns.Chat(ns.Format(STATUS[s.on == true][s.whispers == true], { lines = s.lines, days = s.days }))
-  ns.Chat(ns.Format(L["{lines} lines saved in {windows} windows."], { lines = lines, windows = windows }))
+  ns.Chat(ns.Format(L["Saved chat lines: {lines}, in windows: {windows}."], { lines = lines, windows = windows }))
 end
 
 -- /vg history [on | off | whispers | nowhispers | clear].
