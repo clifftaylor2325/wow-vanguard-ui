@@ -6424,6 +6424,24 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the roster shows the same number of lines each time, the last one reading "+N more".
 - If it fails, paste: the line count and the "+N more" line after each change.
 
+### 33.734 A cut footer reload notice keeps clear of the version line (H45-40-301; WoW Forever and Retail)
+
+- Do: with the client in German and Text size at 130%, switch Unit frames off, then open the options window on General. [Client: Forever and Retail.]
+- Expect: the footer's reload notice is drawn smaller and, if still cut, ends in "…", with a clear gap between the version line's "/vg" and its first letter.
+- If it fails, paste: a screenshot of the footer.
+
+### 33.735 A popup keeps its panel in report screenshot mode (H45-40-401; WoW Forever and Retail)
+
+- Do: with Vanguard's game windows on, make a popup show (drop an item on the ground for the destroy question), then right-click a player name, pick Report and press the screenshot button. [Client: Forever and Retail.]
+- Expect: the popup, if still shown over the screenshot view, keeps its flat Vanguard panel behind its text and buttons.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.736 A HUD look picked in a fight waits for the fight to end (H45-40-501; WoW Forever and Retail)
+
+- Do: with a portrait on and the Hairline HUD look, start a fight and switch General > HUD > HUD look to Shield. [Client: Forever and Retail.]
+- Expect: the row shows Shield at once, the frames keep Hairline until the fight ends, then the plate and the bars change together.
+- If it fails, paste: /vg errors.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
