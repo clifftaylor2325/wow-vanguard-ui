@@ -243,8 +243,14 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return ns.Theme.RowParts(${f}.ScrollBox.skill).rail:IsShown()`), "the game fills the row with another skill: the look goes").toBe(false);
   addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitCategoryButton(b.head)`);
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "the game puts its gold label font back as it fills the row: the section look returns").toBe(true);
-  addon.eval(`local b = ${f}.ScrollBox b.head.Label:SetFont("TEST-ONLY-GAME", 14, "") __wfgStub.runScript(b.head, "OnEnter")`);
+  // The game's hover handlers (forever and live Blizzard_TrainerUI.lua:188-212) are SetScript'd on every fill and change the
+  // label only through SetFontObject; whether a SetScript drops a HookScript is game-only, so the skin follows SetFontObject.
+  addon.eval(`local b = ${f}.ScrollBox local h = b.head h:SetScript("OnEnter", function() h.Label:SetFont("TEST-ONLY-GAME-HI", 14, "") h.Label:SetFontObject("TEST-ONLY-HI") end)
+    h:SetScript("OnLeave", function() h.Label:SetFont("TEST-ONLY-GAME", 14, "") h.Label:SetFontObject("TEST-ONLY-LO") end)`);
+  addon.eval(`__wfgStub.runScript(${f}.ScrollBox.head, "OnEnter")`);
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when the mouse enters the row").toBe(true);
+  addon.eval(`__wfgStub.runScript(${f}.ScrollBox.head, "OnLeave")`);
+  expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when it leaves").toBe(true);
   addon.eval(`${f}:Hide() ${f}:Show()`);
   expect(windowState(addon, f).painted, "a second show paints nothing more").toBe(first.painted);
 });
