@@ -135,19 +135,47 @@ function watched(call, touch) {
   };
 }
 
-// Runs `body` with fs.rmSync and fs.renameSync wrapped, so `racer` (a second run taking the dead slot)
-// runs just before the first remove or rename of `file`.
+// Runs `body` with fs.rmSync, fs.renameSync and fs.linkSync wrapped, so `racer` (a second run taking the dead
+// slot) runs just before the first remove, rename or claim (a link from it) of `file`.
 function racing(file, racer, body) {
-  const real = { rm: fs.rmSync, rename: fs.renameSync };
+  const real = { rm: fs.rmSync, rename: fs.renameSync, link: fs.linkSync };
   const touch = firstTouch(file, racer);
   fs.rmSync = watched(real.rm, touch);
   fs.renameSync = watched(real.rename, touch);
+  fs.linkSync = watched(real.link, touch);
   try {
     return body();
   } finally {
-    fs.rmSync = real.rm;
-    fs.renameSync = real.rename;
+    Object.assign(fs, { rmSync: real.rm, renameSync: real.rename, linkSync: real.link });
   }
+}
+
+// An fs call that, once it returns, lets a third run (pid 13) try to create the slot file; `slipped` notes each time it could.
+function probed(call, file, slipped) {
+  let inside = false;
+  // The wrapped call, then the third run's try (not while that try's own calls run).
+  return (...args) => {
+    const out = call(...args);
+    if (inside) return out;
+    inside = true;
+    if (createLock(file, run(13))) slipped.push(13);
+    inside = false;
+    return out;
+  };
+}
+
+// Runs `body` with a third run trying to create `file` after every fs.rmSync, fs.renameSync and fs.linkSync;
+// returns the times it got the slot.
+function thirdRun(file, body) {
+  const real = { rm: fs.rmSync, rename: fs.renameSync, link: fs.linkSync };
+  const slipped = [];
+  Object.assign(fs, { rmSync: probed(real.rm, file, slipped), renameSync: probed(real.rename, file, slipped), linkSync: probed(real.link, file, slipped) });
+  try {
+    body();
+  } finally {
+    Object.assign(fs, { rmSync: real.rm, renameSync: real.rename, linkSync: real.link });
+  }
+  return slipped;
 }
 
 it("two runs taking over the same dead slot at once: one gets it, the other finds it busy and the live lock stays", () => {
@@ -159,6 +187,17 @@ it("two runs taking over the same dead slot at once: one gets it, the other find
   expect(first).toEqual(run(12));
   expect(readLock(file).info.pid).toBe(12);
   expect(fs.readdirSync(path.dirname(file))).toEqual(["slot1.lock"]);
+});
+
+it("H44-G3-7 the slot file is never missing while two runs race for a dead slot, so a third never shares it with a live run", () => {
+  const file = path.join(folder("takeover-third"), "slot1.lock");
+  fs.writeFileSync(file, lockText(run(10)));
+  // The second run takes the dead slot first, while the first run is between its check and its takeover.
+  const second = () => expect(tryTake(file, run(12), running(13))).toBeNull();
+  const slipped = thirdRun(file, () => racing(file, second, () => tryTake(file, run(11), running(12, 13))));
+  expect(slipped, "the third run never created the slot file").toEqual([]);
+  expect(readLock(file).info.pid, "the second run's live lock stands").toBe(12);
+  expect(fs.readdirSync(path.dirname(file)), "no claim or scratch file left").toEqual(["slot1.lock"]);
 });
 
 it("a lock whose owner is gone but whose Vitest child still runs is busy; one with neither alive is taken over", () => {

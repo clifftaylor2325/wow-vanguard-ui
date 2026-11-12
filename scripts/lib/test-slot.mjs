@@ -9,11 +9,14 @@
 // clone at an older commit still reads the file). A slot is busy while either pid runs, so
 // killing the owner alone does not free it under a live Vitest. It is created whole and in one step (written beside it, then hard
 // linked), so a reader never sees half a file. A file whose pid is no longer running
-// belongs to a run that died (owner and child both), and the next run takes it over by
-// renaming it away, so only one of two racing runs gets it; the waiting line names the
-// file to delete when a pid was reused by something else.
+// belongs to a run that died (owner and child both), and the next run takes it over in
+// place: one claim per dead lock (a hard link named after its text) lets only one of two
+// racing runs in, and the winner renames its own lock over the dead one, so the slot file
+// is never missing and a live lock is never moved. The waiting line names the file to
+// delete when a pid was reused by something else.
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -113,28 +116,40 @@ export function holderAlive(info, alive = pidAlive) {
   return alive(info.pid) || (Number.isInteger(info.child) && alive(info.child));
 }
 
-// Moves a dead lock out of the way and drops it; false when another run got there first. Only one of two
-// racing runs can rename the file. If what was moved is not the dead text (a run took the slot a moment
-// ago), it goes back and this run reports the slot busy.
-function claimDead(file, deadText) {
-  const mine = `${file}.${process.pid}.dead`;
+// The claim file for one dead lock's text: the same name for every run that read that text.
+function claimFile(file, deadText) {
+  return `${file}.${createHash("sha1").update(deadText).digest("hex").slice(0, 16)}.claim`;
+}
+
+// Writes this run's lock over the slot file in one step (written beside it, then renamed over it).
+function replaceLock(file, info) {
+  const scratch = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(scratch, lockText(info), { mode: 0o666 });
+  fs.renameSync(scratch, file);
+  return true;
+}
+
+// Hard links `to` to `from`: false when `to` already exists or `from` is gone.
+function linked(from, to) {
   try {
-    fs.renameSync(file, mine);
+    fs.linkSync(from, to);
+    return true;
   } catch {
     return false;
   }
-  const dead = fs.readFileSync(mine, "utf8") === deadText;
-  if (!dead) restoreLock(mine, file);
-  fs.rmSync(mine, { force: true });
-  return dead;
 }
 
-// Puts a live lock that was moved by mistake back, unless a new one already stands there.
-function restoreLock(mine, file) {
+// Takes over the dead lock whose text was read, in place; false when another run got there first. The claim is a
+// hard link to the slot file, which only one run can make: the winner checks the claim still holds the dead text
+// (a run that took the slot a moment ago has replaced it), then renames its own lock over the slot file. The claim
+// goes only after that, so a run that read the same dead text later finds the new lock, not the dead one.
+function claimDead(file, deadText, info) {
+  const claim = claimFile(file, deadText);
+  if (!linked(file, claim)) return false;
   try {
-    fs.linkSync(mine, file);
-  } catch {
-    // A newer lock was created meanwhile: it wins.
+    return fs.readFileSync(claim, "utf8") === deadText && replaceLock(file, info);
+  } finally {
+    fs.rmSync(claim, { force: true });
   }
 }
 
@@ -143,7 +158,7 @@ export function tryTake(file, info, alive = pidAlive) {
   if (createLock(file, info)) return null;
   const held = readLock(file);
   if (held.info && holderAlive(held.info, alive)) return held.info;
-  if (claimDead(file, held.text) && createLock(file, info)) return null;
+  if (held.text !== null && claimDead(file, held.text, info)) return null;
   return readLock(file).info ?? { pid: 0, started: info.started, cwd: "?", command: "?" };
 }
 
