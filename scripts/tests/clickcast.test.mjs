@@ -604,6 +604,23 @@ it("H45-19-R3 the frame's own click carries the does-nothing note where the game
   expect(tileSays(addon, "RightButton")).toBe("Right click -> Unit menu on Tester");
 });
 
+it("H46-19-52 while the game's click bindings are in use, the test tile says so for a click, a key and the wheel", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("SHIFT-Q", "spell", "Renew", 139) ${CC}.SetUseGame(true) ns.Options.Show("clickcast")`);
+  const resting = "The game's click bindings are in use: these are kept for when you switch back.";
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  const middle = tileSays(addon, "MiddleButton");
+  addon.hover(tile);
+  addon.keys({ shift: true });
+  addon.key(tile, "Q");
+  const key = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.keys({ shift: false });
+  addon.wheel(tile, 1);
+  const wheel = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.hover(null);
+  expect({ middle, key, wheel }).toEqual({ middle: resting, key: resting, wheel: resting });
+});
+
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
 const encoded = (addon, list) => addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = ${list} })`);
 

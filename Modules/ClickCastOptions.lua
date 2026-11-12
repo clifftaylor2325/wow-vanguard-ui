@@ -771,8 +771,10 @@ local function nothingBound(name)
 end
 
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
--- nothing, or that nothing is bound.
+-- nothing, or that nothing is bound; while the game's click bindings are in use, that Vanguard's rest (the frames
+-- carry none of them then: CC.ApplyFrame).
 local function describe(key)
+  if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
   local b = tileBinding(key)
   if not b then return nothingBound(CC.KeyName(key)) end
   local line = ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
