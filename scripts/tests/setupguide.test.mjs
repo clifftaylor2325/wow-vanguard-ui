@@ -413,3 +413,16 @@ it("H46-24-1: Pixel-perfect's larger text survives Use recommended on Comfort", 
   setupClick(addon, "next");
   expect(addon.eval("return ns.Theme.Settings().textScale"), "Pixel-perfect's 130% at 1440p stays").toBe(1.3);
 });
+
+it("H46-24-4: a first run's Next keeps the HUD look the profile already picked; Use recommended sets Shield", () => {
+  for (const look of ["plain", "rimmed"]) {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true, savedVariables: `VanguardDB = { version = 2, profiles = { Default = { theme = { hudLook = "${look}" } } } }` });
+    nexts(addon, 4);
+    expect(addon.eval("return ns.Theme.Settings().hudLook"), `${look} stays through Next`).toBe(look);
+  }
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true, savedVariables: 'VanguardDB = { version = 2, profiles = { Default = { theme = { hudLook = "rimmed" } } } }' });
+  nexts(addon, 3);
+  useRecommended(addon, "comfort");
+  setupClick(addon, "next");
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "Use recommended sets Shield").toBe("shield");
+});

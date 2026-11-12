@@ -172,10 +172,11 @@ local function recommended(spec)
   return spec.recommend
 end
 
--- Where a row's pick starts: on a first run, on for Vanguard's own rows it recommends on; else what is set now (so
--- a row the player turned on before a first run ends isn't switched off for them).
+-- Where a row's pick starts: on a first run, on for Vanguard's own plain switches it recommends on; else what is
+-- set now (so a row the player turned on before a first run ends isn't switched off for them, and the HUD look row,
+-- a choice of looks, starts on the look the profile has: Next never replaces a look the player picked).
 local function startPick(spec)
-  if firstRun and not spec.game and recommended(spec) == true then return true end
+  if firstRun and not spec.game and spec.on == nil and recommended(spec) == true then return true end
   return isOn(spec)
 end
 

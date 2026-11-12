@@ -53,7 +53,7 @@ Each row shows its caption, with `· recommended` after it while Vanguard recomm
 | Colour vision: Safer colours | Off | Off | A need, not a taste; offered, never pushed |
 | Calm HUD out of combat | Off | Off | Some players love it, many miss their bars; offered |
 | Reduce motion | Off | Off | Offered here so players who need it find it |
-| Shield HUD look | On (Shield) | On | The signature look; the row turns it back on for a profile that kept Plain, or off for one that prefers the flat frames |
+| Shield HUD look | On (Shield) | On | The signature look; a first run leaves a look the profile already picked (Plain, Rimmed, Hairline or Tabs), Use recommended sets Shield, and the row switches it off for one that prefers the flat frames |
 
 ### Step 5, Game settings (the game's own; Vanguard records the old value so turning it back puts yours back)
 
