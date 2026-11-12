@@ -500,6 +500,17 @@ it("chat filter words: Russian, French, Spanish, Italian, Portuguese, Korean and
   }
 });
 
+it("chat filter words: a Russian or Chinese pick-up raid call is not guild recruiting, a guild line still is", () => {
+  const lines = {
+    ruRU: ["Набор в рейд Огненные Недра, нужны хилы и танк", "Гильдия TEST-ONLY: набор, рейды по выходным"],
+    zhCN: ["熔火之心 团队招募 治疗 坦克", "TEST-ONLY 公会招募 休闲"],
+    zhTW: ["熔火之心 團隊招募 治療 坦克", "TEST-ONLY 公會招募 休閒"],
+  };
+  for (const [locale, [pickup, guild]] of Object.entries(lines)) {
+    expect([deliver(filteringIn(locale), pickup, "Raider"), deliver(filteringIn(locale), guild, "Recruiter")], locale).toEqual([false, true]);
+  }
+});
+
 it("chat filter words: an enGB client uses the English words", () => {
   expect(deliver(filteringIn("enGB"), GOLD, "Goldy"), "gold selling").toBe(true);
 });
