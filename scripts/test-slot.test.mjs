@@ -279,7 +279,13 @@ it("the waiting line is one line naming each holder's pid, time, folder and comm
   expect(line).toContain("waiting for a free slot, 2 of 2 busy");
   expect(line).toContain("pid 10 for 12m04s in /work/clone (vitest run --project lua)");
   expect(line).toContain("pid 11 for 11m04s");
-  expect(line).toContain("delete /s/slot1.lock or /s/slot2.lock");
+  expect(line).toContain("If a pid is not a test run any more, delete /s/slot1.lock or /s/slot2.lock");
+});
+
+it("H45-2-54 the waiting line names a holder's Vitest child beside its owner, and asks to delete only when neither runs", () => {
+  const line = waitingLine([{ file: "/s/slot1.lock", info: { ...run(999992, 0), child: 4242 } }], 60_000);
+  expect(line).toContain("pid 999992, Vitest pid 4242 for 1m00s in /work/clone");
+  expect(line).toContain("If neither pid is a test run any more, delete /s/slot1.lock.");
 });
 
 it("a run waits while the slot is busy, prints one line, and takes the slot when its holder gives it back", async () => {

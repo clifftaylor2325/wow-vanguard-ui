@@ -76,11 +76,18 @@ export function runInfo(args, cwd = process.cwd(), now = Date.now()) {
   return { pid: process.pid, started: now, cwd, command: `vitest run ${args.join(" ")}`.trim() };
 }
 
+// A holder's pids as the waiting line names them: the owner's, and its Vitest child's when the lock records one
+// (a slot stays busy while either runs, so both must be gone before its file is deleted).
+function holderPids(info) {
+  return Number.isInteger(info.child) ? `pid ${info.pid}, Vitest pid ${info.child}` : `pid ${info.pid}`;
+}
+
 // One line saying what a run waits for: every slot, who holds it and for how long.
 export function waitingLine(holders, now) {
-  const who = holders.map(({ info }) => `pid ${info.pid} for ${clock((now - info.started) / 1000)} in ${info.cwd} (${info.command})`);
+  const who = holders.map(({ info }) => `${holderPids(info)} for ${clock((now - info.started) / 1000)} in ${info.cwd} (${info.command})`);
   const files = holders.map(({ file }) => file).join(" or ");
-  return `test-slot: waiting for a free slot, ${holders.length} of ${holders.length} busy: ${who.join("; ")}. If a pid is not a test run any more, delete ${files}.`;
+  const hint = holders.some(({ info }) => Number.isInteger(info.child)) ? "If neither pid is a test run any more" : "If a pid is not a test run any more";
+  return `test-slot: waiting for a free slot, ${holders.length} of ${holders.length} busy: ${who.join("; ")}. ${hint}, delete ${files}.`;
 }
 
 // Writes the file whole, or not at all: false when it already exists.
