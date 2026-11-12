@@ -141,10 +141,10 @@ local function moreShown()
   return usesMoreMods()
 end
 
--- What the page's built rows depend on, as a short text that changes when they would: the notice, the modifier
--- columns, and the starter layout's rows (CP.Signature).
+-- What the page's built rows depend on, as a short text that changes when they would: the list shown (a talent group
+-- or spec switch), the notice, the modifier columns, and the starter layout's rows (CP.Signature).
 local function pageSignature()
-  return table.concat({ noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
+  return table.concat({ tostring(CC.CurrentKey()), noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
 end
 
 -- Re-reads every row on the page after a binding changed; a page built with another signature than the one that
