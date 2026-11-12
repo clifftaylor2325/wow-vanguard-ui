@@ -100,6 +100,21 @@ it("i18n: no locale gives another text the translation of a caption the options 
   }
 });
 
+it("i18n: the hint after an unknown /vg situation keeps every situation word as typed in every locale (Modules/Situations.lua refuses a translated word)", () => {
+  const keys = [
+    "Situations: solo, party, raid, pvp, instance or resting.",
+    "Situations: solo, party, raid, pvp, instance, mythicplus, delve or resting.",
+  ];
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    for (const key of keys) {
+      const words = key.slice(key.indexOf(":") + 1).replace(/\.$/, "").split(/, | or /);
+      const missing = words.filter((word) => !entries.get(key).includes(word.trim()));
+      expect(missing, `${locale}: "${key}" must hold the words to type`).toEqual([]);
+    }
+  }
+});
+
 it("a translation holding a carriage return is a problem", () => {
   const keys = new Map([["Bags", "x"]]);
   expect(localeProblems(new Map([["Bags", "Ta\rschen"]]), keys)).toEqual(["control character in translation: Bags"]);
