@@ -6009,6 +6009,126 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The profession bag's free slots sit under their own header after Empty, such as "EMPTY: HERB BAG", not under Empty; with only those left there is no Empty header, the bag bar's free count reads 0, and the game's "bags are full" message matches what the window shows. The free-space tooltip on the info strip names the bag ("Bag 2 (herb bag)").
 - If it fails, paste: A screenshot of the bag window and the bag bar, and `/vg errors`.
 
+### 33.666 Target debuff edges after the aura module comes back (H45-3-1)
+
+- Do: target a mob with your debuff on it, switch Target and focus auras off and then on (`/vg` > Modules), then give the Target frame a Scale of 1.5 (`/vg unlock`, the Scale box on its handle). [Client: Forever and Retail.]
+- Expect: the target's debuff icons keep a crisp one-pixel dark edge at the new scale, not doubled or soft.
+- If it fails, paste: a screenshot of the icons.
+
+### 33.667 Party pets and targets clear the party column under Tabs (H45-3-R1)
+
+- Do: set `/vg` > General > HUD > HUD look to Tabs, give the party frames a Height of 80 and switch on Party pets and targets, then join a party of five (or look at the two handles under `/vg unlock`). Switch the HUD look back to Plain. [Client: Forever and Retail.]
+- Expect: the Party pets and targets column stands wholly above the top party frame's name tab under Tabs, with no overlap, and drops back with Plain; a column you moved yourself stays where you put it.
+- If it fails, paste: a screenshot of the party column and the pets column.
+
+### 33.668 The focus cast bar clears party4 under Tabs (H45-3-R2)
+
+- Do: with the HUD look on Tabs, in a party of five, have your focus cast a spell (a mob or a training dummy you focus). [Client: Forever and Retail.]
+- Expect: the focus's cast bar stands under the fourth party frame without covering its bottom edge, and the focus frame's tab is not covered either.
+- If it fails, paste: a screenshot while the focus casts.
+
+### 33.669 The coin window has the panel texture (H45-4-1)
+
+- Do: set General > Look > Panel texture to Fine grain, then click your money in the bags and pick up part of it so the coin window opens; do it twice. [Client: Forever and Retail.]
+- Expect: the coin window shows the grain like other windows, not a flat fill, each time it opens.
+- If it fails, paste: `/vg frame` on the coin window.
+
+### 33.670 Pixel-perfect buttons keep their size after a reload (H45-5-1)
+
+- Do: on a screen 1300 to 1889 px tall (1440p is one), open `/vg setup`, pick Pixel-perfect on the Screen step and finish, note the shared button size (Action bars, Button size), then `/reload`. [Client: Forever and Retail.]
+- Expect: the buttons are the same size after the reload (about 50 px at 1440p), not smaller, and the Button size slider shows that size; a bar's own size slider still stops at 48.
+- If it fails, paste: `/vg report` and `/vg frame Vanguard_Bar1Button1`.
+
+### 33.671 Groups as and Sort by role apply at once (H45-5-53)
+
+- Do: in a raid group with roles set, out of combat, open `/vg` > Raid frames, change Groups as to Rows, then tick Sort by role (tanks, healers, damage); then make one more change during a fight. [Client: Forever and Retail.]
+- Expect: the real raid frames lay out as rows and then sort tanks, healers, then damage at once, with no reload notice and no "(reload)" in the caption; the change made in the fight shows when it ends.
+- If it fails, paste: `/vg errors` and a screenshot of the raid frames.
+
+### 33.672 Key setup leaves a rank you placed by hand (H45-6-1)
+
+- Do: on a mage with Frostbolt Rank 1 to 3, right after logging in put Rank 3 on button 2 by hand, then open Action bars > Your keys > Set up keys and go to Ready; press Apply. [Client: Forever.]
+- Expect: no "Frostbolt ... in place of ..." line for key 2 unless it puts Rank 3 over a lower rank; after Apply, button 2 still shows Rank 3 in its tooltip.
+- If it fails, paste: the Ready list.
+
+### 33.673 Click casting knows your ranks at login (H45-6-R2)
+
+- Do: right after logging in on a character with a spell of several ranks, open Click casting with a rank picked on one binding. [Client: Forever.]
+- Expect: no "you no longer have that spell rank" mark on a rank you know.
+- If it fails, paste: the `/vg binds` lines.
+
+### 33.674 Apply stops when the key set changed under it (H45-6-101)
+
+- Do: on a character using account keys, open Set up keys to Ready, then open the game's Settings > Keybindings, tick Character Specific Keybindings, close Settings and press Apply. [Client: Forever.]
+- Expect: chat says "Your bars or keys changed since this list was made, so nothing was changed...", no key is bound, and Ready shows again without the "Change keys for" row.
+- If it fails, paste: the chat lines and whether Character Specific Keybindings is still ticked.
+
+### 33.675 Apply stops when the gamepad came on (H45-6-R4)
+
+- Do: with key setup open on Ready, turn on the game's gamepad interface, then press Apply. [Client: Forever; needs a gamepad or the interface style set.]
+- Expect: no key changes; the window goes back to step 1 saying "You play with a gamepad, so Vanguard won't change your keys." with only Close.
+- If it fails, paste: the chat lines and what step 1 shows.
+
+### 33.676 Put everything back after Only this character (H45-6-103)
+
+- Do: on a character using account keys, open Set up keys, keep Change keys for: Only this character and press Apply; then press Put everything back on the Your keys card. [Client: Forever.]
+- Expect: the keys go back, and chat says "This character still uses its own keys. To share your account's keys again, untick Character Specific Keybindings in the game's key bindings."; the game's box stays ticked.
+- If it fails, paste: the chat lines.
+
+### 33.677 Can a character's own keys drift from the list key setup made (H45-6-3, held)
+
+- Do: on character A tick Character Specific Keybindings, bind F to Open All Bags, untick it (accept the popup); on character B (account keys) change any key; back on A, on account keys, open Set up keys, pick Only this character and press Apply. Then tick Character Specific Keybindings and press F. [Client: Forever.]
+- Expect: a fact for the hunt, no right answer: chat names what Apply did, and F either still opens the bags or holds what key setup put there.
+- If it fails, paste: the chat lines and F's binding.
+
+### 33.678 The settings-loss question comes back after Use on the profile in use (H45-7-51)
+
+- Do: on a character whose account file came back older than its own, answer Not now to the settings-loss question, click Use on the profile already in use on the Profiles page, then log out and in again. [Client: Forever.]
+- Expect: the settings-loss question is offered again at the next login, and Restore still brings back the newer settings.
+- If it fails, paste: the General page's settings-loss line and `/vg errors`.
+
+### 33.679 The Filtered tab is translated from the start (H45-8-2)
+
+- Do: on a German or French client, switch Chat > Chat filter on and `/reload` before any spam is caught; then open and close the game's chat settings. [Client: Forever and Retail, German or French.]
+- Expect: the Filtered tab already reads the translated word with its count (for example "Gefiltert (0)"), and still does after the chat settings close.
+- If it fails, paste: the tab's label right after the reload.
+
+### 33.680 Guild News filters stay by the guild window (H45-8-4)
+
+- Do: open the guild window, Guild News, Set filters, then change Interface scale in the game's settings. [Client: Forever and Retail.]
+- Expect: the filters flyout stays beside the guild window, past its side tabs, and does not jump to the screen's left edge.
+- If it fails, paste: a screenshot of where the filters sit.
+
+### 33.681 Popups keep their panel where the game hides the UI (H45-8-51)
+
+- Do: open the barber shop (or, on Retail, the house editor) and bring up a confirm popup there; then leave and bring up any popup in the normal UI. [Client: Forever and Retail; the house editor is Retail only.]
+- Expect: both popups sit on a dark Vanguard panel, not see-through, and no taint message appears.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.682 Vanguard's dialog gives way to the game's own window (H45-9-1)
+
+- Do: talk to an NPC whose first page shows in Vanguard's dialog and whose next page is the game's own window (or hold the hand-off key as the next page opens). [Client: Forever and Retail.]
+- Expect: Vanguard's dialog is gone and only the game's window shows.
+- If it fails, paste: `/vg report`.
+
+### 33.683 Spend planned after a refusal (H45-9-51)
+
+- Do: on a character with a talent plan, press Spend planned twice fast to get the game to refuse the second, then press it once more. [Client: Forever.]
+- Expect: on a refusal chat says once that the game refused, and the next Spend planned buys again; on success there is no refusal line.
+- If it fails, paste: `/vg report`.
+
+### 33.684 Record for in a fight (H45-9-103)
+
+- Do: during a fight, pick Record for: Raid on the Situations page. [Client: Forever and Retail.]
+- Expect: chat says "Recording can't start in a fight. Try again after it." and nothing records when the fight ends; picking it again after the fight starts recording.
+- If it fails, paste: the chat lines.
+
+### 33.685 Junk sells after a Buyback visit (H45-10-51)
+
+- Do: with a grey item in your bags, open a merchant, click the Buyback tab, close the window, put another grey item in your bags, and open a merchant again. [Client: Forever and Retail.]
+- Expect: chat says "Selling 1 junk item(s)." and the grey item is gone.
+- If it fails, paste: the chat line, or that none came.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
