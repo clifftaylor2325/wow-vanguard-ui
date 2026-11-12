@@ -3815,14 +3815,21 @@ function T.SetClassAccent()
   return true
 end
 
--- At login, an accent that follows the class takes this character's colour: a profile shared by several characters
--- gives each its own. Nothing is repainted when the accent is that colour already.
-function T.FollowClassAccent()
+-- Gives an accent that follows the class this character's colour, without repainting: a profile shared by several
+-- characters gives each its own. True when the accent changed.
+---@return boolean changed
+function T.TakeClassAccent()
   local s, r, g, b = T.Settings(), T.ClassColor()
   local a = s.accent
-  if not (s.accentClass and r) or (a[1] == r and a[2] == g and a[3] == b) then return end
+  if not (s.accentClass and r) or (a[1] == r and a[2] == g and a[3] == b) then return false end
   s.accent = { r, g, b }
-  T.Refresh()
+  return true
+end
+ns.OnProfileChanged(ns.Guard("class accent", T.TakeClassAccent))
+
+-- At login the accent takes this character's colour, and repaints when that changed it.
+function T.FollowClassAccent()
+  if T.TakeClassAccent() then T.Refresh() end
 end
 ns.On("PLAYER_LOGIN", T.FollowClassAccent)
 

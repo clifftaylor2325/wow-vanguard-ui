@@ -2423,6 +2423,12 @@ it("the class accent: /vg accent class sets it, a shared profile gives each char
   const again = loggedIn("__repaints = 0", { savedVariables: shared });
   again.eval("local T = ns.Theme local refresh = T.Refresh T.Refresh = function() __repaints = __repaints + 1 return refresh() end T.FollowClassAccent()");
   expect(again.eval("return __repaints"), "a character whose colour the accent already is repaints nothing").toBe(0);
+  // A live switch to a profile another class saved takes this character's colour at once.
+  const live = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Shared = { modules = {}, theme = { accentClass = true, accent = { 0.78, 0.61, 0.43 } } } } }\nVanguardCharDB = { profile = "Default" }` });
+  live.eval(`for _, name in ipairs(ns.ModuleNames()) do if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Shared.modules[name] = false end end`);
+  live.login();
+  live.eval('ns.PickProfile("Shared")');
+  expect(live.eval("local c = RAID_CLASS_COLORS.MAGE local r, g, b = ns.Theme.Accent() return { ns.ProfileName(), r == c.r, g == c.g, b == c.b }"), "switched live to Shared: the mage's colour, not the warrior's").toEqual(["Shared", true, true, true]);
   const hidden = loggedIn("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end");
   hidden.slash("accent class");
   expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
