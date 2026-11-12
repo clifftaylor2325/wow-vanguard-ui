@@ -104,6 +104,9 @@ it("world.forbid closes a game frame and the game's widgets under it to addon co
   expect(tryAddon("TestPlate:ClearAllPoints()"), "the plate refuses").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
   expect(tryAddon("TestIcon:SetTexture(1)")[0], "its texture refuses").toBe(false);
   expect(tryAddon("return TestPlate:IsForbidden() and TestIcon:IsForbidden()"), "both say so, to the addon too").toEqual([true, ""]);
+  // SimpleFrameScriptObjectAPIDocumentation.lua:43-57 (both clients): false when tainted and the object is forbidden.
+  expect(addon.eval(`local ok, can = pcall(assert(loadstring("return TestPlate:CanBeAccessedInContext()", "@Modules/TEST-ONLY.lua")))
+    return { ok, can, TestPlate:CanBeAccessedInContext() }`), "asked whether it may reach it, the addon hears no; test code yes").toEqual([true, false, true]);
   expect(tryAddon("TestMine:SetAlpha(0.5)"), "the addon's own frame stays open").toEqual([true, ""]);
   expect(addon.eval("TestPlate:SetAlpha(0.5) return TestPlate:GetAlpha()"), "test code still reaches it").toBe(0.5);
 });

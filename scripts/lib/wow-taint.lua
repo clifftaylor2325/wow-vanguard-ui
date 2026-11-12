@@ -614,12 +614,19 @@ local function listedNames(kind)
   return meta and meta.__index or listed
 end
 
--- One game widget closed: IsForbidden says so, every listed method refuses the addon.
+-- The two methods a closed or held object still answers the addon: IsForbidden, and CanBeAccessedInContext, which
+-- answers false "when execution is tainted and the object is forbidden or enforcing access restrictions"
+-- (Blizzard_APIDocumentationGenerated/SimpleFrameScriptObjectAPIDocumentation.lua:43-57, both clients).
+local ALWAYS_ANSWERED = { IsForbidden = true, CanBeAccessedInContext = true }
+
+-- One game widget closed: IsForbidden says so, CanBeAccessedInContext says no to the addon, every other listed method
+-- refuses it.
 local function close(w)
   for name in pairs(listedNames(w.__kind)) do
-    if name ~= "IsForbidden" and type(w[name]) == "function" then rawset(w, name, refusing(w[name])) end
+    if not ALWAYS_ANSWERED[name] and type(w[name]) == "function" then rawset(w, name, refusing(w[name])) end
   end
   rawset(w, "IsForbidden", function() return true end)
+  rawset(w, "CanBeAccessedInContext", function() return not byAddon(callerOf(1)) end)
 end
 
 -- Closes a game frame and the game's widgets under it to addons (a test's instance plate).
@@ -638,7 +645,6 @@ end
 -- it that way, the addon's own included (a texture it put on a held button hangs from that button);
 -- world.releaseAccess(frame) lets them go again, as the end of a fight does.
 local held = setmetatable({}, { __mode = "k" })
-local ALWAYS_ANSWERED = { IsForbidden = true, CanBeAccessedInContext = true }
 
 -- Whether the current Lua may reach this object: false for addon code while the object is held.
 function methods:CanBeAccessedInContext()
