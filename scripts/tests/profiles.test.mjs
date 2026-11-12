@@ -316,6 +316,20 @@ it("swapping back to a spec with no profile of its own takes back the switch ano
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
 });
+it("a staged hand pick of another spec's profile survives a swap there and back, and a spec event in the same spec", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { modules = { Bags = false } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("ns.PickProfile('Heal')");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "the same spec again keeps the pick").toBe("Heal");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardCharDB.ownProfile }"), "a swap there and back keeps it").toEqual(["Heal", "Heal"]);
+});
 // The reload that applies a staged profile, with the client in `spec` (what login does first).
 function reloadInSpec(addon, spec) {
   addon.eval(`__spec = ${spec} ns.ApplyPendingProfile()`);

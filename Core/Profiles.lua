@@ -472,9 +472,11 @@ local function isSpecProfile(name)
   return false
 end
 
--- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+-- True when the staged profile is one a spec uses and not the player's own pick (VanguardCharDB.ownProfile,
+-- set by every hand pick), so a spec change staged it; a hand pick of a spec's profile stays staged.
 local function specStaged()
-  return isSpecProfile(ns.PendingProfileName())
+  local pending = ns.PendingProfileName()
+  return isSpecProfile(pending) and pending ~= VanguardCharDB.ownProfile
 end
 
 -- "Spec 2 uses Healer." (on WoW Forever, "Primary talents use Healer.") for a spec key.
