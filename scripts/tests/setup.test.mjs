@@ -524,3 +524,11 @@ it("H45-24-1: a tile size set by /vg graphics apply doesn't make a later all-Kee
   nextTimes(addon, 9);
   expect(reloadShown(addon), "a run that kept everything ends without the tile reload").toBe(false);
 });
+
+it("H45-24-2: a profile of its own, kept at every step, ends with no reload offer", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.eval('__click("A profile of its own")');
+  nextTimes(addon, 10);
+  if (addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()")) addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(reloadShown(addon), "forking the profile needs no reload").toBe(false);
+});

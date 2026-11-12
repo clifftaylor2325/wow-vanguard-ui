@@ -303,6 +303,9 @@ function S.ChosenRole()
   return LAYOUT_ROLE[state.layout] or playerRole()
 end
 
+-- Defined with setup's snapshot below; S.ApplyProfile takes the snapshot again after a fork.
+local settingsNow
+
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
 -- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
 -- "share" changes nothing. The Profiles page, if built, is built again for the new profile: forking stages nothing,
@@ -310,6 +313,7 @@ end
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
+  state.before = settingsNow()
   ns.Options.RebuildPage("profiles")
   state.floor = state.step + 1
   VanguardCharDB.pickProfile = nil
@@ -980,7 +984,7 @@ S.READ_FIRST = { "RaidFrames", "UnitFrames", "ActionBars" }
 -- The profile in use and its settings as an export string (sorted, so the same settings give the same string), which
 -- setup takes as it opens to tell at Done whether anything changed. What the steps read is read first (the unlock
 -- options, and the settings of modules that may be off): a first read fills defaults into the profile, which is no change.
-local function settingsNow()
+function settingsNow()
   ns.MoverOptions()
   for _, name in ipairs(S.READ_FIRST) do moduleSettings(name) end
   return ns.ProfileName() .. "\n" .. tostring(ns.ExportProfile())
