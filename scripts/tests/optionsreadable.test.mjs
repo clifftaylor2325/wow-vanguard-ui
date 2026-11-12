@@ -300,6 +300,22 @@ it("hunt H44-13-53: Restyle pet, stance and extra buttons counts as changed when
   expect(addon.eval(`${row} local s = ns.Settings("SpecialBars") return { ns.Options.RowChanged(row), s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }`), "Reset this page puts all four back").toEqual([false, true, true, true, true]);
 });
 
+it("H45-7-3 options: Show bar 4 names Action bars in the reload notice, drops it when switched back, and Reset this page names it too", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const row = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "actionbars" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Show bar 4" then row = r end end end end`;
+  // The footer notice and the modules waiting for a reload.
+  const waiting = () => addon.eval("return { Vanguard_Options.notice:GetText(), table.concat(ns.Options.ReloadWaiting(), ',') }");
+  addon.eval(`${row} row[4](not row[3]())`);
+  expect(waiting(), "flipped: the notice names the module").toEqual(["Waiting for a reload: Action bars", "Action bars"]);
+  addon.eval(`${row} row[4](not row[3]())`);
+  expect(waiting()[1], "flipped back: nothing waits").toBe("");
+  addon.eval(`${row} row[4](not row[3]())`);
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(waiting()[1], "Reset this page puts the bar back and the notice goes").toBe("");
+});
+
 it("hunt H44-13-81: searching for reset lists the real reset buttons, not every page's Reset this page", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
