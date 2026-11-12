@@ -426,7 +426,8 @@ function UP.IsUpgrade(link)
 end
 
 -- Whether Compare can't say yet if an item is an upgrade, as when the stats of it or of what you wear haven't loaded
--- (C_Item.GetItemStats may return nothing): for quest automation, which leaves a reward you may want to you.
+-- (C_Item.GetItemStats may return nothing): for quest automation, which leaves a reward you may want to you. An
+-- off-hand item beside a two-hander worn alone is decided: it has nothing to be compared with, so it is no upgrade.
 ---@param link string|nil
 ---@return boolean
 function UP.Undecided(link)
@@ -434,6 +435,7 @@ function UP.Undecided(link)
   local loc = select(4, C_Item.GetItemInfoInstant(link))
   local slots = UP.SLOTS[loc]
   if not slots or not usable(link) then return false end
+  if UP.OFF_HAND_ONLY[loc] and twoHanderAlone() then return false end
   local old, new, empty = scores(link, loc, slots)
   return not empty and not (old and new)
 end
