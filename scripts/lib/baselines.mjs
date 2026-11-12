@@ -1,8 +1,9 @@
 // The "only goes down" baselines (scripts/code-quality-baseline.json, scripts/tests/textfit-baseline.json,
 // scripts/tests/options-budget-baseline.json) checked against the base branch's copy, so a count cannot be raised
 // in the commit that needs the room (H44-25-7). scripts/check-baselines.mjs runs it: the pre-push hook against
-// origin/main, verify.yml against the pull request's first parent. A number that rose or a line that is new under an
-// existing key fails; a new key is a new audit's starting record and is allowed.
+// the merge base with origin/main (a number main lowered after the fork is not this branch's rise), verify.yml against
+// the pull request's first parent. A number that rose, a line that is new under an existing key, or a key whose value
+// changed kind (a number and a list) fails; a new key is a new audit's starting record and is allowed.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -10,11 +11,16 @@ import path from "node:path";
 
 export const BASELINE_FILES = ["scripts/code-quality-baseline.json", "scripts/tests/textfit-baseline.json", "scripts/tests/options-budget-baseline.json"];
 
+// A baseline value's kind as a word: "list" or "number" (anything else by its typeof).
+const kindOf = (value) => (Array.isArray(value) ? "list" : typeof value);
+
 // What rose in one baseline file against its base copy (both parsed): one line each for a number that went up and a
-// list line the base's list under that key lacks. A key the base lacks is new and passes.
+// list line the base's list under that key lacks, or a key whose value is now of another kind. A key the base lacks
+// is new and passes.
 export function baselineRises(file, base, head) {
   return Object.entries(head).flatMap(([key, value]) => {
     if (!(key in base)) return [];
+    if (kindOf(value) !== kindOf(base[key])) return [`${file}: ${key}: was a ${kindOf(base[key])}, now a ${kindOf(value)}; a baseline keeps its kind, so put the new kind under a new key`];
     if (Array.isArray(value)) return value.filter((line) => !base[key].includes(line)).map((line) => `${file}: ${key}: new line: ${line}`);
     return value > base[key] ? [`${file}: ${key}: ${base[key]} -> ${value}`] : [];
   });

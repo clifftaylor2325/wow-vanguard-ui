@@ -5,7 +5,8 @@
 # .githooks). CI stays the source of truth: a tool that is not installed is
 # skipped and named, and `git push --no-verify` skips the hook once.
 #
-# Runs npm run test:quick, npm run quality, the baseline check (no baseline number rose against origin/main) and the TOC check; then luacheck
+# Runs npm run test:quick, npm run quality, the baseline check (no baseline number rose against the merge base with origin/main,
+# so a number main lowered after this branch forked is not counted as this branch's rise) and the TOC check; then luacheck
 # and the Lua 5.1 syntax pass (luac5.1 -p over every file the TOC loads) when
 # those tools are installed. On Windows (Git Bash) the syntax pass is skipped:
 # a native Lua 5.1 luac is awkward to get there, and CI runs it.
@@ -38,7 +39,10 @@ luac_toc() {
 
 check npm run --silent test:quick
 check npm run --silent quality
-check node scripts/check-baselines.mjs --base origin/main
+# The merge base with origin/main, or origin/main itself when git cannot find one (then a missing origin/main still
+# fails inside the check, which never skips).
+base=$(git merge-base HEAD origin/main 2>/dev/null) || base=origin/main
+check node scripts/check-baselines.mjs --base "$base"
 check node scripts/check-toc.mjs
 
 if command -v luacheck >/dev/null 2>&1; then

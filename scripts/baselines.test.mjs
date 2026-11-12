@@ -47,3 +47,32 @@ it("a base that cannot be read fails loudly instead of skipping", () => {
   const run = spawnSync(process.execPath, [path.join(root, "scripts/check-baselines.mjs"), "--base", "no-such-ref"], { encoding: "utf8" });
   expect([run.status, run.stderr]).toEqual([1, expect.stringContaining("cannot read the base no-such-ref")]);
 });
+
+it("a number main lowered after the branch forked fails against main's tip, and passes against the merge base", () => {
+  const dir = fs.mkdtempSync(path.join(scratch, "fork-"));
+  // Runs git in the fork repo, its output trimmed.
+  const run = (...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8", stdio: "pipe" }).trim();
+  // Writes the baseline file in the fork repo.
+  const put = (data) => (fs.mkdirSync(path.join(dir, "scripts"), { recursive: true }), fs.writeFileSync(path.join(dir, FILE), JSON.stringify(data)));
+  run("init", "-q", "-b", "main");
+  run("config", "user.name", "t");
+  run("config", "user.email", "t@example.com");
+  put({ rule: 12 });
+  run("add", FILE);
+  run("commit", "-q", "-m", "fork point");
+  run("checkout", "-q", "-b", "work");
+  run("commit", "-q", "--allow-empty", "-m", "the branch raises nothing");
+  run("checkout", "-q", "main");
+  put({ rule: 11 });
+  run("commit", "-q", "-am", "main lowers the rule");
+  run("checkout", "-q", "work");
+  expect(checkBaselines(dir, "main", [FILE]), "against the tip the old number reads as a rise").toEqual([`${FILE}: rule: 11 -> 12`]);
+  expect(checkBaselines(dir, run("merge-base", "HEAD", "main"), [FILE]), "against the merge base nothing rose").toEqual([]);
+});
+
+it("a key whose value changed kind fails with a sentence, never a throw", () => {
+  expect(baselineRises("f.json", { a: 2, b: ["x"] }, { a: ["x"], b: 3 })).toEqual([
+    "f.json: a: was a number, now a list; a baseline keeps its kind, so put the new kind under a new key",
+    "f.json: b: was a list, now a number; a baseline keeps its kind, so put the new kind under a new key",
+  ]);
+});

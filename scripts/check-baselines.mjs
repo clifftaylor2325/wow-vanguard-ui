@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // node scripts/check-baselines.mjs [--base <ref>]: fails when a baseline number rose, or a baseline list gained a line
-// under an existing key, against the base (default origin/main; verify.yml passes HEAD^1, the pull request's base).
+// under an existing key, against the base (default origin/main; the pre-push hook passes the merge base with origin/main, verify.yml passes
+// HEAD^1, the pull request's base).
 // A baseline only goes down (CLAUDE.md); lib/baselines.mjs has the rules. It fails when the base cannot be read.
 
 import path from "node:path";
