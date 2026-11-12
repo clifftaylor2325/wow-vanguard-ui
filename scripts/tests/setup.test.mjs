@@ -252,8 +252,15 @@ it("setup's backup is once per run: /vg graphics apply after setup closed backs 
   addon.advance(5, 1);
   addon.clearChat();
   addon.slash("graphics apply");
-  expect(chatHas(addon, /as it was before setup is saved as profile Default backup/), "chat names the new backup").toBe(true);
+  expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "chat names the new backup without saying setup").toBe(true);
+  expect(chatHas(addon, /before setup/), "a graphics apply is not setup").toBe(false);
   expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "which holds the sizes from after setup").toBe(50);
+  addon.eval("ns.Settings('ActionBars').size = 44");
+  addon.slash("graphics undo");
+  addon.slash("graphics");
+  addon.advance(5, 1);
+  addon.slash("graphics apply");
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "a second apply in the session saves the profile again (H46-24-R2)").toBe(44);
 });
 it("first-run setup: a new character starts on the profile the account's characters used last, and its Profile step offers to share that one", () => {
   const notes = `{ ["Alice-ForeverTest"] = { profile = "Main", stamp = 10 }, ["Carl-ForeverTest"] = { profile = "Gone", stamp = 20 }, ["Dan-ForeverTest"] = { profile = "Default", stamp = 5 } }`;

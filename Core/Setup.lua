@@ -147,6 +147,13 @@ local function keptBackup()
   if kept and name == ns.BackupName(ns.ProfileName()) then return name end
 end
 
+-- Saves the profile in use to its backup when setup is not open (a /vg graphics apply): every time, so the
+-- backup is the profile as it is now, without touching the run state. An owed run's kept backup stays.
+local function backupOutsideRun()
+  local backup = keptBackup() or ns.BackupProfile()
+  ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = ns.ProfileName(), backup = backup }))
+end
+
 -- Before setup's first change in a run: copies the profile in use to its backup profile (once
 -- per run, and once until Done or Skip while setup is owed, so a later run never copies a
 -- half-set-up profile over it) and says so in chat. From then on Back doesn't return to the
@@ -154,6 +161,7 @@ end
 -- and setup opened again doesn't ask again.
 function S.Backup()
   if state.backup then return end
+  if not S.Step() then return backupOutsideRun() end
   if state.order[1] == "profile" then state.floor, VanguardCharDB.pickProfile = math.max(state.floor, 2), nil end
   state.backup, state.backupOf = keptBackup() or ns.BackupProfile(), ns.ProfileName()
   if owed() then VanguardCharDB.setupBackup = state.backup end
