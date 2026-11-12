@@ -36,7 +36,7 @@ it("coexist: a loaded bag and nameplate addon are named once in chat, and the Mo
     "Plater is loaded and also does nameplates.", "Turn off Nameplates", "Keep both",
   ]);
   expect(addon.eval('return { ns.ModuleEnabled("Bags"), ns.ModuleEnabled("Nameplates") }'), "nothing changed without a click").toEqual([true, true]);
-  expect(addon.eval("return ns.Options.PAGES[2].rows()[1][2]"), "the card comes before the module list").toBe("Other addons");
+  expect(addon.eval('for _, r in ipairs(ns.Options.PAGES[2].rows()) do if r[1] == "header" then return r[2] end end'), "the card comes before the module list").toBe("Other addons");
 });
 
 it("coexist: Turn off switches the module off and offers a reload; Keep both just stops asking", () => {
@@ -168,4 +168,27 @@ it("Y3-2 coexist: the click casting row says its bindings don't reach Vanguard's
     "Clique is loaded and also does click casting. Vanguard's unit and raid frames aren't signed up with Clique, so its click bindings don't work on them.",
     "Turn off Click casting", "Keep both",
   ]);
+});
+
+// The open Modules page: whether it has a lead above the tabs, the shown tab's name, and whether the Show choice is visible.
+const LEAD_STATE = `local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+  local show = false
+  for _, w in ipairs(__wfgStub.frames) do if w.caption == "Show" and w.card and w.card.child.pageKey == "modules" and w:IsVisible() then show = true end end
+  return { v.lead ~= nil, v.cards[v.tab].tabName or false, show, v.cards[1].tabName or false }`;
+
+it("coexist: the Other addons card is the first tab, and the Modules note and Show choice stay above the tabs on every tab (H46-23-3)", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("Bagnon"));
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval(LEAD_STATE), "Other addons first, with the lead").toEqual([true, "Other addons", true, "Other addons"]);
+  addon.eval('ns.Options.ShowTab("Combat tools")');
+  expect(addon.eval(LEAD_STATE), "on another tab the lead and Show still show").toEqual([true, "Combat tools", true, "Other addons"]);
+});
+
+it("coexist: with no module to list the empty state is the lead and the Other addons card still comes after it (H46-23-3)", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("Bagnon"));
+  addon.eval('for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, true) end ns.Options.moduleFilter = "off" ns.Options.Show("modules")');
+  const texts = addon.eval(`local out = {} for _, r in ipairs(ns.Options.PAGES[2].rows()) do out[#out + 1] = r[1] .. ":" .. tostring(r[2]) end return out`);
+  expect(texts.slice(0, 5), "note, Show, empty line, Show all modules, then the card").toEqual([
+    "text:A module that's off builds nothing and costs nothing.", "cycle:Show", "text:No module is switched off.", "button:Show all modules", "header:Other addons"]);
+  expect(addon.eval(LEAD_STATE).slice(0, 3), "the page builds with a lead and Show visible, one card (no tab strip)").toEqual([true, false, true]);
 });
