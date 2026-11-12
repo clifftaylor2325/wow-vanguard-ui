@@ -139,10 +139,13 @@ local function sizedMover()
   return list[1] and list[1].key
 end
 
+local noteListed
+
 -- Every movable frame as a { key, label } choice.
 local function moverChoices()
   local out = {}
   for i, m in ipairs(ns.MoverList()) do out[i] = { m.key, m.label } end
+  noteListed()
   return out
 end
 
@@ -157,6 +160,9 @@ do
     for i, m in ipairs(ns.MoverList()) do keys[i] = m.key end
     return table.concat(keys, ",")
   end
+
+  -- Records the frames the Frame to size choice was built with, so the first change is compared with them.
+  function noteListed() listed = moverKeys() end
 
   ns.OnModulesChanged(function()
     local now = moverKeys()

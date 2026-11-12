@@ -665,6 +665,16 @@ it("options: the Frame to size choice follows the frames you can move when a mod
   expect(addon.eval('ns.Options.Refresh() local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end return last.get() == ns.MoverList()[1].key'), "the picked key that is gone is ignored").toBe(true);
 });
 
+it("options: switching a module that has no movable frame does not build the General page again (H45-23-R1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // How many Frame to size choices have been built.
+  const rows = () => addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then n = n + 1 end end return n');
+  addon.eval('ns.Options.Show("general")');
+  const before = rows();
+  addon.eval('ns.SetModuleEnabled("ChatFilter", false)');
+  expect(rows(), "the first switch with the same frames builds nothing").toBe(before);
+});
+
 it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {
   const addon = loggedIn(CLICK_LUA);
   // The profile names the page lists.
