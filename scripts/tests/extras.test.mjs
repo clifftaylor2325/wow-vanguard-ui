@@ -827,6 +827,14 @@ it("the AFK screen: a dimmed screen and a card while you're away", () => {
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(afk().shown, "back: it goes").toBe(false);
 });
+it("the AFK screen's passage follows a Text size change like every other title (H45-4-R1)", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  const out = addon.eval(`local AFK = ns.GetModule("AfkScreen") local T = ns.Theme
+    T.Settings().textScale = 1.3 T.Refresh()
+    local _, size = AFK.frame.passage:GetFont()
+    return { size, T.RoleSize("title") + AFK.PASSAGE_UP }`);
+  expect(out[0], "title size plus the passage's step up, at the new Text size").toBe(out[1]);
+});
 it("the AFK screen fades in over 0.4 s and, when a fight starts, out in 0.15 s", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_AfkScreen) __afk = true");
