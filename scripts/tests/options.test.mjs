@@ -619,6 +619,20 @@ it("options: a click on a module row greyed by an off parent jumps to the parent
   expect(addon.eval("return ns.Options.JumpToModule('UnitFrames') == nil and ns.Options.moduleFilter"), "from another page the filter is left alone").toBe("on");
 });
 
+it("options: a HUD layout picked in a fight shows on its row at once and a second click steps on from it (H45-23-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("HUD layout")');
+  const step = `local row for _, w in ipairs(__wfgStub.frames) do if w.caption == "Where the frames stand" and ns.Options.RevealRow(w) then row = w end end
+    row:GetScript("OnClick")(row, "LeftButton")
+    return { row.get(), ns.HudLayout() }`;
+  addon.world.combat(true);
+  expect(addon.eval(step), "the first click: the row shows the pick, the layout waits for the fight").toEqual(["fort", "centered"]);
+  expect(addon.eval(step), "the second steps on from the pick").toEqual(["standards", "centered"]);
+  addon.world.combat(false);
+  expect(addon.eval("return { ns.HudLayout(), ns.Options.Frame() ~= nil }"), "after the fight the last pick lands").toEqual(["standards", true]);
+  expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");

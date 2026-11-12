@@ -278,9 +278,23 @@ local function hudRows()
   }
 end
 
--- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat.
-local function hudLayoutSetting()
-  return function() return ns.HudLayout() end, function(v) ns.OutOfCombat(function() ns.SetHudLayout(v) end, "HUD layout") end
+-- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat. A pick made in a fight waits
+-- for it to end (the latest wins) and the row shows it meanwhile, so a second click steps on from the pick, not the old layout.
+local hudLayoutSetting
+do
+  local queued
+
+  -- Applies the pick that waited for the fight.
+  local function applyQueuedLayout()
+    local pick = queued
+    queued = nil
+    if pick then ns.SetHudLayout(pick) end
+  end
+
+  -- The row's getter and setter: the queued pick (if any) or the layout in use.
+  function hudLayoutSetting()
+    return function() return queued or ns.HudLayout() end, function(v) queued = v; ns.OutOfCombat(applyQueuedLayout, "HUD layout") end
+  end
 end
 
 -- HUD layout: where the frames around your character stand, with a note on the two walled layouts.
