@@ -958,12 +958,26 @@ function senseHiddenBefore(words, head) {
   return ["=", "~", "not"].includes(words[before]);
 }
 
+// The check's span (its head words[head] to its call's close) widened out over brackets that hold only it, a `not`
+// inside one included: `(InCombatLockdown())`, `(not ns.InCombat())`. Returns the first and last positions, so the
+// looks for a comparison see past the brackets (H46-40-902).
+function widen(words, head, close) {
+  let [first, last] = [head, close];
+  for (;;) {
+    const inner = words[first - 1] === "not" ? first - 1 : first;
+    if (words[inner - 1] !== "(" || words[last + 1] !== ")") return [first, last];
+    [first, last] = [inner - 1, last + 1];
+  }
+}
+
 // True when the word before the check does not give the condition's sense: the check's answer is compared
 // (`InCombatLockdown() == false`; the tokenizer gives `==` and `~=` as single characters), a comparison or a second
-// `not` stands before it (senseHiddenBefore), or it stands in a negated bracket (H45-2-51).
+// `not` stands before it (senseHiddenBefore), each also past brackets that hold only the check (widen), or it stands
+// in a negated bracket (H45-2-51).
 function senseUnclear(words, head, at) {
-  const comparedAfter = ["=", "~"].includes(words[checkClose(words, at) + 1]);
-  return comparedAfter || senseHiddenBefore(words, head) || insideNot(words, head);
+  const [first, last] = widen(words, head, checkClose(words, at));
+  const comparedAfter = ["=", "~"].includes(words[last + 1]);
+  return comparedAfter || senseHiddenBefore(words, first) || insideNot(words, head);
 }
 
 // True when words[k] is a combat lockdown check, called: the game's global InCombatLockdown(), or ns.InCombat() with a

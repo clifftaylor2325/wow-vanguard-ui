@@ -461,6 +461,12 @@ const WEAK_GUARDS = [
   `if false == InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
   `if x ~= ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
   `if x == not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-40-902: the same comparisons with the check in brackets that hold only it.
+  `if (InCombatLockdown()) == false then return end\n  ${SECURE_CALL_LINE}`,
+  `if (ns.InCombat()) ~= true then return end\n  ${SECURE_CALL_LINE}`,
+  `if false == (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if x == (not InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if x ~= (ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
   `if not not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
   `if not not ns.InCombat() then ${SECURE_CALL_LINE} end`,
 ];
@@ -487,6 +493,8 @@ const STRICT_GUARDS = [
   // H46-35-1: ns.InCombat called with a colon, and a real check after another name's InCombat in an `or` chain.
   `if ns:InCombat() then return end\n  ${SECURE_CALL_LINE}`,
   `if UF.InCombat(u) or ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-40-902: a check in brackets that hold only it, read as itself.
+  `if (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: the shapes of a real guard pass.
