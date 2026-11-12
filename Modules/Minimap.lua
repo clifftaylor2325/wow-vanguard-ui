@@ -217,11 +217,18 @@ function MM.SlotButton(obj, icon, side, glyph)
   keepFaded(b)
 end
 
+-- The scale a leftover button is drawn at: slot buttons at 1, else its own scale, else MM.ICON_SCALE.
+function MM.LeftoverScale(spec)
+  return spec.slot and 1 or spec.scale or MM.ICON_SCALE
+end
+
 -- SetPoint arguments for a leftover button: its corner of the map, or on a round map the rim at its angle.
+-- A frame's offsets are in its own scaled units (the game's SetHeaderUnderneath divides by the container's
+-- scale for the same reason), so the rim distance is divided by the scale to land on the rim.
 function MM.Spot(spec)
   if not MM.round then return spec.point, MM.overlay, spec.point, spec.x, spec.y end
-  local a = math.rad(spec.angle)
-  return "CENTER", MM.overlay, "CENTER", math.cos(a) * MM.rim, math.sin(a) * MM.rim
+  local a, rim = math.rad(spec.angle), MM.rim / MM.LeftoverScale(spec)
+  return "CENTER", MM.overlay, "CENTER", math.cos(a) * rim, math.sin(a) * rim
 end
 
 -- Pins one of the game's minimap buttons to a corner of the map (it stays
@@ -231,7 +238,7 @@ local function placeLeftover(spec)
   if not obj then return end
   ns.Pin(obj, function(f)
     f:SetParent(MM.overlay)
-    f:SetScale(spec.slot and 1 or spec.scale or MM.ICON_SCALE)
+    f:SetScale(MM.LeftoverScale(spec))
     f:ClearAllPoints()
     f:SetPoint(MM.Spot(spec))
     if spec.slot then MM.SlotButton(f, spec.slot) end

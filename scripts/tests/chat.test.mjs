@@ -345,6 +345,22 @@ it("minimap: the game's own coordinates line (the container's PlayerCoords) is f
   expect(addon.eval("return MinimapCluster.MinimapContainer.PlayerCoords.__alpha"), "faded").toBe(0);
   expect(loggedIn(UI_ENV + "MinimapCluster.MinimapContainer = CreateFrame('Frame', nil, MinimapCluster)").eval("return #ns.errors"), "a container without the line is fine").toBe(0);
 });
+// A frame's SetPoint offsets are in its own scaled units: Blizzard_Minimap/Camelot/Minimap.lua:68-73 (SetHeaderUnderneath) and
+// Diel.lua:49-57 (SetDielFrameTransform) multiply or divide by the scale for it. A scaled leftover still sits on the rim.
+it("H46-28-1 a round minimap: a scaled leftover button (the group finder eye, the mail icon) sits on the rim, not nearer the centre", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + `
+    if not QueueStatusButton then QueueStatusButton = CreateFrame("Button", "QueueStatusButton", UIParent) end
+    MinimapCluster.IndicatorFrame = MinimapCluster.IndicatorFrame or CreateFrame("Frame", nil, MinimapCluster)
+    MinimapCluster.IndicatorFrame.MailFrame = MinimapCluster.IndicatorFrame.MailFrame or CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)`,
+  { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  const out = addon.eval(`local M = ns.GetModule('Minimap') local out = {}
+    for _, o in ipairs({ QueueStatusButton, MinimapCluster.IndicatorFrame.MailFrame, MinimapCluster.Tracking }) do
+      local p = o.__points.CENTER out[#out + 1] = math.sqrt(p.x * p.x + p.y * p.y) * o:GetScale()
+    end
+    out[#out + 1] = M.rim return out`);
+  const rim = out.pop();
+  out.forEach((d) => expect(d).toBeCloseTo(rim, 3));
+});
 // TEST-ONLY: Blizzard_HybridMinimap's frame (a child of Minimap, BACKGROUND strata, hidden until the game shows it).
 const HYBRID_ENV = `HybridMinimap = CreateFrame("Frame", "HybridMinimap", Minimap) HybridMinimap:SetFrameStrata("BACKGROUND") HybridMinimap:SetFrameLevel(100) HybridMinimap:Hide()`;
 // The hybrid map's strata and level, the minimap's strata and level, the holder's level.
