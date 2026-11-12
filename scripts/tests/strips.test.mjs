@@ -653,6 +653,14 @@ it("the info strip's rates carry on through a /reload, start again on a new logi
   reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
   expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
 });
+it("H45-9-101 the info strip: just after midnight the date changes with the time", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + `__t, __d = "23:59", "Mon 12 Oct"
+    date = function(f) return f == "%a %d %b" and __d or __t end`);
+  addon.eval(`__t, __d = "00:00", "Tue 13 Oct"`);
+  addon.advance(2);
+  expect([block(addon, "clock").text, block(addon, "date").text], "the new time beside the new date").toEqual(["00:00", "Tue 13 Oct"]);
+});
+
 // A block's tooltip on hover, each line "label|value", and whether it goes with the mouse.
 const blockTip = (addon, key) => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnEnter(hit)
   local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. (l.right and "|" .. l.right or "") end
