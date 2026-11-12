@@ -518,3 +518,28 @@ it("H45-19-52 an offer the page shows after Keep as it is is not told in chat at
   addon.update(0.1); addon.update(0.1);
   expect([page.length, chatHas(addon, /you can put/)]).toEqual([1, false]);
 });
+
+// The Click casting page's grid cells shown, its starter layout control and Clear all, and the Undo row's line.
+const pageParts = (addon) => [addon.frames("w.iconFrame ~= nil and w.empty ~= nil and w:IsVisible()").length, addon.texts("Starter layout...").length, addon.texts("Clear all").length, textsWith(addon, "These bindings came from").length];
+
+it("H46-19-50 a talent group switch while the window shows another page leaves a never-built Click casting page whole", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  addon.eval(`${CP}.Apply("select") ns.Options.Show("general")`);
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.update(0.1); addon.update(0.1);
+  expect({ parts: pageParts(addon), errors: addon.eval("return #ns.errors") }).toEqual({ parts: [20, 1, 1, 0], errors: 0 });
+});
+
+it("H46-19-50 a built Click casting page is read again after a switch there and back while the window shows another page", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.Hide()');
+  switchGroup(addon, 1, 2);
+  addon.eval('ns.Options.Show("general")');
+  switchGroup(addon, 2, 1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.update(0.1); addon.update(0.1);
+  expect({ parts: pageParts(addon), errors: addon.eval("return #ns.errors") }).toEqual({ parts: [20, 1, 1, 0], errors: 0 });
+});

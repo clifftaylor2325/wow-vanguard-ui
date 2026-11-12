@@ -36,7 +36,7 @@ local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show (nil: while a binding uses them, see moreShown), the key the
--- picker is for, and the page's signature (see pageSignature) it was built with (nil until it is built).
+-- picker is for, and the page's signature (see pageSignature) its rows were read with (nil until they are read).
 local state = { more = nil, pickKey = nil, built = nil }
 
 -- Shared pieces -----------------------------------------------------------------------------
@@ -153,9 +153,10 @@ local function windowShown()
   return window ~= nil and window:IsShown() == true
 end
 
--- Re-reads every row on the page after a binding changed; a page built with another signature than the one that
--- applies now (a notice begun or ended, the columns, the starter layout's rows) is built again first; a page not built
--- yet has nothing to rebuild (and the event can come before the saved variables load). The other pages' rows are
+-- Re-reads every row on the page after a binding changed; a page whose rows were read with another signature than the
+-- one that applies now (a talent group switch, a notice begun or ended, the columns, the starter layout's rows) is built
+-- again first, the rows the window keeps for it too; a page whose rows were never read has nothing to rebuild (and the
+-- event can come before the saved variables load). The other pages' rows are
 -- re-read too, while the window is up: a fight's end or a talent group or spec switch with it closed costs no walk.
 local function changed()
   if state.built ~= nil and state.built ~= pageSignature() then O.RebuildPage(PAGE) end
@@ -562,7 +563,7 @@ local function gridRow(grid, row, cols, cellW)
   end
 end
 
--- Builds the page again on the next frame when it was built with another signature than the one that applies now:
+-- Builds the page again on the next frame when its rows were read with another signature than the one that applies now:
 -- the window shows a page it built earlier and only re-reads it, so a notice that began or ended since (a stamp
 -- cleared, the game's bindings edited in its own window, a spell learned) would otherwise wait for a /reload. Not at
 -- once: this runs inside the window's refresh of its rows.
@@ -585,7 +586,6 @@ local function gridBuilder(parent, _, width)
   grid.cells, grid.Refresh = {}, refreshGrid
   gridHeaders(grid, cols, cellW)
   for row = 1, #MOUSE do gridRow(grid, row, cols, cellW) end
-  state.built = pageSignature()
   grid:Refresh()
   return grid
 end
@@ -1199,10 +1199,12 @@ local function leadRows()
   return out
 end
 
--- The page's rows (built again when its signature changes, see pageSignature); the game's click bindings are offered
--- where the client has them.
+-- The page's rows (built again when its signature changes, see pageSignature), with the signature they are read with:
+-- the window keeps them, so that is what a change compares against. The game's click bindings are offered where the
+-- client has them.
 local function rows()
   local base, out = type(C_ClickBindings) == "table" and WITH_GAME or ROWS, {}
+  state.built = pageSignature()
   for _, row in ipairs(base) do
     if row[1] == "bindlayout" then
       for _, lead in ipairs(leadRows()) do out[#out + 1] = lead end
