@@ -604,6 +604,21 @@ it("options: General's look, motion and moving rows have their defaults: arrow, 
   expect(resetDot(addon, "Text size"), "stepping the slider back to 100% lands on the default exactly: no arrow").toEqual([false, true]);
 });
 
+it("options: a click on a module row greyed by an off parent jumps to the parent even under Show: On (H45-23-3)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The scoped login (scripts/tests/login-scope.json) starts with both modules off: switch the child on, then the parent off.
+  addon.eval('ns.SetModuleEnabled("UnitFrames", true) ns.SetModuleEnabled("FrameAuras", true) ns.SetModuleEnabled("UnitFrames", false) ns.Options.moduleFilter = "on" ns.Options.Show("modules")');
+  const click = `local target
+    for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "module" and w.source[7] == "FrameAuras" and ns.Options.RevealRow(w) then target = w end end
+    target:GetScript("OnClick")(target, "LeftButton")
+    local f, marked = Vanguard_Options.found
+    for _, w in ipairs(__wfgStub.frames) do if w.found == f and f and f:IsShown() and w.source then marked = w.source[7] end end
+    return { marked or false, ns.Options.moduleFilter, ns.ModuleEnabled("FrameAuras") }`;
+  expect(addon.eval(click), "the parent's row is marked, the filter is back on All, the clicked module is unchanged").toEqual(["UnitFrames", "all", true]);
+  addon.eval('ns.Options.moduleFilter = "on" ns.Options.Show("general")');
+  expect(addon.eval("return ns.Options.JumpToModule('UnitFrames') == nil and ns.Options.moduleFilter"), "from another page the filter is left alone").toBe("on");
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");

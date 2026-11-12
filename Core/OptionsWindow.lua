@@ -1362,16 +1362,26 @@ function O.JumpTo(text)
   O.MarkRow(w)
 end
 
--- Scrolls the current page to a module's switch (the Modules page) and marks it; nothing when the row isn't shown.
-function O.JumpToModule(name)
-  local view = pages[O.current]
+-- The widget of a module's switch on the current page, when its row shows (the Modules page's Show choice may leave it out).
+function O.ModuleWidget(name)
   for _, w in ipairs(widgets) do
     local row = w.source
-    if view and row and row[1] == "module" and row[7] == name and O.RevealRow(w) then
-      view:ScrollTo(w.pageY - JUMP_ABOVE)
-      return O.MarkRow(w)
-    end
+    if pages[O.current] and row and row[1] == "module" and row[7] == name and O.RevealRow(w) then return w end
   end
+end
+
+-- Scrolls the current page to a module's switch (the Modules page) and marks it. A row the Show choice hides (a module
+-- that is off, under Show: On) is found again after the choice goes back to All; nothing when there is no such row.
+function O.JumpToModule(name)
+  local w = O.ModuleWidget(name)
+  if not w and O.current == "modules" and O.moduleFilter ~= "all" then
+    O.moduleFilter = "all"
+    O.RebuildPage("modules")
+    w = O.ModuleWidget(name)
+  end
+  if not w then return end
+  pages[O.current]:ScrollTo(w.pageY - JUMP_ABOVE)
+  return O.MarkRow(w)
 end
 
 -- Shows the tab holding row w (a row's widget on a built page) and says whether the row shows now (a row the page
