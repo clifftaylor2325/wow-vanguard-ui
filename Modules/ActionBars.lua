@@ -107,12 +107,6 @@ local BLIZZARD_BARS = {
   "MainMenuBar", "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight",
   "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7",
 }
--- The game's action buttons on those bars, by name prefix (1 to 12 each), as
--- the client's ActionButtonUtil.ActionBarButtonNames lists them.
-local BLIZZARD_BUTTONS = {
-  "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarLeftButton",
-  "MultiBarRightButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
-}
 
 -- Short names for the hotkey text: each modifier (Meta, the Mac's Command key, is "Cmd", since M is a mouse
 -- button), a key by its whole name, and the numbered keys (BUTTON4 is M4, NUMPAD1 is N1); any other key as it is.
@@ -978,21 +972,9 @@ local function hideBlizzard(name)
   ns.EditModeReplaced(f)
 end
 
--- Silences the game's action buttons (hidden with their bars), so they stop
--- reacting to events of their own (out of combat, from build).
-local function silenceButtons()
-  for _, prefix in ipairs(BLIZZARD_BUTTONS) do
-    for i = 1, 12 do
-      local b = _G[prefix .. i]
-      if type(b) == "table" and b.UnregisterAllEvents then b:UnregisterAllEvents() end
-    end
-  end
-end
-
--- Hides the game's bars and silences their buttons.
+-- Hides the game's bars (the buttons get their events from shared frames, which stay as they are).
 local function hideBlizzardBars()
   for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
-  silenceButtons()
 end
 
 -- Events ------------------------------------------------------------------------------
