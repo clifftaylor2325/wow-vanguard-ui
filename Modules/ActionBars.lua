@@ -947,7 +947,8 @@ local function inPetBattle()
 end
 
 -- Points every default action binding at the matching Vanguard button
--- (only buttons the bar's layout shows). Override bindings are cleared and
+-- (only buttons the bar's layout shows: a button the layout hides gets no override, so its key goes back to the
+-- game's own command, which still casts that slot from the game's hidden bar). Override bindings are cleared and
 -- rebuilt; protected, so out of combat. In a pet battle none are set, so the
 -- keys reach the game's own pet battle abilities.
 function AB.ApplyBindings()

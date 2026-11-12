@@ -452,7 +452,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   setCombat(addon, false);
   const after = lay();
   expect(after, "then bar 2 is two rows of 6 at 40 px, showing 10 buttons").toEqual({ w: 6 * (s40 + g) - g, h: 2 * (s40 + g) - g, x7: 0, y7: -(s40 + g), size: s40, shown12: false });
-  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
+  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button's key goes back to the game's command; the bar keeps its own size").toBeTruthy();
   expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()"), "other bars keep theirs").toBe(s38);
 });
 
