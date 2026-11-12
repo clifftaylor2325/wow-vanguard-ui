@@ -1472,7 +1472,6 @@ L["Pick the reward that sells for most"] = "판매가가 가장 높은 보상 �
 L["Picked feeds show in the broker strip along the top edge (up to {count}, in the order picked)."] = "고른 피드는 위쪽 가장자리의 브로커 띠에 표시됩니다 (최대 {count}개, 고른 순서대로)."
 L["Pinned (Shift-click in the tracker)"] = "고정됨 (추적기에서 Shift-클릭)"
 L["Pinned (the quest you track on the map)"] = "고정됨 (지도에서 추적하는 퀘스트)"
-L["Pixel-perfect"] = "픽셀 맞춤"
 L["Pixel-perfect (sharpest)"] = "픽셀 맞춤 (가장 선명)"
 L["Pixel-perfect scale"] = "픽셀 맞춤 크기"
 L["Place new spells as I learn them"] = "새 주문을 배우면 배치"
