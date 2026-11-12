@@ -78,6 +78,16 @@ it("i18n: each locale file is as the import writes it, with no orphaned, empty o
   }
 });
 
+// H45-37-314: a PR that adds player text imports a row for it in every locale (a machine draft is fine), so nothing ships in English only.
+it("i18n: every locale translates every key the code looks up", () => {
+  const keys = extractKeys(root, tocFiles());
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    const missing = [...keys.keys()].filter((key) => !entries.has(key));
+    expect(missing, `${locale}: import a row for each new key (node scripts/i18n.mjs export ${locale}, fill, import)`).toEqual([]);
+  }
+});
+
 it("i18n: the command line reports status and exports a CSV", () => {
   // Runs the command line with args and returns what it printed.
   const run = (...args) => execFileSync("node", ["scripts/i18n.mjs", ...args], { cwd: root }).toString();
