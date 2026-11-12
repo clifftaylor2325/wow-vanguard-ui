@@ -570,7 +570,7 @@ it("deals: a scan lists what's under 70 % of the 7-day market or under vendor pr
   pickTab(addon, 4);
   expect(dealsCard(addon).slice(0, 3), "the entry, with no count yet; a list shown").toEqual([true, 0, "Shopping"]);
   pick(addon, `${HELPER}.DEALS`);
-  expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New", "Import"], false]);
+  expect([dealsCard(addon), dealRow(addon, 1)[0], actions(addon), addon.eval(`return ${HELPER}.shopCard.add:IsShown()`)], "none yet; no list buttons").toEqual([[true, 0, "Deals", "", "None yet: a scan or a search finds them."], false, ["New list", "Import"], false]);
   scan(addon, `{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10940, count = 30, buyoutPrice = 39000 },
     { itemID = 2589, count = 5, buyoutPrice = 50 }, { itemID = 159, count = 1, buyoutPrice = 100 } }`);
   expect(addon.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "the dust's 7-day market: the middle of 12s, 10s and today's 11s 40c (8 days ago left out)").toBe(1140);
@@ -865,4 +865,76 @@ it("Cancel and Cancel next undercut still ease their hover while showing their t
     T.EaseHover = old
     return { table.concat(seen, ","), table.concat((function() local s = {} for i, v in ipairs(shown) do s[i] = tostring(v) end return s end)(), ",") }`);
   expect(out, "both buttons ease in and out, and the tip shows then hides").toEqual(["true,false,true,false", "true,false,true,false"]);
+});
+// TEST-ONLY: two of your dust auctions and a paid cancel, for the cases where the list is read again while the question is open.
+const PAID_CANCEL = `__wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+  __wfgWorld.ah.owned = {
+    { auctionID = 501, itemKey = { itemID = 10940, itemLevel = 0, itemSuffix = 0 }, status = 0, quantity = 5, buyoutAmount = 150 },
+    { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 } }
+  __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 } }
+  __wfgWorld.ah.cancelCost = 100`;
+// The auction IDs sent to CancelAuction so far.
+const cancelsSent = (addon) => addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = c.args[1] end return out");
+// Whether the game-style question window is showing.
+const questionShown = (addon) => addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()");
+it("H44-21-R1: Cancel next undercut marks the row that is listed when Yes is clicked, so the next click takes the next one", () => {
+  const addon = atAuctionHouse(PAID_CANCEL);
+  addon.click(`${OWNED_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${OWNED_CARD}.cancelNext`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.click("Vanguard_Question.confirm");
+  addon.click(`${OWNED_CARD}.cancelNext`);
+  addon.click("Vanguard_Question.confirm");
+  expect(cancelsSent(addon), "the second click cancels the next undercut auction, not the first again").toEqual([501, 506]);
+});
+it("H44-21-R1: a row's Cancel marked after the list was read again does not ask a second time", () => {
+  const addon = atAuctionHouse(PAID_CANCEL);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  const cancel = `${OWNED_CARD}.table.rows[1].cancel`;
+  addon.click(cancel);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.click("Vanguard_Question.confirm");
+  addon.click(cancel);
+  expect([questionShown(addon), cancelsSent(addon)], "no second question, one cancel").toEqual([false, [501]]);
+});
+// A named list holding an alerting dust entry, searched (its browse answer waiting), and Recent holding a copy that still alerts (an older save).
+const RECENT_ALERT = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 10940, maxPrice = 600, alert = true } }, lists = { ["TEST-ONLY Mats"] = {
+  { term = 10940, maxPrice = 600, alert = true } } } }`;
+const DUST_CHEAP = "__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 500, totalQuantity = 5 } }";
+it("H44-21-1: a named list's search rings after the pane changed to Recent; Recent's own copy of a deleted list's entry does not", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  addon.eval(`local AH = ${HELPER} AH.PickEntry("TEST-ONLY Mats") AH.SearchList() AH.PickEntry(AH.RECENT)`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "the named list's search, answered while Recent is shown").toBe(1);
+  addon.advance(3);
+  addon.eval(`local AH = ${HELPER} AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) AH.SearchList()`);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 400, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "Recent's entry never alerts").toBe(1);
+});
+it("H44-G3-9: an older save's Recent copies lose their alert at login; the named list's entry keeps its own", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  expect(addon.eval(`return { VanguardDB.ah.recent[1].alert == nil, VanguardDB.ah.lists["TEST-ONLY Mats"][1].alert }`)).toEqual([true, true]);
+  addon.eval(`local AH = ${HELPER} AH.MigrateRecent() AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) AH.SearchList()`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "run again it leaves Recent as it is; with the list gone, Recent's search rings nothing").toBe(0);
+});
+it("H44-21-1: Recent keeps no alert on what it remembers, and its Filters dialog shows no alert switch", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  addon.eval(`local AH = ${HELPER} AH.PickEntry("TEST-ONLY Mats") AH.SearchList()`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  const out = addon.eval(`local AH = ${HELPER} AH.EditFilters(AH.RECENT, 1) local r = AH.filterDialog.alert:IsShown()
+    AH.EditFilters("TEST-ONLY Mats", 1)
+    return { VanguardDB.ah.recent[1].alert == nil, r, AH.filterDialog.alert:IsShown() }`);
+  expect(out, "no alert on the copy; the switch is hidden for Recent only").toEqual([true, false, true]);
 });

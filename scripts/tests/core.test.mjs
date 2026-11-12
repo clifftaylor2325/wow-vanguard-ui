@@ -498,6 +498,16 @@ it("smoke-test checklist: every step has its Do, Expect and paste lines", () => 
   expect(lineCount(text, "- If it fails, paste:")).toBe(steps);
   expect(steps).toBeGreaterThanOrEqual(30);
 });
+// The checklist's steps as { id line, lines }, each ### section on its own.
+const smokeSections = () => smokeText().split(/^(?=### )/m).filter((s) => s.startsWith("### ")).map((s) => ({ title: s.split("\n")[0], lines: s.split("\n") }));
+it("smoke-test checklist: each step has exactly one Do, one Expect and one paste line", () => {
+  const off = smokeSections().filter(({ lines }) => ["- Do:", "- Expect:", "- If it fails, paste:"].some((label) => lines.filter((l) => l.startsWith(label)).length !== 1));
+  expect(off.map((s) => s.title)).toEqual([]);
+});
+it("smoke-test checklist: no step's Do opens with 'Type /vg to' (name the thing to do, not the command)", () => {
+  const opens = smokeSections().filter(({ lines }) => lines.some((l) => /^- Do: Type `?\/vg`? to\b/.test(l)));
+  expect(opens.map((s) => s.title)).toEqual([]);
+});
 it("WoW Forever client: interface, hidden auras, no specializations", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + FOREVER_ENV);
   expect(addon.eval("return ns.IsForever()") === true, "a 1.x interface number (16001) is WoW Forever").toBeTruthy();

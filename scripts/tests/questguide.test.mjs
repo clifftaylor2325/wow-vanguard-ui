@@ -342,3 +342,16 @@ it("quest guidance: a spot whose quest id the client hides is skipped, not match
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + "C_QuestLog.GetNextWaypoint = function() end C_QuestLog.GetQuestsOnMap = function() return { { questID = __wfgWorld.secret(), x = 0.1, y = 0.1 }, { questID = 90052, x = 0.75, y = 0.5 } } end");
   expect(addon.eval("local m, x, y = ns.QuestGuide.Target(90052) return { m, x, y }"), "the plain spot answers").toEqual([10, 0.75, 0.5]);
 });
+
+it("quest guidance: /vg questdata prints its flag and quest lines in the client's language (H44-25-R3)", () => {
+  const addon = loggedIn(QUESTS_ENV + FLAG_ENV, { client: '__wfgWorld.locale = "deDE"' });
+  addon.clearChat();
+  addon.slash("questdata 90051");
+  const lines = Array.from(addon.chat());
+  expect(lines.some((l) => l.endsWith("Neu-Quest-Markierung: classification TestOnlyForever.")), "the flag found").toBe(true);
+  expect(lines.some((l) => /Quest 90051: Klassifizierung 11; Markierung /.test(l)), "the quest line").toBe(true);
+  const none = loggedIn(QUESTS_ENV, { client: '__wfgWorld.locale = "deDE"' });
+  none.clearChat();
+  none.slash("questdata");
+  expect(Array.from(none.chat()).some((l) => l.includes("Neu-Quest-Markierung: auf diesem Client keine")), "no flag").toBe(true);
+});

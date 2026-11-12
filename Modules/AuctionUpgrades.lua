@@ -43,9 +43,11 @@ AH.SLOT_NAMES = { INVTYPE_HEAD = L["Head"], INVTYPE_NECK = L["Neck"], INVTYPE_SH
   INVTYPE_HOLDABLE = L["Held In Off-hand"], INVTYPE_RANGED = L["Ranged"], INVTYPE_RANGEDRIGHT = L["Ranged"], INVTYPE_THROWN = L["Thrown"], INVTYPE_RELIC = L["Relic"] }
 -- The Upgrades entry's switch (Town and gear > Auction house): on, as Deals is.
 AH.defaults.upgrades = true
--- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, score, found (when) }; and every
+-- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, score, found (when), stale }; and every
 -- gear listing seen (link -> price per unit), to judge again when what you wear changes.
 AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
+-- The weights the listings were judged with (nil while Gear upgrades is off); false until the first is judged.
+AH.weightsUsed = false
 
 -- Judging ------------------------------------------------------------------------------------
 
@@ -87,29 +89,39 @@ local function claimGear(link, price)
   return true
 end
 
+-- The weights Gear upgrades judges with now, or nil while it is off.
+local function currentWeights()
+  local UP = ns.GetModule("Upgrades")
+  return UP.settings and (UP.Current()) or nil
+end
+
 -- A gear listing seen (a scan's, or an item search's) while the house is open and the entry on:
 -- kept to judge again, judged now, and the list repainted on the next frame. The same item
--- seen twice keeps its cheapest listing.
+-- seen twice keeps its cheapest listing, and an upgrade seen before keeps the time it was found.
+-- The first listing judged records the weights in use, so the first paint judges nothing again.
 function AH.SeeGear(link, price)
   if not (AH.open and AH.settings.upgrades) or type(link) ~= "string" or not claimGear(link, price) then return end
+  if AH.weightsUsed == false then AH.weightsUsed = currentWeights() end
   AH.gearSeen[link] = price
-  AH.upgrades[link] = AH.Upgrade(link, price, AP.Now())
+  local before = AH.upgrades[link]
+  AH.upgrades[link] = AH.Upgrade(link, price, before and before.found or AP.Now())
   ns.Soon("auction upgrades", AH.PaintUpgrades)
 end
 
--- Every gear listing seen, judged again (what you wear, or the weights, changed).
+-- Every gear listing seen, judged again (what you wear, or the weights, changed) on the judging walker,
+-- AH.JUDGE_ROWS a frame: a copy of the listings goes to it, each marked to be judged at the price it is
+-- held at when reached, so a listing dropped for a cheaper one mid-walk raises no error. Until the walker
+-- reaches it, each upgrade is stale (judged against what you wore) and is not listed.
 local function judgeAgain()
-  local now = AP.Now()
-  for link, price in pairs(AH.gearSeen) do
-    local before = AH.upgrades[link]
-    AH.upgrades[link] = AH.Upgrade(link, price, before and before.found or now)
-  end
+  local gear, again = {}, {}
+  for link, price in pairs(AH.gearSeen) do gear[link], again[link] = price, true end
+  for _, u in pairs(AH.upgrades) do u.stale = true end
+  AH.JudgeGear(gear, again)
 end
 
 -- The weights in use changed since the listings were judged (your role, /vg weights): judged again.
 local function judgeIfWeightsChanged()
-  local UP = ns.GetModule("Upgrades")
-  local current = UP.settings and (UP.Current()) or nil
+  local current = currentWeights()
   if current == AH.weightsUsed then return end
   AH.weightsUsed = current
   judgeAgain()
@@ -138,11 +150,20 @@ local function betterFill(a, b)
   return a.link < b.link and a or b
 end
 
+-- The upgrades judged against what you wear now: a stale one (judgeAgain) is left out until it is judged again.
+local function judgedUpgrades()
+  local judged = {}
+  for _, u in pairs(AH.upgrades) do
+    if not u.stale then judged[#judged + 1] = u end
+  end
+  return judged
+end
+
 -- This visit's upgrades, best first: the gains by how much, then, slot by slot, the best listing
 -- for each empty slot.
 function AH.SortedUpgrades()
   local gains, fills, slots = {}, {}, {}
-  for _, u in pairs(AH.upgrades) do
+  for _, u in ipairs(judgedUpgrades()) do
     if u.empty then fills[u.slot] = betterFill(fills[u.slot], u) else gains[#gains + 1] = u end
   end
   table.sort(gains, byGain)
@@ -180,24 +201,43 @@ function AH.ScanGear(s, i, id, unit)
   if type(link) == "string" then cheapestOfItem(s, link, unit) end
 end
 
+-- The price the walker judges a link at: for a link judged again (judgeAgain), the price the link is held at
+-- now (a listing seen again since the walk started), else the price it was handed.
+local function walkPrice(j, link)
+  return (j.again[link] and AH.gearSeen[link]) or j.gear[link]
+end
+
 -- One frame of judging: the next AH.JUDGE_ROWS of the scan's gear; the walker stops after the last.
 local function judgeStep()
   local j = AH.judging
   if not j then return AH.judge:Hide() end
   local last = math.min(j.next + AH.JUDGE_ROWS - 1, #j.links)
-  for i = j.next, last do AH.SeeGear(j.links[i], j.gear[j.links[i]]) end
+  for i = j.next, last do AH.SeeGear(j.links[i], walkPrice(j, j.links[i])) end
   j.next = last + 1
   if j.next > #j.links then AH.StopJudging() end
 end
 
--- The gear a scan found (AH.FinishScan; link -> cheapest unit price), judged AH.JUDGE_ROWS
--- listings a frame on its own walker (by link, so the order holds), so a big scan never stalls a frame.
-function AH.JudgeGear(gear)
+-- The links a walk still running had not reached join the gear to judge next (gear's own price wins, and
+-- with it the link's mark in again), so a new walk drops none of them.
+local function addPending(gear, again)
+  local j = AH.judging
+  for i = j and j.next or 1, j and #j.links or 0 do
+    local link = j.links[i]
+    if not gear[link] then gear[link], again[link] = j.gear[link], j.again[link] end
+  end
+end
+
+-- The gear a scan found (AH.FinishScan; link -> cheapest unit price), or the listings judged again (again:
+-- link -> true), judged AH.JUDGE_ROWS listings a frame on its own walker (by link, so the order holds), so a
+-- big scan never stalls a frame; the links a walk still running had not reached are judged on the new one.
+function AH.JudgeGear(gear, again)
+  again = again or {}
+  addPending(gear, again)
   local links = {}
   for link in pairs(gear) do links[#links + 1] = link end
   table.sort(links)
   if #links == 0 then return end
-  AH.judging = { links = links, gear = gear, next = 1 }
+  AH.judging = { links = links, gear = gear, again = again, next = 1 }
   AH.judge:Show()
 end
 
@@ -232,6 +272,8 @@ end
 -- Every upgrade and gear listing found is forgotten.
 function AH.ForgetGear()
   AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
+-- The weights the listings were judged with (nil while Gear upgrades is off); false until the first is judged.
+AH.weightsUsed = false
 end
 
 -- What you wear changed: while the house is open every listing seen is judged again; while it is
@@ -298,7 +340,7 @@ end
 -- empty slot (AH.SortedUpgrades keeps only the best fill of a slot).
 function AH.UpgradeCount()
   local count, filled = 0, {}
-  for _, u in pairs(AH.upgrades) do
+  for _, u in ipairs(judgedUpgrades()) do
     if not u.empty then count = count + 1 elseif not filled[u.slot] then filled[u.slot], count = true, count + 1 end
   end
   return count

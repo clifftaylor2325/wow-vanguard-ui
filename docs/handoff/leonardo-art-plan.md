@@ -1,7 +1,7 @@
 # Vanguard art plan: painted textures, ornaments and art made with Leonardo.ai (handoff)
 
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-11-02 against commit `553dd5a` (0.8.0 plus the AFK scene fix, #723).
-Status: **plan only**. No art is generated and no addon code changes in the PR that adds this file. Execution starts after the WoW Forever launch (4 November 2026) and after Cliff has answered the decisions in §9.
+Status: milestones M0 to B1 are built (the progress list in §5 ticks each); the checks in §8 are not ticked. It was written as a plan only, before any art was generated, with execution after the WoW Forever launch (4 November 2026) and Cliff's answers to the decisions in §9.
 Every `file:line` is as of `553dd5a`; if a line has moved, grep for the identifier quoted next to it.
 Naming rule for this file and everything made from it: no other addon or add-on library is named, and no competing product; patterns are described generically. Leonardo.ai (the tool Cliff chose) and its own model names, the game and its maker, the two stores the addon ships on, and the sources a cited fact comes from (a documentation mirror, a wiki, a help centre, a news or pricing page, a standards body) are named only where a rule, a licence or a measured fact is quoted from them. Cliff can strike any of those (§9, R11).
 
@@ -321,7 +321,7 @@ Each item is one short ask; the thread that runs M1a posts them as one message a
 
 ### M1a: Corner bracket (existing slot) and the High contrast fix
 
-Before M1a starts, run the code-quality scanner on `Core/Theme.lua` (`npm install` first; it fails a Core file at 185 top-level locals). M1 adds no top-level local there: new values go on `T` or in tables that exist. Every helper split out below keeps its comment line and stays under 10 lines.
+Before M1a starts, run the code-quality scanner on `Core/Theme.lua` (`npm install` first; it fails a Core file above its top-level locals limit, `MAX_TOP_LOCALS` in `scripts/lib/code-quality.mjs`). M1 adds no top-level local there: new values go on `T` or in tables that exist. Every helper split out below keeps its comment line and stays under 10 lines.
 
 | Id | Asset | Plugs into | Display | Textures | Class | Leonardo effort |
 |---|---|---|---|---|---|---|

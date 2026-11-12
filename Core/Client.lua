@@ -205,6 +205,26 @@ function ns.ItemName(id)
   return "item " .. id
 end
 
+-- What a bag that takes only one kind of thing is called, by the bit of the game's bag family
+-- (C_Container.GetContainerNumFreeSlots' second value) it carries; the first bit that matches names it.
+C.BAG_KINDS = {
+  { 1, L["quiver"] }, { 2, L["ammo pouch"] }, { 4, L["soul bag"] }, { 8, L["leatherworking bag"] },
+  { 16, L["inscription bag"] }, { 32, L["herb bag"] }, { 64, L["enchanting bag"] }, { 128, L["engineering bag"] },
+  { 512, L["gem bag"] }, { 1024, L["mining bag"] }, { 32768, L["fishing bag"] }, { 65536, L["cooking bag"] },
+}
+
+-- What a bag of this family is called ("herb bag"), "special bag" for a family not named above, or nil
+-- for a bag that takes anything (family 0).
+---@param family number
+---@return string|nil
+function ns.BagKind(family)
+  if family == 0 then return nil end
+  for _, kind in ipairs(C.BAG_KINDS) do
+    if math.floor(family / kind[1]) % 2 == 1 then return kind[2] end
+  end
+  return L["special bag"]
+end
+
 -- The client's "does the player know this spell" call: C_SpellBook.IsSpellKnown, else the older
 -- IsPlayerSpell (on Forever only loaded with the game's deprecation fallbacks), else nil.
 ---@return function|nil

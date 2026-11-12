@@ -143,6 +143,15 @@ it("what's new: a long list scrolls with the wheel, with the soft bottom edge wh
   expect(view()[0], "it never scrolls above the top").toBe(0);
 });
 
+it("hunt H44-14-50: a Text size change with the list scrolled lays it out again and keeps the place", () => {
+  const long = `local items = {} for i = 1, 40 do items[i] = { text = "TEST-ONLY line " .. i } end
+    ns.WHATS_NEW = { { version = "9.9.9", groups = { { label = "TEST-ONLY Long", items = items } } } }`;
+  const addon = loggedIn(long + running("9.9.9"));
+  addon.wheel("Vanguard_WhatsNew.view", -1);
+  addon.eval("__before = Vanguard_WhatsNew.lines ns.Theme.Settings().textScale = 1.2 ns.Theme.Refresh()");
+  expect(addon.eval("return { Vanguard_WhatsNew.lines ~= __before, math.floor(Vanguard_WhatsNew.view:GetVerticalScroll()) }"), "laid out again, still 40 down, not back at the top").toEqual([true, 40]);
+});
+
 it("what's new: a short list fits its window, so it shows no thumb and no soft edge", () => {
   const addon = loggedIn(ENV);
   expect(addon.eval("local v = Vanguard_WhatsNew.view return { v.thumb:IsShown(), v.fadeTop:IsShown(), v.fadeBottom:IsShown() }"), "nothing to scroll").toEqual([false, false, false]);

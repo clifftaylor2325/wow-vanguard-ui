@@ -467,7 +467,7 @@ it("the grid's column headers are section headers centred over their cells, and 
   const addon = priest();
   addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
   const [small, name] = addon.eval("return { ns.Theme.RoleSize('small'), ns.Theme.RoleSize('name') }");
-  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.__kind == "Button" and w:IsVisible() and w.text.__text == "PLAIN" then
+  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.__kind == "Button" and w:IsVisible() and w.text.__text == "NO MODIFIER" then
     return { w:GetHeight(), w:GetWidth(), w.text.__points.BOTTOMLEFT ~= nil and w.text.__points.BOTTOMRIGHT ~= nil, w.text.__justifyH, (select(2, w.text:GetFont())), w.text.__textColor, (w:GetCenter()) } end end`);
   const plain = addon.eval(`local c = __wfgStub.frames[${cell(addon, "BUTTON1")}] return { c:GetWidth(), (c:GetCenter()) }`);
   expect(head.slice(0, 5), "a section header two lines tall, one column wide, its text centred along its bottom in small").toEqual([28, plain[0] + 4, true, "CENTER", small]);

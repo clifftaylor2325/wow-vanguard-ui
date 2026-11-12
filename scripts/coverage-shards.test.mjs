@@ -126,3 +126,18 @@ it("--merge judges the floor once over every shard: 100% passes, a missing shard
   expect(gone.status).toBe(1);
   expect(gone.out).toContain("expected the hits of 5 shards, found 4 folder(s)");
 }, 120_000);
+
+// Every *.test.mjs file under scripts/, repo-relative with forward slashes.
+function testFilesUnder(dir) {
+  return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((e) => {
+    const rel = `${dir}/${e.name}`;
+    if (e.isDirectory()) return e.name === "node_modules" ? [] : testFilesUnder(rel);
+    return e.name.endsWith(".test.mjs") ? [rel] : [];
+  });
+}
+
+it("no two test files share a base name (the merge names hits files by base name alone)", () => {
+  const names = testFilesUnder("scripts").map((f) => path.basename(f));
+  const repeated = names.filter((n, i) => names.indexOf(n) !== i);
+  expect(repeated, "rename one: a shared name lets one file's missing hits pass as the other's").toEqual([]);
+});

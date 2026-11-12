@@ -42,7 +42,7 @@ AH.ACTION_W = (AH.PANE_W - 2 * AH.PAD - 2 * AH.INSET - (AH.ACTION_COLS - 1) * T.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
 AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
-AH.ACTIONS = { { AH.NEW, L["New"] }, { AH.RENAME, L["Rename"] }, { AH.COPY, L["Copy"] }, { AH.DELETE, L["Delete"] }, { AH.IMPORT, L["Import"] }, { AH.EXPORT, L["Export"] } }
+AH.ACTIONS = { { AH.NEW, L["New list"] }, { AH.RENAME, L["Rename"] }, { AH.COPY, L["Copy"] }, { AH.DELETE, L["Delete"] }, { AH.IMPORT, L["Import"] }, { AH.EXPORT, L["Export"] } }
 -- Enum.AuctionHouseFilter's ExactMatch and PoorQuality (AuctionHouseEnumsDocumentation.lua): the
 -- quality filters run on from PoorQuality in Enum.ItemQuality's order (Poor 0 ... Legendary 5).
 AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6
@@ -353,7 +353,9 @@ function AH.Remember(entry)
   for i = #recent, 1, -1 do
     if ns.Lower(AH.EntryText(recent[i])) == key then table.remove(recent, i) end
   end
-  table.insert(recent, 1, copyEntry(entry))
+  local copy = copyEntry(entry)
+  if type(copy) == "table" then copy.alert = nil end
+  table.insert(recent, 1, copy)
   for i = #recent, AH.MAX_RECENT + 1, -1 do recent[i] = nil end
 end
 
@@ -717,7 +719,7 @@ end
 
 -- The list's status line: how to start while there's no list, or the list is empty.
 local function listStatus(items)
-  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and L["Pick a list in the Lists pane."] or L["No lists yet: New makes one, Import pastes one."] end
+  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and L["Pick a list in the Lists pane."] or L["No lists yet: New list makes one, Import pastes one."] end
   if #items > 0 then return "" end
   return AH.ListKey() == AH.RECENT and L["Nothing searched yet."] or L["+ Add takes an item link, an item ID or a name."]
 end
@@ -734,6 +736,7 @@ end
 -- by their pane keys.
 AH.Sources = {}
 AH.Sources.list = { columns = AH.LIST_COLUMNS, paint = paintRow, click = AH.ClickRow, count = listCount, status = listStatus, buttons = true,
+  -- The rows are the picked shopping list's entries.
   items = function() local _, list = AH.CurrentList() return list or {} end }
 
 -- The source of what the card shows now: the entry picked in the pane (a list unless a file adds its own).
@@ -882,6 +885,7 @@ end
 
 -- The dropdown's actions, by value.
 AH.LIST_ACTIONS = {
+  -- Each action runs one list command: new, rename, copy, delete, export, import.
   [AH.NEW] = function() ns.AskText(L["New shopping list"], AH.NewList, L["Create"]) end,
   [AH.RENAME] = function() AH.AskRename() end,
   [AH.COPY] = function() AH.DuplicateList() end,
@@ -1102,6 +1106,7 @@ function AH.EditFilters(listName, i)
   if not (list and list[i] ~= nil) then return end
   d.listName, d.entry = listName, list[i]
   fillFilters(d, list[i])
+  d.alert:SetShown(listName ~= AH.RECENT)
   d:ClearAllPoints()
   d:SetPoint("CENTER", type(AuctionHouseFrame) == "table" and AuctionHouseFrame or UIParent, "CENTER", 0, 0)
   d:Show()
@@ -1193,6 +1198,7 @@ local function buildView(c)
   f:SetAllPoints()
   viewHead(f)
   f.table = AH.Table(f, AH.VIEW_COLUMNS, AH.VIEW_ROWS, { keys = true, paintRow = paintListing, onOpen = AH.OpenListing, onSort = AH.SortListings,
+    -- A click opens the listing; scrolling near the end of the table asks for more.
     onClick = function(r) AH.OpenListing(r.index) end, onNear = function() if AH.view then moreIfNear(AH.view) end end })
   AH.TableUnder(f.table, f)
   f:Hide()

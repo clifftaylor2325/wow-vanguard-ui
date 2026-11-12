@@ -278,7 +278,7 @@ it("each realm and faction keeps its own prices and its own cap", () => {
 });
 it("a full price store forgets the least listed items of one scan, keeping the busiest, not an arbitrary half", () => {
   const addon = atAuctionHouse();
-  addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 100 for i = 1, 101 do AP.Record(1000 + i, 5, __now, { listings = i }) end");
+  addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 100 for i = 1, 101 do AP.Record(1000 + i, 5, __now, { listings = i }) end AP.Cap()");
   const kept = addon.eval("local AP = ns.AuctionPrices local keep = math.floor(AP.MAX_ITEMS * AP.KEEP) local out = { keep, ns.AuctionPrices.House().count } for i = 1, 101 do out[#out + 1] = AP.House().prices[1000 + i] and i or 0 end return out");
   const [keep, count, ...ids] = kept;
   const present = ids.filter((i) => i > 0);
@@ -604,4 +604,40 @@ it("a typed price keeps the thousands mark before the client's own coin letters:
   const addon = atAuctionHouse('DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ",", "."', { client: '__wfgWorld.locale = "esES"' });
   expect(addon.eval(`local AH = ns.GetModule("AuctionHelper") return { AH.ParseMoney("1.500o"), AH.ParseMoney("1.500 o 20 p"), AH.ParseMoney("1.500g") }`),
     "the Spanish letter reads like the English one").toEqual([15000000, 15002000, 15000000]);
+});
+it("H44-21-100: a scan larger than the cap ranks all its items together, so a late 1-listing item does not outlive busier ones", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`local rows = {}
+    for i = 1, 10 do for k = 1, 3 do rows[#rows + 1] = { itemID = 1000 + i, count = 1, buyoutPrice = 100 + k } end end
+    rows[#rows + 1] = { itemID = 1011, count = 1, buyoutPrice = 50 }
+    rows[#rows + 1] = { itemID = 1012, count = 1, buyoutPrice = 50 }
+    __wfgWorld.ah.replicate = rows
+    ns.AuctionPrices.MAX_ITEMS = 10`);
+  addon.eval("ns.GetModule('AuctionHelper').StartScan()");
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  for (let i = 0; i < 5; i++) addon.update(0.01);
+  const kept = addon.eval("local out = {} for id, p in pairs(ns.AuctionPrices.House().prices) do out[#out + 1] = id .. ':' .. tostring(p.listings) end table.sort(out) return out");
+  expect(kept.length, "down to the cap's keep (9 of 10)").toBe(9);
+  expect(kept.every((k) => k.endsWith(":3")), "the busiest nine stay; both 1-listing items go").toBe(true);
+});
+// TEST-ONLY: a client that names a ruleset (so this home's key gains "hardcore"), and two saved houses: this
+// character's under the key from before the ruleset (the older prices), another realm's (newer).
+const RULESET_ENV = `__now = 1790000000 time = function() return __now end
+  C_GameRules = C_GameRules or {} C_GameRules.IsHardcoreActive = function() return true end`;
+const RULESET_SAVED = (() => {
+  // A saved price row of one listing, priced at time t.
+  const row = (t) => `{ min = 5, t = ${t}, listings = 1, days = {} }`;
+  // A saved house of three items priced at time t.
+  const house = (t) => `{ count = 3, lastScan = 0, prices = { [1] = ${row(t)}, [2] = ${row(t)}, [3] = ${row(t)} } }`;
+  return `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = ${house(1790000000 - 864000)}, ["Other-Horde"] = ${house(1790000000 - 86400)} } }`;
+})();
+it("H44-21-101: the all-houses cap at login keeps this character's house when its key gained a ruleset", () => {
+  const addon = loggedIn(RULESET_ENV + "\nns.AuctionPrices.MAX_ALL_ITEMS = 4", { savedVariables: RULESET_SAVED });
+  const keys = addon.eval("local keys = {} for k in pairs(VanguardDB.ah.houses) do keys[#keys + 1] = k end table.sort(keys) return table.concat(keys, ',')");
+  expect(keys, "the older key's house moved to the ruleset key and stayed; the other realm's went").toBe("ForeverTest-hardcore-Alliance");
+});
+it("H44-21-101: making room in the saved file drops other homes first, not the one that holds this character's prices", () => {
+  const addon = loggedIn(RULESET_ENV, { savedVariables: RULESET_SAVED });
+  const out = addon.eval("local n = ns.AuctionPrices.DropOldestHomes(1, function() return 1 end) local keys = {} for k in pairs(VanguardDB.ah.houses) do keys[#keys + 1] = k end return { n, table.concat(keys, ',') }");
+  expect(out).toEqual([1, "ForeverTest-hardcore-Alliance"]);
 });

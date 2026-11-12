@@ -114,6 +114,20 @@ it("hunt H44-14-R1: Undo setup puts the game's UI scale back after Fit my screen
   expect(after, "Fit my screen is undone too").toEqual(["0", "1"]);
 });
 
+it("hunt H44-14-R1: a later run's Undo setup leaves the game's UI scale as that run found it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval("SetCVar('useUiScale', '0') SetCVar('uiScale', '1')");
+  setupClick(addon, "next");
+  addon.eval('__click("1440p")');
+  nexts(addon, 8);
+  addon.eval("SetCVar('uiScale', '0.9')");
+  addon.slash("setup");
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(gameScale(addon), "the second run set no scale, so its Undo puts back none from the first run").toEqual(["1", "0.9"]);
+});
+
 it("hunt setup: Undo setup puts back the profile it backed up, not one staged for the reload since (a spec change or /vg profile mid-setup)", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
   addon.eval('__click("Centered: healing")');

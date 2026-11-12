@@ -17,13 +17,18 @@
 //      Lua 5.3 and accepts them; the game does not, and the addon would not load.
 //      Quoted strings use no \x, \z or \u{...} escape: luac5.1 accepts them, but the
 //      game reads them as plain letters while the harness decodes them.
-//   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals active at the
-//      top level of the file. Lua allows 200 per function and the file is one function:
-//      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
-//      within 2 of it). Locals inside a do ... end block or a function don't count.
+//   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals of the main chunk alive at
+//      once. Lua allows 200 per function and the file is one function: the next `local` past 200
+//      stops the whole addon loading (Core/Theme.lua got within 2 of it). The count is the peak:
+//      the locals of a do, if, for, while or repeat block count while it is open (it frees them at
+//      its end), and a for loop holds three hidden ones. Locals inside a function don't count.
 //   7. Addon Lua (Core/, Modules/) makes no secure call (SetAttribute, a state driver, an
-//      override binding, the panel manager's ShowUIPanel or HideUIPanel) outside a combat guard
-//      (report-only under #263 until it was quiet on main).
+//      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
+//      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
+//      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
+//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`) whose branch ends in
+//      return and comes before the call in the same blocks of the same function, or a call inside
+//      `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
 // cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
@@ -134,11 +139,35 @@ function luaFunctionName(tokens, i) {
   return eq?.text === "=" && lhs?.kind === "word" && tokens[i - 3]?.text !== "," ? lhs.text : null;
 }
 
+// The index of the "[" that opens the bracketed key ending at tokens[close] (a "]"), or -1.
+function openBracket(tokens, close) {
+  let depth = 0;
+  for (let k = close; k >= 0; k--) {
+    depth += tokens[k].text === "]" ? 1 : tokens[k].text === "[" ? -1 : 0;
+    if (depth === 0) return k;
+  }
+  return -1;
+}
+
+// A function the comment rule leaves unnamed because it is a table field: `, key = function` (after a comma) or
+// `X[key] = function` / `[key] = function` (a bracketed key). { label, at }: its key as written, and the token its
+// statement starts at (where a comment above it counts). null for any other function.
+function fieldFunction(tokens, i) {
+  if (tokens[i - 1]?.text !== "=" || tokens[i + 1]?.kind === "word") return null;
+  const lhs = tokens[i - 2];
+  if (lhs?.kind === "word" && tokens[i - 3]?.text === ",") return { label: lhs.text, at: lhs };
+  const open = lhs?.text === "]" ? openBracket(tokens, i - 2) : -1;
+  if (open < 0) return null;
+  const owner = ["word", "string"].includes(tokens[open - 1]?.kind) || [")", "]"].includes(tokens[open - 1]?.text) ? tokens[open - 1] : tokens[open];
+  return { label: tokens.slice(open, i - 1).map((t) => t.text).join(""), at: owner };
+}
+
 // Updates the open-block stack for one keyword; returns a closed function or null.
 function trackLuaBlock(stack, tokens, i, line) {
   const t = tokens[i];
   if (LUA_BLOCK_OPEN.has(t.text)) {
-    stack.push(t.text === "function" ? { name: luaFunctionName(tokens, i), start: line(t.start) } : null);
+    const field = t.text === "function" ? fieldFunction(tokens, i) : null;
+    stack.push(t.text === "function" ? { name: luaFunctionName(tokens, i), field: field && { label: field.label, line: line(field.at.start) }, start: line(t.start) } : null);
     return null;
   }
   if (!LUA_BLOCK_CLOSE.has(t.text)) return null;
@@ -168,19 +197,66 @@ export function topLevelLocals(src) {
   return found;
 }
 
-// Files near Lua's 200-local limit: [{ line, message }] once the top-level locals pass MAX_TOP_LOCALS.
+// The locals a `for` loop starts, from the `for` at tokens[i]: its names after the word, and the three hidden
+// state locals the Lua 5.1 compiler adds (the loop index, limit and step, or the generator, state and control).
+function forLocals(tokens, i) {
+  let names = 1;
+  for (let k = i + 1; tokens[k] && ![":", "="].includes(tokens[k].text) && tokens[k].text !== "in"; k++) names += tokens[k].text === "," ? 1 : 0;
+  return names + 3;
+}
+
+// Moves the scope stack of the main chunk's blocks on by the token at tokens[i]. Each entry is { fn, count }: a function
+// body (its locals are its own) or a block with the locals it declared so far. A loop's hidden locals arrive with its `do`.
+function stepScopes(state, tokens, i) {
+  const [t, top] = [tokens[i], state.stack[state.stack.length - 1]];
+  if (t.kind !== "word") return;
+  if (t.text === "for") state.pendingFor = forLocals(tokens, i);
+  else if (t.text === "function") state.stack.push({ fn: true, count: 0 });
+  else if (LUA_BLOCK_OPEN.has(t.text)) state.stack.push({ fn: false, count: t.text === "do" ? state.pendingFor : 0 });
+  else if (LUA_BLOCK_CLOSE.has(t.text)) state.stack.pop();
+  else if (t.text === "else" || t.text === "elseif") top.count = 0;
+  if (t.text === "do") state.pendingFor = 0;
+}
+
+// How many main-chunk locals are alive now: those of the open blocks, or 0 inside a function (its locals are its own).
+function aliveLocals(state) {
+  return state.stack.some((e) => e.fn) ? 0 : state.stack.reduce((n, e) => n + e.count, 0);
+}
+
+// Moves the scope walk on by tokens[i] and notes the locals alive now in seen: { peak, over }.
+function noteLocals(state, seen, tokens, i) {
+  stepScopes(state, tokens, i);
+  const names = tokens[i].text === "local" && tokens[i].kind === "word" ? localNames(tokens, i) : [];
+  state.stack[state.stack.length - 1].count += names.length;
+  const alive = aliveLocals(state);
+  if (alive > MAX_TOP_LOCALS && seen.over < 0) seen.over = (names.at(-1) ?? tokens[i]).start;
+  seen.peak = Math.max(seen.peak, alive);
+}
+
+// The most `local`s the main chunk has alive at once, counting those in open do, if, for, while and repeat blocks
+// (a block frees its locals only after its end, and a for loop holds three hidden ones): { peak, over }, where over is
+// the offset of the local that took the count past MAX_TOP_LOCALS, or -1.
+export function topLocalPeak(src) {
+  const tokens = codeTokens(src);
+  const state = { stack: [{ fn: false, count: 0 }], pendingFor: 0 };
+  const seen = { peak: 0, over: -1 };
+  tokens.forEach((t, i) => noteLocals(state, seen, tokens, i));
+  return seen;
+}
+
+// Files near Lua's 200-local limit: [{ line, message }] once the main chunk's locals alive at once pass MAX_TOP_LOCALS.
 function topLocalProblems(file, src) {
   if (!COLOR_SCOPE.test(file)) return [];
-  const found = topLevelLocals(src);
-  if (found.length <= MAX_TOP_LOCALS) return [];
-  const message = `${found.length} top-level locals (limit ${MAX_TOP_LOCALS}; Lua stops at 200 and then the addon does not load): move a group into a do ... end block or onto a table`;
-  return [{ line: lineIndex(src)(found[MAX_TOP_LOCALS].start), message }];
+  const { peak, over } = topLocalPeak(src);
+  if (peak <= MAX_TOP_LOCALS) return [];
+  const message = `${peak} top-level locals at once (limit ${MAX_TOP_LOCALS}; Lua stops at 200 and then the addon does not load): move a group onto a table (a do ... end block frees its locals only at its end, and a for loop holds three hidden ones)`;
+  return [{ line: lineIndex(src)(over), message }];
 }
 
 // Every function in Lua source: { name, start, end } (1-based lines).
 export function luaFunctions(src) {
   const line = lineIndex(src);
-  const tokens = tokenizeLua(src).filter((t) => t.kind !== "comment");
+  const tokens = codeTokens(src);
   const stack = [];
   const found = [];
   tokens.forEach((t, i) => {
@@ -308,10 +384,13 @@ function functionProblems(fn, kinds, documented) {
 const COLOR_SCOPE = /^(Core|Modules)\/.+\.lua$/;
 const COLOR_HOME = "Core/Theme.lua";
 // A color setter called with a number as its first argument.
-const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor)\s*\(\s*[-\d.]/g;
+const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor|CreateColor)\s*\(\s*[-\d.]/g;
+
 // A table of three or four numbers (checked below to be 0-1: a color).
 const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
 const COLOR_TABLE = new RegExp(String.raw`\{${NUM},${NUM},${NUM}(?:,${NUM})?\}`, "g");
+// A color table written with r, g and b number fields ({ r = 1, g = 0.82, b = 0 }), checked to be 0-1 as well.
+const RGB_FIELDS = new RegExp(String.raw`\br\s*=${NUM},\s*g\s*=${NUM},\s*b\s*=${NUM}`, "g");
 const COLOR_MESSAGE = "color numbers outside Core/Theme.lua: use a theme color (T.RGB, T.Color, T.Tint, T.BarColor, T.Paint)";
 
 // Lua source with comments and strings blanked out (newlines kept), so rules see only code.
@@ -326,13 +405,19 @@ function luaCodeOnly(src) {
   return out + src.slice(last);
 }
 
-// Offsets of color tables: three or four numbers, all between 0 and 1.
+// Offsets of color tables: three or four numbers, or r, g and b fields, all between 0 and 1.
 function colorTables(code) {
   const hits = [];
-  for (const m of code.matchAll(COLOR_TABLE)) {
+  for (const m of [...code.matchAll(COLOR_TABLE), ...code.matchAll(RGB_FIELDS)]) {
     if (m.slice(1).filter(Boolean).every((v) => Number(v) <= 1)) hits.push(m.index);
   }
   return hits;
+}
+
+// Offsets of CreateColorFromHexString calls given a written string ("ff8800"): a color the theme does not own.
+function hexStringColors(src) {
+  const tokens = codeTokens(src);
+  return tokens.flatMap((t, i) => (t.text === "CreateColorFromHexString" && tokens[i + 1]?.text === "(" && tokens[i + 2]?.kind === "string" ? [t.start] : []));
 }
 
 // A |c color escape with its color written out ("|cff3d9eff").
@@ -344,21 +429,32 @@ function colorProblems(file, src) {
   const code = luaCodeOnly(src);
   const line = lineIndex(src);
   const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code));
-  hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index));
+  hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index), ...hexStringColors(src));
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
 
-// A font set with a written size: T.SetFont(...) or :SetFont(path, 12, ...).
-// The first argument may hold one call, as in fs:SetFont(T.Font(true), 14).
-const FONT_SIZE = /\bT\.SetFont\s*\(|:SetFont\s*\((?:[^,()]|\([^()]*\))*,\s*\d/g;
+// A font sized with T.SetFont(...) or fs:SetTextHeight(14); :SetFont(path, 12) is read by writtenFontSize.
+const FONT_SIZE = /\bT\.SetFont\s*\(|:SetTextHeight\s*\(\s*\d/g;
 const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
+
+// True when the token at tokens[i] is the method :SetFont whose second argument is a written size: a number, or
+// `x or 12`. A number inside brackets (was[2]) or a computed size is not, and a dotted call is a module's own.
+function writtenFontSize(tokens, i) {
+  if (tokens[i].text !== "SetFont" || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
+  const size = callArgs(tokens, i + 1)[1] ?? [];
+  let head = size.length;
+  while (head > 0 && /^[\d.]$/.test(size[head - 1].text)) head--;
+  return head < size.length && (head === 0 || size[head - 1].text === "or");
+}
 
 // Fonts sized outside the theme's text roles: [{ line, message }].
 function fontProblems(file, src) {
   if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
   const code = luaCodeOnly(src);
+  const tokens = codeTokens(src);
+  const found = [...code.matchAll(FONT_SIZE)].map((m) => m.index).concat(tokens.flatMap((t, i) => (writtenFontSize(tokens, i) ? [t.start] : [])));
   const line = lineIndex(code);
-  return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
+  return found.map((at) => ({ line: line(at), message: FONT_MESSAGE }));
 }
 
 // Spacing constants ---------------------------------------------------------------------
@@ -658,8 +754,12 @@ export function checkSource(file, src) {
 //     and, or), which errors in game when the answer is a secret (docs/PATTERNS.md).
 //   pcall-result-or: `ok and value or fallback` just after a pcall, which tests value for truth.
 //   long-line: addon Lua lines longer than MAX_LINE characters; the count only goes down.
+//   unwrapped-text-shapes: English in a sink's text argument that the narrow unwrapped-text rule does not read: joined to a
+//     value, chosen by and/or, or the pattern of a format call (H44-25-3). The /vg diagnostics stay English (DIAGNOSTIC_FILES).
+//   undocumented-field-function: a function written as a table field after a comma, or under a bracketed key, with no
+//     comment line above it (H44-25-6 and H44-25-R2): the comment rule reads only the first field and `name = function`.
 
-export const REPORT_RULES = ["unbounded-onupdate", "unguarded-script-handler", "unwrapped-text", "secret-truth-test", "pcall-result-or", "long-line"];
+export const REPORT_RULES = ["unbounded-onupdate", "unguarded-script-handler", "unwrapped-text", "secret-truth-test", "pcall-result-or", "long-line", "unwrapped-text-shapes", "undocumented-field-function"];
 // The blocking rule that grew out of the report-only list once it was quiet on main.
 export const SECURE_RULE = "secure-outside-combat-guard";
 
@@ -675,19 +775,32 @@ const SECURE_CALLS = new Set([
 // Files whose secure calls all run where the frame is made and set up, in the same safe
 // window. Add a file only after reading every call in it; empty means none is excused.
 export const SECURE_ALLOW = new Set([]);
-// Words that, before a secure call in the same function, mean it checks for combat first.
+// Words that make a condition a combat check.
 const COMBAT_CHECKS = new Set(["InCombatLockdown", "InCombat"]);
+// Calls that are secure only as a method on a frame (fs:WrapScript(...)): their bare names are common words.
+const SECURE_METHODS = new Set(["WrapScript", "UnwrapScript", "Execute", "SetFrameRef"]);
 
 // The last part of a dotted or method name ("ns.Bars:Apply" gives "Apply").
 const lastPart = (name) => name.split(/[.:]/).pop();
 
-// Every function in code tokens as { open, close, name }: token indexes of `function` and its `end`.
+// A function's whole name with ":" read as "." ("function V:Apply" and "V.Apply = function" both give "V.Apply").
+function fullName(tokens, i) {
+  if (tokens[i + 1]?.kind === "word") return luaFunctionName(tokens, i)?.replace(":", ".") ?? null;
+  const parts = [];
+  for (let k = i - 2; tokens[k]?.kind === "word" && tokens[i - 1]?.text === "="; k -= 2) {
+    parts.unshift(tokens[k].text);
+    if (![".", ":"].includes(tokens[k - 1]?.text)) break;
+  }
+  return parts.length ? parts.join(".") : null;
+}
+
+// Every function in code tokens as { open, close, name, full }: token indexes of `function` and its `end`.
 function functionSpans(tokens) {
   const stack = [];
   const spans = [];
   tokens.forEach((t, i) => {
     if (t.kind !== "word" || !(LUA_BLOCK_OPEN.has(t.text) || LUA_BLOCK_CLOSE.has(t.text))) return;
-    if (LUA_BLOCK_OPEN.has(t.text)) stack.push(t.text === "function" ? { open: i, name: luaFunctionName(tokens, i) } : null);
+    if (LUA_BLOCK_OPEN.has(t.text)) stack.push(t.text === "function" ? { open: i, name: luaFunctionName(tokens, i), full: fullName(tokens, i) } : null);
     else spans.push({ ...stack.pop(), close: i });
   });
   return spans.filter((s) => s.open !== undefined);
@@ -711,34 +824,118 @@ function deferRanges(tokens) {
   });
 }
 
-// True when the call at tokens[i] is one of SECURE_CALLS (not its definition or a mention).
+// True when the call at tokens[i] is a secure call (not its definition or a mention): one of SECURE_CALLS, or a
+// SECURE_METHODS name called on a frame with ":".
 function isSecureCall(tokens, i) {
-  return SECURE_CALLS.has(tokens[i].text) && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  if (tokens[i].kind !== "word" || tokens[i + 1]?.text !== "(" || tokens[i - 1]?.text === "function") return false;
+  return SECURE_CALLS.has(tokens[i].text) || (SECURE_METHODS.has(tokens[i].text) && tokens[i - 1]?.text === ":");
 }
 
-// The words of tokens[a..b].
-const wordsIn = (tokens, a, b) => tokens.slice(a, b + 1).filter((t) => t.kind === "word").map((t) => t.text);
+// The whole dotted names written in tokens[a..b] ("set", "M.Apply"; ":" read as "."), as a Set. A name after a "."
+// or ":" belongs to the run before it, so `self.set` is "self.set", never "set".
+function namesIn(tokens, a, b) {
+  const names = new Set();
+  for (let k = a; k <= b; k++) {
+    if (tokens[k].kind !== "word" || [".", ":"].includes(tokens[k - 1]?.text)) continue;
+    let end = k;
+    while ([".", ":"].includes(tokens[end + 1]?.text) && tokens[end + 2]?.kind === "word") end += 2;
+    names.add(tokens.slice(k, end + 1).filter((t) => t.kind === "word").map((t) => t.text).join("."));
+  }
+  return names;
+}
 
-// Functions that run out of combat: passed to ns.OutOfCombat, or named by a function that
-// does (inside its arguments, or in a function already known to run there; same file only).
+// Functions that run out of combat: passed to ns.OutOfCombat, or named by their whole name inside the arguments of
+// one that does (or of a function already known to run there; same file only). Known limit: a function trusted
+// because one deferred call names it is trusted for every call of that name, also a straight call from a combat
+// handler (a blocking "every caller is deferred" rule flagged 18 of 123 calls falsely: one name means two things in
+// two files, and public functions have callers in other files).
 function deferredSpans(tokens, spans, ranges) {
-  const names = new Set(ranges.flatMap(([a, b]) => wordsIn(tokens, a, b)));
+  const names = new Set(ranges.flatMap(([a, b]) => [...namesIn(tokens, a, b)]));
   const safe = new Set();
   for (let grew = true; grew; ) {
-    const more = spans.filter((s) => !safe.has(s) && (ranges.some(([a, b]) => a < s.open && s.close <= b) || (s.name && names.has(lastPart(s.name)))));
-    more.forEach((s) => safe.add(s) && wordsIn(tokens, s.open, s.close).forEach((w) => names.add(w)));
+    const more = spans.filter((s) => !safe.has(s) && (ranges.some(([a, b]) => a < s.open && s.close <= b) || (s.full && names.has(s.full))));
+    more.forEach((s) => safe.add(s) && namesIn(tokens, s.open, s.close).forEach((w) => names.add(w)));
     grew = more.length > 0;
   }
   return safe;
 }
 
-// True when the secure call at tokens[i] is at the top level (load time), or a function holding it
-// runs out of combat (deferredSpans) or checks for combat before it.
+// The innermost function span holding tokens[i], or null at the top level (load time).
+function innermost(spans, i) {
+  const holding = spans.filter((s) => s.open < i && i < s.close);
+  return holding.reduce((best, s) => (best && best.open > s.open ? best : s), null);
+}
+
+// The index of the `then` that ends the condition of the `if` at tokens[p].
+function thenOf(tokens, p) {
+  let k = p + 1;
+  for (let depth = 0; k < tokens.length && !(depth === 0 && tokens[k].text === "then"); k++) depth += nesting(tokens[k]);
+  return k;
+}
+
+// The first branch of the `if` whose `then` is tokens[t]: { end, returns }. end is the index of its else, elseif or
+// end; returns is true when a `return` stands at the branch's own level (it leaves the function).
+function firstBranch(tokens, t) {
+  let depth = 0;
+  let returns = false;
+  for (let k = t + 1; k < tokens.length; k++) {
+    const word = tokens[k].kind === "word" ? tokens[k].text : "";
+    if (depth === 0 && ["end", "else", "elseif"].includes(word)) return { end: k, returns };
+    depth += nesting(tokens[k]);
+    returns = returns || (depth === 0 && word === "return");
+  }
+  return { end: tokens.length, returns };
+}
+
+// How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
+// joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
+// `or`), else null.
+function combatSense(tokens, a, b) {
+  const words = tokens.slice(a, b).map((t) => t.text);
+  const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
+  if (at < 0) return null;
+  const head = words[at - 1] === "." ? at - 2 : at;
+  if (words[head - 1] === "not") return words.includes("or") ? null : "out";
+  return words.includes("and") ? null : "in";
+}
+
+// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first.
+function openersAt(tokens, from, i) {
+  const open = [];
+  for (let k = from; k < i; k++) {
+    if (tokens[k].kind !== "word") continue;
+    if (LUA_BLOCK_OPEN.has(tokens[k].text)) open.push(k);
+    else if (LUA_BLOCK_CLOSE.has(tokens[k].text)) open.pop();
+  }
+  return open;
+}
+
+// True when the `if` at tokens[p] guards the secure call at tokens[i] in function s: its condition is a combat
+// check whose then-branch returns, and the call comes after that branch in the same blocks of the same function;
+// or the call stands in the then-branch of a condition that holds only out of combat.
+function ifGuards(ctx, s, p, i) {
+  const then = thenOf(ctx.tokens, p);
+  const sense = combatSense(ctx.tokens, p + 1, then);
+  const branch = firstBranch(ctx.tokens, then);
+  if (sense === "out") return then < i && i < branch.end;
+  if (sense !== "in" || !branch.returns || i < branch.end) return false;
+  const [mine, theirs] = [openersAt(ctx.tokens, s.open, p), openersAt(ctx.tokens, s.open, i)];
+  return mine.every((k, n) => theirs[n] === k);
+}
+
+// True when function s holds a combat guard (ifGuards) for the secure call at tokens[i] in an `if` of its own,
+// not one in a function nested inside it.
+function guardedIn(ctx, s, i) {
+  const ifs = ctx.tokens.map((t, p) => (p > s.open && p < s.close && t.text === "if" && t.kind === "word" ? p : -1)).filter((p) => p >= 0);
+  return ifs.some((p) => innermost(ctx.spans, p) === s && ifGuards(ctx, s, p, i));
+}
+
+// True when the secure call at tokens[i] is at the top level (load time), or a function holding it runs out of
+// combat (deferredSpans), or the function it is in has a combat guard (guardedIn). A combat word read anywhere
+// earlier does not count.
 function isCombatSafeAt(ctx, i) {
-  const enclosing = ctx.spans.filter((s) => s.open < i && i < s.close);
-  // True when function s checks for combat before tokens[i].
-  const checks = (s) => ctx.tokens.slice(s.open, i).some((t) => COMBAT_CHECKS.has(t.text));
-  return !enclosing.length || enclosing.some((s) => ctx.safe.has(s) || checks(s));
+  const s = innermost(ctx.spans, i);
+  return !s || ctx.spans.some((h) => h.open < i && i < h.close && ctx.safe.has(h)) || guardedIn(ctx, s, i);
 }
 
 // Secure calls outside a combat guard: [{ rule, line, message }].
@@ -749,7 +946,7 @@ function unguardedSecureCalls(file, src) {
   const ctx = { tokens, spans, safe: deferredSpans(tokens, spans, deferRanges(tokens)) };
   const line = lineIndex(src);
   const hits = tokens.flatMap((t, i) => (isSecureCall(tokens, i) && !isCombatSafeAt(ctx, i) ? [t] : []));
-  const message = `outside a combat guard: run it through ns.OutOfCombat, or check InCombatLockdown() first`;
+  const message = `outside a combat guard: run it through ns.OutOfCombat, or return first when InCombatLockdown() / ns.InCombat()`;
   return hits.map((t) => ({ rule: SECURE_RULE, line: line(t.start), message: `${t.text}() ${message}` }));
 }
 
@@ -836,6 +1033,76 @@ function unwrappedText(file, src) {
   return hits.map((t) => ({ rule: REPORT_RULES[2], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
 }
 
+// The wider unwrapped-text rule (report-only, with a baseline of its own; unwrapped-text stays the narrow one). It reads
+// the whole text argument of a sink, not only a literal that comes first: `"a" .. x`, `cond and "a" or "b"`, `x or "a"`,
+// and the pattern handed to string.format, ns.Format or ("..."):format inside it. SHAPE_SINKS gives each sink's text
+// argument, counted from 0. A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
+// is not text, and only words count: format codes, {slots}, color and link escapes and the brand name are stripped first.
+const SHAPE_SINKS = new Map(Object.entries({
+  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: 0, AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
+  OfferReload: 0, ShowText: 0, Ask: 0, AskText: 0, DialogButton: 1,
+}));
+const FORMATTERS = new Set(["format", "Format"]);
+// The /vg diagnostics docs/PATTERNS.md lists as staying English (pasted into a bug report), each with the files that print
+// it: a file that prints one is not read by the wider rule. A test holds this table to that sentence of the doc.
+export const DIAGNOSTIC_FILES = {
+  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: [], report: [], errors: [],
+  frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
+};
+const DIAGNOSTIC_SET = new Set(Object.values(DIAGNOSTIC_FILES).flat());
+// What a literal carries that is not words: format codes, {slots}, |c and |r, |H...|h link markup and the brand.
+const NOT_WORDS = /%[-+ #0-9.]*[a-zA-Z%]|\{\w+\}|\|c[0-9a-fA-F]{8}|\|[rh]|\|H[^|]*|Vanguard|\/vg/g;
+
+// True when a string token reads as English: two letters in a row once the non-words are stripped (a path is not text).
+const isShapeText = (text) => isWords(text) && /[A-Za-z]{2}/.test(text.replace(NOT_WORDS, " "));
+
+// True when the string at arg[k], at bracket depth `depth` of the argument, is text the sink prints: at the argument's own level
+// and not compared, or the pattern of string.format, ns.Format or ("..."):format.
+function printsText(arg, k, depth) {
+  const own = depth === 0 && !(arg[k - 1]?.text === "=" && ["=", "~"].includes(arg[k - 2]?.text)) && arg[k + 1]?.text !== "=";
+  const pattern = depth === 1 && arg[k - 1]?.text === "(" && FORMATTERS.has(arg[k - 2]?.text);
+  const method = depth === 1 && arg[k + 1]?.text === ")" && arg[k + 2]?.text === ":" && arg[k + 3]?.text === "format";
+  return own || pattern || method;
+}
+
+// The text literals in a sink's text argument (tokens): the string tokens printsText accepts that read as English. A
+// literal that is the whole start of the argument of a sink the narrow rule reads (`narrow`) is its finding, not this one's.
+function shapeLiterals(arg, narrow) {
+  let depth = 0;
+  return arg.filter((t, k) => {
+    const hit = t.kind === "string" && printsText(arg, k, depth) && isShapeText(t.text) && !(narrow && k === 0 && isWords(t.text));
+    depth += nesting(t);
+    return hit;
+  });
+}
+
+// The tokens of the text argument of the sink call at tokens[i], or an empty list when tokens[i] is not a sink call.
+function sinkArgument(tokens, i) {
+  const index = tokens[i].kind === "word" ? SHAPE_SINKS.get(tokens[i].text) : undefined;
+  const call = index !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  return call ? (callArgs(tokens, i + 1)[index] ?? []) : [];
+}
+
+// English in a sink's text argument in a shape the narrow rule does not read (rule unwrapped-text-shapes).
+function unwrappedShapes(file, src) {
+  if (!COLOR_SCOPE.test(file) || DIAGNOSTIC_SET.has(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  const hits = tokens.flatMap((t, i) => shapeLiterals(sinkArgument(tokens, i), TEXT_SINKS.has(t.text)));
+  return hits.map((t) => ({ rule: REPORT_RULES[6], line: line(t.start), message: `English text joined, chosen or formatted outside L[…]: ${t.text.slice(0, 48)}` }));
+}
+
+// Table-field functions with no comment above them (rule undocumented-field-function): a function after a comma or under a
+// bracketed key is anonymous to the comment rule. The same comment test applies: a comment line directly above the field, or
+// above the first of a run of one-line functions (two fields on one line share the line's comment); [{ rule, line, message }].
+function undocumentedFields(file, src) {
+  const fns = luaFunctions(src).map((f) => (f.name || !f.field ? f : { ...f, name: f.field.label, docLine: f.field.line, isField: true }));
+  const documented = documentedSet(fns, luaLineKinds(src));
+  const documentedLines = new Set(fns.filter((f) => documented.has(f)).map((f) => f.docLine ?? f.start));
+  const loose = fns.filter((f) => f.isField && !documentedLines.has(f.docLine));
+  return loose.map((f) => ({ rule: REPORT_RULES[7], line: f.docLine, message: `${f.name} = function has no comment above it (a table field the comment rule does not name)` }));
+}
+
 // Truth tests on client reads that can answer with a secret (the client errors on `if secret then`; the
 // harness raises too, but only on a path a test drives with a secret boolean). Narrow on purpose: a call to a Unit*, C_UnitAuras.*
 // or GetAction* function tested for truth by if, elseif, while, not, and or or.
@@ -890,7 +1157,7 @@ function longLines(file, src) {
 // Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
 export function reportSource(file, src) {
   if (!file.endsWith(".lua")) return [];
-  const rules = [unboundedOnUpdates, unguardedScriptHandlers, unwrappedText, secretTruthTests, pcallResultOr, longLines];
+  const rules = [unboundedOnUpdates, unguardedScriptHandlers, unwrappedText, secretTruthTests, pcallResultOr, longLines, unwrappedShapes, undocumentedFields];
   return rules.flatMap((rule) => rule(file, src));
 }
 
@@ -901,4 +1168,10 @@ export function compareToBaseline(counts, baseline) {
     const [count, base] = [counts[rule] ?? 0, baseline[rule] ?? 0];
     return { rule, count, baseline: base, status: count > base ? "above" : count < base ? "below" : "at" };
   });
+}
+
+// The rows of compareToBaseline that fail the run: above the baseline (a new finding) or below it (a stale baseline,
+// which must be lowered in the same commit, so it can never be spare room for a later finding).
+export function ratchetFailures(rows) {
+  return rows.filter((r) => r.status !== "at");
 }

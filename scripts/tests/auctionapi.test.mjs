@@ -174,7 +174,7 @@ it("a callerID or list name padded with spaces still finds its list", () => {
 it("MultiSearchExact searches a name the client knows by its item ID", () => {
   const addon = withApi();
   expect(call(addon, "MultiSearchExact", "'TEST-ONLY Addon', { '\"Strange Dust\"', 'TEST-ONLY Unknown', '2589' }"), "queued").toBe(true);
-  expect(listOf(addon, "TEST-ONLY Addon search"), "a known name by ID, an unknown one by name, an ID as it is").toEqual([10940, "TEST-ONLY Unknown", 2589]);
+  expect(listOf(addon, "TEST-ONLY Addon search"), "a known name by ID, an unknown one by name kept exact, an ID as it is").toEqual([10940, { term: "TEST-ONLY Unknown", exact: true }, 2589]);
   expect(sent(addon), "only that item comes back").toEqual(["SearchForItemKeys:10940"]);
   const noPanel = withApi("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   expect([call(noPanel, "MultiSearchExact", "'TEST-ONLY Addon', { 'Strange Dust' }"), sent(noPanel)], "without the panel the search still runs").toEqual([true, ["SearchForItemKeys:10940"]]);
@@ -221,4 +221,14 @@ it("RegisterForDBUpdate: a callback that registers another one doesn't make the 
   };
   expect(browse(95), "the new callback is not told in the pass that added it").toEqual([1, 0]);
   expect(browse(90), "it is told in the next pass").toEqual([2, 1]);
+});
+
+it("H44-21-2: MultiSearchExact on a name the client has not cached takes no item whose name only contains it", () => {
+  const addon = withApi();
+  call(addon, "MultiSearchExact", "'TEST-ONLY Addon', { 'TEST-ONLY Ore' }");
+  addon.eval(`__wfgWorld.items[777] = { name = "TEST-ONLY Ore Chunk" }
+    __wfgWorld.ah.browse = { { itemKey = { itemID = 777 }, minPrice = 300, totalQuantity = 2 } }`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  const row = addon.eval("local r = ns.GetModule('AuctionHelper').shopCard.body.table.rows[1] return r.name:GetText()");
+  expect(row, "an exact search takes no other name").not.toBe("TEST-ONLY Ore Chunk");
 });

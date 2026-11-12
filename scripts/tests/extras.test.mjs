@@ -748,6 +748,16 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   bare.fire("MERCHANT_SHOW");
   expect(bare.eval("return #ns.GetModule('Quiet').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
+it("H44-22-4 a merchant opened in a fight sells no junk in one step either; out of combat it does", () => {
+  const addon = loggedIn("");
+  addon.world.combat(true);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __wfgWorld.soldJunk == true"), "in a fight: nothing sold").toBe(false);
+  addon.fire("MERCHANT_CLOSED");
+  addon.world.combat(false);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __wfgWorld.soldJunk == true"), "out of combat: the one-step sale").toBe(true);
+});
 it("selling junk leaves a gray item in an equipment set, and a locked one, alone", () => {
   const addon = loggedIn(MERCHANT_ENV);
   addon.eval(`C_EquipmentSet = { GetEquipmentSetIDs = function() return { 1 } end, GetItemIDs = function() return { [16] = 77 } end }
@@ -772,6 +782,13 @@ it("junk selling stops when the merchant closes or a fight starts: no retry uses
   setCombat(addon, true);
   addon.eval(`${MC}.SellJunk(3)`);
   expect(addon.eval("return __used"), "nor one in combat").toEqual({});
+});
+it("H44-G3-4 a junk retry while the merchant shows its Buyback tab sells nothing, as the game's bag click does", () => {
+  const addon = loggedIn(MERCHANT_ENV + "MerchantFrame = { selectedTab = 1 } __sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used"), "the first pass sells on the merchant tab").toEqual([1]);
+  addon.eval("MerchantFrame.selectedTab = 2 local t = __later __later = {} for _, f in ipairs(t) do f() end");
+  expect(addon.eval("return __used"), "the retry on the Buyback tab uses nothing").toEqual([1]);
 });
 it("quiet the game: the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);

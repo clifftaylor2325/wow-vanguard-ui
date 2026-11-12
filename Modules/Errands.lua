@@ -63,10 +63,13 @@ local function available(i)
   return not ns.IsSecret(second) and not ns.IsSecret(third) and (second == "available" or third == "available")
 end
 
--- A service's name, to tell it from the others as the list re-indexes under the buying.
+-- A service's key, to tell it from the others as the list re-indexes under the buying: its name, with the rank text
+-- (the fifth answer on WoW Forever, where a next rank has the same name) when the client gives one plainly.
 local function serviceName(i)
-  local name = ask("GetTrainerServiceInfo", i)
-  return type(name) == "string" and name or tostring(i)
+  local name, _, _, _, rank = ask("GetTrainerServiceInfo", i)
+  if type(name) ~= "string" then return tostring(i) end
+  if type(rank) == "string" and not ns.IsSecret(rank) and rank ~= "" then return name .. " " .. rank end
+  return name
 end
 
 -- Narrow enough to sit between the trainer's money line (bottom left) and its Train button.
@@ -142,10 +145,10 @@ end
 -- it's off while nothing is affordable.
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
-  if not b then return end
+  if not b or not ER.settings then return end
   b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
   ns.WidenToLabel(b)
-  if plan.count > 0 then b:Enable() else b:Disable() end
+  if plan.count > 0 and not ER.training then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
 
@@ -196,6 +199,7 @@ end
 -- Says what a click learned, read from the trainer's list once it has answered (the buying only asks; a
 -- refused service stays on offer). A closed trainer cannot be read, so the summary is what was asked.
 local function reportTrained(run)
+  if ER.training == run then ER.training = nil end
   local got = ER.trainerOpen and learnedOf(run) or { count = run.count, spent = run.spent }
   local fewer = got.count < run.count
   local text = fewer and L["Trained {count} of {asked} skill(s) for {money}."] or L["Trained {count} skill(s) for {money}."]
@@ -205,11 +209,13 @@ end
 
 -- The Train all button was clicked: learn everything affordable in a loop inside
 -- the click (a purchase needs one), re-reading the list each time, and say what the trainer took and what it cost.
+-- A click while the last one waits for the trainer's answer (ER.training) does nothing: the list and the gold the
+-- second would read are still the old ones, so it would buy everything again.
 function ER.TrainAll()
-  if ns.InCombat() then return end
+  if ns.InCombat() or ER.training then return end
   local run = { done = {}, count = 0, spent = 0 }
   while trainOne(run) do end
-  if run.count > 0 then later(ER.TRAIN_SETTLE, function() reportTrained(run) end) end
+  if run.count > 0 then ER.training = run later(ER.TRAIN_SETTLE, function() reportTrained(run) end) end
   ER.UpdateTrainButton()
 end
 
@@ -407,10 +413,14 @@ end
 -- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
 -- The game answers a buy later and says nothing when it fails, so the chunk is only noted as pending here
 -- (with how many you carried): settle notes what really arrived. A buy goes by merchant index, so the
--- merchant must still have the order's item there.
+-- merchant must still have the order's item there. The list is read again before every chunk: an item taken off
+-- it, or lowered, mid-run stops being bought (never more than the order asked for: where the client cannot
+-- count items, wanted never falls).
 local function buyChunk(run)
   local order = run.orders[1]
   if not order or not ns.GetModule("Merchant").Sells(order.index, order.id) then return false end
+  order.need = math.min(order.need, (wanted(order.index)))
+  if order.need <= 0 then table.remove(run.orders, 1) return buyChunk(run) end
   local count = chunkSize(order)
   if math.ceil(order.unit * count) > cash() then return false end
   run.pending = { order = order, count = count, before = owned(order.id), checks = 0 }
@@ -670,7 +680,7 @@ end
 -- hidden, a run in progress (a purchase run, a flight, a ride) is forgotten, and the module reads as off (no
 -- settings: the stock window refuses to open), as after a login with it off. The hooks go inert with the scope.
 function ER.Disable()
-  ER.stocking, ER.flight, ER.boat = nil, nil, nil
+  ER.stocking, ER.flight, ER.boat, ER.training = nil, nil, nil, nil
   ER.merchantOpen, ER.trainerOpen = false, false
   hideDrawn()
   ER.settings = nil

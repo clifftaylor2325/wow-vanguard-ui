@@ -180,6 +180,25 @@ const countLayouts = (addon) => {
   return () => addon.eval("local n = __places __places = 0 return n");
 };
 
+// The combined bag's sections as the module groups them now: [label, slots] each, in order.
+const sections = (addon) => addon.eval(`local out = {}
+  for _, s in ipairs((ns.GetModule("Bags").Group(ContainerFrameCombinedBags.Items))) do out[#out + 1] = { s.label, #s.buttons } end
+  return out`);
+
+it("the combined bag in sections: a special bag's empty slots get their own header after Empty, as only its kind of item goes there", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__wfgWorld.bagFamilies[1] = 32 __openBag()");
+  expect(sections(addon).slice(-2), "the backpack's free slot under Empty, the herb bag's four under their own").toEqual([["Empty", 1], ["Empty: herb bag", 4]]);
+  expect(addon.texts("EMPTY: HERB BAG").length, "its header shows in the window").toBe(1);
+  expect(spot(addon, "b1s1")[1] > spot(addon, "b0s8")[1], "the herb bag's slots sit below the Empty row").toBe(true);
+});
+
+it("the combined bag in sections: with the general bags full only the special bags' empty slots show, each kind by name", () => {
+  const addon = openFilled([4, 2, 2, 2, 0], { trade: 4 }, "__wfgWorld.bagFamilies[1], __wfgWorld.bagFamilies[2], __wfgWorld.bagFamilies[3] = 1, 32, 4096");
+  const want = [["Trade goods", 4], ["Empty: herb bag", 2], ["Empty: quiver", 2], ["Empty: special bag", 2]];
+  expect(sections(addon), "no plain Empty section; a family Vanguard has no name for reads special bag").toEqual(want);
+});
+
 it("the combined bag in sections: slots the game marks locked stay in Empty, after every other empty slot", () => {
   const addon = loggedIn(BAG_ENV);
   addon.eval("__slots.b0s8.IsExtended = function() return true end __openBag()");
@@ -963,6 +982,20 @@ it("Filter, Groups and Sort refit when the Text size changes while the bag is op
   }
 });
 
+it("H44-22-50 section headers refit when the Text size changes while the bag is open", () => {
+  const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "ruRU"`, savedVariables: SETUP_DONE });
+  addon.eval(BAG_ENV);
+  addon.login();
+  addon.eval("__openBag()");
+  // The quest header's width now.
+  const width = () => addon.eval("return ns.GetModule('Bags').headers.quest:GetWidth()");
+  const before = width();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  const keys = ["quest", "equipment", "consumables", "trade", "other", "junk", "empty"];
+  expect(keys.flatMap((k) => addon.textFit(`ns.GetModule('Bags').headers.${k}`)), "no header cut at 130%").toEqual([]);
+  expect(width(), "the quest header grew with its text").toBeGreaterThan(before);
+});
+
 it("the sectioned combined bag is clamped to the screen, so a bag taller than a short canvas keeps its title and Sort button; a plain bag is left alone", () => {
   // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing); the game windows'
   // own clamp (Drag game windows by their title bar) is off, so only the sections' clamp is seen.
@@ -985,4 +1018,22 @@ it("search words and group names ignore the case of Russian letters, so a small-
   addon.slash("bag add Оружие 90001");
   expect(lit(addon, "cat:оружие"), "a group named with a capital, searched in small letters").toEqual([90001]);
   expect(addon.eval(`return { ns.GetModule("Bags").CategoryOf(90001) }`), "the group key is in small letters").toEqual(["cat:оружие"]);
+});
+
+// TEST-ONLY client that holds the search box's and the money line's anchoring secret once the game has set them: every
+// GetPoint value is then a secret, relativeTo too (live Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// SimpleScriptRegionResizingAPIDocumentation.lua GetPoint, SecretWhenAnchoringSecret).
+const HIDDEN_ANCHORS = `
+  local f = ContainerFrameCombinedBags
+  local search, currency = f.UpdateSearchBox, f.UpdateCurrencyFrames
+  function f:UpdateSearchBox() search(self) __wfgWorld.holdSecret(BagItemSearchBox, "Anchoring") end
+  function f:UpdateCurrencyFrames() currency(self) if __holdMoney then __wfgWorld.holdSecret(self.MoneyFrame, "Anchoring") end end
+`;
+
+it("H44-30-50 a search box and money line whose anchoring the client hides are read through ns.PlainPoint, with no error", () => {
+  const addon = loggedIn(BAG_ENV + HIDDEN_ANCHORS + "__holdMoney = true __token = CreateFrame('Frame', nil, ContainerFrameCombinedBags) __token:SetHeight(17)");
+  addon.eval("__openBag()");
+  expect(addon.eval("return { BagItemSearchBox.__points.TOPLEFT.x, #ns.errors }"), "the search box left where the game set it, nothing raised").toEqual([62, 0]);
+  addon.eval("__holdMoney = false ContainerFrameCombinedBags:UpdateCurrencyFrames() __holdMoney = true ContainerFrameCombinedBags:UpdateCurrencyFrames()");
+  expect(addon.eval("return #ns.errors"), "the money line on the currency tracker, hidden again: nothing raised").toBe(0);
 });

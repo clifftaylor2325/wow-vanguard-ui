@@ -17,11 +17,12 @@ function hook(input) {
   return spawnSync(process.execPath, [script], { cwd: root, input: JSON.stringify(input), encoding: "utf8" });
 }
 
-it("covers addon Lua and scripts, and nothing else", () => {
+it("covers every file the scan reads (Lua, .mjs, .js outside Libs/), and nothing else", () => {
   expect(coveredPath("Core/Combat.lua")).toBe("Core/Combat.lua");
   expect(coveredPath(path.join(root, "Modules", "Bags.lua"))).toBe("Modules/Bags.lua");
   expect(coveredPath("scripts/lib/code-quality.mjs")).toBe("scripts/lib/code-quality.mjs");
-  for (const other of ["README.md", "Libs/LibStub/LibStub.lua", "scripts/lib/wow-stub.lua", "/etc/passwd", null]) expect(coveredPath(other), other).toBeNull();
+  for (const scanned of ["scripts/lib/wow-stub.lua", "Locales/deDE.lua", "vitest.config.mjs", "tools/lua51/build.mjs"]) expect(coveredPath(scanned), scanned).toBe(scanned);
+  for (const other of ["README.md", "Libs/LibStub/LibStub.lua", "node_modules/x/y.js", "/etc/passwd", null]) expect(coveredPath(other), other).toBeNull();
 });
 
 it("a clean file has no findings, and the hook says nothing", () => {

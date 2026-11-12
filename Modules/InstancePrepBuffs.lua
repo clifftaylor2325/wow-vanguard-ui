@@ -226,7 +226,7 @@ end
 function PR.BuffReport()
   if ns.InCombat() or ns.AurasSecret() then return ns.Chat(L["Buffs are listed out of combat, and not while the game hides aura values."]) end
   local names = PR.BuffNames()
-  ns.Chat(string.format("Your %d buff(s), and the Instance prep check each counts for:", #names))
-  for _, name in ipairs(names) do ns.Chat(string.format("  %s -> %s", name, countsFor(name) or "no check")) end
+  ns.Chat(ns.Format(L["Your {count} buff(s), and the Instance prep check each counts for:"], { count = #names }))
+  for _, name in ipairs(names) do ns.Chat(string.format("  %s -> %s", name, countsFor(name) or L["no check"])) end
   ns.Chat(ns.Format(L["The checks count any buff with one of these names in its name: {names}."], { names = lookFor() }))
 end

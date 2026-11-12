@@ -55,6 +55,10 @@ TP.ORDER_BUTTON_WIDTH = 80
 TP.UNREACHABLE_NOTE = L["Unreachable: a talent or row it needs is not in the plan."]
 -- How long after a level-up the points are read (the game fills the new point in a moment).
 TP.LEVEL_DELAY = 1
+-- How long an apply Vanguard started can still fail: applying talents on Forever is a cast, not an instant change,
+-- and the game's own talents window gives it this long (maximumCommitTime, forever/Interface/AddOns/
+-- Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.xml).
+TP.COMMIT_WAIT = 6
 
 -- The marks on the game's talent buttons: button -> mark (weak, so a button the game drops goes too).
 local marks = setmetatable({}, { __mode = "k" })
@@ -652,7 +656,9 @@ local function refused(configID)
 end
 
 -- Applies the staged ranks: the class talents' commit (nil: the talents in use, as the game's window
--- commits), else the trait commit for the config. When the game refused (it throttles commits), see refused.
+-- commits), else the trait commit for the config. A true answer only starts the apply (a cast the game can still cut
+-- short, see TP.ApplyFailed), so the config is noted for COMMIT_WAIT seconds; any other answer (refused, as the game
+-- throttles commits, or a call that threw) is a refusal, see refused.
 function TP.Commit(configID)
   local done
   if type(_G.C_ClassTalents) == "table" and type(_G.C_ClassTalents.CommitConfig) == "function" then
@@ -660,8 +666,31 @@ function TP.Commit(configID)
   else
     done = ask("C_Traits", "CommitConfig", configID)
   end
-  if done == false then refused(configID) end
+  if done == true then TP.committing, TP.commitUntil = configID, GetTime() + TP.COMMIT_WAIT else refused(configID) end
   TP.Schedule()
+end
+
+-- The config of the apply Vanguard started while it can still fail, or nil (none, or its time ran out).
+local function pendingApply()
+  if TP.committing and GetTime() <= TP.commitUntil then return TP.committing end
+  TP.committing = nil
+  return nil
+end
+
+-- An apply ended well (TRAIT_CONFIG_UPDATED, configID): Vanguard's, when it was for that config, can no longer fail.
+function TP.Applied(_, configID)
+  if ns.PlainNumber(configID) == pendingApply() then TP.committing = nil end
+end
+
+-- An apply the game cut short (CONFIG_COMMIT_FAILED, configID; forever/Interface/AddOns/Blizzard_SharedTalentUI/
+-- Blizzard_SharedTalentFrame.lua ends its commit there): when it is the one Vanguard started, its staged ranks are
+-- dropped and chat says so (refused, after a fight), so the next Spend planned and the level-up spend buy again. An
+-- apply begun in the game's own window is left to the window.
+function TP.ApplyFailed(_, configID)
+  local mine = pendingApply()
+  if not mine or ns.PlainNumber(configID) ~= mine then return end
+  TP.committing = nil
+  ns.OutOfCombat(function() refused(mine) end, "talentrefused")
 end
 
 -- The names of the first n picks in the order, each once with its count ("Spirit Tap x2").
@@ -752,8 +781,9 @@ function TP.KeepOrder(plan, nodeID)
   if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
 end
 
--- The order window: the rows its list shows before it scrolls, its width, and its Up and Down buttons' width.
-TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 380, 52
+-- The order window: the rows its list shows before it scrolls, its width, and its Move up and Move down buttons' least
+-- width (each widens to its label).
+TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 444, 84
 
 -- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
 function TP.MoveInOrder(nodeID, step)
@@ -775,23 +805,23 @@ function TP.ResetOrder()
   TP.RefreshOrder()
 end
 
--- An order row's text: the place, name and points still to buy, on one line left of the buttons.
+-- An order row's text: the place, name and points still to buy, on one line in whatever room the buttons leave.
 local function orderText(row)
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
   row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
-  row.text:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - 2 * TP.ORDER_BUTTON - T.SPACE.col)
+  row.text:SetPoint("RIGHT", row.up, "LEFT", -T.SPACE.col, 0)
   row.text:SetJustifyH("LEFT")
   row.text:SetWordWrap(false)
 end
 
--- An order row: the talent's place and name, with the points still to buy, and Up and Down buttons.
+-- An order row: the talent's place and name, with the points still to buy, and Move up and Move down buttons.
 local function orderRow(parent)
   local row = W.Row(parent, T.ROW.height, { width = TP.ORDER_WIDTH - 2 * T.SPACE.pad })
-  orderText(row)
-  row.down = W.Button(row, L["Down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON)
-  row.up = W.Button(row, L["Up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON)
+  row.down = ns.WidenToLabel(W.Button(row, L["Move down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON))
+  row.up = ns.WidenToLabel(W.Button(row, L["Move up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON))
   row.down:SetPoint("RIGHT", row, "RIGHT", 0, 0)
   row.up:SetPoint("RIGHT", row.down, "LEFT", -T.SPACE.tight, 0)
+  orderText(row)
   return row
 end
 
@@ -838,7 +868,7 @@ local function orderFoot(f)
   f.hint:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - T.SPACE.tight)
   f.hint:SetJustifyH("LEFT")
   f.hint:SetText(L["Spend planned buys in this order, as far as the talent tree allows. Move a talent up to buy it sooner."])
-  f.reset = W.Button(f, L["Top row first"], function() TP.ResetOrder() end, 120)
+  f.reset = ns.WidenToLabel(W.Button(f, L["Top row first"], function() TP.ResetOrder() end, 120))
   f.reset:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
@@ -1024,6 +1054,8 @@ function TP.Enable(settings, scope)
   scope:On("ADDON_LOADED", TP.Attach)
   for _, event in ipairs(TP.EVENTS) do scope:On(event, TP.Schedule) end
   scope:On("PLAYER_LEVEL_UP", onLevelUp)
+  scope:On("TRAIT_CONFIG_UPDATED", TP.Applied)
+  scope:On("CONFIG_COMMIT_FAILED", TP.ApplyFailed)
 end
 
 -- Switched off: plan mode ends, the marks on the game's talent buttons stop taking the mouse and hide, the bar

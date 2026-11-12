@@ -6,7 +6,9 @@
 // Overflows found before this check existed are listed in textfit-baseline.json, by case. A case fails on one not
 // listed there, and on a listed one that no longer happens, so the list only gets shorter: fix the text's room (the
 // shared fit for a button label is ns.Theme.FitText), then take its line out. VG_TEXTFIT_WRITE=1 rewrites the list
-// from what the cases find; use it only to take out what a change fixed, never to let a new overflow in.
+// from what the cases find; use it only to take out what a change fixed: it refuses a new line under an existing key
+// (scripts/lib/textfit-baseline.mjs) and only starts a list under a new key. The "@130" keys are the same audits at the
+// largest Text size (130%), recorded once as a starting list (H44-25-1); the German one is the shipped translation.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -15,6 +17,7 @@ import { afterAll, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { GAME_CLICKS_LUA, SETUP_DONE, expectErrors } from "./helpers.mjs";
 import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
+import { mergeWritten } from "../lib/textfit-baseline.mjs";
 
 const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), "textfit-baseline.json");
 const baseline = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
@@ -27,6 +30,12 @@ const line = (f) => [f.kind, f.place, f.text, f.other].filter(Boolean).join(" | 
 function fitClient(firstRun = false) {
   const addon = createAddon({ savedVariables: firstRun ? "" : SETUP_DONE, textFit: true });
   addon.login();
+  return addon;
+}
+
+// Sets the client's Text size to its largest (130%), the size where a label has the least room (H44-25-1).
+function atLargestText(addon) {
+  addon.eval("ns.Theme.Settings().textScale = ns.Theme.TEXT_SCALE.max ns.Theme.Refresh()");
   return addon;
 }
 
@@ -44,24 +53,26 @@ function expectFits(name, findings) {
 
 afterAll(() => {
   if (!process.env.VG_TEXTFIT_WRITE) return;
-  const merged = Object.fromEntries(Object.entries({ ...baseline, ...written }).sort(([a], [b]) => a.localeCompare(b)));
-  fs.writeFileSync(BASELINE, `${JSON.stringify(merged, null, 2)}\n`);
+  fs.writeFileSync(BASELINE, `${JSON.stringify(mergeWritten(baseline, written), null, 2)}\n`);
 });
 
-it("text fits: the setup wizard, every step", () => {
-  const addon = fitClient(true);
+// Audits the setup wizard on each step in a client, as a list of findings.
+function wizardSteps(addon) {
   const findings = [];
   for (let step = 1; step <= 10 && addon.eval("return Vanguard_Setup:IsShown()"); step++) {
     findings.push(...addon.textFit("Vanguard_Setup"));
     addon.eval("ns.Setup.Next()");
   }
-  expectFits("setup wizard", findings);
+  return findings;
+}
+
+it("text fits: the setup wizard, every step", () => {
+  expectFits("setup wizard", wizardSteps(fitClient(true)));
 });
 
 // Audits the options window on each of its pages from first to last (1-based, inclusive), each tab of a page in
 // turn (a page shows one card at a time), in one client.
-function optionsPages(first, last) {
-  const addon = fitClient();
+function optionsPages(first, last, addon = fitClient()) {
   const pages = addon.eval("local out = {} for _, p in ipairs(ns.Options.PAGES) do out[#out + 1] = p.key end return out");
   const findings = [];
   for (const page of pages.slice(first - 1, last)) {
@@ -95,13 +106,45 @@ it("text fits: the options search list, in German at 130%", () => {
   expectFits("options search list, German at 130%", addon.textFit("Vanguard_Options.results"));
 });
 
-it("text fits: the screen at login, and unlock mode's handles", () => {
-  const addon = fitClient();
+// Audits the screen at login and then unlock mode's handles in a client, as a list of findings.
+function screenFindings(addon) {
   addon.world.setUnit("target", { name: "Defias Pillager", hp: 640, maxhp: 800, reaction: 2, level: 18 });
   const findings = addon.textFit();
   addon.slash("unlock");
   findings.push(...addon.textFit());
-  expectFits("screen", findings);
+  return findings;
+}
+
+it("text fits: the screen at login, and unlock mode's handles", () => {
+  expectFits("screen", screenFindings(fitClient()));
+});
+
+// The largest Text size (130%) with every string a third longer: the audits above again, under keys of their own (H44-25-1).
+// Their lists are what overflows today (a starting list for the fits, which each take their line out), not a promise.
+it("text fits at the largest Text size: the setup wizard, every step", () => {
+  expectFits("setup wizard @130", wizardSteps(atLargestText(fitClient(true))));
+});
+
+it("text fits at the largest Text size: the options window, the first ten pages", () => {
+  expectFits("options window, pages 1-10 @130", optionsPages(1, 10, atLargestText(fitClient())));
+});
+
+it("text fits at the largest Text size: the options window, the pages after the tenth", () => {
+  expectFits("options window, pages 11 on @130", optionsPages(11, Infinity, atLargestText(fitClient())));
+});
+
+it("text fits at the largest Text size: the dialogs", () => {
+  expectFits("dialogs @130", dialogFindings(atLargestText(fitClient())));
+});
+
+it("text fits at the largest Text size: the screen at login, and unlock mode's handles", () => {
+  expectFits("screen @130", screenFindings(atLargestText(fitClient())));
+});
+
+it("text fits at the largest Text size: the options window in German, the shipped translation", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "deDE"' });
+  addon.login();
+  expectFits("options window, German @130", optionsPages(1, Infinity, atLargestText(addon)));
 });
 
 it("H44-25-1 text fits: the unlock bar's buttons at Text size 130%", () => {
@@ -118,8 +161,8 @@ it("text fits: unlock mode's handles while a situation records", () => {
   expectFits("handles while recording", addon.textFit());
 });
 
-it("text fits: the dialogs", () => {
-  const addon = fitClient();
+// Opens each dialog by Lua and audits the frame it shows in, as a list of findings.
+function dialogFindings(addon) {
   const findings = [];
   // Opens a dialog by Lua and audits the frame it shows in.
   const open = (lua, frame) => { addon.eval(lua); findings.push(...addon.textFit(frame)); };
@@ -127,7 +170,11 @@ it("text fits: the dialogs", () => {
   open('ns.OfferReload(ns.L["Some changes take effect after a reload."])', "Vanguard_Reload");
   open('ns.ShowText(ns.L["Export profile"], "Vanguard:1:abc")', "Vanguard_TextDialog");
   open('ns.ShowFind(ns.L["Find"], function() return {} end)', "Vanguard_FindDialog");
-  expectFits("dialogs", findings);
+  return findings;
+}
+
+it("text fits: the dialogs", () => {
+  expectFits("dialogs", dialogFindings(fitClient()));
 });
 
 it("text fits: key setup, every step, with a change listed, a key that stays and the shared-keys choice", () => {

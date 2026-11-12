@@ -1,11 +1,11 @@
-// The weekly shuffled run (D-05) is wired through three workflow files:
+// The shuffled run (D-05) is wired through three workflow files:
 // lua-suite.yml takes a shuffle input and picks and prints the seed,
-// full-suite.yml turns it on for the schedule event only, and release.yml
+// full-suite.yml turns it on for the schedule event or when a hand-started run asks, and release.yml
 // never shuffles. The files are read as text with small readers (no YAML
 // parser is installed), the way scripts/pkgmeta.test.mjs reads .pkgmeta.
 // No pull request runs a test in CI (Cliff, 2026-11-10): a workflow a pull
 // request triggers runs no test command and never calls lua-suite.yml, and
-// full-suite.yml runs only weekly and by hand. Its concurrency group is
+// full-suite.yml runs only by hand (weekly once its cron is back). Its concurrency group is
 // checked by evaluating it for each event, with a small evaluator for the
 // part of the expression syntax it uses (anything else throws). The hosted run itself cannot be
 // checked here. The file also checks the toolchain pins (D-05): the luacheck
@@ -89,8 +89,10 @@ it("the raid bench appends to the job summary, budgets instructions not time, an
   expect(text).toMatch(/^ {10}path: coverage\/bench\/\*\.json$/m);
 });
 
-it("full-suite shuffles only for the schedule event", () => {
-  expect(workflow("full-suite.yml")).toContain("shuffle: ${{ github.event_name == 'schedule' }}");
+it("full-suite shuffles for the schedule event or when a hand-started run asks, and a hand start defaults to the written order", () => {
+  const text = workflow("full-suite.yml");
+  expect(text).toContain("shuffle: ${{ github.event_name == 'schedule' || inputs.shuffle == true }}");
+  expect(text).toMatch(/^ {6}shuffle:\n {8}description: .*\n {8}type: boolean\n {8}default: false$/m);
 });
 
 it("release never shuffles", () => {
@@ -110,8 +112,15 @@ const CHECK_STEPS = [
   "The TOC against the files on disk",
   "luacheck",
   "Lua 5.1 syntax of every file the TOC loads",
+  "Media files match their sources",
   "Release zip builds and holds every file it should",
 ];
+
+it("the media check runs build-media.mjs --check in the quick job's checks, ahead of the tests", () => {
+  const quick = jobText(workflow("lua-suite.yml"), "quick");
+  expect(runBlocks(stepNamed(quick, "Media files match their sources"))).toEqual(["node scripts/build-media.mjs --check"]);
+  expect(quick.indexOf("- name: Media files match"), "before the tests").toBeLessThan(quick.indexOf("- run: npm run coverage"));
+});
 
 it("every check step runs on every lua-suite run, and no input can turn the checks off", () => {
   const text = workflow("lua-suite.yml");
@@ -143,6 +152,30 @@ it("lua-suite takes a boolean tests input that defaults to on, and only the test
 it("for now the release runs the suite without the tests, and a hand-started full suite runs them", () => {
   expect(workflow("release.yml")).toMatch(/^ {6}tests: false$/m);
   expect(workflow("full-suite.yml")).not.toMatch(/^\s+tests:/m);
+});
+
+it("a pushed tag must be on main, and both release events run the shared content check", () => {
+  const version = jobText(workflow("release.yml"), "version");
+  expect(version).toContain('git merge-base --is-ancestor HEAD origin/main || { echo "tag $GITHUB_REF_NAME is not on main"; exit 1; }');
+  expect(version).toMatch(/^ {10}fetch-depth: 0$/m);
+  expect(runBlocks(stepNamed(version, "Release content"))).toEqual(["node scripts/release-local.mjs --check-content"]);
+  expect(version.indexOf("is-ancestor"), "the ancestry test sits in the push branch").toBeLessThan(version.indexOf("else"));
+});
+
+it("a version with a hyphen is a GitHub pre-release only: Publish adds --prerelease and the stores job is skipped", () => {
+  const text = workflow("release.yml");
+  expect(jobText(text, "listings")).toMatch(/^ {4}if: \$\{\{ !contains\(needs\.version\.outputs\.tag, '-'\) \}\}$/m);
+  const publish = runBlocks(stepNamed(jobText(text, "release"), "Publish")).join("\n");
+  expect(publish).toContain('case "$RELEASE_TAG" in *-*) pre="--prerelease"');
+  expect(publish).toContain("--notes-file dist/release-notes.md $pre");
+  expect(publish).not.toContain("--generate-notes");
+});
+
+it("the store upload gets the local route's release notes through -m dist/pkgmeta.yaml", () => {
+  const listings = jobText(workflow("release.yml"), "listings");
+  expect(runBlocks(listings)).toContain("node scripts/release-local.mjs --notes-only");
+  expect(listings).toMatch(/^ {10}args: -m dist\/pkgmeta\.yaml$/m);
+  expect(jobText(workflow("release.yml"), "release")).toContain("- run: node scripts/release-local.mjs --notes-only");
 });
 
 it("lua-suite keeps read-only permissions", () => {
@@ -280,7 +313,7 @@ it("full-suite keeps its hand start, inputs, report job and cancel setting, and 
   expect(text).toContain('#     - cron: "23 10 * * 0"');
   expect(text).toMatch(/^ {2}workflow_dispatch:\n {4}inputs:\n {6}preview:/m);
   expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true }}");
-  expect(text).toContain("if: always() && needs.suite.result != 'cancelled'");
+  expect(text).toContain("if: always() && needs.suite.result != 'cancelled' && github.ref == 'refs/heads/main'");
   expect(text).toMatch(/^ {2}cancel-in-progress: true$/m);
 });
 
@@ -445,14 +478,22 @@ function setupNodeSteps(text) {
   return found;
 }
 
-it("every setup-node step reads .nvmrc and keeps the npm cache", () => {
-  const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 1, "full-suite.yml": 0 };
+// The text of each job in a workflow: its two-space-indented key line and everything under it.
+function jobTexts(text) {
+  return text.split(/^(?=  [\w-]+:\s*$)/m);
+}
+
+it("every setup-node step reads .nvmrc, and has cache: npm only in a job that runs npm ci", () => {
+  const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 3, "full-suite.yml": 0 };
   for (const [file, count] of Object.entries(counts)) {
-    const steps = setupNodeSteps(workflow(file));
-    expect(steps.length, `${file} setup-node steps`).toBe(count);
-    for (const step of steps) {
-      expect(step, file).toMatch(/^\s+node-version-file: \.nvmrc$/m);
-      expect(step, file).toMatch(/^\s+cache: npm$/m);
+    const text = workflow(file);
+    expect(setupNodeSteps(text).length, `${file} setup-node steps`).toBe(count);
+    for (const job of jobTexts(text)) {
+      const runsCi = /^\s*-?\s*(?:run:\s+)?npm ci\b/m.test(job);
+      for (const step of setupNodeSteps(job)) {
+        expect(step, file).toMatch(/^\s+node-version-file: \.nvmrc$/m);
+        expect(/^\s+cache: npm$/m.test(step), `${file}: cache: npm exactly when the job runs npm ci`).toBe(runsCi);
+      }
     }
   }
 });

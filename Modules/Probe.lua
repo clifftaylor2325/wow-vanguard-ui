@@ -278,7 +278,7 @@ end
 
 -- /vg probe legacy: the lines, out of combat.
 function P.Legacy()
-  if ns.InCombat() then return ns.Chat(L["Not in combat."]) end
+  if ns.InCombat() then return ns.Chat(L["Not in a fight: try again after it."]) end
   for _, line in ipairs(P.LegacyLines()) do ns.Chat(line) end
 end
 

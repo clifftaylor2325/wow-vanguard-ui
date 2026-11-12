@@ -11,8 +11,8 @@ import { progressOn, progressReporter } from "./scripts/lib/progress-reporter.mj
 // harness (scripts/tests/*.test.mjs, one file per area, run in parallel)
 // and the client's own tests (scripts/lua-engine.test.mjs, a dozen loads).
 // npm test runs both; npm run coverage runs both with line coverage on,
-// which a branch does before it merges, and CI weekly and before each release
-// (.github/workflows/full-suite.yml, release.yml).
+// which a branch does before it merges, and a hand-started full suite does on
+// Actions (.github/workflows/full-suite.yml; release.yml runs no tests).
 // The lua project does not isolate its files (isolate: false): a worker keeps
 // its compiled Lua chunks and its warmed-up JIT from one file to the next, which
 // takes about half the time off a run of small files. Nothing there mocks a module or
@@ -29,7 +29,8 @@ const ciReporters = process.env.GITHUB_ACTIONS ? [["junit", { outputFile: "cover
 // VG_PROGRESS=1 asks for the lines anywhere, VG_PROGRESS=0 turns them off.
 const progress = progressOn(process.env, configDefaults.reporters) ? [progressReporter()] : [];
 
-// Shuffled order. The weekly CI run sets VG_SHUFFLE_SEED (D-05) so a hidden
+// Shuffled order. A shuffled CI run (weekly when the schedule is on, or asked
+// for by hand) sets VG_SHUFFLE_SEED (D-05) so a hidden
 // order dependence shows up; Vitest then prints `Running tests with seed "N"`.
 // A failure replays with the same seed: in bash, VG_SHUFFLE_SEED=N npm test;
 // in PowerShell, $env:VG_SHUFFLE_SEED=N; npm test (then Remove-Item
@@ -42,7 +43,7 @@ const progress = progressOn(process.env, configDefaults.reporters) ? [progressRe
 const asked = Number(process.env.VG_SHUFFLE_SEED);
 const shuffleSeed = Number.isSafeInteger(asked) && asked > 0 ? asked : 0;
 // The Retail-only test files. VG_SKIP_RETAIL leaves them out of a local run (Retail support is
-// new and best effort); every CI run (weekly, hand-started and release) keeps them.
+// new and best effort); every CI run (hand-started, and weekly when it is on) keeps them.
 const RETAIL_ONLY = ["scripts/tests/retail*.test.mjs", "scripts/tests/windows-retail.test.mjs"];
 const skipped = process.env.VG_SKIP_RETAIL ? RETAIL_ONLY : [];
 const shuffle = shuffleSeed ? { sequence: { shuffle: { files: true, tests: true }, seed: shuffleSeed } } : {};
@@ -52,6 +53,9 @@ export default defineConfig({
     environment: "node",
     ...shuffle,
     setupFiles: ["scripts/tests/setup.mjs"],
+    // A stray it.only would run one case, skip the rest and exit 0; no pull request runs the tests anywhere
+    // else (H44-25-R1). Vitest's default allows it outside CI.
+    allowOnly: false,
     reporters: [...configDefaults.reporters, ...ciReporters, ...progress, luaSummaryReporter()],
     // Each worker (a forked process) gets this much heap. The suite needs far
     // less; a runaway that allocates then dies in a minute or two instead of

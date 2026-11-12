@@ -205,13 +205,39 @@ end
 -- A watched faction's renown on Retail; WoW Forever has none.
 DB.RenownOf = ns.ClientData({ forever = none, retail = DB.Renown })
 
--- { name, standing, cur, max } for the watched faction, or nil when none (a major faction's renown on Retail, with its
--- word). The standing is nil while the client hides it (the bar then takes Neutral's colour, and names no standing).
+-- Friendship (a delve companion's rank, say) -----------------------------------------------
+
+-- A friendship's bar: the rank's own range, or (as rep came) full without numbers at the top rank, which has no next
+-- threshold, or while the client hides a value.
+local function friendRange(rep, info)
+  local low, high, cur = ns.PlainNumber(info.reactionThreshold), ns.PlainNumber(info.nextThreshold), ns.PlainNumber(info.standing)
+  if not (low and high and cur and high > low) then return rep end
+  rep.cur, rep.max, rep.noNumbers = cur - low, high - low, nil
+  return rep
+end
+
+-- The watched faction's friendship standing, as the game's own bar draws it on both clients (ReputationBar.lua,
+-- ReputationStatusBarMixin:Update, the friendshipID > 0 branch): the rank's word,
+-- the rank's range and always Friendly's colour. No standing, so the tooltip says "To the next standing". Nil for a
+-- faction that is no friendship, or a client without the call (it may answer nothing).
+function DB.Friendship(data)
+  local id = ns.PlainNumber(data.factionID)
+  local get = type(C_GossipInfo) == "table" and C_GossipInfo.GetFriendshipReputation
+  local info = id and type(get) == "function" and ns.PlainTable(get(id))
+  if not info or (ns.PlainNumber(info.friendshipFactionID) or 0) <= 0 then return nil end
+  local rep = noNumbers(data.name, nil, 1)
+  rep.word, rep.color = ns.PlainText(info.reaction), REACTION[5]
+  return friendRange(rep, info)
+end
+
+-- { name, standing, cur, max } for the watched faction, or nil when none (a major faction's renown on Retail, or a
+-- friendship's rank, with its word). The standing is nil while the client hides it (the bar then takes Neutral's
+-- colour, and names no standing).
 function DB.Reputation()
   local get = C_Reputation and C_Reputation.GetWatchedFactionData
   local data = type(get) == "function" and get() or nil
   if not namesFaction(data) then return nil end
-  return DB.RenownOf(data) or standingOf(data)
+  return DB.RenownOf(data) or DB.Friendship(data) or standingOf(data)
 end
 
 -- The game's word for a standing (1 Hated .. 8 Exalted, "Honored"), in your character's form of it; nil

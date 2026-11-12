@@ -133,7 +133,7 @@ it("posting calls the right function from a click, never from a timer", () => {
   addon.world.fireAuctionEvents({ itemID: 10940 }, 10940);
   addon.advance(5);
   expect(restrictedLog(addon).length, "nothing more without a click").toBe(1);
-  addon.eval("SetCVar('auctionHouseDurationDropdown', 2) __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 }, { buyoutAmount = 9000, quantity = 2 }, { minBid = 10, quantity = 1 }, { buyoutAmount = 10, quantity = 0 } }");
+  addon.eval("SetCVar('auctionHouseDurationDropdown', 2) __wfgWorld.ah.items[9999] = { { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 9000, quantity = 2 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, minBid = 10, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 10, quantity = 0 } }");
   addon.world.openAuctionHouse();
   addon.update(0);
   addon.advance(1);
@@ -145,7 +145,7 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
 it("a listing with a buyout of 0 is bid-only, never the cheapest price", () => {
-  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 0, quantity = 1 }, { buyoutAmount = 5000, quantity = 1 } }");
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 0, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(card(addon)[0].slice(0, 1).concat(card(addon)[0][3]), "cheapest 50s, asking 49s, not 1c").toEqual(["50s 0c", "49s 0c"]);
 });
@@ -652,7 +652,7 @@ function checkedOwned(locale, undercut) {
 }
 
 it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, and the summary shows in the heading, in real translations (P10-5, B10-1)", () => {
-  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU"]) {
+  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU", "itIT", "esES", "esMX", "koKR", "zhCN", "zhTW"]) {
     const addon = checkedOwned(locale, true);
     const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
     expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
@@ -726,4 +726,118 @@ it("the sell slot's accent edge follows the mouse: brighter on hover, darker hel
   const held = edges(addon, SLOT);
   addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
   expect([hover !== rest, held !== rest, held !== hover, edges(addon, SLOT)], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
+});
+it("H44-21-50: a per-stack price is for the stack that goes up next, a short one included", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + "__wfgWorld.bags[0][3] = { itemID = 2589, count = 7 }");
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.type(`${CARD}.stack`, "20");
+  addon.click(`${CARD}.perStack`);
+  addon.type(`${CARD}.price`, "7g");
+  expect(form(addon).slice(0, 4), "7 go up as one short stack: the box keeps the 7g typed").toEqual(["7", "20", "1", "7g 0s 0c"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[4], c[5]]), "7 units at a seventh of 7g each").toEqual([["PostCommodity", 7, 10000]]);
+});
+it("H44-21-R2: a quantity typed down to what has gone up says so in the guide, not 'Click Post'", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][3] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.type(`${CARD}.qty`, "20");
+  const after = addon.eval(`local c = ${CARD} return { c.post:IsEnabled(), c.guide:GetText() }`);
+  expect(after, "Post is off and the guide says why").toEqual([false, "Nothing left to post: raise Quantity, or click Stop."]);
+});
+it("H44-21-50: a per-stack price typed with nothing left to post stays finite, and posts at its share once Quantity is raised", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.perStack`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][3] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  const boxes = [];
+  for (const qty of ["20", "10"]) {
+    addon.type(`${CARD}.qty`, qty);
+    addon.type(`${CARD}.price`, "7g");
+    boxes.push(form(addon)[3]);
+  }
+  expect(boxes, "at done and below done the typed 7g stays a number").toEqual(["7g 0s 0c", "7g 0s 0c"]);
+  addon.type(`${CARD}.qty`, "40");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[4], c[5]]).pop(), "20 more at a twentieth of 7g each").toEqual(["PostCommodity", 20, 3500]);
+});
+it("H44-21-51: the card's cheapest and suggestion are those of the sale's random-suffix variant; Up now lists every variant", () => {
+  const addon = atAuctionHouse(BAGS + `__wfgWorld.ah.items[9999] = {
+    { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 8 }, buyoutAmount = 1000, quantity = 1 },
+    { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 } }`);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  const out = addon.eval(`local c = ${CARD} return { c.lines[1].value:GetText(), c.lines[4].value:GetText(), #${HELPER}.sell.rows }`);
+  expect(out, "cheapest and price from the suffix-7 listing; both variants up").toEqual(["50s 0c", "49s 0c", 2]);
+});
+it("H44-21-52: after Confirm the guide leaves the game's 'wants it confirmed' answer and shows the next stack", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[1][1] = { itemID = 9999, count = 1 } __wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_WARNING");
+  addon.advance(0.1);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "stack 2 is next").toBe("Click Post to list stack 2 of 2.");
+});
+// TEST-ONLY: Strange Dust with a recorded 7-day low (50c), the sell card's check not yet answered.
+const dropUnanswered = (addon) => {
+  addon.eval("ns.AuctionPrices.Record(10940, 50, __now)");
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 1 }`);
+  addon.click(`${CARD}.slot`);
+};
+// The sell card: [Your price, Post on, guide line].
+const postGuide = (addon) => addon.eval(`local c = ${CARD} return { c.lines[4].value:GetText(), c.post:IsEnabled(), c.guide:GetText() }`);
+it("H44-21-150: Post waits for the price check, then posts at the cheapest's undercut", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  expect(postGuide(addon).slice(1), "no price from the 7-day low alone").toEqual([false, "Checking what it sells for..."]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).length, "a click posts nothing").toBe(0);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(postGuide(addon), "answered: the silver rule never asks under 1s").toEqual(["1s 0c", true, "Click Post to list stack 1 of 20."]);
+});
+it("H44-21-150: a check the game never answers says no price was found, and a typed price still posts", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  addon.advance(5);
+  expect(postGuide(addon).slice(1), "Post stays off with the existing line").toEqual([false, "No price found: type one in Price."]);
+  addon.type(`${CARD}.price`, "7c");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[5]]), "the typed price posts").toEqual([["PostCommodity", 7]]);
+});
+it("H44-21-150: a price typed before the answer posts at once", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  addon.type(`${CARD}.price`, "9c");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[5]])).toEqual([["PostCommodity", 9]]);
+});
+it("H44-21-151: a refusal of the last stack stays on the finished card until the next item is dropped", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "the refusal, not 'Finished'").toBe("The auction house refused it.");
+  addon.eval("__wfgWorld.bags[0][2] = { itemID = 9999, count = 1 }");
+  addon.advance(5);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "a new sale starts clean").toBe("Click Post to list stack 1 of 1.");
+});
+it("H44-G3-6: the game's answer to the last stack goes when the house closes", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  addon.world.closeAuctionHouse();
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "back at the house: the old refusal is gone, the finished line as before").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
 });

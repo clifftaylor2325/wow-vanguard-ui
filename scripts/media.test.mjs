@@ -6,10 +6,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { orphanMedia, staleMedia } from "./build-media.mjs";
+import { orphanMedia, staleMedia, unlistedMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
-import { ICONS, ICON_SIZES, MEDIA, POINT_DEPTHS, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
+import { FIXED_MEDIA, ICONS, ICON_SIZES, MEDIA, POINT_DEPTHS, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
 import { paintedArt } from "./lib/media-painted.mjs";
@@ -49,6 +49,26 @@ function artIsCurrent() {
 // No committed image is left over from a source that was removed.
 function noOrphanArt() {
   expect(orphanMedia(), "images no source makes (run node scripts/build-media.mjs to delete them)").toEqual([]);
+}
+
+// No file under Media/ ships unlisted: every one is a generated image or named in FIXED_MEDIA, which names only files that exist.
+function noUnlistedMedia() {
+  expect(unlistedMedia(), "files in Media/ no source makes and FIXED_MEDIA does not name (scripts/lib/media-sources.mjs)").toEqual([]);
+  expect(FIXED_MEDIA.filter((f) => !fs.existsSync(path.join(root, f))), "FIXED_MEDIA names files that are gone").toEqual([]);
+}
+
+// A stray file of any name or depth is seen, whatever its extension, and a stray image is an orphan to delete (in a scratch folder).
+function strayFilesAreSeen() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-media-"));
+  try {
+    fs.mkdirSync(path.join(dir, "Textures", "deep"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "Fonts"));
+    for (const rel of ["stray.txt", "Fonts/stray.ttf", "Textures/deep/stray.tga", ".DS_Store", "Fonts/OFL.txt"]) fs.writeFileSync(path.join(dir, rel), "x");
+    expect(unlistedMedia(dir).sort()).toEqual(["Media/Fonts/stray.ttf", "Media/stray.txt"]);
+    expect(orphanMedia(dir)).toEqual(["Media/Textures/deep/stray.tga"]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 // Medium digits 0-9 share one width.
@@ -463,6 +483,8 @@ describe(
     it("the addon names at least one Media file", scanFindsMedia);
     it("every image in Media/ is used by the addon", noUnusedMedia);
     it("no image is left over from a removed source", noOrphanArt);
+    it("no file under Media/ ships unlisted", noUnlistedMedia);
+    it("a stray file at any depth is seen", strayFilesAreSeen);
     for (const file of namedMedia()) it(`${file} exists`, () => fileExists(file));
   },
 );

@@ -134,8 +134,18 @@ function AH.ListenAlerts(on)
   on("AUCTION_HOUSE_CLOSED", function() AH.alertUnnamed = {} end)
 end
 
+-- Once (H44-21-1): Recent's copies an older version saved with a named list's alert switch lose it, so only a
+-- named list's entry ever alerts. Recent keeps no alert from then on (AH.Remember drops it, and its Filters
+-- dialog has no switch); a Recent already upgraded is left as it is.
+function AH.MigrateRecent()
+  for _, e in ipairs(AH.Recent()) do
+    if type(e) == "table" then e.alert = nil end
+  end
+end
+
 -- An entry's own search found its row (AH.TakeBrowse, which leaves out what is over the entry's
--- max price, so a price per stack counts as the shop's row shows it): an alerting entry rings.
+-- max price, so a price per stack counts as the shop's row shows it): an alerting entry rings (only a
+-- named list's: Recent holds no alert, AH.MigrateRecent).
 function AH.EntryFound(entry, row)
   local _, f = AH.Term(entry)
   if row and f and f.alert and f.maxPrice then AH.Alert(row.key.itemID, row.price, f.maxPrice) end

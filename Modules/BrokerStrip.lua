@@ -149,10 +149,19 @@ local function crop(obj)
   return c
 end
 
+-- A feed's icon as a texture path or file id; nil for none, any other type, or one the client hides (checked before
+-- anything compares it: comparing a hidden value raises).
+local function iconOf(obj)
+  local icon = obj.icon
+  if ns.IsSecret(icon) then return nil end
+  return (type(icon) == "string" or type(icon) == "number") and icon or nil
+end
+
 -- A feed's icon in a slot: its texture, its own crop and tint (whole and untinted unless it gives them).
 local function paintIcon(icon, obj)
-  icon:SetTexture(obj.icon)
-  icon:SetShown(obj.icon ~= nil)
+  local file = iconOf(obj)
+  icon:SetTexture(file)
+  icon:SetShown(file ~= nil)
   local c = crop(obj)
   if c then icon:SetTexCoord(c[1], c[2], c[3], c[4]) else icon:SetTexCoord(0, 1, 0, 1) end
   icon:SetVertexColor(channel(obj.iconR), channel(obj.iconG), channel(obj.iconB))
@@ -230,8 +239,8 @@ function BS.Hook()
   local ldb = BS.Broker()
   if BS.hooked or not ldb then return end
   BS.hooked = true
-  ldb.RegisterCallback(BS, "LibDataBroker_AttributeChanged", BS.OnChanged)
-  ldb.RegisterCallback(BS, "LibDataBroker_DataObjectCreated", BS.Layout)
+  ldb.RegisterCallback(BS, "LibDataBroker_AttributeChanged", ns.Guard("broker feed changed", BS.OnChanged))
+  ldb.RegisterCallback(BS, "LibDataBroker_DataObjectCreated", ns.Guard("broker feed created", BS.Layout))
   BS.Layout()
 end
 

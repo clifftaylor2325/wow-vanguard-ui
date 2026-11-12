@@ -1260,13 +1260,25 @@ function NP.GameSetting(name)
   return function() return cvarState(name) == "on" end, function(v) setGameSetting(name, v) end
 end
 
+-- A game setting's state as the player reads it: on, off or unknown.
+local function stateText(name)
+  local words = { on = L["on"], off = L["off"], unknown = L["unknown"] }
+  return words[cvarState(name)]
+end
+
+-- The /vg plates count line: plates drawn, the ones you can attack, and the game's four plate settings.
+local function platesLine(total, enemies)
+  return ns.Format(L["Plates: {total} drawn, {enemies} of them units you can attack. Game's Enemy nameplates {enemyPlates}, Friendly players {friendlyPlayers}, Friendly NPCs {friendlyNPCs}, Show all {showAll}."], {
+    total = total, enemies = enemies, enemyPlates = stateText("nameplateShowEnemies"), friendlyPlayers = stateText("nameplateShowFriendlyPlayers"),
+    friendlyNPCs = stateText("nameplateShowFriendlyNPCs"), showAll = stateText("nameplateShowAll"),
+  })
+end
+
 -- /vg plates: what the game's plate settings are and how many plates Vanguard drew (#377).
 -- Vanguard dresses every plate the game makes, so no enemy plate means the game made none.
 function NP.Command(rest)
   if rest == "enemies on" or rest == "enemies off" then return setEnemies(rest == "enemies on") end
-  local total, enemies = countPlates()
-  ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly players %s, Friendly NPCs %s, Show all %s."):format(total, enemies,
-    cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriendlyPlayers"), cvarState("nameplateShowFriendlyNPCs"), cvarState("nameplateShowAll")))
+  ns.Chat(platesLine(countPlates()))
   if cvarState("nameplateShowEnemies") == "off" then
     ns.Chat(L["The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V."])
   end

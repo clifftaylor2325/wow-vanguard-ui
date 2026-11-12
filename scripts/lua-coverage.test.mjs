@@ -7,7 +7,8 @@ import path from "node:path";
 import fengari from "fengari";
 import { expect, it } from "vitest";
 import { createAddon, root } from "./lib/lua-harness.mjs";
-import { attachCoverage, coverageReport, executableLines, hitLines, lineRanges, loadHits } from "./lib/lua-coverage.mjs";
+import { addHits, attachCoverage, coverageReport, executableLines, formatNeverEntered, hitLines, lineRanges, loadHits } from "./lib/lua-coverage.mjs";
+import { ENGINE, newWasmState, wasmOneLiners } from "./lib/lua-wasm.mjs";
 
 const { lua, lauxlib, lualib, to_luastring } = fengari;
 
@@ -97,4 +98,21 @@ it("the harness records the addon's lines when coverage is on, with the instruct
   } finally {
     if (was === undefined) delete process.env.LUA_COVERAGE; else process.env.LUA_COVERAGE = was;
   }
+});
+
+// TEST-ONLY source: two one-line functions on lines 1 and 2, a three-line one, and a call of the first.
+const ONE_LINERS = ["local entered = function() return 1 end", "local skipped = function() return 2 end", "local spread = function()", "  return 3", "end", "return entered() + spread()"].join("\n");
+
+it.runIf(ENGINE === "wasm")("the wasm engine names the one-line functions of a source, and which of them were entered", () => {
+  expect([...wasmOneLiners(ONE_LINERS, "@TEST-ONLY-oneliners.lua")]).toEqual([1, 2]);
+  newWasmState({ budget: Infinity, coverage: addHits, addonName: "Vanguard" }).run(ONE_LINERS, "@TEST-ONLY-oneliners.lua");
+  const hit = hitLines("@TEST-ONLY-oneliners.lua");
+  expect([hit.has(-1), hit.has(-2), hit.has(-3)], "only the first one-line function ran").toEqual([true, false, false]);
+  expect(hit.has(2), "the line the skipped function sits on still counts as run").toBe(true);
+});
+
+it.runIf(ENGINE === "wasm")("a coverage report lists the one-line functions no test entered, and the printout counts them", () => {
+  const report = { files: [{ neverEntered: [] }, { file: "Core/A.lua", neverEntered: [4, 5, 9] }, { file: "Core/B.lua", neverEntered: [2] }] };
+  expect(formatNeverEntered(report).split("\n")).toEqual(["One-line functions never entered: 4", `  ${"Core/A.lua".padEnd(28)} 4-5,9`, `  ${"Core/B.lua".padEnd(28)} 2`]);
+  expect(coverageReport(root, ["Core/Events.lua"]).files[0].neverEntered.every(Number.isInteger)).toBe(true);
 });

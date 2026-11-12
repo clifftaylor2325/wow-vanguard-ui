@@ -221,6 +221,7 @@ end
 function AH.Done()
   local s = AH.pending
   AH.pending = nil
+  AH.SellCheckEnded(s)
   if (s.entry or s.cost) and AH.progress then AH.progress.done = AH.progress.done + 1 end
   AH.PaintShop()
   AH.Next()
@@ -425,9 +426,9 @@ function AH.OnShow()
 end
 
 -- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
--- window), and the modes it was in are forgotten.
+-- window), the sale and the game's last answer to it go, and the modes it was in are forgotten.
 function AH.OnClosed()
-  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
+  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell, AH.sellAnswer = false, nil, nil, {}, nil, nil, nil
   AH.mode, AH.lastMode, AH.lateScan, AH.checkedItems = nil, nil, nil, nil
   AH.walker:Hide()
   ns.Every("auction scan countdown", nil)
@@ -570,6 +571,7 @@ local function recordScan(s, now)
     AP.Record(id, low, now, { units = units, market = market, listings = s.listings[id] })
     n = n + 1
   end
+  AP.Cap()
   return n
 end
 
@@ -700,10 +702,11 @@ local function listen()
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades, AH.ListenAlerts }) do each(on) end
 end
 
--- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
+-- Module entry point (Core/Modules.lua): prices in tooltips, Recent's old alerts dropped (once), and the panel at the auction house.
 function AH.Enable(settings)
   AH.settings = settings
   AP.Enable(settings)
+  AH.MigrateRecent()
   if type(C_AuctionHouse) ~= "table" then return end
   AH.Start()
   listen()

@@ -121,10 +121,10 @@ local function termEntry(term)
 end
 
 -- An exact search's entry: the item's ID when the client knows an item of that name (a search by
--- ID shows only that item), else the name as it is.
+-- ID shows only that item), else the name kept to match exactly (the client may not know it yet).
 local function exactEntry(entry)
   if type(entry) ~= "string" then return entry end
-  return (C_Item.GetItemInfoInstant(entry)) or entry
+  return (C_Item.GetItemInfoInstant(entry)) or { term = entry, exact = true }
 end
 
 -- The entries for a list of search strings: blank and non-string ones left out, at most

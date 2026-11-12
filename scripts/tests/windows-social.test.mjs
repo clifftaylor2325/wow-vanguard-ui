@@ -1754,6 +1754,17 @@ it("social window cards: the presence dot sits centred on the card's names, afte
   expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
 });
 
+// A presence dot whose anchoring the client holds secret answers every GetPointByName value as a secret, relativeTo too
+// (live Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPointByName,
+// SecretWhenAnchoringSecret): gamePresenceAnchors reads it through ns.PlainPoint, and the card keeps the game's layout.
+it("H44-30-50 social window cards: a presence dot whose anchoring the client hides keeps the game's place, with no error", () => {
+  const addon = loggedIn(SOCIAL_CARDS_ENV + PRESENCE_CARD_LUA);
+  addon.eval("SocialUIFrame:Show() local f = SocialUIFrame __p1 = __presenceCard(f.FriendsList.ScrollBox) __wfgWorld.holdSecret(__p1.PresenceHolder, 'Anchoring') __acquire(f.FriendsList.ScrollBox, __p1)");
+  expect(addon.eval("local d = __p1.PresenceHolder.__points.CENTER return { d.rel == __p1, d.x, d.y, #ns.errors }"),
+    "the dot left on the card's corner as the game set it, nothing raised").toEqual([true, 3, -4, 0]);
+  expect(windowErrors(addon), "no window errors").toBe("none");
+});
+
 it("social window: the reward card, the raid tab's check box, description and groups (the member buttons out of combat), the side windows' headings and lists", () => {
   const addon = loggedIn(SOCIAL_CARDS_ENV);
   addon.eval("SocialUIFrame:Show()");

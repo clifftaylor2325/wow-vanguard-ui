@@ -9,7 +9,9 @@ updating them; needs Python 3 and fonttools):
   * Metamorphous (Horde): copied unchanged, because its license reserves the
     name "Metamorphous" for unmodified copies.
 
-Both licenses (SIL OFL 1.1) ship beside them in Media/Fonts.
+Both licenses (SIL OFL 1.1) ship beside them in Media/Fonts. The build keeps
+the source's head.modified (recalcTimestamp is off), so a re-run with the same
+inputs writes the same bytes.
 """
 
 import os
@@ -27,7 +29,8 @@ RANGES = [(0x0020, 0x007E), (0x00A0, 0x024F), (0x2000, 0x206F), (0x20AC, 0x20AC)
 
 def cinzel():
     """Cinzel pinned to SemiBold and subset."""
-    font = instancer.instantiateVariableFont(TTFont(os.path.join(SRC, "Cinzel[wght].ttf")), {"wght": 600})
+    font = instancer.instantiateVariableFont(TTFont(os.path.join(SRC, "Cinzel[wght].ttf"), recalcTimestamp=False), {"wght": 600})
+    font.recalcTimestamp = False
     options = subset.Options()
     options.layout_features = ["*"]
     sub = subset.Subsetter(options)

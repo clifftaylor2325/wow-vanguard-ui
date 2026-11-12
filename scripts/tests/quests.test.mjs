@@ -2285,6 +2285,25 @@ it("H44-23-51 best reward: a reward that can't be compared yet (stats missing) i
   expect(addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90022'), UP.Undecided(nil) }"), "Gear upgrades off, or no link: nothing is undecided").toEqual([false, false]);
 });
 
+// H44-30-150: an off-hand reward beside a two-hander worn alone has nothing to be compared with (Upgrades.lua wornScore), so
+// it is no upgrade and not undecided, and the best seller is picked, as docs/features/quests.md says.
+it("H44-30-150 best reward: a shield beside a two-hander worn alone, its stats loaded, leaves the best seller picked", () => {
+  const addon = pricedRewards(300, 50);
+  addon.eval(`__calls = nil
+    local loc = { ["item:90021"] = "INVTYPE_SHIELD", ["item:90022"] = "INVTYPE_SHIELD", ["item:5"] = "INVTYPE_2HWEAPON", ["item:6"] = "INVTYPE_WEAPON", ["item:7"] = "INVTYPE_SHIELD" }
+    C_Item.GetItemInfoInstant = function(link) return 1, "Armor", "Shield", loc[link] end
+    C_Item.GetItemStats = function(link) return { ITEM_MOD_STRENGTH_SHORT = 7 } end
+    C_Item.IsEquippableItem = function() return true end
+    GetInventoryItemLink = function(unit, slot) if slot == 16 then return "item:5" end end`);
+  // Whether the shield is undecided and an upgrade, and the pick the automation makes (false: none).
+  const choice = () => addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90021'), UP.IsUpgrade('item:90021'), ns.GetModule('QuestAuto').RewardChoice() or false }");
+  expect(choice(), "decided, no upgrade, the shield that sells for most is taken").toEqual([false, false, 1]);
+  addon.eval(`ns.GetModule('Upgrades').scores = {}
+    GetInventoryItemLink = function(unit, slot) return ({ [16] = "item:6", [17] = "item:7" })[slot] end
+    C_Item.GetItemStats = function(link) if link ~= "item:90021" then return { ITEM_MOD_STRENGTH_SHORT = 7 } end end`);
+  expect(choice()[0], "a shield whose stats have not loaded, beside a one-hander and a worn shield: still undecided").toBe(true);
+});
+
 it("best reward: a stack is judged by what the whole stack sells for", () => {
   const addon = pricedRewards(50, 300);
   expect(calls(addon), "boots worth 50 each in a stack of 1 lose to gloves worth 300").toEqual(["reward 2"]);

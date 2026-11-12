@@ -7,7 +7,7 @@
 //
 // Layout: one row per variant (Core/Theme.lua's VARIANT_ORDER, top to bottom); one group of three
 // cells per accent preset (PRESET_ORDER, left to right), each group panel, raised, inset. A theme
-// colour with alpha is drawn over black. Each cell shows the sheet's pieces side by side at 3 x (the bracket: the top-left 2 x and 1 x bakes, then the bottom-right 2 x bake).
+// colour with alpha is drawn over black. Each cell shows the sheet's pieces side by side at 3 x (the bracket: the top-left 64 and 32 texel bakes, then the bottom-right 64 texel bake).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { createAddon, root } from "./lib/lua-harness.mjs";
 import { image, png } from "./lib/media-art.mjs";
 import { loudnessTable, tintSheet } from "./lib/tint-sheet.mjs";
-import { ornamentCorner, ornamentRule, roundRingOrnate } from "./lib/media-ornament.mjs";
+import { ORNAMENT_CORNERS, ORNAMENT_RULES, roundRingOrnate } from "./lib/media-ornament.mjs";
 
 // The theme colours the sheet needs, for every variant and preset, as the addon works them out.
 const THEME_LUA = `local T, out = ns.Theme, {}
@@ -41,14 +41,15 @@ export function crop(img, x, y, w, h) {
   return out;
 }
 
-// The corner bracket's bakes: the top-left 2 x and 1 x, then the bottom-right 2 x.
-function bracketBakes() {
-  return [ornamentCorner(32), ornamentCorner(16), ornamentCorner(32, true, true)];
+// The corner bracket's shipped bakes (the files under Media/Textures): the top-left 64 and 32 texel, then the
+// bottom-right 64 texel.
+export function bracketBakes() {
+  return [ORNAMENT_CORNERS.OrnamentCorner64TL(), ORNAMENT_CORNERS.OrnamentCorner32TL(), ORNAMENT_CORNERS.OrnamentCorner64BR()];
 }
 
-// The rule motif's two bakes.
-function ruleBakes() {
-  return [ornamentRule(64), ornamentRule(32)];
+// The rule motif's two shipped bakes, 128 and 64 texels wide.
+export function ruleBakes() {
+  return [ORNAMENT_RULES.OrnamentRule128(), ORNAMENT_RULES.OrnamentRule64()];
 }
 
 // The ring's bakes, cropped to what shows at the sheet's scale: the 256 bake's top strip (studs and the north diamond)

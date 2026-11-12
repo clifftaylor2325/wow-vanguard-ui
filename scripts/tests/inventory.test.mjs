@@ -77,6 +77,14 @@ it("inventory: item tooltips list who else has it, in their class color, then th
   expect(addon.eval("local IV = ns.GetModule('Inventory') for _, fn in ipairs(ns.GetModule('Tooltips').itemLines) do if fn == IV.scope.gates['item lines'] then return true end end"), "added to every item tooltip (through its scope's gate)").toBe(true);
 });
 
+// Client rule: UnitName is secret while the unit's name identity is restricted (UnitName carries
+// SecretWhenUnitNameIdentityRestricted in forever Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+it("H44-22-R1 inventory: with your name hidden by the client, item tooltips list nobody and log no error", () => {
+  const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
+  addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret('Tester')");
+  expect([addon.eval('return #__tip("item:2589")'), addon.eval("return #ns.errors")], "your own record can't be told from an alt's: no lines").toEqual([0, 0]);
+});
+
 it("inventory: a crowd of characters is cut to six names", () => {
   let crowd = "";
   for (let i = 1; i <= 8; i += 1) crowd += `Alt${i} = { bags = { [2589] = 1 } }, `;

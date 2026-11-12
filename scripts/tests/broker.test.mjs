@@ -1,7 +1,7 @@
 // broker: other addons' data feeds in the broker strip (Modules/BrokerStrip.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY LibDataBroker-1.1 as another addon would load it (a minimal stand-in on the bundled
 // LibStub and CallbackHandler): __feed(name, obj) shares a feed, __set(name, key, value) changes one.
@@ -133,4 +133,25 @@ it("broker strip: at Text size 130 % the strip and its icons are taller, and the
   expect(sizes(addon)[0][0], "a longer figure measured with the 15 icon (15 + 78 + 8)").toBe(101);
   addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
   expect([sizes(addon)[2], sizes(addon)[0][0]], "and back: the strip and the slot shrink again (12 + 78 + 8)").toEqual([18, 98]);
+});
+
+it("broker strip: a feed's icon the client hides shows as no icon, without an error, and the feeds after it still lay out", () => {
+  const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold', 'TEST-ONLY Guild' } } } }" });
+  // TEST-ONLY a hidden file id, as an aura's icon reads in restricted combat (live/Interface/AddOns/
+  // Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua, GetAuraDataByIndex: SecretWhenUnitAuraRestricted).
+  addon.eval('__set("TEST-ONLY Gold", "icon", __wfgWorld.secret(134400)) Vanguard_BrokerSlot2:Hide() ns.GetModule("BrokerStrip").Layout()');
+  expect(addon.eval("return { Vanguard_BrokerSlot1.icon:IsShown(), Vanguard_BrokerSlot2:IsShown(), #ns.errors }"), "the icon hidden, the next feed shown, no error").toEqual([false, true, 0]);
+  addon.eval('__set("TEST-ONLY Gold", "icon", true)');
+  expect(addon.eval("return Vanguard_BrokerSlot1.icon:IsShown()"), "an icon that is no path or file id: none").toBe(false);
+  addon.eval('__set("TEST-ONLY Gold", "icon", 134400)');
+  expect(addon.eval("return { Vanguard_BrokerSlot1.icon:IsShown(), Vanguard_BrokerSlot1.icon.__texture }"), "a file id shows").toEqual([true, 134400]);
+});
+
+it("broker strip: a feed change that fails is caught and named, and other feeds' changes still reach the strip", () => {
+  const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold' } } } }" });
+  addon.eval('local BS = ns.GetModule("BrokerStrip") __fill = BS.Fill BS.Fill = function() error("TEST-ONLY broken feed") end');
+  expect(addon.eval('return pcall(__set, "TEST-ONLY Gold", "text", "1g")'), "the failure stays inside the strip").toBe(true);
+  expectErrors("broker feed changed: eval:2: TEST-ONLY broken feed");
+  addon.eval('ns.GetModule("BrokerStrip").Fill = __fill __set("TEST-ONLY Gold", "text", "2g")');
+  expect(strip(addon).slots[0][1], "the next change repaints").toBe("2g");
 });

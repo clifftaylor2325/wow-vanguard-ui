@@ -56,9 +56,9 @@ function MC.Junk()
 end
 
 -- Sells what junk is left, then tries again shortly while some remains and tries are left; only while a
--- merchant is open (using a bag item with none open would use or equip it), before every try.
+-- merchant is open on its merchant tab (using a bag item with none open would use or equip it), before every try.
 function MC.SellJunk(tries)
-  if not MC.Trading() then return end
+  if not MC.Selling() then return end
   local junk = MC.Junk()
   if #junk == 0 then return end
   for _, spot in ipairs(junk) do C_Container.UseContainerItem(spot[1], spot[2]) end
@@ -66,8 +66,10 @@ function MC.SellJunk(tries)
   if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 
--- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item.
+-- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item;
+-- either way only out of combat with the merchant open (a merchant opened in a fight sells no junk that visit).
 function MC.Sell()
+  if not MC.Trading() then return end
   local all = C_MerchantFrame and C_MerchantFrame.SellAllJunkItems
   local enabled = C_MerchantFrame and C_MerchantFrame.IsSellAllJunkEnabled
   if type(all) == "function" and type(enabled) == "function" and enabled() == true then return all() end

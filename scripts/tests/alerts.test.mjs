@@ -621,3 +621,13 @@ it("game alerts: a Hardcore death notice that can't be styled is reported, and t
   expectErrors("hook raid warning event: eval:2: TEST-ONLY broken role");
   expect([addon.eval("return RaidWarningFrame.line.__text"), addon.eval("return #ns.errors")], "the game's line is up; the failure is in /vg errors").toEqual(["TEST-ONLY Bob has fallen.", 1]);
 });
+
+// A talking head whose anchoring the client holds secret answers every GetPoint value as a secret, relativeTo too (live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPoint,
+// SecretWhenAnchoringSecret): headOnSpot reads it through ns.PlainPoint, so the toasts are left in the game's chain.
+it("H44-30-50 game alerts: a talking head whose anchoring the client hides leaves the toasts alone, with no error", () => {
+  const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
+  addon.eval("TalkingHeadFrame:Show() __wfgWorld.holdSecret(TalkingHeadFrame, 'Anchoring') __toast:ClearAllPoints() __toast:SetPoint('BOTTOM', TalkingHeadFrame, 'TOP', 0, 10)");
+  addon.eval("AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return { __toast.__points.BOTTOM.rel == TalkingHeadFrame, #ns.errors }"), "the toast stays where the game put it, nothing raised").toEqual([true, 0]);
+});

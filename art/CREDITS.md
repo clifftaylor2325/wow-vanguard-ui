@@ -1,11 +1,13 @@
 # Art sources and credits
 
 Open-licensed art that Vanguard may build from. Nothing here ships to players
-as-is: `scripts/build-media.mjs` rasterizes the crests the faction look uses
+as-is, except Metamorphous (copied unchanged): `scripts/build-media.mjs` rasterizes the crests the faction look uses
 into `Media/Art/` (which then ships, with `Media/Art/CREDITS.txt`) and the
 options nav's and minimap's filled icons into `Media/Icons/` (with
-`Media/Icons/CREDITS.txt`), and the heading fonts are only bundled once one is
-picked.
+`Media/Icons/CREDITS.txt`). The heading fonts do ship: `scripts/fonts/make-heading-fonts.py`
+turns the two fonts below into `Media/Fonts/Cinzel-SemiBold.ttf` and
+`Media/Fonts/Metamorphous-Regular.ttf`, with their licenses beside them
+(`Media/Fonts/OFL-Cinzel.txt`, `Media/Fonts/OFL-Metamorphous.txt`).
 
 ## game-icons.net (CC BY 3.0)
 

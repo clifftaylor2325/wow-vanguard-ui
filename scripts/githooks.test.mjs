@@ -89,6 +89,13 @@ it.skipIf(!posix)("on Windows (Git Bash) the syntax pass is skipped even with lu
   expect(out).toContain("pre-push: skipped: luac5.1 (Windows); CI runs them");
 });
 
+it.skipIf(!posix)("the baseline check compares with the merge base with origin/main, and with origin/main when git finds none (H44-30-100)", () => {
+  const forked = runHook(fakeBin("mergebase", { ...LINUX, git: '[ "$1" = merge-base ] && echo 0123abc; exit 0' }));
+  expect(forked.out).toContain("ran node scripts/check-baselines.mjs --base 0123abc");
+  const none = runHook(fakeBin("nomergebase", { ...LINUX, git: "exit 1" }));
+  expect(none.out).toContain("ran node scripts/check-baselines.mjs --base origin/main");
+});
+
 it.skipIf(!posix)("a failing check fails the push, after the other checks have run", () => {
   const { status, out } = runHook(fakeBin("red", { ...LINUX, npm: '[ "$3" = quality ] && exit 1; exit 0' }));
   expect(status).toBe(1);

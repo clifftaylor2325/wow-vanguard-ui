@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // The edit-time check for agents: Claude Code's PostToolUse hook
 // (.claude/settings.json) pipes the tool call's JSON here after every Edit or
-// Write. For a Lua file under Core/ or Modules/, or a script under scripts/,
-// it runs the code-quality rules on that one file (scripts/lib/code-quality.mjs:
-// the 10-line limit, the comment above every function, colours only from the
-// theme, ns.Guard on hooks and timers) and luacheck when it is installed, and
+// Write. For any Lua, .mjs or .js file the scan reads (everything but Libs/ and
+// node_modules/), it runs the code-quality rules on that one file
+// (scripts/lib/code-quality.mjs: the 10-line limit, the comment above every
+// function, colours only from the theme, ns.Guard on hooks and timers) and, for
+// addon Lua under Core/ or Modules/, luacheck when it is installed, and
 // prints what it found on stderr with exit code 2, which Claude Code hands
 // back to the agent as feedback. Anything else exits 0 and says nothing, so
 // the hook never slows an edit that the rules don't cover. It can also be
@@ -29,19 +30,19 @@ function targetFile() {
   }
 }
 
-// The repo-relative path of a file the rules cover (addon Lua, or a script), else null.
+// The repo-relative path of a file the scan covers (any Lua, .mjs or .js file outside Libs/ and node_modules/,
+// the files sourceFiles reads in scripts/lib/code-quality.mjs), else null.
 export function coveredPath(file) {
   if (!file) return null;
   const rel = path.relative(root, path.resolve(root, file)).split(path.sep).join("/");
   if (rel.startsWith("..") || rel.startsWith("Libs/") || rel.startsWith("node_modules/")) return null;
-  const lua = rel.endsWith(".lua") && (rel.startsWith("Core/") || rel.startsWith("Modules/"));
-  const js = rel.endsWith(".mjs") && rel.startsWith("scripts/");
-  return lua || js ? rel : null;
+  return /\.(lua|mjs|js)$/.test(rel) ? rel : null;
 }
 
-// luacheck's findings for one Lua file, as lines; none when it is not installed or the file passes.
+// luacheck's findings for one addon Lua file, as lines; none for any other file (.luacheckrc leaves scripts/ out),
+// when luacheck is not installed, or when the file passes.
 function luacheckLines(rel) {
-  if (!rel.endsWith(".lua")) return [];
+  if (!/^(Core|Modules)\/.+\.lua$/.test(rel)) return [];
   const run = spawnSync("luacheck", ["--no-color", "--formatter", "plain", rel], { cwd: root, encoding: "utf8" });
   if (run.error || run.status === 0) return [];
   return run.stdout.split("\n").filter((l) => l.trim());

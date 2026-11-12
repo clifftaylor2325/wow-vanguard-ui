@@ -114,10 +114,14 @@ export function readTimes(root) {
   return JSON.parse(fs.readFileSync(path.join(root, TIMES_FILE), "utf8"));
 }
 
+// The environment for asking Vitest about the plan: the Retail-only files stay listed even when VG_SKIP_RETAIL
+// leaves them out of a local run, because scripts/shard-times.json holds their times (empty is falsy in vitest.config.mjs).
+export const PLAN_ENV = { ...process.env, VG_SKIP_RETAIL: "" };
+
 // The test files of the lua project, as paths from the repository root, sorted (asked of Vitest, which runs nothing).
 export function luaTestFiles(root) {
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
-  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly", "--project", "lua"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26 });
+  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly", "--project", "lua"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26, env: PLAN_ENV });
   if (out.status !== 0) throw new Error(`vitest list failed:\n${out.stdout}${out.stderr}`);
   const lines = out.stdout.split("\n").map((l) => l.replace(/^\[[^\]]*\]\s*/, "").trim());
   return lines.filter((l) => l.endsWith(".test.mjs")).map((l) => path.relative(root, path.resolve(root, l)).split(path.sep).join("/")).sort();

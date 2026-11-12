@@ -8,8 +8,9 @@ name: verify
 # release zip's contents.
 # No tests run here (Cliff, 2026-11-10): the whole suite runs on the
 # branch on the agent's machine before the pull request merges (CLAUDE.md,
-# Working method), weekly on main (full-suite.yml), and as the gate in front
-# of each release (release.yml). Built to finish inside a minute, since a
+# Working method), and from the Actions tab on main (full-suite.yml), which
+# the release's author starts before each release (release.yml runs the raid
+# bench and the checks, not the tests). Built to finish inside a minute, since a
 # job bills by the started minute. Markdown lint is separate and not
 # required (markdown.yml).
 # This check runs on every push of a pull request that is not a draft
@@ -83,6 +84,11 @@ jobs:
       - name: Code-quality scan
         if: steps.changes.outputs.docs_only != 'true'
         run: npm run quality
+      # A baseline only goes down: no number rose, and no list gained a line under an existing key, against the
+      # pull request's base (the first parent of its merge commit, which fetch-depth 2 brought). Never skipped.
+      - name: Baselines never rise against the base
+        if: steps.changes.outputs.docs_only != 'true'
+        run: node scripts/check-baselines.mjs --base HEAD^1
       - name: The TOC against the files on disk
         if: steps.changes.outputs.docs_only != 'true'
         run: node scripts/check-toc.mjs

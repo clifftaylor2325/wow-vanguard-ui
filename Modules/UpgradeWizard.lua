@@ -77,10 +77,12 @@ local function whom()
   return { kind = UP.Word(state.kind), role = UP.Word(UP.Role()) }
 end
 
--- Saves the draft: the weights that differ from the kind's defaults (none: the defaults), and the caps.
+-- Saves the draft: the weights that differ from the kind's defaults (none: the defaults), and the caps. Stats this
+-- client does not weigh (a profile from the other client keeps them) are carried over, as UP.Weights promises.
 function WZ.Save()
   local changed, defaults = {}, UW.KINDS[state.kind]
   for short, n in pairs(state.draft) do if n ~= (defaults[short] or 0) then changed[short] = n end end
+  for short, n in pairs(UP.Own(state.kind) or {}) do if not UW.STATS[short] then changed[short] = n end end
   UP.SetOwn(state.kind, next(changed) and changed or nil)
   for _, short in ipairs(UW.CAP_STATS) do UP.SetCap(state.kind, short, state.caps[short] or 0) end
   UP.Changed()

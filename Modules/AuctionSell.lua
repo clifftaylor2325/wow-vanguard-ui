@@ -108,9 +108,11 @@ function AH.Suggest(cheapest, low7)
   return forGame((AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(base))
 end
 
--- The unit price the card's item goes up at: the one typed, else the suggestion (nil: none yet).
+-- The unit price the card's item goes up at: the one typed, else the suggestion once the price check
+-- has answered (nil: none yet, so Post waits for it).
 function AH.SellPrice(s)
   if s.unit then return forGame(s.unit) end
+  if not s.searched then return nil end
   return AH.Suggest(s.cheapest, AP.Low7(s.id))
 end
 
@@ -164,6 +166,12 @@ end
 -- How many units the next stack holds: the stack size, or what's left when that's less.
 local function stackSize(s)
   return math.min(s.stack, s.qty - s.done)
+end
+
+-- The stack a per-stack price is for: the next stack, or a full one when nothing is left to post (never 0 or less).
+local function priceStack(s)
+  local n = stackSize(s)
+  return n >= 1 and n or s.stack
 end
 
 -- How many stacks the sale makes in all: the ones posted or skipped, and those still to go.
@@ -311,7 +319,7 @@ function AH.TakeItem(loc)
   if not (AH.sellCard and loc and loc:IsValid() and api.IsSellItemValid(loc, false)) then return end
   local status = api.GetItemCommodityStatus(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
-  AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
+  AH.sell, AH.sellStatus, AH.sellAnswer = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil, nil
   AH.upCard.table.offset = 0
   AH.QueueFirst({ sell = AH.sell.search, card = true })
   AH.PaintSell()
@@ -328,14 +336,15 @@ end
 
 -- Search results for item id (a search answered, or a further page of it; AH.OnSearchEvent): the
 -- search s in flight takes them when it is a price check or a page of the sell card's: the sell card
--- its listings and the cheapest, your auctions' check the cheapest; the cheapest also feeds the price store.
+-- its listings (every variant, as the game's Sell tab lists them) and the cheapest of the sale's own random
+-- suffix, your auctions' check the cheapest; the cheapest of all also feeds the price store (kept per item ID).
 function AH.OnSearchResults(event, id, s)
   local commodity = event:find("^COMMODITY") ~= nil
   local key = s and (s.sell or s.more)
   if not (key and key.itemID == id) then return end
   local cheapest = AH.Cheapest(commodity, key)
   AP.RecordSeen(id, cheapest)
-  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, cheapest) end
+  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, AH.Cheapest(commodity, key, AH.sell.key.itemSuffix)) end
   if s.check then AH.MarkUndercuts(id, commodity, key) end
   AH.Done()
   AH.PaintSell()
@@ -355,9 +364,10 @@ AH.FORM = {
   stack = function(s, text) s.stack = typedCount(text, 1, s.max) or s.stack end,
   -- How many stacks: the quantity becomes that many stacks (at most what can go up).
   stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
-  -- The price, per unit or per (full) stack by the toggle (a stack price is shared out rounding up, so
-  -- the stack never posts for less than was typed); nothing readable goes back to the suggestion.
-  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / s.stack) or p) end,
+  -- The price, per unit or per stack by the toggle (the stack that goes up next, a short last one included;
+  -- a stack price is shared out rounding up, so it never posts for less than was typed); nothing readable
+  -- goes back to the suggestion.
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / priceStack(s)) or p) end,
   -- A bid per item (items only); nothing for none.
   bid = function(s, text) s.bid = AH.ParseMoney(text) end,
 }
@@ -377,7 +387,7 @@ function AH.TypeForm(name, text, max)
   AH.PaintSell()
 end
 
--- The price box's toggle: a price typed there is per unit or per (full) stack.
+-- The price box's toggle: a price typed there is per unit or per stack (the one that goes up next).
 function AH.TogglePerStack()
   AH.perStack = not AH.perStack
   AH.PaintSell()
@@ -507,7 +517,8 @@ function AH.HideGamePostWarning()
 end
 
 -- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
--- chat says it ("Post: the game said ..."); a secret value shows as "?".
+-- chat says it ("Post: the game said ..."); a secret value shows as "?". The sale's guide shows it, or
+-- the finished card's (AH.sellAnswer) when the last stack was the one sent.
 function AH.OnPostAnswer(e, ...)
   local a = AH.POST_ANSWERS[e]
   if not (a and AH.postAt and GetTime() - AH.postAt <= AH.POST_ANSWER_TIME) then return end
@@ -516,7 +527,8 @@ function AH.OnPostAnswer(e, ...)
   if ns.IsSecret(v) then v = "?" end
   local text = ns.Format(a[1], { value = a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v) })
   ns.Chat(ns.Format(L["Post: {answer}."], { answer = text }))
-  if AH.sell then AH.sell.answer = text AH.PaintSell() end
+  if AH.sell then AH.sell.answer = text else AH.sellAnswer = text end
+  AH.PaintSell()
   if e == "AUCTION_HOUSE_POST_WARNING" then AH.HideGamePostWarning() end
 end
 
@@ -562,8 +574,10 @@ function AH.Pending(s)
   return p
 end
 
--- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next.
+-- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next. The
+-- game's earlier answer goes, and a refusal of the confirm within AH.POST_ANSWER_TIME is reported.
 local function confirmPost(s, p)
+  AH.postAt, s.answer = GetTime(), nil
   C_AuctionHouse["ConfirmPost" .. p.kind](unpack(p.args, 1, p.args.n))
   posted(s, p.args[3])
 end
@@ -630,7 +644,7 @@ local function paintBoxes(c, s)
   show(c.qty, s and s.qty)
   show(c.stack, s and s.stack)
   show(c.stacks, s and AH.StackCount(s))
-  show(c.price, price and AP.Money(price * (AH.perStack and s.stack or 1)))
+  show(c.price, price and AP.Money(price * (AH.perStack and priceStack(s) or 1)))
   show(c.bid, s and s.bid and AP.Money(s.bid))
   c.bid:SetShown(s ~= nil and not s.commodity)
 end
@@ -665,6 +679,7 @@ AH.GUIDE = {
   vendor = { 2, L["Raise the price: it's under what a vendor pays."], true },
   bags = { 1, L["It isn't in your bags now: put it on the card again."], true },
   money = { 3, L["You don't have the money for the deposit."], true },
+  sold = { 4, L["Nothing left to post: raise Quantity, or click Stop."], true },
   busy = { 3, L["Waiting for the auction house to be ready..."] },
   sent = { 3, L["Stack {stack} sent: waiting for the auction house..."] },
   ready = { 3, L["Click Post to list stack {stack} of {stacks}."] },
@@ -672,13 +687,28 @@ AH.GUIDE = {
   answer = { 3, "{answer}.", true },
 }
 
+-- The card's price check ended (AH.Done: answered, or given up on): when it brought no answer the
+-- sale says so, and the guide stops saying it is checking.
+function AH.SellCheckEnded(search)
+  local s = AH.sell
+  if not (search.card and s and s.search == search.sell) or s.searched then return end
+  s.unanswered = true
+  AH.PaintSell()
+end
+
+-- The guide state for the game's answer text, its first letter capitalised.
+local function answerState(text)
+  return "answer", { answer = (text:gsub("^%l", string.upper)) }
+end
+
 -- Where the sale s stands for the guide (why: AH.PostCheck's answer): an AH.GUIDE key and the
 -- values its line's {slots} take (nil for a line without any).
 function AH.GuideState(s, why)
+  if not s and AH.sellAnswer then return answerState(AH.sellAnswer) end
   if not s then return AH.sellStatus and "done" or "empty", { status = AH.sellStatus } end
   if AH.Pending(s) then return "confirm" end
-  if s.answer then return "answer", { answer = (s.answer:gsub("^%l", string.upper)) } end
-  if why == "price" and not s.searched then return "checking" end
+  if s.answer then return answerState(s.answer) end
+  if why == "price" and not (s.searched or s.unanswered) then return "checking" end
   if why == "busy" and s.posted > 0 then return "sent", { stack = s.posted } end
   if AH.GUIDE[why] then return why end
   return "ready", { stack = s.passed + 1, stacks = AH.StackCount(s) }

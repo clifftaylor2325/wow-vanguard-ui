@@ -54,6 +54,14 @@ it("chat windows: the floating window becomes a mover and stays where it was put
   expect(addon.eval("return #ns.errors") + docked.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// A floating window whose anchoring the client holds secret answers every GetPoint value as a secret (live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPoint,
+// SecretWhenAnchoringSecret): floatingMover reads it through ns.PlainPoint and makes no handle from hidden numbers.
+it("H44-30-50 chat windows: a floating window whose anchoring the client hides gets no handle, with no error", () => {
+  const addon = loggedIn(ENV + `__wfgWorld.holdSecret(ChatFrame2, "Anchoring")`, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  expect(addon.eval("return { ns.MoverPoint('chat2') == nil, ChatFrame2.__points.TOPLEFT.x, #ns.errors }"), "no handle, the window where the game put it, nothing raised").toEqual([true, 50, 0]);
+});
+
 // TEST-ONLY model of the game's docking (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua: FCF_DockFrame returns
 // when already docked, else FCFDock_AddChatFrame does chatFrame:ClearAllPoints() then SetAllPoints(dock.primary)).
 const DOCKING = `
@@ -224,6 +232,17 @@ it("chat tabs: Close this tab closes nothing itself, with or without channels, i
   addon.world.combat(false);
   expect(addon.eval("return { __popped == nil, __closed == nil }"), "after the fight: still nothing").toEqual([true, true]);
   expect(chatHas(addon, /right-click its tab and choose Close Chat Window/), "chat points to the tab menu").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// Both clients build the tab menu's entries from global strings (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua
+// :601-632, live :433-452: rootDescription:CreateButton(NEW_CHAT_WINDOW ...), CreateButton(CLOSE_CHAT_WINDOW ...)), so the
+// chat lines name the entries by the client's own words; the tests above run without them and get Vanguard's English.
+it("chat tabs: New chat tab and Close this tab name the game's menu entries by the client's own strings (H44-30-51)", () => {
+  const addon = loggedIn(ENV + TABS + `NEW_CHAT_WINDOW, CLOSE_CHAT_WINDOW = "TEST-ONLY Neues Fenster", "TEST-ONLY Fenster zu"`);
+  addon.eval(`FCF_OpenNewWindow("Trade") local CW = ns.GetModule("ChatWindows") CW.New() CW.editing = 3 CW.Close()`);
+  expect([chatHas(addon, /choose TEST-ONLY Neues Fenster\. It then shows/), chatHas(addon, /choose TEST-ONLY Fenster zu\. The game gives/), chatHas(addon, /Create New Window|Close Chat Window/)],
+    "the client's entry names, not Vanguard's English").toEqual([true, true, false]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

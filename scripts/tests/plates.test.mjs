@@ -429,3 +429,10 @@ it("after a fight, a plate the client has since closed keeps its fallback rows u
   const out = addon.eval("local fs = ns.FrameState('vgPlate') return { __touches, fs[__plates.nameplate2].debuffs.frame == __closedRow, fs[__plates.nameplate1].debuffsOnEngine }");
   expect(out, "the closed plate's row is left as it was, and the open plate is upgraded").toEqual([0, true, true]);
 });
+
+it("/vg plates prints its count line in the client's language, settings words included (H44-25-R3)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function(_, unit) return unit == 'nameplate1' end SetCVar('nameplateShowFriendlyPlayers', 1)", { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval("SetCVar('nameplateShowEnemies', 0)");
+  addon.slash("plates");
+  expect(addon.chat().join("\n")).toMatch(/Namensplaketten: 2 gezeichnet, davon 1 Einheiten, die du angreifen kannst\. .*Gegnerische Namensplaketten aus, Freundliche Spieler an, .*Alle anzeigen unbekannt\./);
+});

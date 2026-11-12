@@ -47,6 +47,8 @@ local CLASS_SECTION = {
 BG.pending = {}
 -- Section headers by section key: W.SectionHeader bands on the bag window, made as needed.
 BG.headers = {}
+-- The special bags' empty-slot sections seen so far: their key ("empty:herb bag") -> header label.
+BG.special = {}
 
 -- Whether the slot holds a quest item (or one that starts a quest).
 local function isQuestItem(bag, slot)
@@ -72,11 +74,23 @@ local function builtIn(info, bag, slot)
   return "other"
 end
 
+-- The section of an empty slot: Empty in a bag that takes anything; in a bag that takes one kind of thing
+-- (a herb bag, a quiver) that bag's own, "Empty: herb bag", since the game won't put anything else there and
+-- says your bags are full while those slots show.
+local function emptySection(bag)
+  local _, family = C_Container.GetContainerNumFreeSlots(bag)
+  local kind = ns.BagKind(ns.PlainNumber(family) or 0)
+  if not kind then return "empty" end
+  local key = "empty:" .. kind
+  BG.special[key] = ns.Format(L["Empty: {kind}"], { kind = kind })
+  return key
+end
+
 -- The section of what a slot holds: empty, one of your categories, or a built-in section.
 function BG.Classify(button)
   local bag, slot = button:GetBagID(), button:GetID()
   local info = C_Container.GetContainerItemInfo(bag, slot)
-  if not info then return "empty" end
+  if not info then return emptySection(bag) end
   return BG.CategoryOf and BG.CategoryOf(info.itemID) or builtIn(info, bag, slot)
 end
 
@@ -103,11 +117,22 @@ local function buttonsOf(frame)
   return list
 end
 
--- The sections that have buttons, in order: { key, label, buttons }.
+-- The special bags' empty-slot sections that have buttons, by name: { key, label }.
+local function specialSections(bySection)
+  local list = {}
+  for key, label in pairs(BG.special) do
+    if bySection[key] then list[#list + 1] = { key = key, label = label } end
+  end
+  table.sort(list, function(a, b) return a.key < b.key end)
+  return list
+end
+
+-- The sections that have buttons, in order: { key, label, buttons }; the special bags' empty slots last.
 local function ordered(bySection)
   local list = {}
   local all = BG.CategorySections and BG.CategorySections() or {}
   for _, s in ipairs(BG.SECTIONS) do all[#all + 1] = s end
+  for _, s in ipairs(specialSections(bySection)) do all[#all + 1] = s end
   for _, s in ipairs(all) do
     if bySection[s.key] then list[#list + 1] = { key = s.key, label = s.label, buttons = bySection[s.key] } end
   end
@@ -206,9 +231,9 @@ function BG.HideHeaders()
 end
 
 -- The bag's bottom row: the currency tracker when the game shows one under
--- the money line (the money line sits on it), else the money line.
+-- the money line (the money line sits on it), else the money line (also while the client hides its anchoring).
 local function bottomRow(frame)
-  local _, rel = frame.MoneyFrame:GetPoint(1)
+  local _, rel = ns.PlainPoint(frame.MoneyFrame, 1)
   if rel and rel ~= frame then return rel end
   return frame.MoneyFrame
 end
@@ -224,12 +249,12 @@ function BG.PadMoney(frame)
 end
 
 -- The height of the bag's bottom rows: the money line, and when the currency
--- tracker shows under it, the tracker and the game's space between them.
+-- tracker shows under it, the tracker and the game's space between them (none while the client hides it).
 local function bottomHeight(frame)
   local money, row = frame.MoneyFrame, bottomRow(frame)
   if row == money then return money:GetHeight() end
-  local _, _, _, _, y = money:GetPoint(1)
-  return money:GetHeight() + y + row:GetHeight()
+  local _, _, _, _, y = ns.PlainPoint(money, 1)
+  return money:GetHeight() + (y or 0) + row:GetHeight()
 end
 
 -- The window fitted to the sections: the grid's width with the padding each
@@ -336,6 +361,7 @@ end
 -- Whether the client has the item calls the sections classify with.
 local function itemAPI()
   return type(C_Container) == "table" and type(C_Container.GetContainerItemInfo) == "function"
+    and type(C_Container.GetContainerNumFreeSlots) == "function"
     and type(C_Item) == "table" and type(C_Item.GetItemInfoInstant) == "function"
 end
 

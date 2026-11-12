@@ -4,7 +4,7 @@ Ten questions the bug hunt of 2026-11-10 could not settle from the addon's own c
 source, and an eleventh (section 11) that an error from the game raised the same evening. Research, not spec: nothing here was checked in the game but the error section 11 quotes, and each section ends with what the source cannot
 tell and the in-game check that would. The hunt's hand-off is [../handoff/BUG-HUNT-HANDOFF-2026-11-10.md](../handoff/BUG-HUNT-HANDOFF-2026-11-10.md).
 
-Source: Blizzard's wow-ui-source, branch `forever` (build 1.60.1.70170). Paths below are under `Interface/AddOns/`.
+Source: Blizzard's wow-ui-source, branch `forever` (build 1.60.1.70170; the source at hand now is build 1.60.1.70888, which this page has not been rechecked against). Paths below are under `Interface/AddOns/`.
 "Doc" means `Blizzard_APIDocumentationGenerated`, which is generated from the client and lists the APIs it exposes.
 Line numbers are that build's and will drift: grep for the identifier quoted.
 

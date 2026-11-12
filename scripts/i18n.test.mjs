@@ -1,10 +1,11 @@
 // The string table's tooling (scripts/lib/i18n.mjs) and the locale files it writes.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { expect, it } from "vitest";
-import { LOCALES, commandWords, commandsIn, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
+import { LOCALES, commandWords, commandsIn, csvKeys, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, missingRows, slashWords, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
 import { root, tocFiles } from "./lib/lua-harness.mjs";
 
 it("i18n: a Lua string round-trips through quoting, escapes and all", () => {
@@ -107,4 +108,101 @@ it("a translation holding a carriage return is a problem", () => {
 it("a CRLF line break inside a quoted CSV cell imports as a line feed", () => {
   const csv = 'key,english,translation,context,note\n"two\r\nlines",x,"zwei\r\nZeilen",,\n';
   expect(importCsv(csv)).toEqual(new Map([["two\nlines", "zwei\nZeilen"]]));
+});
+
+it("a CSV that lacks a row for a translation the locale has is a partial import and is listed as missing", () => {
+  const keys = new Map([["Bags", "a:1"], ["Zone", "a:2"], ["two\nlines", "a:3"]]);
+  const entries = new Map([["Bags", "Taschen"], ["Zone", "Zone"], ["Gone", "Weg"]]);
+  const partial = "key,english,translation,context,note\nBags,Bags,Taschen,,\n";
+  expect(missingRows(entries, keys, csvKeys(partial))).toEqual(["Zone"]);
+});
+
+it("a full export with one cell emptied is not partial: the emptied row is still a row and its translation is removed", () => {
+  const keys = new Map([["Bags", "a:1"], ["Zone", "a:2"], ["two\nlines", "a:3"]]);
+  const entries = new Map([["Bags", "Taschen"], ["Zone", "Zone"], ["two\nlines", "zwei\nZeilen"]]);
+  const emptied = exportCsv(entries, keys).replace("Zone,Zone,Zone,a:2", "Zone,Zone,,a:2").replace(/\n/g, "\r\n");
+  expect(missingRows(entries, keys, csvKeys(emptied))).toEqual([]);
+  expect([...importCsv(emptied).keys()].sort()).toEqual(["Bags", "two\nlines"]);
+});
+
+it("the command line refuses to import a one-row CSV over a locale that has translations, and writes nothing", () => {
+  const before = fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8");
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "vg-i18n-")), "partial.csv");
+  fs.writeFileSync(file, "key,english,translation,context,note\nBags,Bags,Taschen,,\n");
+  // Runs the import of the one-row CSV.
+  const run = () => execFileSync("node", ["scripts/i18n.mjs", "import", "deDE", file], { cwd: root, stdio: "pipe" });
+  expect(run).toThrow(/import a full export/);
+  expect(fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8")).toBe(before);
+});
+
+// The short labels the addon puts on the yes button of an ns.Ask or ns.Irreversible confirm (a danger one sits beside No).
+function yesLabels() {
+  const labels = new Set();
+  for (const file of tocFiles().filter((f) => /^(Core|Modules)\//.test(f))) {
+    for (const line of fs.readFileSync(path.join(root, file), "utf8").split("\n")) {
+      if (!/ns\.Ask\(|ns\.Irreversible\(|\byes = /.test(line)) continue;
+      for (const { key } of lookups(line)) if (key.length < 30 && !/[?.]$/.test(key)) labels.add(key);
+    }
+  }
+  return labels;
+}
+
+it("i18n: no confirm's yes label (ns.Ask, ns.Irreversible) is the language's Cancel, No or Close word", () => {
+  const labels = yesLabels();
+  expect([...labels], "the scan finds the known labels").toEqual(expect.arrayContaining(["Undo", "Abandon", "Cancel auction", "Delete"]));
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    const refusals = ["Cancel", "No", "Close"].map((key) => entries.get(key));
+    for (const yes of labels) expect(refusals, `${locale}: "${yes}" is "${entries.get(yes)}"`).not.toContain(entries.get(yes));
+  }
+});
+
+it("a CSV with a byte-order mark imports, and one whose head lacks the key or translation column is refused naming it", () => {
+  expect(importCsv("\ufeffkey,english,translation,context,note\nBags,Bags,Taschen,,\n")).toEqual(new Map([["Bags", "Taschen"]]));
+  expect(() => importCsv("key,english,Translation,context,note\nBags,Bags,Taschen,,\n")).toThrow(/no "translation" column/);
+  expect(() => importCsv("id,english,translation\n")).toThrow(/no "key" column/);
+});
+
+it("the command line exits 1 on a CSV with no translation column, writing nothing", () => {
+  const before = fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8");
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "vg-i18n-")), "head.csv");
+  fs.writeFileSync(file, "key,english,Translation,context,note\nBags,Bags,Taschen,,\n");
+  expect(() => execFileSync("node", ["scripts/i18n.mjs", "import", "deDE", file], { cwd: root, stdio: "pipe" })).toThrow(/no "translation" column/);
+  expect(fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8")).toBe(before);
+});
+
+it("a CSV field with a quote that does not open and close the whole field, or never closes, is refused, not guessed at", () => {
+  expect(() => parseCsv('key,english,translation\nBags,Bags,"Hallo" sagen\n')).toThrow(/bad CSV near row 2/);
+  expect(() => parseCsv('key,english,translation\nBags,Bags,"Hallo\n')).toThrow(/bad CSV near row 2/);
+  expect(parseCsv('a,"b ""c"""\n'), "doubled quotes inside a whole quoted field are fine").toEqual([["a", 'b "c"']]);
+});
+
+it("a lone carriage return is a line break in a CSV, not part of a field", () => {
+  expect(parseCsv("a,b\rc,d")).toEqual([["a", "b"], ["c", "d"]]);
+});
+
+it("a help line's further forms after a comma are one command, so a translated word among them is caught", () => {
+  const words = commandWords('local HELP = {\n  { "loot [add|remove|list|clear]", L["x"] },\n}');
+  const key = "/vg loot add <player> <item>, remove <player> <item>, list, clear";
+  expect(commandsIn(key, words)).toEqual(["/vg loot add <player> <item>, remove <player> <item>, list, clear"]);
+  expect(commandsIn("/vg loot add <player> <item>, retirer <player> <item>, liste, vider", words)).not.toEqual(commandsIn(key, words));
+  const keys = new Map([[key, "a:1"]]);
+  expect(localeProblems(new Map([[key, "/vg loot add <player> <item>, retirer <player> <item>, liste, vider"]]), keys, words)).toEqual([`commands differ from the English: ${key}`]);
+  expect(localeProblems(new Map([[key, `${key} dazu`]]), keys, words)).toEqual([]);
+});
+
+it("every /word of a key, /reload and /way as well as /vg, must come back in its translation", () => {
+  const keys = new Map([["Type /reload in chat", "a:1"]]);
+  expect(slashWords("Gib /reload ein, /vg는 und /way命令; {money}/h and/or 5/min")).toBe("/reload /vg /way");
+  expect(localeProblems(new Map([["Type /reload in chat", "Tippe /neuladen im Chat"]]), keys, new Map())).toEqual(["commands differ from the English: Type /reload in chat"]);
+  expect(localeProblems(new Map([["Type /reload in chat", "Gib /reload im Chat ein"]]), keys, new Map())).toEqual([]);
+});
+
+it("a translation keeps its key's line breaks, its end whitespace and the bracket of a (reload) caption", () => {
+  const keys = new Map([["Ask?\n{list}", "a:1"], ["Name: ", "a:2"], ["Frames (reload)", "a:3"]]);
+  expect(localeProblems(new Map([["Ask?\n{list}", "Frage? {list}"]]), keys)).toEqual(["line breaks differ from the English: Ask?\n{list}"]);
+  expect(localeProblems(new Map([["Name: ", "Name:"]]), keys)).toEqual(["leading or trailing whitespace differs from the English: Name: "]);
+  expect(localeProblems(new Map([["Name: ", "名称："]]), keys), "a full-width colon needs no space").toEqual([]);
+  expect(localeProblems(new Map([["Frames (reload)", "Fenster (Neu laden"]]), keys)).toEqual(["a (reload) caption must end in its bracket: Frames (reload)"]);
+  expect(localeProblems(new Map([["Frames (reload)", "框体（重载）"]]), keys)).toEqual([]);
 });

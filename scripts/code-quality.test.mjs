@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
+import { DIAGNOSTIC_FILES, FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, ratchetFailures, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -150,6 +150,25 @@ function fontCallPathSizeFails() {
 function fontRolesPass() {
   const src = "-- doc\nlocal function f(fs, p)\n  fs:SetFont(p, size(fs), \"\")\n  fs:SetFont(T.Font(true), T.ScaledSize(size), \"\")\n  T.Text(fs, \"label\")\nend\n";
   expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// Statements outside the theme that write a color or a font size in a shape the first rule missed (H44-25-5).
+const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")'];
+const WRITTEN_SIZES = ["fs:SetTextHeight(14)", "fs:SetFont(p, x or 12, '')", "fs:SetFont(T.Font(T.Face(true)), 14, '')", "fs:SetFont(p, 12.5)"];
+// Statements that look alike and are not a written color or size.
+const NOT_WRITTEN = ["local c = CreateColor(r, g, b)", "local c = { r = r, g = g, b = b }", "local c = { r = 200, g = 100, b = 50 }", "local c = CreateColorFromHexString(hex)", "font:SetFont(was[1], was[2], was[3])", "fs:SetFont(p, size + 2, '')", "fs:SetFont(p, size(fs) or other, '')", "GA.SetFont(fs, 12)", "fs:SetTextHeight(h)"];
+
+// A color or a font size written in one of the shapes the first rule missed fails outside the theme, and each of them has a line.
+function writtenShapesFail() {
+  for (const stmt of WRITTEN_COLORS) expect(problems("Modules/t.lua", `${stmt}\n`), stmt).toMatch(/color numbers/);
+  for (const stmt of WRITTEN_SIZES) expect(problems("Modules/t.lua", inFn(stmt)), stmt).toMatch(/font size/);
+  expect(checkSource("Modules/t.lua", "local a = 1\n\nlocal c = CreateColor(1, 1, 1)\n")[0].line).toBe(3);
+}
+
+// Computed colors and sizes, indexes, a module's own dotted SetFont and the theme itself pass.
+function writtenShapesPass() {
+  for (const stmt of NOT_WRITTEN) expect(problems("Modules/t.lua", inFn(stmt)), stmt).toBe("");
+  expect(problems("Core/Theme.lua", "local c = CreateColor(1, 0.82, 0)\nlocal d = { r = 1, g = 0, b = 0 }\n")).toBe("");
 }
 
 // Color numbers outside addon Lua are ignored.
@@ -348,6 +367,8 @@ describe(
     it("fonts: SetFont with a written size fails", fontMethodSizeFails);
     it("fonts: SetFont with a call for its path and a written size fails", fontCallPathSizeFails);
     it("fonts: roles and computed sizes pass", fontRolesPass);
+    it("colors and fonts: CreateColor, r/g/b tables, hex strings, SetTextHeight and 'x or 12' sizes fail", writtenShapesFail);
+    it("colors and fonts: computed ones, indexes and a module's dotted SetFont pass", writtenShapesPass);
   },
 );
 
@@ -409,6 +430,64 @@ function secureIgnored() {
   expect(secured(inFn("if type(RegisterStateDriver) == 'function' then fn() end"))).toEqual([]);
   expect(secured(inFn('b:SetAttribute("x", 1)'), "scripts/lib/t.lua")).toEqual([]);
   expect(secured(inFn('b:SetAttribute("x", 1)'), "Modules/t.mjs")).toEqual([]);
+}
+
+const SECURE_CALL_LINE = 'b:SetAttribute("x", 1)';
+// Statements whose combat word is no guard: read and not tested, tested backwards, joined by and, too deep, nested, or after the call.
+const WEAK_GUARDS = [
+  `local c = InCombatLockdown()\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then print("busy") end\n  ${SECURE_CALL_LINE}`,
+  `if not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() and x then return end\n  ${SECURE_CALL_LINE}`,
+  `if x then\n    if InCombatLockdown() then return end\n  end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then\n    if y then return end\n  end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then return end\n  fn(function() ${SECURE_CALL_LINE} end)`,
+  `${SECURE_CALL_LINE}\n  if InCombatLockdown() then return end`,
+  `if not ns.InCombat() or x then ${SECURE_CALL_LINE} end`,
+];
+
+// H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
+function secureWeakGuards() {
+  for (const stmt of WEAK_GUARDS) expect(secured(inFn(stmt)), stmt).toEqual([SECURE]);
+}
+
+// Statements with a real guard: an early return in combat (any value, `or` chains, a deferral first), or the call inside a branch that runs out of combat.
+const STRICT_GUARDS = [
+  `if InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() then return false end\n  ${SECURE_CALL_LINE}`,
+  `if not b or ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if ns.InCombat() then ns.AfterCombat(fn) return end\n  ${SECURE_CALL_LINE}`,
+  `if InCombatLockdown() then return end\n  if x then ${SECURE_CALL_LINE} end`,
+  `if not ns.InCombat() then ${SECURE_CALL_LINE} end`,
+  `if not InCombatLockdown() and x then\n    ${SECURE_CALL_LINE}\n  end`,
+  `if InCombatLockdown() then return elseif x then ${SECURE_CALL_LINE} end`,
+];
+
+// H44-25-2: the shapes of a real guard pass.
+function secureStrictGuards() {
+  for (const stmt of STRICT_GUARDS) expect(secured(inFn(stmt)), stmt).toEqual([]);
+}
+
+// H44-25-2: a function is trusted by its whole name, not its last word (V.ApplyState deferred does not clear X.ApplyState).
+function secureWholeName() {
+  const src = "-- doc\nfunction V.ApplyState(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nfunction W.ApplyState(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(V.ApplyState)\n";
+  expect(checkSource("Modules/t.lua", src).map((p) => p.line)).toEqual([7]);
+  expect(secured("-- doc\nfunction V:Apply(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(function() V.Apply(b) end)\n")).toEqual([]);
+  expect(secured("-- doc\nlocal M = {}\nM.Apply = function(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(M.Apply)\n")).toEqual([]);
+  expect(secured("-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(function() self.set(b) end)\n"), "self.set is not set").toEqual([SECURE]);
+}
+
+// H44-25-2: the SecureHandler method forms are secure calls on a frame; the bare words are not.
+function secureMethodForms() {
+  for (const call of ["fs:WrapScript(h, 'OnClick', 'x')", "fs:UnwrapScript(h, 'OnClick')", "fs:Execute('x')", "fs:SetFrameRef('a', f)"]) expect(secured(inFn(call)), call).toEqual([SECURE]);
+  expect(secured(inFn("Execute(x)\n  local WrapScript = 1\n  t.Execute(x)")), "a bare or dotted call is not a frame method").toEqual([]);
+  expect(secured(inFn("ns.OutOfCombat(function() fs:Execute('x') end)"))).toEqual([]);
+}
+
+// H44-25-2, a known limit: a function deferred once is trusted for every call of its name, a straight call from a combat handler included.
+function secureDeferredOnceLimit() {
+  const src = "-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nlocal function later(b)\n  ns.OutOfCombat(function() set(b) end)\nend\n-- doc\nlocal function onFight(b)\n  set(b)\nend\n";
+  expect(secured(src)).toEqual([]);
 }
 
 // The allow-list is explicit and starts empty.
@@ -473,6 +552,18 @@ describe(
     it("secure: a combat check before the call passes, after it does not", secureChecked);
     it("secure: load time, strings, mentions and other folders pass", secureIgnored);
     it("secure: the allow-list is explicit and starts empty", secureAllowList);
+  },
+);
+
+describe(
+  "code quality",
+  // Secure calls: the strict guard shapes (H44-25-2).
+  () => {
+    it("secure: a combat word read but not returned on, or tested backwards, is no guard", secureWeakGuards);
+    it("secure: an early return in combat, or a branch that runs out of combat, is a guard", secureStrictGuards);
+    it("secure: a function is trusted by its whole name, not its last word", secureWholeName);
+    it("secure: the SecureHandler method forms are read", secureMethodForms);
+    it("secure: a function deferred once stays trusted for every call of its name (a known limit)", secureDeferredOnceLimit);
   },
 );
 
@@ -595,8 +686,74 @@ describe(
   () => {
     it("unwrapped text: a literal in a text sink is reported, and does not block", unwrappedBare);
     it("unwrapped text: wrapped text, paths, symbols and other folders pass", unwrappedPasses);
+    it("unwrapped text shapes: joined, chosen, formatted and the sinks the narrow rule lacked are counted", shapesReported);
+    it("unwrapped text shapes: wrapped, wordless, compared, indexed, nested, the brand and the diagnostics pass", shapesPass);
+    it("unwrapped text shapes: the diagnostics table is the list in docs/PATTERNS.md", diagnosticsMatchDoc);
+    it("field functions: after a comma or under a bracketed key, with no comment, they are counted", fieldsReported);
+    it("field functions: a comment above, or above a run of one-liners, covers them", fieldsDocumented);
   },
 );
+
+const SHAPES = "unwrapped-text-shapes";
+const FIELD = "undocumented-field-function";
+
+// Statements that print English in a shape the narrow rule does not read: joined, chosen by and/or, formatted, in a sink it lacked.
+const ENGLISH_SHAPES = [
+  'fs:SetText(n .. " items")', 'fs:SetText(on and "On" or "Off")', 'fs:SetText(name or "none")',
+  'ns.Chat(string.format("Sold %d items", n))', 'ns.Chat(("Sold %d items"):format(n))', 'ns.Chat(ns.Format("Sold {n} items", { n = n }))',
+  'fs:SetFormattedText("%d items left", n)', 'chatFrame:AddMessage("Hello there")', 'ns.Ask("Delete it?", yes)', 'ns.AskText("Name it", ok)',
+  'ns.DialogButton(parent, "Reload now", f)', 'tip:AddLine(key .. " to open")',
+];
+// Statements that look alike and are not English text to translate.
+const NOT_ENGLISH = [
+  'fs:SetText(L["Level"] .. n)', 'fs:SetText(("%d x %s"):format(n, name))', 'ns.Chat(mode == "tab" and L["a"] or L["b"])', 'ns.DialogButton(parent, "Vanguard", f)',
+  'fs:SetText(t["key"])', 'fs:SetText(fmt("Hello"))', 'ns.DialogButton("Hello", L["Reload"], f)', 'ns.Chat(string.format("%d. %s", i, name))', 'fs:SetFormattedText("%.1f", n)',
+  'ns.Chat(ns.Format(L["Sold {n}"], { n = n }))', 'fs:SetText(L["x"] .. "|r")', 'fs:SetText(("%s"):rep(2))',
+];
+
+// English joined to a value, chosen by and/or, formatted, or handed to a sink the narrow rule lacked is counted under its own key, and does not block.
+function shapesReported() {
+  for (const stmt of ENGLISH_SHAPES) expect(new Set(reported(inFn(stmt))), stmt).toEqual(new Set([SHAPES]));
+  expect(reportSource("Modules/t.lua", inFn('fs:SetText(n .. " items")'))[0]).toMatchObject({ line: 3, message: 'English text joined, chosen or formatted outside L[…]: " items"' });
+  expect(problems("Modules/t.lua", inFn('fs:SetText(n .. " items")'))).toBe("");
+  expect(reported(inFn('fs:SetText("Level " .. n)')), "a literal that comes first is the narrow rule's").toEqual([UNWRAPPED]);
+}
+
+// Wrapped text, format patterns with no words, compares, indexes, nested calls, the brand, the diagnostics' files and other folders pass.
+function shapesPass() {
+  for (const stmt of NOT_ENGLISH) expect(reported(inFn(stmt)), stmt).toEqual([]);
+  expect(reported(inFn('fs:SetText(n .. " items")'), "scripts/lib/t.lua")).toEqual([]);
+  expect(reported(inFn('ns.Chat(realm .. " is the realm")'), "Core/Home.lua"), "a file that prints a diagnostic").toEqual([]);
+}
+
+// The diagnostics the doc names are the table's keys, so the doc and the rule cannot drift.
+function diagnosticsMatchDoc() {
+  const doc = fs.readFileSync(path.join(root, "docs/PATTERNS.md"), "utf8");
+  const sentence = /the diagnostics pasted into a bug report: (.*?)\. Text with a/s.exec(doc)[1];
+  const words = [...sentence.matchAll(/`\/vg (\w+)`/g)].map((m) => m[1]);
+  expect(words.sort()).toEqual(Object.keys(DIAGNOSTIC_FILES).sort());
+}
+
+// A table with no comments: the first field is named (and needs a comment); later fields after a comma are anonymous to the blocking rule.
+const FIELDS = "local T = {\n  first = function() end,\n  second = function() end,\n  third = function()\n    return 1\n  end,\n}\n";
+
+// A function written as a table field after a comma, or under a bracketed key, with no comment above is counted under its own key; the blocking rule still names only the first.
+function fieldsReported() {
+  expect(reported(FIELDS)).toEqual([FIELD, FIELD]);
+  expect(reportSource("Modules/t.lua", FIELDS).map((f) => [f.line, f.message])).toEqual([[3, "second = function has no comment above it (a table field the comment rule does not name)"], [4, "third = function has no comment above it (a table field the comment rule does not name)"]]);
+  expect(problems("Modules/t.lua", FIELDS)).toMatch(/first\(\) has no comment above it/);
+  expect(reported('local M = {}\nM["Apply"] = function() end\nlocal T = {\n  ["Paint"] = function() end,\n}\n')).toEqual([FIELD, FIELD]);
+  expect(reportSource("Modules/t.lua", 'local M = {}\nM["Apply"] = function() end\n')[0].message).toMatch(/^\["Apply"\] = function/);
+}
+
+// A comment directly above a field, or above the first of a run of one-line fields, covers it; call arguments and named functions are not fields.
+function fieldsDocumented() {
+  const commented = "local T = {\n  -- one\n  first = function() end,\n  -- two\n  second = function() end,\n  third = function() end,\n  [\"k\"] = function() end, [\"j\"] = function() end,\n}\n";
+  expect(reported(commented)).toEqual([]);
+  expect(reported('-- doc\nlocal M = {}\n-- doc\nM["Apply"] = function() end\n-- doc\nlocal function f() end\nns.On("X", function() end, function() end)\n')).toEqual([]);
+  expect(reported(FIELDS, "scripts/lib/wow-t.lua"), "harness Lua is read too").toEqual([FIELD, FIELD]);
+  expect(reported(FIELDS, "scripts/lib/t.mjs")).toEqual([]);
+}
 
 it("baseline: a count above fails, below asks to lower it, a missing rule counts as 0", () => {
   const rows = compareToBaseline({ [ONUPDATE]: 3, [HANDLER]: 1 }, { [ONUPDATE]: 2 });
@@ -605,7 +762,13 @@ it("baseline: a count above fails, below asks to lower it, a missing rule counts
     { rule: HANDLER, count: 1, baseline: 0, status: "above" },
     { rule: UNWRAPPED, count: 0, baseline: 0, status: "at" },
   ]);
-  expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at"]);
+  expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at", "at", "at"]);
+});
+
+it("baseline: a count below its baseline fails too, so a baseline is exact and never spare room (H44-25-7)", () => {
+  const rows = compareToBaseline({ [ONUPDATE]: 3, [HANDLER]: 1, [UNWRAPPED]: 0 }, { [ONUPDATE]: 2, [HANDLER]: 4 });
+  expect(ratchetFailures(rows).map((r) => [r.rule, r.status])).toEqual([[ONUPDATE, "above"], [HANDLER, "below"]]);
+  expect(ratchetFailures(compareToBaseline({ [ONUPDATE]: 2 }, { [ONUPDATE]: 2 }))).toEqual([]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {
@@ -669,14 +832,46 @@ function topLocalsCounted() {
 // The scan fails a file one local above the limit and passes one at the limit.
 function topLocalsRule() {
   expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS))).toBe("");
-  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(new RegExp(`${MAX_TOP_LOCALS + 1} top-level locals \\(limit 170;`));
+  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(new RegExp(`${MAX_TOP_LOCALS + 1} top-level locals at once \\(limit 170;`));
   expect(checkSource("Core/T.lua", locals(MAX_TOP_LOCALS + 1))[0].line).toBe(MAX_TOP_LOCALS + 1);
   expect(problems("scripts/lib/x.lua", locals(MAX_TOP_LOCALS + 5))).toBe("");
 }
 
-// A do ... end block frees its locals, so grouping them there brings a file back under the limit.
+// A do ... end block frees its locals at its end, so grouping them there brings a file back under the limit; the
+// block's locals count while it is open (H44-25-4).
 function topLocalsBlock() {
-  expect(problems("Modules/M.lua", `do\n${locals(MAX_TOP_LOCALS + 20)}end\n${locals(MAX_TOP_LOCALS)}`)).toBe("");
+  expect(problems("Modules/M.lua", `do\n${locals(100)}end\n${locals(MAX_TOP_LOCALS - 20)}`)).toBe("");
+  expect(problems("Modules/M.lua", `${locals(100)}do\n${locals(80)}end\n`)).toMatch(/180 top-level locals at once \(limit 170;/);
+  expect(problems("Modules/M.lua", `do\n${locals(MAX_TOP_LOCALS + 1)}end\n`)).toMatch(/171 top-level locals at once/);
+}
+
+// The compiler's own peak: the most locals of the main chunk alive at one point, read from luac5.1's listing, or null without luac5.1.
+function luacPeak(src) {
+  const run = spawnSync("luac5.1", ["-l", "-l", "-p", "-"], { input: src, encoding: "utf8" });
+  if (run.error) return null;
+  const rows = run.stdout.slice(run.stdout.indexOf("locals (")).split("\n").slice(1).map((l) => /^\t\d+\t.+\t(\d+)\t(\d+)$/.exec(l));
+  const spans = rows.slice(0, rows.indexOf(null)).map((m) => [Number(m[1]), Number(m[2])]);
+  // A local that ends where it starts (the last of a block) is alive at that one point.
+  return Math.max(0, ...spans.map(([at]) => spans.filter(([from, to]) => from <= at && (at < to || at === from)).length));
+}
+
+// The peak counts the locals of open blocks and a for loop's three hidden ones, and agrees with the compiler.
+function topLocalsPeakCounted() {
+  const src = "local a\ndo local b local c end\nif x then local d else local e local f end\nfor i = 1, 2 do local y end\nfor k, v in pairs(t) do end\nwhile x do local z end\nrepeat local w until w\nlocal function g() local inner end\n";
+  expect(topLocalPeak(src).peak).toBe(6);
+  const compiled = luacPeak(src);
+  if (compiled !== null) expect(compiled).toBe(6);
+  expect(topLocalPeak(`${locals(MAX_TOP_LOCALS - 3)}for i = 1, 2 do end\n`).peak, "a for loop holds four").toBe(MAX_TOP_LOCALS + 1);
+}
+
+// The peak is judged on the real Core/Theme.lua and Core/OptionsWindow.lua, the files nearest the limit, and agrees with luac5.1.
+function topLocalsPeakReal() {
+  for (const file of ["Core/Theme.lua", "Core/OptionsWindow.lua"]) {
+    const src = fs.readFileSync(path.join(root, file), "utf8");
+    expect(topLocalPeak(src).peak, file).toBeLessThanOrEqual(MAX_TOP_LOCALS);
+    const compiled = luacPeak(src);
+    if (compiled !== null) expect(topLocalPeak(src).peak, `${file} against luac5.1`).toBe(compiled);
+  }
 }
 
 // The counter agrees with the compiler on the real Core/Theme.lua, which keeps clear of the limit.
@@ -690,7 +885,9 @@ function topLocalsTheme() {
 describe("code quality: top-level locals", () => {
   it("counts every local form and skips nested scopes, as the compiler does", topLocalsCounted);
   it("fails an addon file above the limit and passes one at it", topLocalsRule);
-  it("a do block frees its locals", topLocalsBlock);
+  it("a do block frees its locals at its end, and counts them while it is open", topLocalsBlock);
+  it("the peak counts open blocks and a for loop's hidden locals, as luac5.1 does", topLocalsPeakCounted);
+  it("the peak agrees with luac5.1 on Core/Theme.lua and Core/OptionsWindow.lua", topLocalsPeakReal);
   it("agrees with the compiler on Core/Theme.lua, which stays at or below 170", topLocalsTheme);
 });
 

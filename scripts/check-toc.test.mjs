@@ -119,3 +119,20 @@ it("a file whose tags keep it off both clients fails", () => {
   const problems = check({ files: ["Core/Events.lua", "Modules/Bars.lua [AllowLoadGameType vanilla]"] });
   expect(problems).toEqual([expect.stringMatching(/:\d+: Modules\/Bars\.lua loads on no client \(forever, retail\): check its game-type tags$/)]);
 });
+
+it("luacheck skips the agent worktrees under .claude/, whose copies of Libs/ and scripts/ it would otherwise lint", () => {
+  const rc = fs.readFileSync(path.join(root, ".luacheckrc"), "utf8");
+  expect(rc).toMatch(/^exclude_files = \{[^}]*"\.claude\/"[^}]*\}$/m);
+});
+
+it("the editor's globals list holds every global .luacheckrc lets the addon set (the game's own SlashCmdList comes from the WoW API extension)", () => {
+  const rc = fs.readFileSync(path.join(root, ".luacheckrc"), "utf8");
+  const editor = fs.readFileSync(path.join(root, ".vscode", "settings.json"), "utf8").replace(/^\s*\/\/.*$/gm, "");
+  const listed = new Set(JSON.parse(editor.replace(/,(\s*[}\]])/g, "$1"))["Lua.diagnostics.globals"]);
+  const missing = [...luacheckGlobals(rc)].filter((name) => !["SlashCmdList", "other_fields"].includes(name) && !listed.has(name));
+  expect(missing, "add these to Lua.diagnostics.globals in .vscode/settings.json").toEqual([]);
+});
+
+it("the luacheck config lists no game global the addon never reads (ChatFrame_RemoveAllMessageGroups was one)", () => {
+  expect(fs.readFileSync(path.join(root, ".luacheckrc"), "utf8")).not.toContain("ChatFrame_RemoveAllMessageGroups");
+});

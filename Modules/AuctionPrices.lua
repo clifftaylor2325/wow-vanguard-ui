@@ -178,8 +178,9 @@ end
 
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
 -- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
--- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items
--- priced longest ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
+-- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS from a search evicts the
+-- items priced longest ago; a scan's items all go in first, then AP.Cap ranks them by listings. The
+-- listeners hear of it on the next frame, AP.OnSeen's at once.
 function AP.Record(itemID, unitPrice, t, scan)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
@@ -188,9 +189,14 @@ function AP.Record(itemID, unitPrice, t, scan)
   local listings = scan and scan.listings
   p.min, p.t, p.listings = unitPrice, t, listings or p.listings
   noteDay(p, day, unitPrice, scan)
-  if house.count > AP.MAX_ITEMS then AP.Evict() end
+  if not scan and house.count > AP.MAX_ITEMS then AP.Evict() end
   ns.Soon("auction prices changed", tellListeners)
   tellSeen(itemID, unitPrice, t)
+end
+
+-- Evicts when the store holds more than AP.MAX_ITEMS (after a scan has recorded all its items together).
+function AP.Cap()
+  if AP.House().count > AP.MAX_ITEMS then AP.Evict() end
 end
 
 -- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never
@@ -300,11 +306,12 @@ local function oldestHomes(houses, keep)
 end
 
 -- Drops price homes, the one with the oldest prices first and never the one in use, while the homes hold
--- more than AP.MAX_ALL_ITEMS items together (`total`, as AP.Prune counted them).
+-- more than AP.MAX_ALL_ITEMS items together (`total`, as AP.Prune counted them). ns.Home.Adopt first moves
+-- an older key's house to this key, so the home kept is the one holding this character's prices.
 function AP.CapHomes(total)
   if total <= AP.MAX_ALL_ITEMS then return end
   local houses = AP.Store().houses
-  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Adopt(houses))) do
     if total <= AP.MAX_ALL_ITEMS then return end
     total = total - houses[home.key].count
     houses[home.key] = nil
@@ -332,7 +339,7 @@ end
 -- gives a home's bytes); returns how many it dropped. Reads VanguardDB.ah as it is, so a file without one stays so.
 function AP.DropOldestHomes(free, sizeOf)
   local houses, dropped = savedHomes(), 0
-  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Adopt(houses))) do
     if free <= 0 then break end
     free = free - sizeOf(houses[home.key], 1)
     houses[home.key] = nil

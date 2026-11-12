@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { afterAll, expect, it } from "vitest";
 import { root } from "./lib/lua-harness.mjs";
 import { balancedOption, planMergeProblems, planOption } from "./lib/coverage-shards.mjs";
-import { averageTimes, currentPlan, estimateWall, junitDurations, logDurations, luaTestFiles, planProblems, planShards, readTimes, timesText } from "./lib/shard-plan.mjs";
+import { averageTimes, currentPlan, estimateWall, junitDurations, logDurations, luaTestFiles, PLAN_ENV, planProblems, planShards, readTimes, timesText } from "./lib/shard-plan.mjs";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-plan-"));
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
@@ -101,10 +101,21 @@ it("the committed timing table is whole seconds-per-file numbers for files that 
   expect(Object.keys(times).length).toBeGreaterThan(100);
 });
 
+it("VG_SKIP_RETAIL leaves the Retail-only files out of a local run but not out of the plan or the times table check", () => {
+  const before = process.env.VG_SKIP_RETAIL;
+  process.env.VG_SKIP_RETAIL = "1";
+  try {
+    expect(luaTestFiles(root)).toContain("scripts/tests/retail-bank.test.mjs");
+  } finally {
+    if (before === undefined) delete process.env.VG_SKIP_RETAIL;
+    else process.env.VG_SKIP_RETAIL = before;
+  }
+});
+
 it("Vitest, handed one shard's file list, selects exactly those files", () => {
   const shard = currentPlan(root, 12)[0].files;
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
-  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly", "--project", "lua", ...shard], { cwd: root, encoding: "utf8" });
+  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly", "--project", "lua", ...shard], { cwd: root, encoding: "utf8", env: PLAN_ENV });
   const listed = out.stdout.split("\n").map((l) => l.replace(/^\[[^\]]*\]\s*/, "").trim()).filter((l) => l.endsWith(".test.mjs"));
   expect(listed.sort(), out.stderr).toEqual([...shard].sort());
 });

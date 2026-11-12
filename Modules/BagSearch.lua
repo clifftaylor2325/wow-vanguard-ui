@@ -13,6 +13,7 @@ local QUALITY = { poor = 0, common = 1, uncommon = 2, rare = 3, epic = 4, legend
 local BIND = { bop = 1, boe = 2, bou = 3, quest = 4 }
 -- The operators a number can be compared with.
 local COMPARE = {
+  -- Each operator compares the item's number with the number typed.
   [">"] = function(a, b) return a > b end, ["<"] = function(a, b) return a < b end,
   [">="] = function(a, b) return a >= b end, ["<="] = function(a, b) return a <= b end,
   ["="] = function(a, b) return a == b end, [":"] = function(a, b) return a == b end,

@@ -12,8 +12,8 @@
 --     matching items from your bags, up to 12; you press Send.
 --   * Take all and Return all: the money and items of every mail the panel shows (its filter and words
 --     applied), one step at a time, or those mails sent back to their senders after a question;
---     /vg mail takeall and returnall do the same. Pay-on-delivery mail is never taken, and a sale,
---     system or game master mail is never returned.
+--     /vg mail takeall and returnall do the same. Pay-on-delivery mail is never taken (nor game master
+--     mail by Take all), and a sale, system or game master mail is never returned.
 -- Nothing is taken, attached or sent without your click, and nothing here runs in combat.
 
 local ADDON, ns = ...
@@ -66,15 +66,28 @@ local function absent(v)
   return not ns.IsSecret(v) and v == nil
 end
 
+-- The invoice types that are your own sales (GetInboxInvoiceInfo's first return, as OpenMail_Update in
+-- Blizzard_MailFrame/MailFrame.lua reads it; "buyer" is an auction you won).
+MT.SALE_INVOICES = { seller = true, seller_temp_invoice = true }
+
+-- Mail i's invoice type: "" for a mail that is no invoice, "hidden" when the client hides it (an invoice still).
+local function invoiceType(i)
+  local kind = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i)
+  if ns.IsSecret(kind) then return "hidden" end
+  return type(kind) == "string" and kind or ""
+end
+
 -- Mail i as { index, sender, subject, money, items, link, cod, returnable (a player's mail the game sends back, not
--- one it deletes: a returned mail is not), sale, days (left, or nil), lost (deleted with money or items in it when
--- it runs out) }; nil when there is none.
+-- one it deletes: a returned mail is not), gm (from a game master; a hidden answer counts as no), invoice (any auction house invoice), sale (one for your own sale), days
+-- (left, or nil), lost (deleted with money or items in it when it runs out) }; nil when there is none.
 function MT.Read(i)
   local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
   if absent(sender) and absent(subject) then return nil end
+  local kind = invoiceType(i)
   local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
     items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
-    returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
+    returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true,
+    invoice = kind ~= "", sale = MT.SALE_INVOICES[kind] == true, gm = not ns.IsSecret(gm) and gm == true }
   local deletes = deletable(i)
   m.lost, m.returnable = deletes and (m.money > 0 or m.items > 0), m.returnable and not deletes
   return m
@@ -98,10 +111,15 @@ function MT.Matches(m, query)
   return keeps(MT.filter, m)
 end
 
+-- How many mails the inbox holds now (0 when the client lacks the call or hides the count).
+local function inboxCount()
+  return type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
+end
+
 -- The mails that match, in inbox order.
 function MT.Find(query)
   local out = {}
-  for i = 1, math.min(MT.SCAN, type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0) do
+  for i = 1, math.min(MT.SCAN, inboxCount()) do
     local m = MT.Read(i)
     if m and MT.Matches(m, query) then out[#out + 1] = m end
   end
@@ -151,20 +169,27 @@ end
 
 MT.STEP = 0.3
 
--- How many steps empty the mails: each one's money and its items (a mail that asks for payment on delivery
--- is left alone). Only the count: Take all reads each mail again before every step it takes.
+-- Whether Take all takes from a mail: not one that asks for payment on delivery, nor game master mail, which
+-- the game's Open All also leaves to be opened by hand (OpenAllMailMixin:ShouldSkipCurrentMail in
+-- Blizzard_MailFrame/MailFrame.lua: so restored items are not missed).
+local function takeable(m)
+  return m.cod == 0 and not m.gm
+end
+
+-- How many steps empty the mails: each one's money and its items (pay-on-delivery and game master mail
+-- are left alone). Only the count: Take all reads each mail again before every step it takes.
 function MT.TakeCount(mails)
   local n = 0
   for _, m in ipairs(mails) do
-    if m.cod == 0 then n = n + (m.money > 0 and 1 or 0) + math.min(m.items, MT.RECEIVE) end
+    if takeable(m) then n = n + (m.money > 0 and 1 or 0) + math.min(m.items, MT.RECEIVE) end
   end
   return n
 end
 
 -- Whether mail now (read again) can still be the listed mail m as Take all empties it: the same sender and
--- subject, nothing to pay on delivery, and no more money or items than were listed.
+-- subject, still one Take all takes from, and no more money or items than were listed.
 local function sameMail(now, m)
-  return now.sender == m.sender and now.subject == m.subject and now.cod == 0 and now.money <= m.money and now.items <= m.items
+  return now.sender == m.sender and now.subject == m.subject and takeable(now) and now.money <= m.money and now.items <= m.items
 end
 
 -- One take from mail m (read again): its money, else its first item left; false when it holds neither (or
@@ -210,26 +235,41 @@ local function refused(run, now)
   return true
 end
 
--- A take went out from mail now: noted (so the next read tells a refused one) and counted, never past the steps planned.
-local function took(run, now)
-  run.last = { index = now.index, money = now.money, items = now.items }
+-- A take went out from mail now: noted with the inbox count read before it (so the next read tells a refused
+-- one, and a mail that left) and counted, never past the steps planned.
+local function took(run, now, count)
+  run.last = { index = now.index, money = now.money, items = now.items, count = count }
   run.done = math.min(run.done + 1, run.total)
   return true
 end
 
 -- One take from mail now: "took" after a take, nil when nothing was taken from this mail.
 local function tryTake(run, now)
-  return takeFrom(now) and took(run, now) and "took" or nil
+  local count = inboxCount()
+  return takeFrom(now) and took(run, now, count) and "took" or nil
+end
+
+-- Whether listed mail m was the last one taken from and the inbox holds fewer mails since: it emptied and left,
+-- so whatever sits at its place now is a mail the run did not list (a twin of the same sender and subject too).
+-- An inbox that grew (new mail, the server topping up a full one) leaves m where it was, to be read again.
+local function movedOn(run, m)
+  return run.last ~= nil and run.last.index == m.index and inboxCount() < run.last.count
+end
+
+-- Whether the game is still answering the last mail command; a run sends nothing then and waits, as the game's
+-- Open All does (C_Mail.IsCommandPending in OpenAllMailMixin:OnUpdate, Blizzard_MailFrame/MailFrame.lua).
+local function commandPending()
+  return C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending()
 end
 
 -- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
 -- else one take from the first mail left on the run's list that is still itself, passing those that are
--- empty, gone, changed or refused. False once none is left.
+-- empty, gone (another mail took its place), changed or refused. False once none is left.
 local function takeNext(run)
-  if C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending() then return true end
+  if commandPending() then return true end
   local m = run.mails[1]
   while m do
-    local now = MT.Read(m.index)
+    local now = not movedOn(run, m) and MT.Read(m.index)
     local result = now and sameMail(now, m) and not refused(run, now) and tryTake(run, now)
     if result then return result == "took" end
     table.remove(run.mails, 1)
@@ -238,9 +278,11 @@ local function takeNext(run)
   return false
 end
 
--- Return all's next step: the first mail left on the run's list that is still as listed goes back to its
--- sender, passing those that changed. False once none is left.
+-- Return all's next step: while the game is still busy with the last command, nothing (and the run waits);
+-- else the first mail left on the run's list that is still as listed goes back to its sender, passing those
+-- that changed. False once none is left.
 local function returnNext(run)
+  if commandPending() then return true end
   local m = table.remove(run.mails, 1)
   while m and not unchanged(m) do m = table.remove(run.mails, 1) end
   if not m then return false end
@@ -250,11 +292,11 @@ local function returnNext(run)
 end
 
 -- The mails Return all sends back, the last in the inbox first so the others keep their places. Only
--- mail from a player that holds something and is not a sale.
+-- mail from a player that holds something and is no auction house invoice (a sale or an auction won).
 function MT.ReturnMails(mails)
   local out = {}
   for _, m in ipairs(mails) do
-    if m.returnable and not m.sale and (m.money > 0 or m.items > 0) then table.insert(out, 1, m) end
+    if m.returnable and not m.invoice and (m.money > 0 or m.items > 0) then table.insert(out, 1, m) end
   end
   return out
 end
@@ -295,7 +337,7 @@ local function takeMails(mails)
   return out
 end
 
--- Take all: the money and items of every mail the panel shows (its filter and words), COD mail excepted.
+-- Take all: the money and items of every mail the panel shows (its filter and words), COD and game master mail excepted.
 function MT.TakeAll()
   local mails = MT.Find(MT.query)
   start(L["Take all"], takeMails(mails), takeNext, MT.TakeCount(mails))
@@ -495,7 +537,7 @@ end
 
 -- The line shown instead of rows: an empty inbox, no matches, or nothing (rows shown).
 function MT.PaintEmpty(found)
-  local total = type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
+  local total = inboxCount()
   MT.frame.empty:SetShown(found == 0)
   MT.frame.empty:SetText(total == 0 and L["Your inbox is empty."] or L["No mail matches."])
 end

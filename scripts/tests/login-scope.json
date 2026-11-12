@@ -172,6 +172,7 @@
       "the card's headings are section headers (small muted capitals), its lines body text",
       "the level range, size and difficulty drop what the client does not give"
     ],
+    "scripts/tests/errandsfixes.test.mjs": [],
     "scripts/tests/errorrail.test.mjs": [],
     "scripts/tests/errors.test.mjs": [
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
@@ -330,6 +331,7 @@
     ],
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
+      "prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)",
       "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
@@ -461,6 +463,7 @@
       "in-combat mark: your target's edge follows the client's answer, a hidden one counting as no",
       "one unit frame that fails to paint or lay out is reported, and every other frame still does",
       "power ticks: energy every two seconds, and forms switch",
+      "power ticks: switches, and no player frame",
       "power ticks: the energy spark stops its timer when no tick comes (full energy)",
       "power ticks: the five-second rule after a mana spell",
       "power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame",

@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { expect, it } from "vitest";
-import { createAddon, root } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon, root } from "../lib/lua-harness.mjs";
 import { SETUP_DONE } from "./helpers.mjs";
 
 const FROZEN_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "frozen-surface.json");
@@ -50,12 +50,22 @@ export function slashWords(lua) {
   return [...body.matchAll(/^ {2}(\w+) = /gm)].map((m) => m[1]).sort();
 }
 
-// The surface as it is now: { settings, commands, api }, each a sorted list.
-export function liveSurface() {
-  const addon = createAddon({ savedVariables: SETUP_DONE });
+// A logged-in addon on one client: Forever by default, or { client: RETAIL_CLIENT }.
+function loginAs(options) {
+  const addon = createAddon({ savedVariables: SETUP_DONE, ...options });
   addon.login();
+  return addon;
+}
+
+// The surface as it is now: { settings, commands, api }, each a sorted list. The settings are those of a Forever
+// login and a Retail login together (Retail-only modules save settings Forever never has), always, so a quick run
+// and a full run write the same file.
+export function liveSurface() {
+  const forever = loginAs({});
+  const retail = loginAs({ client: RETAIL_CLIENT });
   const commands = slashWords(fs.readFileSync(path.join(root, "Core/Slash.lua"), "utf8"));
-  return { settings: addon.eval(SETTINGS), commands, api: addon.eval(API) };
+  const settings = [...new Set([...forever.eval(SETTINGS), ...retail.eval(SETTINGS)])].sort();
+  return { settings, commands, api: forever.eval(API) };
 }
 
 // What the frozen file lists that the live surface lacks and "retired" does not excuse, as lines.
@@ -93,6 +103,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   it("nothing frozen has vanished: saved settings, /vg words and API functions are all still there", () => {
     const lines = vanished(readFrozen(), liveSurface());
     if (lines.length > 0) throw new Error(vanishedReport(lines));
+  });
+
+  it("the live settings include the ones only a Retail login has, and the frozen file lists them", () => {
+    const retailOnly = ["Windows.vault", "Windows.expansion", "Windows.finder", "InfoStrip.vault"];
+    const live = liveSurface();
+    for (const name of retailOnly) {
+      expect(live.settings, name).toContain(name);
+      expect(readFrozen().settings, name).toContain(name);
+    }
   });
 
   it("the frozen file lists each kind sorted and without repeats", () => {

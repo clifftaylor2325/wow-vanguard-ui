@@ -19,8 +19,9 @@ MC.BUY_EVERY, MC.LIST_SHOWN = 0.2, 5
 -- A pack at this price (15000 silver: MERCHANT_HIGH_PRICE_COST in the game's merchant window) that the merchant marks
 -- non-refundable is asked about first by the game's own quantity window.
 MC.HIGH_PRICE = 1500000
--- The merchant's Buyback tab holds the last 12 stacks sold (BUYBACK_ITEMS_PER_PAGE in both clients).
-MC.BUYBACK_SLOTS = 12
+-- The merchant's Buyback tab holds the last 12 stacks sold (BUYBACK_ITEMS_PER_PAGE in both clients); it is the
+-- merchant window's second tab (MerchantFrame.selectedTab).
+MC.BUYBACK_SLOTS, MC.BUYBACK_TAB = 12, 2
 -- The drawer under the quantity window (Stack, Max and the cost line): at least this wide, two 60-wide buttons
 -- and three gaps.
 MC.DRAWER_W = 2 * 60 + 3 * T.SPACE.gap
@@ -77,10 +78,26 @@ end
 
 MC.SetItems = setItems
 
--- The bag slot's item ID and stack size when the client says them plainly (not locked), else nil.
+-- Whether a purchase cost is there: a hidden one counts as there, a plain 0 or none as not.
+local function costs(value)
+  return ns.IsSecret(value) or (ns.PlainNumber(value) or 0) ~= 0
+end
+
+-- Whether the bag slot holds a purchase the merchant would still refund, by the game's own test before it asks
+-- CONFIRM_REFUND_TOKEN_ITEM (ContainerFrame_GetExtendedPriceString, Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua
+-- in both clients): a refund time and a money, item or currency cost. A bare use skips that question, so it is never sold here.
+local function refundablePurchase(bag, slot)
+  local raw = ns.CallIf(C_Container, "GetContainerItemPurchaseInfo", bag, slot, false)
+  if ns.IsSecret(raw) then return true end
+  local info = ns.PlainTable(raw)
+  local window = info ~= nil and (ns.IsSecret(info.refundSeconds) or info.refundSeconds ~= nil)
+  return window and (costs(info.money) or costs(info.itemCount) or costs(info.currencyCount))
+end
+
+-- The bag slot's item ID and stack size when the client says them plainly (not locked, not a refundable purchase), else nil.
 local function slotItem(bag, slot)
   local info = C_Container.GetContainerItemInfo(bag, slot)
-  if type(info) ~= "table" or ns.IsSecret(info.isLocked) or info.isLocked then return nil end
+  if type(info) ~= "table" or ns.IsSecret(info.isLocked) or info.isLocked or refundablePurchase(bag, slot) then return nil end
   local id, count = ns.PlainNumber(info.itemID), ns.PlainNumber(info.stackCount)
   if id then return id, count or 1 end
 end
@@ -130,10 +147,23 @@ function MC.Worth(rows)
   return total
 end
 
+-- Whether the merchant window shows its Buyback tab, where the game's own bag click sells nothing
+-- (ContainerFrameItemButtonMixin's merchant branch in Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua).
+local function buybackShown()
+  local frame = _G.MerchantFrame
+  return type(frame) == "table" and frame.selectedTab == MC.BUYBACK_TAB
+end
+
+-- True while a bag item used now sells: trading (a merchant open, no fight) on the merchant tab, not Buyback
+-- (also used by Merchant.lua's junk sale, before every try).
+function MC.Selling()
+  return trading() and not buybackShown()
+end
+
 -- Sells the slots find() gives, and again shortly after for what is left (the server limits how fast
--- items sell), while the merchant stays open.
+-- items sell), while the merchant stays open on its merchant tab.
 function MC.SellRows(find, tries)
-  if not trading() then return end
+  if not MC.Selling() then return end
   local rows = find()
   for _, r in ipairs(rows) do C_Container.UseContainerItem(r.bag, r.slot) end
   if #rows > 0 and tries > 1 then later(MC.RETRY_AFTER, function() MC.SellRows(find, tries - 1) end) end

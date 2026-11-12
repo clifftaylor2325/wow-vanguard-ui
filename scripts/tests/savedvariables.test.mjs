@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { root } from "../check-zip.mjs";
 import { SERIALIZE_SV } from "../lib/sv-serialize.mjs";
 import { loggedIn } from "./helpers.mjs";
@@ -43,3 +43,39 @@ for (const version of VERSIONS) {
     }
   });
 }
+
+// Saves a table as the serializer does and runs the Lua it wrote: what VanguardDB reads back as.
+function savedAndLoaded(luaTable) {
+  const addon = createAddon({});
+  addon.eval(`VanguardDB = ${luaTable} VanguardCharDB = {}`);
+  const lua = addon.eval(SERIALIZE_SV);
+  addon.eval(`VanguardDB = nil ${lua}`);
+  return { lua, db: addon.eval("return VanguardDB") };
+}
+
+it("the serializer quotes a key that is a Lua keyword", () => {
+  const { lua, db } = savedAndLoaded('{ profiles = { ["end"] = { a = 1 }, ["function"] = 2, plain = 3 } }');
+  expect(lua).toContain('["end"] = {');
+  expect(db.profiles).toEqual({ end: { a: 1 }, function: 2, plain: 3 });
+});
+
+it("the serializer writes a whole number past 2^31 exactly", () => {
+  const { lua, db } = savedAndLoaded("{ money = 3000000000, debt = -5000000000 }");
+  expect(lua).toContain("money = 3000000000,");
+  expect(db).toEqual({ money: 3000000000, debt: -5000000000 });
+});
+
+it("the serializer writes infinity and NaN as Lua expressions, not as nil", () => {
+  const { lua, db } = savedAndLoaded("{ up = math.huge, down = -math.huge }");
+  expect(lua).toContain("up = math.huge,");
+  expect(lua).toContain("down = -math.huge,");
+  expect(db).toEqual({ up: Infinity, down: -Infinity });
+  expect(savedAndLoaded("{ nan = 0/0 }").lua).toContain("nan = 0/0,");
+});
+
+it("the serializer sorts boolean keys beside number and string keys without raising", () => {
+  const { lua, db } = savedAndLoaded('{ [true] = 1, [false] = 2, [1] = 3, a = 4 }');
+  expect(lua.indexOf("[false]")).toBeLessThan(lua.indexOf("[true]"));
+  expect(lua.indexOf("[true]")).toBeLessThan(lua.indexOf("[1]"));
+  expect(db[1]).toBe(3);
+});

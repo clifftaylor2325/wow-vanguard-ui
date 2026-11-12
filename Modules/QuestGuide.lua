@@ -186,7 +186,7 @@ function QG.Describe(questID)
   local index = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", questID))
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   local class = ns.CallIf(C_QuestInfoSystem, "GetQuestClassification", questID)
-  return string.format("Quest %d: classification %s; tag %s; log %s", questID, shown(class), fields(ns.CallIf(C_QuestLog, "GetQuestTagInfo", questID)), fields(info))
+  return ns.Format(L["Quest {id}: classification {class}; tag {tag}; log {log}"], { id = questID, class = shown(class), tag = fields(ns.CallIf(C_QuestLog, "GetQuestTagInfo", questID)), log = fields(info) })
 end
 
 -- The quests the open NPC offers, each with the NPC's own fields first.
@@ -208,7 +208,7 @@ end
 -- quests the open NPC offers and those you track: what the in-game check reads to find the flag.
 function QG.Command(rest)
   local flag, id = QG.Flag(), questArg(rest)
-  ns.Chat(flag and ("New-quest flag: " .. flag.source .. " " .. flag.name .. ".") or "New-quest flag: none on this client (no quest classification or tag named Forever or New).")
+  ns.Chat(flag and ns.Format(L["New-quest flag: {source} {name}."], { source = flag.source, name = flag.name }) or L["New-quest flag: none on this client (no quest classification or tag named Forever or New)."])
   if id then return ns.Chat(QG.Describe(id)) end
   dumpOffered()
   for _, watched in ipairs(ns.GetModule("QuestTracker").Watched()) do ns.Chat(QG.Describe(watched)) end

@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { WINDOWS_ENV, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { WINDOWS_ENV, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY trait API: one tree (1) with two groups, Discipline (10) and Holy (20). Nodes by ID: their group,
 // place (x, y in the game's units, 600 a row), ranks bought and possible, the points their row needs in the group
@@ -202,6 +202,64 @@ it("talent planner: a refused apply undoes the ranks it just bought, so the retr
   expect(addon.eval("return { C_Traits.ConfigHasStagedChanges(), __rollback, __points, __nodes[101].rank }"), "nothing is left staged on the config it bought into").toEqual([false, 501, 3, 0]);
   addon.eval(`C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __applied = #__bought return true end ${TP}.SpendPlanned()`);
   expect(addon.eval("return { __bought, __commits, C_Traits.ConfigHasStagedChanges() }"), "the retry buys and applies").toEqual([[101, 101, 101], 1, false]);
+});
+
+// TEST-ONLY staging as the game keeps it, with the apply as Forever runs it: CommitConfig answering true only starts
+// a cast (forever/Interface/AddOns/Blizzard_PlayerSpells/Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua,
+// CanCommitInstantly false; .xml maximumCommitTime 6), which ends in TRAIT_CONFIG_UPDATED or CONFIG_COMMIT_FAILED
+// with the configID (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/SharedTraitsDocumentation.lua).
+const CAST_ENV = `__applied = 0
+  C_Traits.ConfigHasStagedChanges = function() return #__bought > __applied end
+  C_Traits.RollbackConfig = function(id)
+    __rollback = id
+    for i = #__bought, __applied + 1, -1 do local n = __nodes[__bought[i]] n.rank = n.rank - 1 __points = __points + 1 __bought[i] = nil end
+  end
+  C_ClassTalents.CommitConfig = function() __commits = __commits + 1 return true end
+  VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } }`;
+// A planner whose next Spend planned starts an apply that has not ended yet.
+const casting = () => {
+  const addon = open();
+  addon.eval(`${CAST_ENV} ${TP}.SpendPlanned()`);
+  return addon;
+};
+
+it("talent planner: an apply the game cuts short after it started undoes the ranks it bought, says so, and the retry buys again", () => {
+  const addon = casting();
+  addon.fire("CONFIG_COMMIT_FAILED", 501);
+  expect(chatHas(addon, /the game refused to apply talents just now/), "the failed apply is said").toBe(true);
+  expect(addon.eval("return { C_Traits.ConfigHasStagedChanges(), __rollback, __points }"), "nothing left staged").toEqual([false, 501, 3]);
+  addon.eval(`C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __applied = #__bought return true end ${TP}.SpendPlanned()`);
+  expect(addon.eval("return { __bought, __commits, C_Traits.ConfigHasStagedChanges() }"), "the retry buys and applies").toEqual([[101, 101, 101], 2, false]);
+});
+
+it("talent planner: a failed apply Vanguard did not start, or after its own ended, is left to the game", () => {
+  const other = casting();
+  other.fire("CONFIG_COMMIT_FAILED", 502);
+  other.eval('__wfgStub.fire("CONFIG_COMMIT_FAILED", __wfgWorld.secret(501))');
+  expect(other.eval("return __rollback == nil"), "another config, or one the client hides: no rollback").toBe(true);
+  const done = casting();
+  done.fire("TRAIT_CONFIG_UPDATED", 501);
+  done.fire("CONFIG_COMMIT_FAILED", 501);
+  expect(done.eval("return __rollback == nil"), "after the apply went through").toBe(true);
+  const late = casting();
+  late.advance(7);
+  late.fire("CONFIG_COMMIT_FAILED", 501);
+  expect(late.eval("return __rollback == nil"), "past the game's longest apply (a later apply from the game's window)").toBe(true);
+});
+
+it("talent planner: an apply cut short in a fight is undone when it ends", () => {
+  const addon = casting();
+  setCombat(addon, true);
+  addon.fire("CONFIG_COMMIT_FAILED", 501);
+  expect(addon.eval("return __rollback == nil"), "nothing in the fight").toBe(true);
+  setCombat(addon, false);
+  expect([addon.eval("return __rollback"), chatHas(addon, /the game refused to apply talents just now/)], "after it").toEqual([501, true]);
+});
+
+it("talent planner: a commit call that throws is a refusal: the ranks are undone and chat says so", () => {
+  const addon = open();
+  addon.eval(`${CAST_ENV} C_ClassTalents.CommitConfig = function() error("TEST-ONLY the game threw") end ${TP}.SpendPlanned()`);
+  expect([addon.eval("return { __rollback, C_Traits.ConfigHasStagedChanges() }"), chatHas(addon, /the game refused to apply talents just now/)]).toEqual([[501, false], true]);
 });
 
 it("talent planner: Spend planned stops at a rank the game refuses, says which, and applies only what it bought", () => {
@@ -468,6 +526,7 @@ it("talent planner: the order window lists the plan, moves talents up and down, 
   expect(addon.eval(`return { ${TP}.orderFrame:IsShown(), ${TP}.orderFrame.empty:IsShown() }`), "opens with nothing planned").toEqual([true, true]);
   addon.eval(`${TP}.SetPlanning(true)`);
   addon.eval("__click(101) __click(101) __click(102)");
+  expect(addon.eval(`local r = ${TP}.orderFrame.rows[1] return { r.up.text:GetText(), r.down.text:GetText() }`), "the buttons say what they do, not Up and Down").toEqual(["Move up", "Move down"]);
   expect(orderRows(addon), "top row first at first").toEqual(["1. Unbreakable Will (2)", "2. Wand Specialization (1)"]);
   addon.eval("local f = " + TP + ".orderFrame f.rows[2].up:GetScript('OnClick')(f.rows[2].up)");
   expect(orderRows(addon), "Up on the second row").toEqual(["1. Wand Specialization (1)", "2. Unbreakable Will (2)"]);
@@ -503,3 +562,25 @@ it("talent planner: the bar's Order button and /vg talents order open the window
   fresh.fire("PLAYER_REGEN_ENABLED");
   expect(fresh.eval(`return ${TP}.orderFrame ~= nil and ${TP}.orderFrame:IsShown()`), "it opens when the fight ends").toBe(true);
 });
+
+// The order window opened with three talents planned (the longest name 26 characters with its place and count) in a
+// shipped translation at a Text size, in the text-fit client: what does not fit there (a cut or crowded label), as
+// "kind | text | other" lines. English is left out: its text-fit run makes the game's talent names a third longer too.
+function orderFitIn(locale, textScale) {
+  const saved = `VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = ${textScale} } } }, setupDone = true }\nVanguardCharDB = {}\n`;
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `__wfgWorld.locale = "${locale}"` });
+  addon.eval(TRAITS_ENV + WINDOW_ENV);
+  addon.login();
+  addon.eval("__open()");
+  addon.update(0.01);
+  addon.eval(`${TP}.ToggleOrder() ${TP}.SetPlanning(true) __click(101) __click(102) __click(103)`);
+  return [...new Set(addon.textFit("Vanguard_TalentOrder").map((f) => [f.kind, f.text, f.other].filter(Boolean).join(" | ")))];
+}
+
+for (const locale of ["deDE", "ptBR", "ruRU"]) {
+  for (const textScale of [1, 1.3]) {
+    it(`H44-30-101 talent planner: the order window in ${locale} at Text size ${textScale * 100}% shows its rows and buttons whole`, () => {
+      expect(orderFitIn(locale, textScale), "no row name, Move up, Move down or Top row first cut").toEqual([]);
+    });
+  }
+}

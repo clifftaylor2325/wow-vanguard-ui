@@ -138,9 +138,10 @@ function GA.SkinTalkingHead(f)
 end
 
 -- True while the head sits on Vanguard's spot. In a fight the head's move is queued, so it stays in the game's own
--- container (and at a login in combat the spot does not exist yet): the toasts then belong above it.
+-- container (and at a login in combat the spot does not exist yet): the toasts then belong above it. Not while the
+-- client hides the head's anchoring.
 local function headOnSpot(head)
-  local _, relative = head:GetPoint(1)
+  local _, relative = ns.PlainPoint(head, 1)
   return relative ~= nil and relative == _G["Vanguard_TalkingHeadFrameSpot"]
 end
 

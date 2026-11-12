@@ -25,8 +25,9 @@ DC.FIRST_BAG = DC.KEY_RING
 -- other things).
 DC.NAME = L["Dungeon card"]
 DC.LABEL = L["Dungeon card: level range, your dungeon quests and keys on the checklist"]
--- The quest tags (Enum.QuestTag names) that make a log quest a dungeon quest.
-DC.TAGS = { "Dungeon", "Raid", "Group" }
+-- The quest tags (Enum.QuestTag names) that make a log quest a dungeon quest: Dungeon and Raid, not Group (an
+-- outdoor elite quest).
+DC.TAGS = { "Dungeon", "Raid" }
 
 -- Helpers ------------------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 # Auction helper inside the auction house window: review and plan
 
 Written 2026-10-07 against `main` at `be83552` (after PR #160). Read with `docs/handoff/AUCTION-PLAN.md`
-(the feature gap analysis) and `docs/handoff/WORKPLAN.md` §0 (how to work). Every `file:line` is as
+(the feature gap analysis) and `CLAUDE.md` (how to work). Every `file:line` is as
 of that commit; if a line has moved, grep for the identifier quoted next to it.
 
 The problem, in the owner's words: none of the auction panels can be dragged, and the new panels show

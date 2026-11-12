@@ -25,12 +25,14 @@ Set up the world, act as the player would, inspect what the addon drew. Assert o
 ## Which file
 
 - An existing area file (`scripts/tests/<area>.test.mjs`) when the module already has one. A new file for a new area, named after the area.
-- A file in `scripts/tests/login-scope.json` logs in with six heavy modules off. If your case needs one of them, add the case to the file's keep-full list by rerunning `node scripts/login-scope-probe.mjs --write`, or add it to `FULL_CASES` in `scripts/lib/login-scope.mjs` with a reason.
+- A file in `scripts/tests/login-scope.json` logs in with six heavy modules off. If your case needs one of them, add the case to the file's keep-full list: make a probe report through the slot with `VG_LOGIN_SCOPE=probe npm run test:slot -- --project lua scripts/tests/<file> --reporter=json --outputFile=coverage/login-probe.json`, then `node scripts/login-scope-probe.mjs --write --report coverage/login-probe.json` (with `--report` the script runs no Vitest and replaces only the files in the report), or add it to `FULL_CASES` in `scripts/lib/login-scope.mjs` with a reason.
 
 ## Cases the rules call for
 
 - **Combat**: `addon.world.combat(true)`, do the thing, `combat(false)`, and assert the deferred change landed. A protected call in combat fails the test by itself.
 - **Secret values**: `addon.world.set("units.player.hp", addon.world.secret(100))` or `secretGeometry("derived")`. The addon must draw without erroring; assert the frame shows and no text reads the number.
+- **Aspects the game holds secret**: `addon.world.secretAspects("strict")`, or `world.holdSecret(widget, "Shown"|"Alpha"|"Text"|"BarValue")` through `addon.eval` for one frame, when the code reads back a game frame's `IsShown`, `GetAlpha`, `GetText` or `GetValue`; the addon must not compare what it reads (`scripts/tests/README.md`, "Taint, combat, secret geometry and secret aspects").
+- **A live module**: the three `lifecycleCases(name, login)` from `scripts/tests/lifecycle-helpers.mjs` for a module that declares `live = true` (README, "Module lifecycle").
 - **A client without an API**: `addon.world.without("C_Timer")` or `loggedIn("C_Timer = nil")`; the module degrades, never errors.
 - **Errors on purpose**: `expectErrors("<the whole error text>")` before the action. The matcher must name one error; a broad pattern is refused. A test that leaves an unexpected error in `ns.errors` fails.
 - **Both clients**: `loggedIn(env, { client: RETAIL_CLIENT })` when the behaviour differs on Retail.
