@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { chatHas, isTok, loggedIn, px } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn, px } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 // TEST-ONLY gear for a warrior with no group role (strength weights: STR 1, DPS 2.5; SPI is worth
@@ -243,6 +243,25 @@ it("upgrades: an item whose stats arrive late gets its arrow when the client sen
   expect(arrows(), "an item nobody waited for: nothing re-marked").toEqual([false, false]);
   addon.fire("GET_ITEM_INFO_RECEIVED", 2, true);
   expect(arrows(), "the waited item arrives: the better bracers get their arrow").toEqual([true, false]);
+});
+
+it("upgrades: changed weights and the bag switch mark the open combined bag at once (H46-33-102)", () => {
+  const addon = loggedIn(GEAR_ENV + BAG_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  // Whether the better bracers' slot shows its arrow.
+  const arrow = () => addon.eval("local a = ns.FrameState('vgUpgrade')[__buttons[1]] return a ~= nil and a:IsShown()");
+  addon.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(arrow(), "the better bracers have the arrow").toBe(true);
+  addon.slash("weights set str 0");
+  expect(arrow(), "strength worth nothing: they are no upgrade, and the arrow goes at once").toBe(false);
+  addon.slash("weights reset");
+  expect(arrow(), "the weights back: it returns").toBe(true);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Arrow on upgrades in the combined bag")');
+  expect(arrow(), "the bag switch off: the arrow goes at once").toBe(false);
+  addon.eval('__click("Arrow on upgrades in the combined bag")');
+  expect(arrow(), "on again: it returns").toBe(true);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  expect(arrow(), "Gear upgrades off: the arrow stays gone").toBe(false);
 });
 
 it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () => {

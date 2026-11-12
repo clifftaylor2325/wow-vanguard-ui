@@ -560,11 +560,12 @@ function UP.OnGearChanged()
   if bag and bag:IsShown() then UP.MarkBag(bag) end
 end
 
--- Your group role changed, or you left the group: new weights, and the bag marked again.
-function UP.OnRolesChanged()
-  UP.Changed()
-  UP.OnGearChanged()
+-- The weights changed (any caller of UP.Changed, a start included) or the module went off: the combined bag is marked
+-- again, or left bare once the module reads as off (no settings). Not before the modules are built, at login.
+local function markOnChange()
+  if UP.settings and ns.ModulesBuilt() then UP.OnGearChanged() end
 end
+UP.OnChanged(markOnChange)
 
 -- /vg weights -----------------------------------------------------------------------------
 
@@ -734,13 +735,14 @@ local function hookBag(scope)
   scope:Gate("bag slots", markBagSafely, function(gate) hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", gate)) end)
 end
 
--- Re-scores and marks again when what is worn, the group role, the spec or an awaited item's data changes.
+-- Re-scores and marks again (UP.Changed tells markOnChange) when what is worn, the group role, the spec or an
+-- awaited item's data changes.
 local function watchChanges(scope)
   scope:On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   scope:On("GET_ITEM_INFO_RECEIVED", UP.OnItemInfo)
-  scope:On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
-  if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
-  scope:On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+  scope:On("PLAYER_ROLES_ASSIGNED", UP.Changed)
+  if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.Changed) end -- a new spec, new main stat
+  scope:On("GROUP_LEFT", UP.Changed) -- out of a group the role is none again, which no role event may say
 end
 
 -- Module entry point (Core/Modules.lua): everything goes through the scope; the tooltip line, the reward card
@@ -752,7 +754,6 @@ function UP.Enable(settings, scope)
   scope:Gate("reward cards", UP.MarkCard, ns.QuestParts.OnPaintCard)
   hookBag(scope)
   watchChanges(scope)
-  if ns.ModulesBuilt() then UP.OnGearChanged() end
 end
 
 -- Switched off: the arrows already drawn on bag slots and reward cards go, and the module reads as off again

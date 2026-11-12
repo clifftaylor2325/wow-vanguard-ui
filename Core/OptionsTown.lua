@@ -152,7 +152,7 @@ local function upgradeRows()
   local rows = { { "header", L["Gear upgrades"] }, { "cycle", L["Weigh stats for"], roles, liveMethod("Upgrades", "role", "Changed") } }
   return append(append(rows, styleRows()), {
     check(L["Upgrade or downgrade on item tooltips"], setting("Upgrades", "tooltip")),
-    check(L["Arrow on upgrades in the combined bag"], setting("Upgrades", "bags")), check(L["Arrow on quest rewards that are upgrades"], setting("Upgrades", "quests")),
+    check(L["Arrow on upgrades in the combined bag"], liveMethod("Upgrades", "bags", "OnGearChanged")), check(L["Arrow on quest rewards that are upgrades"], setting("Upgrades", "quests")),
     { "button", L["Set up stat weights"], function() O.Hide(); ns.GetModule("Upgrades").Wizard.Open() end },
     { "button", L["Import stat weights"], function() O.Hide(); ns.GetModule("Upgrades").ImportDialog() end },
     { "text", L["/vg weights shows the stat weights in use; wizard, set <stat> <n>, reset, export and import change or share them."] },
