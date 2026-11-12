@@ -147,8 +147,13 @@ function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end
 -- CVars live in world.cvars as strings, as the client keeps them.
 function GetCVar(name) return world.cvars[name] end
--- Stores a CVar's value as a string (C_CVar.SetCVar's value is a cstring, CVarDocumentation.lua:131-148).
-local function storeCVar(name, value) world.cvars[name] = tostring(value) end
+-- Stores a CVar's value as a string and answers the client's success flag (C_CVar.SetCVar's value is a Nilable
+-- cstring, its return a bool: CVarDocumentation.lua, forever :131-148, live :118-135). A nil value clears the entry:
+-- TEST-ONLY guess, as what the client holds after a nil (cleared, or back to its default) is game-only.
+local function storeCVar(name, value)
+  world.cvars[name] = value ~= nil and tostring(value) or nil
+  return true
+end
 -- The client's SetCVar (Blizzard_SharedXMLBase/CvarUtil.lua:9-15, both clients): a boolean becomes "1" or "0".
 function SetCVar(name, value)
   if type(value) == "boolean" then return storeCVar(name, value and "1" or "0") end

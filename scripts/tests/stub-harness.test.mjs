@@ -336,6 +336,18 @@ it("the global SetCVar stores a boolean as 1 or 0, and C_CVar.SetCVar reaches a 
   expect(out).toEqual([["1", true, "0", "2"], "TEST_ONLY_HEARD"]);
 });
 
+// Blizzard_APIDocumentationGenerated/CVarDocumentation.lua SetCVar (forever :131-148, live :118-135): value is
+// Nilable and the call returns success, a bool; CvarUtil.lua:9-15 returns C_CVar.SetCVar's result and passes nil on as
+// nil. What the client then holds for a nil value is game-only: the stub clears it (TEST-ONLY guess).
+it("SetCVar and C_CVar.SetCVar answer true, and a nil value is never stored as the text nil (H46-2-3)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`SetCVar("TEST_ONLY_B", "1") C_CVar.SetCVar("TEST_ONLY_C", "1")
+    local ok = { SetCVar("TEST_ONLY_A", 1), C_CVar.SetCVar("TEST_ONLY_A", 2), select("#", SetCVar("TEST_ONLY_A", 3)) }
+    SetCVar("TEST_ONLY_B", nil) C_CVar.SetCVar("TEST_ONLY_C", nil)
+    return { ok, GetCVar("TEST_ONLY_B") == nil, GetCVar("TEST_ONLY_C") == nil }`);
+  expect(out).toEqual([[true, true, 1], true, true]);
+});
+
 // Blizzard_AuraContainer (forever and live identical): Blizzard_AuraContainerFrameProviders.lua AcquireFrame makes a
 // batch when no frame is free and CreateFrame runs initializeFrame on each new one; Blizzard_AuraContainerShared.lua:
 // 100-106 FrameCreationBatchSize = 10; Blizzard_AuraContainerGroups.lua:239-254 shows up to maxFrameCount.
