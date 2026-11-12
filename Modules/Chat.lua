@@ -390,22 +390,23 @@ local function tipButton(button, label)
 end
 
 -- Carries the main window's bar tiles onto the shown docked window's bar and lays them out there: the
--- game hides every docked window but the selected one, the main window too, and its tiles with it.
+-- game hides every docked window but the selected one, the main window too, and its tiles with it. True when it
+-- carried them (and so laid them out); false when there was no window to carry them to, or no tiles.
 local function carryTiles(_, selected)
   local main = _G.ChatFrame1
   local parts = type(selected) == "table" and CH.frames and CH.frames[selected]
   local tiles = vgBarTiles[main]
-  if not (parts and tiles) then return end
+  if not (parts and tiles) then return false end
   for _, tile in pairs(tiles) do tile:SetParent(parts.bar) end
   CH.PlaceBarButtons(main)
+  return true
 end
 
--- Carries the tiles onto the window the dock shows now (none on a client without the dock) and lays them out.
+-- Carries the tiles onto the window the dock shows now (none on a client without the dock) and lays them out, once.
 local function carryToShown()
   local dock = _G.GENERAL_CHAT_DOCK
-  if type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table" then
-    carryTiles(nil, FCFDock_GetSelectedWindow(dock))
-  end
+  local docked = type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table"
+  if docked and carryTiles(nil, FCFDock_GetSelectedWindow(dock)) then return end
   CH.PlaceBarButtons(_G.ChatFrame1)
 end
 

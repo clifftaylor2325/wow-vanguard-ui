@@ -877,6 +877,14 @@ it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its 
   bare.eval("GENERAL_CHAT_DOCK = nil FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
   expect(bare.eval("return #ns.errors"), "and a client with no dock to ask is left alone").toBe(0);
 });
+it("H45-G3-7: carrying the tiles onto the shown window lays the bar out once, and still lays it out when there is no window to carry to", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + "function FCFDock_GetSelectedWindow() return __selected end __selected = ChatFrame1");
+  addon.eval("__placed = 0 local place = ns.GetModule('Chat').PlaceBarButtons ns.GetModule('Chat').PlaceBarButtons = function(...) __placed = __placed + 1 return place(...) end");
+  addon.eval("ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY', 'click test', function() end)");
+  expect(addon.eval("return __placed"), "the tile is carried to the shown window and the bar laid out once").toBe(1);
+  addon.eval("__placed = 0 __selected = nil ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY 2', 'click test', function() end)");
+  expect(addon.eval("return __placed"), "with no window to carry to, it is laid out once all the same").toBe(1);
+});
 // TEST-ONLY a third docked tab as the game lays it out (FloatingChatFrame.lua FCFDock_UpdateTabs and
 // FloatingChatFrame.xml): General and the Combat Log fixed on the dock, "Loot / Trade" scrolling in the
 // scroll frame, which the game hangs from the last fixed tab's middle and a unit under the dock's
