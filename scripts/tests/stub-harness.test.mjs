@@ -336,6 +336,18 @@ it("the global SetCVar stores a boolean as 1 or 0, and C_CVar.SetCVar reaches a 
   expect(out).toEqual([["1", true, "0", "2"], "TEST_ONLY_HEARD"]);
 });
 
+// Blizzard_APIDocumentationGenerated/CVarDocumentation.lua SetCVar (forever :131-148, live :118-135): value is
+// Nilable and the call returns success, a bool; CvarUtil.lua:9-15 returns C_CVar.SetCVar's result and passes nil on as
+// nil. What the client then holds for a nil value is game-only: the stub clears it (TEST-ONLY guess).
+it("SetCVar and C_CVar.SetCVar answer true, and a nil value is never stored as the text nil (H46-2-3)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`SetCVar("TEST_ONLY_B", "1") C_CVar.SetCVar("TEST_ONLY_C", "1")
+    local ok = { SetCVar("TEST_ONLY_A", 1), C_CVar.SetCVar("TEST_ONLY_A", 2), select("#", SetCVar("TEST_ONLY_A", 3)) }
+    SetCVar("TEST_ONLY_B", nil) C_CVar.SetCVar("TEST_ONLY_C", nil)
+    return { ok, GetCVar("TEST_ONLY_B") == nil, GetCVar("TEST_ONLY_C") == nil }`);
+  expect(out).toEqual([[true, true, 1], true, true]);
+});
+
 // Blizzard_AuraContainer (forever and live identical): Blizzard_AuraContainerFrameProviders.lua AcquireFrame makes a
 // batch when no frame is free and CreateFrame runs initializeFrame on each new one; Blizzard_AuraContainerShared.lua:
 // 100-106 FrameCreationBatchSize = 10; Blizzard_AuraContainerGroups.lua:239-254 shows up to maxFrameCount.
@@ -355,6 +367,19 @@ it("an aura group makes another batch of ten buttons when its auras outnumber th
     c:UpdateAllAuras()
     return { before, { #c.__groups[1].buttons, shown(1), inits, fought } }`);
   expect(out).toEqual([[20, 15, 20, 12, 40], [30, 21, 50, 10]]);
+});
+
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:286-304 (forever and live identical): AddAuraGroup calls
+// frameProvider:CreateFrameBatch() before registering the group, whatever maxFrameCount is; Blizzard_AuraContainerShared.lua
+// :105 FrameCreationBatchSize = 10; Blizzard_AuraContainerFrameProviders.lua CreateFrame runs initializeFrame on each.
+it("a new aura group makes and dresses a first batch of ten buttons, even when it shows fewer (H46-2-1)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local dressed = 0 local init = function() dressed = dressed + 1 end
+    c:AddAuraGroup("a", "HELPFUL", { maxFrameCount = 4, layout = {}, initializeFrame = init })
+    c:AddAuraGroup("b", "HELPFUL", { maxFrameCount = 1, layout = {}, initializeFrame = init })
+    return { #c.__groups[1].buttons, #c.__groups[2].buttons, dressed }`);
+  expect(out).toEqual([10, 10, 20]);
 });
 
 // helpers.mjs's TIDY_ENV and TOOLS_ENV use the world's hooksecurefunc (wow-world.lua), which already hooks methods on
@@ -388,6 +413,37 @@ it("on Retail, asking for one of your auras by spell id answers nothing for a hi
     return { C_UnitAuras.GetPlayerAuraBySpellID(99999) == nil, C_UnitAuras.GetPlayerAuraBySpellID(7).name }`)).toEqual([true, "TEST-ONLY"]);
 });
 
+// Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua:128-148 and :264-284 (both clients):
+// GetAuraApplicationDisplayCount and GetAuraDispelTypeColor are RequiresValidUnitAuraInstance, and
+// UnitAuraSharedDocumentation.lua:39-41 gives that precondition FailureMode "ReturnNothing".
+it("the aura-instance reads answer nothing for an aura instance the unit does not have (H46-2-4)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local curve = C_CurveUtil.CreateColorCurve() curve:AddPoint(0, CreateColor(1, 0, 0))
+    return { select("#", C_UnitAuras.GetAuraDispelTypeColor("player", 424242, curve)),
+      select("#", C_UnitAuras.GetAuraApplicationDisplayCount("player", 424242, 2, 99)) }`);
+  expect(out).toEqual([0, 0]);
+});
+
+// Blizzard_FrameXMLUtil/AuraUtil.lua:270-296 (forever and live identical): a leading "!" negates a filter word
+// ("!PLAYER" gives the auras not cast by the player); EXTERNAL_DEFENSIVE, CROWD_CONTROL, BIG_DEFENSIVE, IMPORTANT and
+// the rest narrow the list; INCLUDE_NAME_PLATE_ONLY and MAW cannot be negated. A test flags an aura for a narrowing
+// word in its TEST-ONLY __words set; nameplate-only and Torghast auras are not modelled, so those two pass every aura.
+it("the world's aura reads apply every '!' word and the narrowing words (H46-2-5)", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Dummy" });
+  const out = addon.eval(`__wfgWorld.addAura("target", { name = "TEST-ONLY Mine", isHarmful = true, sourceUnit = "player" })
+    __wfgWorld.addAura("target", { name = "TEST-ONLY Theirs", isHarmful = true, sourceUnit = "target" })
+    __wfgWorld.addAura("player", { name = "TEST-ONLY Buff" })
+    __wfgWorld.addAura("player", { name = "TEST-ONLY Wall", __words = { BIG_DEFENSIVE = true } })
+    local function names(unit, filter)
+      local out = {} for i = 1, 4 do local a = C_UnitAuras.GetAuraDataByIndex(unit, i, filter) if a then out[#out + 1] = a.name end end
+      return table.concat(out, ",")
+    end
+    return { names("target", "HARMFUL|!PLAYER"), names("player", "HELPFUL|BIG_DEFENSIVE"), names("player", "HELPFUL|!BIG_DEFENSIVE"),
+      names("player", "HELPFUL|IMPORTANT"), names("player", "HELPFUL|!MAW|INCLUDE_NAME_PLATE_ONLY") }`);
+  expect(out).toEqual(["TEST-ONLY Theirs", "TEST-ONLY Wall", "TEST-ONLY Buff", "", "TEST-ONLY Buff,TEST-ONLY Wall"]);
+});
+
 // Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua (forever and live identical): AddAuraGroup asserts a
 // non-empty key, a valid filter string and a new key (:286-291), then its options (:1-36, :143-194);
 // Blizzard_FrameXMLUtil/AuraUtil.lua:270-320 lists the filter words and IsValidFilterString's messages.
@@ -395,7 +451,7 @@ it("an aura container refuses a group the client's asserts refuse, with the clie
   const addon = createAddon();
   const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
     local function try(key, filter, opts)
-      opts.layout = opts.layout or {} local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
+      local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
     end
     return { try("a", "HELPFUL|!RAID PLAYER", { maxFrameCount = 2 }), try("a", "HELPFUL", { maxFrameCount = 2 }), try("", "HELPFUL", {}),
       try("b", "HELPFUL|TEST_ONLY_NO_SUCH", {}), try("b", "HELPFUL|!", {}), try("b", "HELPFUL", { maxFrameCount = 2.5 }),
@@ -408,11 +464,40 @@ it("an aura container refuses a group the client's asserts refuse, with the clie
     "elementWidth must be a non-negative number.", "sortMethod must be a valid AuraContainerSortMethod.", "initializeFrame must be a function or nil.", 1]);
 });
 
-// The harness's own counter (no client rule): a click whose handler raises still ends its hardware event.
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:228-256 (forever and live identical): CopyAndValidateInboundTable
+// starts from the defaults and merges the caller's options only when given, and the layout is always a merged copy of
+// the layout defaults (Blizzard_AuraContainerShared.lua:127-165), so neither a missing options table nor a missing
+// layout is an error.
+it("an aura container takes a group with no options, or options without a layout (H46-2-2)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local a = { pcall(c.AddAuraGroup, c, "a", "HELPFUL") }
+    local b = { pcall(c.AddAuraGroup, c, "b", "HELPFUL", { maxFrameCount = 2 }) }
+    return { a[1], tostring(a[2]), b[1], tostring(b[2]), #c.__groups }`);
+  expect(out).toEqual([true, "nil", true, "nil", 2]);
+});
+
+// The harness's own diagnostics (no client rule): a click whose handler raises leaves no click behind, so a
+// restricted call made after it reads as made outside any hardware event, and the error goes on unchanged.
 it("a click whose handler raises ends its hardware event and passes the error on", () => {
   const addon = createAddon();
   expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b:SetScript("OnClick", function() error("TEST-ONLY", 0) end)
-    local ok, err = pcall(__wfgStub.click, b) return { ok, err, __wfgStub.hardware }`)).toEqual([false, "TEST-ONLY", 0]);
+    local ok, err = pcall(__wfgStub.click, b) C_AuctionHouse.CancelAuction(7)
+    return { ok, err, __wfgWorld.ah.restricted[1].clicked }`)).toEqual([false, "TEST-ONLY", false]);
+});
+
+// The harness's own diagnostics (no client rule): the traceback of an error raised in a click handler keeps the
+// handler's own frames (H46-2-6).
+it("a click handler's error keeps the handler's stack in the traceback the test prints", () => {
+  const addon = createAddon();
+  let message = "";
+  try {
+    addon.eval(`local b = CreateFrame("Button", nil, UIParent)
+      b:SetScript("OnClick", function() local function TEST_ONLY_DEEP() error("TEST-ONLY boom") end TEST_ONLY_DEEP() end)
+      __wfgStub.click(b)`);
+  } catch (e) { message = String(e.message || e); }
+  expect(message).toContain("TEST-ONLY boom");
+  expect(message).toContain("TEST_ONLY_DEEP");
 });
 
 // Blizzard's own code leans on the client running an edit box's scripts for code-set text and focus:

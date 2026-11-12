@@ -34,13 +34,24 @@ local KINDS = { { "bug", L["Report a bug"] }, { "feature", L["Request a feature"
 
 -- Checks -------------------------------------------------------------------------------------
 
--- A text without the spaces the site's trim() removes at either end: plain white space, the no-break space and the
--- ideographic space (\194 and \227 are lead bytes, so no pattern here can cut inside another character).
+-- The UTF-8 spaces the site's trim() removes beyond Lua's %s: U+00A0, U+1680, U+2000 to U+200A with U+2028, U+2029 and
+-- U+202F, U+205F, U+3000 and U+FEFF (not U+200B, U+180E or U+0085, which it keeps). Each starts with a lead byte, so no
+-- pattern built from one can cut inside another character.
+local SITE_SPACES = { "\194\160", "\225\154\128", "\226\128[\128-\138\168\169\175]", "\226\129\159", "\227\128\128", "\239\187\191" }
+
+-- A text with white space and each of the site's spaces taken off both ends once.
+local function trimOnce(s)
+  s = s:match("^%s*(.-)%s*$")
+  for _, space in ipairs(SITE_SPACES) do s = s:gsub("^" .. space, ""):gsub(space .. "$", "") end
+  return s
+end
+
+-- A text without the spaces the site's trim() removes at either end, however they are mixed.
 local function trim(s)
   local before
   repeat
     before = s
-    s = s:match("^%s*(.-)%s*$"):gsub("^\194\160", ""):gsub("\194\160$", ""):gsub("^\227\128\128", ""):gsub("\227\128\128$", "")
+    s = trimOnce(s)
   until s == before
   return s
 end
@@ -67,7 +78,7 @@ end
 local function cleaned(f)
   local out = { kind = f.kind, area = f.area or "" }
   for field in pairs(LIMITS) do out[field] = clean(f[field]) end
-  out.title = (out.title:gsub("%s+", " "))
+  out.title = (out.title:gsub("\226\128[\168\169]", " "):gsub("%s+", " "))
   return out
 end
 

@@ -288,12 +288,14 @@ function AH.TimeLeft(r)
 end
 
 -- The listings up for an item, cheapest first: each one's unit price, quantity, time left and
--- whether it's yours; one without a buyout, or with a number the client hides, is left out.
+-- whether it holds yours (mine) and whether it is yours alone (own: a price row shared with another seller is not);
+-- one without a buyout, or with a number the client hides, is left out.
 function AH.Listings(commodity, key)
   local out = {}
   for _, r in ipairs(results(commodity, key)) do
     local unit, qty = resultUnit(r, commodity), ns.PlainNumber(r.quantity)
-    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = ns.IsTrue(r.containsOwnerItem) } end
+    local mine = ns.IsTrue(r.containsOwnerItem)
+    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = mine, own = mine and mayBeOwn(r, commodity) } end
   end
   return out
 end
@@ -411,11 +413,11 @@ function AH.TogglePerStack()
   AH.PaintSell()
 end
 
--- A listing clicked (on the Up now card): its price becomes the card's, less the undercut rule unless it's yours.
+-- A listing clicked (on the Up now card): its price becomes the card's, less the undercut rule unless the row is yours alone.
 function AH.ClickListing(r)
   local s, l = AH.sell, r.item
   if not (s and l) then return end
-  s.unit = l.mine and l.unit or (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(l.unit)
+  s.unit = l.own and l.unit or (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(l.unit)
   AH.PaintSell()
 end
 

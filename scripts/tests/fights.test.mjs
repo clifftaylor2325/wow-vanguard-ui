@@ -193,6 +193,19 @@ it("the recap line names interrupts, dispels, damage taken and deaths, and /vg r
   expect(chatHas(addon, /No recap to show/), "a hidden figure and absent meters leave nothing to say").toBe(true);
 });
 
+// The game hands an empty list (combatSources is never nil, DamageMeterDocumentation.lua DamageMeterCombatSession) for a fight nobody died in.
+it("a Deaths meter with nobody in it is left out of the recap, and a recap with nothing in it says there is none", () => {
+  const addon = loggedIn(RECAP_ENV);
+  for (const what of [5, 6, 7, 9]) addon.eval(`__meters[${what}] = { combatSources = {} }`);
+  addon.slash("recap");
+  expect(chatHas(addon, /No recap to show/), "every meter empty: no recap").toBe(true);
+  expect(chatHas(addon, /Deaths 0/), "no Deaths 0").toBe(false);
+  setMeter(addon, 5, 1);
+  addon.clearChat();
+  addon.slash("recap");
+  expect(chatHas(addon, /Fight recap: Interrupts 1$/), "one interrupt and no deaths: Interrupts 1 alone").toBe(true);
+});
+
 it("the chat recap comes after a recorded fight, only when it is switched on", () => {
   const on = loggedIn(RECAP_ENV, RECAP_ON);
   setMeter(on, 5, 2);

@@ -33,11 +33,11 @@ local function mine(sources)
 end
 
 -- One meter's figure for the last fight: your total, or for a count meter how many lines it lists
--- (and whether one is yours); nil where the client has no such meter or hides it, or hides its list.
+-- (and whether one is yours), nil when the list is empty (nobody died); nil where the client has no such meter or hides it, or hides its list.
 local function figure(meter)
   local sources = ns.PlainTable(ns.GetModule("InfoStrip").MeterSources(meter.meter))
   if not sources then return nil end
-  if meter.count then return #sources, mine(sources) ~= nil end
+  if meter.count then return #sources > 0 and #sources or nil, mine(sources) ~= nil end
   local line = mine(sources)
   return line and ns.PlainNumber(line.totalAmount) or nil
 end

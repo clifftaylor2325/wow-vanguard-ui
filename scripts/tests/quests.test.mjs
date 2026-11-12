@@ -2854,3 +2854,66 @@ it("quest tracker: with Vanguard's tracker off, the game's tracker takes clicks 
   off.eval("ObjectiveTrackerFrame:Update()");
   expect(trackerMouse(off), "the game's own tracker, untouched").toEqual({ line: [true, true], bar: [false, true], locked: [true, true], added: [true, true] });
 });
+
+// Client rule: CustomGossipManagerMixin (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua,
+// the same on live: OnEvent 37-44, HandleOpenEvent 46-55, HideOpenedUIPanel 57-64, GetHandler 74-76): a kit's or a base handler's frame is
+// kept as customFrame, and GOSSIP_CLOSED hides it.
+const KIT_MANAGER = `
+  __picker = CreateFrame("Frame", "TEST_ONLY_KitPicker", UIParent) __picker:Hide()
+  CustomGossipFrameManager.handlers = { ["skoldushall"] = function() __picker:Show() return __picker end }
+  CustomGossipFrameManager.GetHandler = function(self, kit) return (kit and self.handlers) and self.handlers[kit] end
+  CustomGossipFrameManager:SetScript("OnEvent", function(self, event, kit)
+    if event == "GOSSIP_SHOW" then
+      local handler = self:GetHandler(kit)
+      if handler then self.customFrame = handler(kit) end
+    elseif event == "GOSSIP_CLOSED" and self.customFrame then
+      self.customFrame:Hide() self.customFrame = nil
+    end
+  end)`;
+it("H46-8-1: the hand-back ticked and unticked during a kit gossip, the talk's end still reaches the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  addon.fire("GOSSIP_SHOW", "skoldushall");
+  expect(addon.eval("return { __picker:IsShown(), ns.GetModule('QuestDialog').gameTalk }"), "the game's picker has the talk").toEqual([true, true]);
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  expect(addon.eval("return __picker:IsShown()"), "the talk ended: the game's picker closes").toBe(false);
+});
+it("H46-8-1: the module switched off and on during a kit gossip, the talk's end still reaches the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  addon.fire("GOSSIP_SHOW", "skoldushall");
+  addon.eval("ns.SetModuleEnabled('QuestDialog', false)");
+  addon.update(0.5);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  expect(addon.eval("return __picker:IsShown()"), "the talk ended: the game's picker closes").toBe(false);
+});
+it("H46-8-1: a custom frame that is hidden, forbidden or not a frame does not count as a talk the game has", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  // Hands the talk back and takes it again with this custom frame set, and returns whether the game has it.
+  const talk = (frame) => addon.eval(`local manager = _G.CustomGossipFrameManager
+    if manager then manager.customFrame = ${frame} end
+    ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)
+    return ns.GetModule('QuestDialog').gameTalk`);
+  expect(talk("__picker"), "hidden").toBeFalsy();
+  expect(talk("{}"), "no IsShown").toBeFalsy();
+  addon.eval("__picker:Show() __picker.IsForbidden = function() return true end");
+  expect(talk("__picker"), "forbidden").toBeFalsy();
+  addon.eval("_G.CustomGossipFrameManager = false");
+  expect(talk("nil"), "no manager").toBeFalsy();
+});
+
+// Client rule: QuestFrame_OnEvent returns at once for an adventure map's QUEST_DETAIL (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua:42-45),
+// and the map's dialog takes the quest with C_AdventureMap.StartQuest, never AcceptQuest (Blizzard_AdventureMap/AM_QuestDialog.lua:257-261).
+it("H46-8-R1: quest automation's accept leaves an adventure map's offer to the map, and still accepts any other", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  addon.eval("QuestIsFromAdventureMap = function() return true end");
+  calls(addon);
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "nothing is accepted for the player").toEqual([]);
+  addon.eval("QuestIsFromAdventureMap = function() return false end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "an ordinary offer is accepted").toEqual(["accept nil"]);
+});

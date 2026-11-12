@@ -147,8 +147,13 @@ function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end
 -- CVars live in world.cvars as strings, as the client keeps them.
 function GetCVar(name) return world.cvars[name] end
--- Stores a CVar's value as a string (C_CVar.SetCVar's value is a cstring, CVarDocumentation.lua:131-148).
-local function storeCVar(name, value) world.cvars[name] = tostring(value) end
+-- Stores a CVar's value as a string and answers the client's success flag (C_CVar.SetCVar's value is a Nilable
+-- cstring, its return a bool: CVarDocumentation.lua, forever :131-148, live :118-135). A nil value clears the entry:
+-- TEST-ONLY guess, as what the client holds after a nil (cleared, or back to its default) is game-only.
+local function storeCVar(name, value)
+  world.cvars[name] = value ~= nil and tostring(value) or nil
+  return true
+end
 -- The client's SetCVar (Blizzard_SharedXMLBase/CvarUtil.lua:9-15, both clients): a boolean becomes "1" or "0".
 function SetCVar(name, value)
   if type(value) == "boolean" then return storeCVar(name, value and "1" or "0") end
@@ -1207,15 +1212,35 @@ end
 
 local nextAuraId = 100
 
--- Whether an aura passes one filter word (HELPFUL, HARMFUL, PLAYER, RAID, !RAID, ...).
+-- What each filter word asks of an aura (Blizzard_FrameXMLUtil/AuraUtil.lua:270-288). A word left out passes every
+-- aura: INCLUDE_NAME_PLATE_ONLY and MAW among them, as nameplate-only and Torghast auras are not modelled.
+local auraWordTests = {
+  -- Helpful auras only.
+  HELPFUL = function(aura) return not aura.isHarmful end,
+  -- Harmful auras only.
+  HARMFUL = function(aura) return aura.isHarmful == true end,
+  -- Auras cast by the player or the player's pet.
+  PLAYER = function(aura) return aura.sourceUnit == "player" or aura.isFromPlayerOrPlayerPet == true end,
+  -- Auras the player can apply or dispel.
+  RAID = function(aura) return aura.isRaid == true end,
+  -- Auras the player can cancel.
+  CANCELABLE = function(aura) return aura.isHarmful ~= true end,
+}
+-- The narrowing words pass only an aura a test flags with the word in its TEST-ONLY aura.__words set (the client's
+-- AuraData has no such field, so addon code cannot come to rely on one).
+for _, word in ipairs({ "EXTERNAL_DEFENSIVE", "CROWD_CONTROL", "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE",
+  "IMPORTANT", "DISPELLABLE" }) do
+  -- Whether a test flagged the aura with this word.
+  auraWordTests[word] = function(aura) return (aura.__words or {})[word] == true end
+end
+
+-- Whether an aura passes one filter word; a leading "!" negates it (AuraUtil.lua:294-295), and on a word that passes
+-- every aura it changes nothing, as the client ignores it on INCLUDE_NAME_PLATE_ONLY and MAW.
 local function passes(aura, word)
-  if word == "HELPFUL" then return not aura.isHarmful end
-  if word == "HARMFUL" then return aura.isHarmful == true end
-  if word == "PLAYER" then return aura.sourceUnit == "player" or aura.isFromPlayerOrPlayerPet == true end
-  if word == "RAID" then return aura.isRaid == true end
-  if word == "!RAID" then return aura.isRaid ~= true end
-  if word == "CANCELABLE" then return aura.isHarmful ~= true end
-  return true
+  local bare = word:gsub("^!", "")
+  local test = auraWordTests[bare]
+  if not test then return true end
+  return test(aura) == (bare == word)
 end
 
 -- The auras of a unit that pass every word of a filter ("HARMFUL|RAID").
@@ -1273,21 +1298,25 @@ C_UnitAuras = {
   GetAuraDataByAuraInstanceID = function(unit, id)
     for _, aura in ipairs(uf(unit, "auras") or {}) do if aura.auraInstanceID == id then return aura end end
   end,
-  -- The stack count the client would display, as text: "" under minCount (2 by default) or for no aura, "*" over
-  -- maxCount, else the count; a hidden count stays hidden.
+  -- The stack count the client would display, as text: "" under minCount (2 by default), "*" over maxCount, else
+  -- the count; a hidden count stays hidden. No aura answers nothing (RequiresValidUnitAuraInstance, FailureMode
+  -- ReturnNothing: UnitAuraDocumentation.lua:128-148, UnitAuraSharedDocumentation.lua:39-41).
   GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local n = aura and aura.applications or 0
+    if not aura then return end
+    local n = aura.applications or 0
     if seenSecret(n) then return n end
     if n < (minCount or 2) then return "" end
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
   end,
   -- The dispel type color through a curve read at the type's ID (UnitAuraDocumentation.lua GetAuraDispelTypeColor:
-  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted).
+  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted). No aura answers nothing
+  -- (RequiresValidUnitAuraInstance, :264-284, as the stack count above).
   GetAuraDispelTypeColor = function(unit, id, curve)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local kind = aura and aura.dispelName
+    if not aura then return end
+    local kind = aura.dispelName
     local color = curve:Evaluate(world.dispelTypeIds[inside(kind)] or 0)
     if color and worldIsSecret(kind) then return hiddenColor(color) end
     return color
@@ -2017,18 +2046,18 @@ local function emptyAuctionHouse()
 end
 world.ah = emptyAuctionHouse()
 
--- Clicks are hardware events: stub.hardware counts the clicks running now.
-stub.hardware = 0
-local rawClick = stub.runClick
--- The click itself, called by name so a restricted call's logged path still runs through rawClick.
-local function clickThrough(...) rawClick(...) end
--- A click, counted while it runs; a handler that raises still ends the count before its error goes on (pcall is a C
--- function, so wow-taint.lua's callerOf looks through it).
-function stub.runClick(...)
-  stub.hardware = stub.hardware + 1
-  local ok, err = pcall(clickThrough, ...)
-  stub.hardware = stub.hardware - 1
-  if not ok then error(err, 0) end
+-- Clicks are hardware events: a call is made in one while the stub's click (stub.runClick) is on the Lua stack. Read
+-- from the stack, not kept in a count, so a handler that raises leaves nothing behind and its error keeps its whole
+-- traceback. Limit: a call from a coroutine resumed inside a click reads as not clicked (the addon makes none).
+local runningClick = stub.runClick
+
+-- Whether a click is running: the stub's click function is a caller of the code asking.
+local function inClick()
+  for level = 2, math.huge do
+    local info = debug.getinfo(level, "f")
+    if not info then return false end
+    if info.func == runningClick then return true end
+  end
 end
 
 -- A query the addon may send at any time: recorded as { fn, args }.
@@ -2051,7 +2080,7 @@ end
 local function restricted(name)
   return function(...)
     local args = { ... }
-    table.insert(world.ah.restricted, { fn = name, args = args, clicked = stub.hardware > 0, path = debug.traceback("", 2) })
+    table.insert(world.ah.restricted, { fn = name, args = args, clicked = inClick(), path = debug.traceback("", 2) })
     if name ~= "PostItem" and name ~= "PostCommodity" then return end
     if world.ah.needsConfirm == true then return true end
     if world.ah.throttle then sendPost(args[1], args[3]) end

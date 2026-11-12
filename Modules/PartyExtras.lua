@@ -12,6 +12,9 @@ local PX = ns.Module("PartyExtras", { defaults = { show = false }, live = true }
 
 PX.W, PX.H, PX.GAP, PX.ROWS = 90, 16, 2, 4
 PX.COL_GAP = 4
+-- How far the column's default spot rises under the Tabs look over the raid grid's raised spot (Modules/RaidFrames.lua
+-- RF.Lift, 12): half of it, so at 1365 x 768 it meets neither the grid under it nor the raid tools over it.
+PX.GRID_RISE = 6
 -- The column's spot: above the party frames. On a canvas under 676 tall (the UI scale slider's last notches) its
 -- top would leave the screen, and on such a small canvas the top left is full (boss frames, raid tools), so there
 -- it sits right of the party column instead (Healing's larger one too), above a party drawn as one row.
@@ -59,12 +62,19 @@ function PX.PlaceBars()
   for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").PlaceBar(b, px) end
 end
 
--- Moves the column's default spot up with the party column under the Tabs look (its top rises by the tab's height
--- and the gaps, Modules/UnitFrames.lua UF.PartyRise), so tall party frames never reach it; a dragged spot still wins.
--- The holder is secure, so only out of combat.
+-- How far the column's default spot rises under the Tabs look: with the party column's top (its tabs and gaps,
+-- Modules/UnitFrames.lua UF.PartyRise), so tall party frames never reach it, or with no party column built (the raid
+-- frames show the party) PX.GRID_RISE while the raid grid's spot rises (Modules/RaidFrames.lua RF.Lift).
+local function riseFor(UF)
+  if UF.HasPartyColumn() then return UF.PartyRise() end
+  return ns.ModuleLive("RaidFrames") and ns.GetModule("RaidFrames").Lift() > 0 and PX.GRID_RISE or 0
+end
+
+-- Moves the column's default spot up with what stands under it (riseFor); a dragged spot still wins. The holder is
+-- secure, so only out of combat.
 function PX.FitLook()
   local UF = ns.GetModule("UnitFrames")
-  local rise = UF and UF.PartyRise and UF.PartyRise() or 0
+  local rise = UF and riseFor(UF) or 0
   ns.SetMoverDefault("partyextras", ns.RaisedDefault(PX.SPOT, rise))
 end
 
@@ -85,4 +95,5 @@ function PX.Enable(settings, scope)
   if settings.show then ns.OutOfCombat(function() show(scope) end) end
   scope:Gate("scale", PX.PlaceBars, ns.Theme.OnScale)
   scope:Gate("look", function() ns.OutOfCombat(PX.FitLook, "party extras look") end, ns.Theme.OnChanged)
+  scope:Gate("layout", function() ns.OutOfCombat(PX.FitLook, "party extras layout") end, ns.OnLayoutChanged)
 end

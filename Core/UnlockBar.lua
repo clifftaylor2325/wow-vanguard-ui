@@ -133,3 +133,10 @@ function ns.UnlockEnded()
   before, fromPage = nil, nil
   if bar then bar:Hide() end
 end
+
+-- The profile in use was switched or replaced while unlocked (a switch that applied at once, Reset profile, Copy
+-- here, an import): the spots remembered were the old settings', so Exit without saving would write them over the
+-- new ones. It remembers the new profile's spots as they are now instead.
+ns.OnProfileChanged(ns.Guard("unlock spots after a profile change", function()
+  if before then before = ns.Copy(ns.Settings("positions")) end
+end))
