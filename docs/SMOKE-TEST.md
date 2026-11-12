@@ -2594,6 +2594,8 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 
 This is one session's worth of checks for everything merged from #395 to #415 (the UI coherence plan, phases 8.1 to 8.10, and the reskin coverage batches 1 to 3). **Nothing here has been seen in the game.** Each Expect is what the code intends. Section 32 already covers the Vanguard windows' titles, Escape, scroll thumbs, section headers, quest marks, the faction look and the feedback form, so those steps are not repeated here.
 
+Step ids in this section are never reused and may skip: a missing number is an id a batch reserved and did not use, not a lost step.
+
 The order is the order to play in: looks you can check quickly first, then the game's own windows Vanguard now skins, then the controls that take keys, and last the steps that need a fight. Steps tagged **[Combat]** need a fight (a dummy or a mob you can start one with) and go at the end.
 
 ### 33.1 Sliders: grey fill, white thumb, a locked slider
