@@ -580,14 +580,33 @@ for name, value in pairs(Enum.PowerType) do
   if PowerBarColor[key] then PowerBarColor[value] = PowerBarColor[key] end
 end
 
--- The difficulty color of a creature level against the player's.
+-- The client's level colours and their highlight colours (Blizzard_FrameXMLBase/Constants.lua:195-213; r, g, b only).
+QuestDifficultyColors = {
+  impossible = { r = 1, g = 0.1, b = 0.1 }, verydifficult = { r = 1, g = 0.5, b = 0.25 }, difficult = { r = 1, g = 0.82, b = 0 },
+  standard = { r = 0.25, g = 0.75, b = 0.25 }, trivial = { r = 0.5, g = 0.5, b = 0.5 },
+}
+QuestDifficultyHighlightColors = {
+  impossible = { r = 1, g = 0.4, b = 0.4 }, verydifficult = { r = 1, g = 0.75, b = 0.44 }, difficult = { r = 1, g = 1, b = 0.1 },
+  standard = { r = 0.43, g = 0.93, b = 0.43 }, trivial = { r = 0.7, g = 0.7, b = 0.7 },
+}
+-- How many levels below yours still count as standard. TEST-ONLY guess: the client's number at each level is game-only.
+world.trivialLevelRange = 7
+-- That range (UnitQuestTrivialLevelRange, read by DifficultyUtil.lua).
+function UnitQuestTrivialLevelRange() return world.trivialLevelRange end
+-- The world scales no levels: a unit's effective level is its level.
+function UnitEffectiveLevel(unit) return UnitLevel(unit) end
+-- The colour and highlight colour of challengeLevel against unitLevel, by DifficultyUtil.lua's bands (both clients).
+function GetRelativeDifficultyColor(unitLevel, challengeLevel)
+  local diff = challengeLevel - unitLevel
+  local band = -diff <= UnitQuestTrivialLevelRange("player") and "standard" or "trivial"
+  for _, step in ipairs({ { 5, "impossible" }, { 3, "verydifficult" }, { -4, "difficult" } }) do
+    if diff >= step[1] then band = step[2] break end
+  end
+  return QuestDifficultyColors[band], QuestDifficultyHighlightColors[band]
+end
+-- A creature's (or a quest's) level colour against your effective level (UnitLevel when a test removed it).
 function GetCreatureDifficultyColor(level)
-  local diff = level - UnitLevel("player")
-  if diff >= 5 then return { r = 1, g = 0.1, b = 0.1 } end
-  if diff >= 3 then return { r = 1, g = 0.5, b = 0.25 } end
-  if diff >= -2 then return { r = 1, g = 1, b = 0 } end
-  if diff >= -7 then return { r = 0.25, g = 0.75, b = 0.25 } end
-  return { r = 0.5, g = 0.5, b = 0.5 }
+  return GetRelativeDifficultyColor((UnitEffectiveLevel or UnitLevel)("player"), level)
 end
 GetQuestDifficultyColor = GetCreatureDifficultyColor
 

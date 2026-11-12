@@ -305,3 +305,14 @@ it("the dispel colour call reads the curve at the debuff's type number, and hide
     return { plain.r, plain.g, plain.b, issecretvalue(hidden.r), issecretvalue(hidden.g), rawget(hidden.g, "n") }`);
   expect(out).toEqual([0, 0, 1, true, true, 1]);
 });
+
+// Blizzard_FrameXMLUtil/Mainline/DifficultyUtil.lua (forever and live; Forever loads the Mainline file too,
+// Blizzard_FrameXMLUtil.toc:33-36): bands >= 5, >= 3, >= -4, then the trivial range, on UnitEffectiveLevel, two
+// returns; Blizzard_FrameXMLBase/Constants.lua:195-213 the colours. The trivial range itself is the world's guess.
+it("the level colour uses the client's bands and colours and answers its highlight colour too", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local o = {} for _, l in ipairs({ 65, 63, 56, 55, 53, 52 }) do local c = GetCreatureDifficultyColor(l) o[#o + 1] = l .. ":" .. c.r .. "," .. c.g .. "," .. c.b end
+    local _, lit = GetQuestDifficultyColor(56)
+    return { UnitLevel("player"), o, select("#", GetCreatureDifficultyColor(56)), lit.g }`);
+  expect(out).toEqual([60, ["65:1,0.1,0.1", "63:1,0.5,0.25", "56:1,0.82,0", "55:0.25,0.75,0.25", "53:0.25,0.75,0.25", "52:0.5,0.5,0.5"], 2, 1]);
+});
