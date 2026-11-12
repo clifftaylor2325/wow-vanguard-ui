@@ -70,6 +70,13 @@ it("a number main lowered after the branch forked fails against main's tip, and 
   expect(checkBaselines(dir, run("merge-base", "HEAD", "main"), [FILE]), "against the merge base nothing rose").toEqual([]);
 });
 
+it("H44-G3-8 a count moved under a new key while it rose is named; a rename that keeps or lowers it, and a new audit key alone, pass", () => {
+  expect(baselineRises("f.json", { "long-line": 457, other: 2 }, { "long-lines": 458, other: 2 }), "a renamed number that rose").toEqual(["f.json: long-lines in place of long-line: 457 -> 458"]);
+  expect(baselineRises("f.json", { dialogs: ["x"] }, { "dialog boxes": ["x", "y"] }), "a renamed list with a new line").toEqual(["f.json: dialog boxes (dialog boxes in place of dialogs): new line: y"]);
+  expect(baselineRises("f.json", { "long-line": 457, dialogs: ["x", "y"] }, { "long-lines": 450, "dialog boxes": ["y"] }), "renamed and lowered").toEqual([]);
+  expect(baselineRises("f.json", { "long-line": 457 }, { "long-line": 457, "new-audit": 30, "new-scene": ["z"] }), "a new audit's starting record").toEqual([]);
+});
+
 it("a key whose value changed kind fails with a sentence, never a throw", () => {
   expect(baselineRises("f.json", { a: 2, b: ["x"] }, { a: ["x"], b: 3 })).toEqual([
     "f.json: a: was a number, now a list; a baseline keeps its kind, so put the new kind under a new key",
