@@ -889,7 +889,11 @@ const AH_ENV = `${READERS_ENV}
     local form = __well(nil, parent) form.CreateAuctionLabel, form.CreateAuctionTabLeft, form.ItemDisplay = __text(form, "Create Auction"), __art(form), __well(nil, form)
     local function row(key, fill) local r = CreateFrame("Frame", nil, form) r.Label = __text(r, key) fill(r) form[key] = r end
     row("QuantityInput", function(r) r.InputBox = CreateFrame("EditBox", nil, r) __art(r.InputBox) r.MaxButton = __mkbutton(r) end)
-    row("PriceInput", function(r) r.MoneyInputFrame = __ahLargeInput(r) end)
+    row("PriceInput", function(r)
+      r.MoneyInputFrame, r.LabelTitle = __ahLargeInput(r), __text(r, "Buyout")
+      -- AuctionHouseSellFrame SetLabelColor (Blizzard_AuctionHouseUI/Shared/Blizzard_AuctionHouseSellFrame.lua:22-25) paints both labels.
+      function r:SetLabelColor(c) self.Label:SetTextColor(c:GetRGB()) self.LabelTitle:SetTextColor(c:GetRGB()) end
+    end)
     row("SecondaryPriceInput", function(r) r.LabelTitle, r.MoneyInputFrame = __text(r, "Bid"), __ahLargeInput(r) end)
     row("Duration", function(r) r.Dropdown = __mkbutton(r, "Arrow") end)
     for _, key in ipairs({ "Deposit", "TotalPrice", "UnitPrice" }) do row(key, function(r) r.MoneyDisplayFrame = __ahMoney(r) end) end
@@ -985,6 +989,28 @@ it("R3.5 the auction house panels: money bar, search bar, categories, lists, for
   expect(windowState(addon, "AuctionHouseFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
   expect(addon.eval("return __ahParts(AuctionHouseFrame)").painted, "a second show paints nothing new").toBe(parts.painted);
+});
+// The item sell form's price row: UpdatePostState (Shared/Blizzard_AuctionHouseItemSellFrame.lua:402-413) calls SetLabelColor
+// with RED_FONT_COLOR for a buyout under the bid, else NORMAL_FONT_COLOR, on every item, price and quantity change.
+const LABEL_COLORS = `
+  NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
+  RED_FONT_COLOR = { GetRGB = function() return 1, 0.1, 0.1 end }
+  function __price() return AuctionHouseFrame.ItemSellFrame.PriceInput end
+  function __priceReds() local p = __price() return { p.Label.__textColor[2], p.LabelTitle.__textColor[2], ns.Theme.ColorToken(p.Label) } end`;
+it("H46-25-100 the price row's labels stay light when the game paints them gold, and red survives a refresh and a second show", () => {
+  const addon = loggedIn(`${AH_WINDOW} ${LABEL_COLORS}`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  const light = addon.eval("return (ns.Theme.RGB('text'))");
+  addon.eval("__price():SetLabelColor(NORMAL_FONT_COLOR)");
+  expect(addon.eval("return __ahLit(__price().Label) and __ahLit(__price().LabelTitle)"), "gold from the game goes back to the text colour").toBe(true);
+  expect(addon.eval("return __priceReds()[3]"), "and keeps its token").toBe("text");
+  addon.eval("__price():SetLabelColor(RED_FONT_COLOR) ns.Theme.Refresh()");
+  expect(addon.eval("return __priceReds()"), "red stays red after a theme refresh, with no token").toEqual([0.1, 0.1]);
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
+  expect(addon.eval("return __priceReds()[1]"), "and after the window is shown again").toBe(0.1);
+  addon.eval("__price():SetLabelColor(NORMAL_FONT_COLOR)");
+  expect([addon.eval("return __ahLit(__price().Label)"), addon.eval("return (ns.Theme.RGB('text'))"), addon.eval("return #ns.errors")], "light again when the buyout is fine").toEqual([true, light, 0]);
 });
 it("R3.6 the auction house panels: one part that fails is named and the rest are still dressed; labels and the money line have room", () => {
   expectErrors(/^auction house CommoditiesSellList: eval:\d+: TEST-ONLY layout$/);

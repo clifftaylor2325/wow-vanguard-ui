@@ -19,6 +19,7 @@ local ADDON, ns = ...
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgHooked = ns.FrameState("vgHooked")
+local vgFormLabels = ns.FrameState("vgFormLabels")
 local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
@@ -2279,12 +2280,36 @@ local function skinMoneyBar(frame)
   GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
 end
 
+-- A font string the game recoloured back to a colour of the game's own that the skin keeps: the text colour when it
+-- is the normal gold, else the game's colour with the remembered token dropped, so a theme refresh does not repaint it.
+local function followColor(fs, color)
+  if type(fs) ~= "table" or not fs.SetFont then return end
+  if color == _G.NORMAL_FONT_COLOR then return T.Color(fs, "text") end
+  if type(color) == "table" and color.GetRGB then T.ColorRGB(fs, color:GetRGB()) end
+end
+
+-- After the game's SetLabelColor on a form row (the sell form's price row: red for a buyout under the bid, else
+-- the normal gold): its two labels follow, through the helper above.
+local function followLabelColor(row, color)
+  followColor(row.Label, color)
+  followColor(row.LabelTitle, color)
+end
+
+-- A form row's labels in the text colour (gold in the game), once, with the row's SetLabelColor followed. A later
+-- window show leaves them as the game last painted them (the price label may be red then).
+local function skinFormLabels(row)
+  if vgFormLabels[row] then return end
+  vgFormLabels[row] = true
+  GW.SkinText(row.Label, "label", "text")
+  GW.SkinText(row.LabelTitle, "label", "text")
+  GW.HookAfter(row, "SetLabelColor", followLabelColor)
+end
+
 -- One labelled row of a form: its label in the text colour (gold in the game) and whichever control it holds: a number
 -- box with its Max button, a large money input, the duration dropdown or a money display.
 local function skinFormRow(row)
   if type(row) ~= "table" then return end
-  GW.SkinText(row.Label, "label", "text")
-  GW.SkinText(row.LabelTitle, "label", "text")
+  skinFormLabels(row)
   GW.SkinEditBox(row.InputBox)
   GW.SkinButton(row.MaxButton)
   GW.SkinMoneyInput(row.MoneyInputFrame, GW.LARGE_MONEY_INPUTS, "Icon")
