@@ -83,6 +83,12 @@ local function unticked(i)
   return entry ~= nil and state.off[entryId(entry)] == true
 end
 
+-- Whether the entry at position i changes its key with the ticks as they are (an unticked change keeps its row, for
+-- step 3's empty box).
+local function changesKey(i)
+  return KA.WRITES[state.rows[i].kind] and not unticked(i)
+end
+
 -- The entries the player kept ticked, in order: what Apply applies.
 local function tickedEntries()
   local out = {}
@@ -243,7 +249,7 @@ end
 -- What a key will do, for the line under the keyboard: its change, or that it stays as it is.
 local function keyText(chord)
   local i = indexFor(state.entries, chord)
-  local text = i and rowText(state.rows[i], state.entries[i])
+  local text = i and not unticked(i) and rowText(state.rows[i], state.entries[i])
   return text or ns.Format(L["{key}: stays as it is"], { key = KV.KeyText(chord) })
 end
 
@@ -350,8 +356,7 @@ end
 local function paintPreview(cap)
   cap.chord = KV.Chord(KV.TabById(state.tab), cap.key)
   local i = indexFor(state.entries, cap.chord)
-  local row = i and state.rows[i]
-  if row and KA.WRITES[row.kind] then return paintAs(cap, rowIcon(row), false, "accentText", 1) end
+  if i and changesKey(i) then return paintAs(cap, rowIcon(state.rows[i]), false, "accentText", 1) end
   local later = not i and indexFor(state.laterEntries, cap.chord)
   if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "muted", FADED) end
   local now = KV.Lookup(cap.chord)
@@ -374,7 +379,7 @@ local function shownChanges()
   local out = {}
   for i, row in ipairs(state.rows) do
     local entry = state.entries[i]
-    if KA.WRITES[row.kind] and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = changeText(row, entry) end
+    if changesKey(i) and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = changeText(row, entry) end
   end
   return out
 end

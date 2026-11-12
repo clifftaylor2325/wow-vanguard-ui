@@ -615,3 +615,16 @@ it("H45-6-101 step 3: All my characters picked, then switching to this character
   expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 2, [""]]);
   expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()"), "Ready no longer offers the choice").toBe(false);
 });
+
+it("H45-6-102 step 2: a change unticked on Ready is not drawn, listed or named as a change after Back", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: Shield Bash");
+  addon.eval('__click("Back")');
+  expect(cap(addon, "F").color, "F is faint like a key that stays").not.toBe("accentText");
+  expect(preview(addon).lines.join("|")).not.toContain("F: Shield Bash");
+  addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "F" then c.__scripts.OnEnter(c) end end`);
+  expect(tipText(addon)).toContain("F: stays as it is");
+  expect(tipText(addon)).not.toContain("Shield Bash added");
+});
