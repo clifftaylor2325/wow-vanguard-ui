@@ -127,8 +127,8 @@ end
 -- A meter line's source as a plain key: its death recap ID, else "GUID:creature ID", else (a creature line the
 -- game gives no GUID, as its own window matches it) "creature:ID"; nil when the client hides a part it needs.
 local function sourceKey(src)
-  local guid, creature = src.sourceGUID, src.sourceCreatureID
-  if deathKey(src) then return deathKey(src) end
+  local guid, creature, death = src.sourceGUID, src.sourceCreatureID, deathKey(src)
+  if death then return death end
   if ns.IsSecret(guid) or ns.IsSecret(creature) then return nil end
   if type(guid) == "string" then return guid .. ":" .. tostring(creature) end
   return type(creature) == "number" and "creature:" .. creature or nil
