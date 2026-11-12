@@ -51,6 +51,13 @@ RH.CLASS_BUFFS = ns.ClientData({
   },
 })
 
+-- More ids that count as one buff, beyond each RH.CLASS_BUFFS entry (a buff's single and group versions): a player
+-- with either has it.
+RH.BUFF_GROUPS = ns.ClientData({
+  forever = { { 14752, 27681 }, { 976, 27683 } },
+  retail = {},
+})
+
 -- Every class's group buffs for the options list, by class, as { English name, spellID }. The row shows
 -- the client's name for the id; the English one only where the client has none. The id also finds the
 -- icon for spells you haven't learned (the client can't look those up by name).
@@ -209,16 +216,46 @@ local function known(name)
   return type(GetSpellInfo) == "function" and not absent(GetSpellInfo(name))
 end
 
--- What the buff watch looks for: { set = name -> true, give = the first
--- watched buff you know, or nil }. Worked out once and kept until the list or
--- your spells change (RH.Forget), not per unit or per update.
+-- Gives each client name of one buff's ids (ns.SpellNames) the same key in groupOf: its first name.
+local function nameGroup(groupOf, ids)
+  local names = ns.SpellNames(ids)
+  for _, name in ipairs(names) do groupOf[name] = names[1] end
+end
+
+-- Which names count as one buff: name -> its buff's key (each class's list, so every blessing is one, and
+-- RH.BUFF_GROUPS). A name in none is a buff of its own.
+local function buffGroupOf()
+  local groupOf = {}
+  for _, ids in pairs(RH.CLASS_BUFFS) do nameGroup(groupOf, ids) end
+  for _, ids in ipairs(RH.BUFF_GROUPS) do nameGroup(groupOf, ids) end
+  return groupOf
+end
+
+-- The watched buff group for a key, made and listed in w.groups the first time.
+local function watchedGroup(w, key)
+  if not w.byKey[key] then
+    w.byKey[key] = { names = {} }
+    w.groups[#w.groups + 1] = w.byKey[key]
+  end
+  return w.byKey[key]
+end
+
+-- Adds one watched name to its buff's group (groupOf: buffGroupOf).
+local function watchName(w, groupOf, name)
+  local g = watchedGroup(w, groupOf[name] or name)
+  g.names[#g.names + 1] = name
+  g.give = g.give or (known(name) and name or nil)
+  w.give = w.give or g.give
+  w.set[name] = g
+end
+
+-- What the buff watch looks for: { groups = the watched buffs in list order, each { names, give = the first of its
+-- names you know, or nil }, set = name -> its group, give = any buff you know }. Worked out once and kept until the
+-- list or your spells change (RH.Forget), not per unit or per update.
 local function watched()
   if RH.watch then return RH.watch end
-  local w = { set = {} }
-  for _, name in ipairs(RH.BuffNames()) do
-    w.set[name] = true
-    w.give = w.give or (known(name) and name or nil)
-  end
+  local w, groupOf = { groups = {}, byKey = {}, set = {} }, buffGroupOf()
+  for _, name in ipairs(RH.BuffNames()) do watchName(w, groupOf, name) end
   RH.watch = w
   return w
 end
@@ -239,25 +276,27 @@ local function hasBuff(unit, name)
   return AuraUtil and type(AuraUtil.FindAuraByName) == "function" and not absent(AuraUtil.FindAuraByName(name, unit, "HELPFUL"))
 end
 
--- Whether a unit has any watched buff, one by-name lookup per watched name
--- (for a client without the all-at-once aura list).
-local function hasByName(unit)
-  for _, name in ipairs(RH.BuffNames()) do
-    if hasBuff(unit, name) then return true end
+-- The watched groups a unit has, from one pass over the client's all-at-once list of its buffs: group -> true, or
+-- nil where the client has the by-name lookup (it builds no list, and this runs on every aura change of every raid
+-- member) or no list.
+local function listedGroups(unit, w)
+  local auras = C_UnitAuras
+  if not auras or type(auras.GetAuraDataBySpellName) == "function" or type(auras.GetUnitAuras) ~= "function" then return nil end
+  local list = auras.GetUnitAuras(unit, "HELPFUL")
+  if type(list) ~= "table" then return nil end
+  local has = {}
+  for _, aura in ipairs(list) do
+    local g = not ns.IsSecret(aura.name) and w.set[aura.name]
+    if g then has[g] = true end
   end
-  return false
+  return has
 end
 
--- Whether a unit has any watched buff: by name where the client has that lookup (it builds no list, and this
--- runs on every aura change of every raid member), else one pass over the client's all-at-once list of its
--- buffs, matched against the watched names.
-local function hasWatched(unit, w)
-  local auras = C_UnitAuras
-  if auras and type(auras.GetAuraDataBySpellName) == "function" then return hasByName(unit) end
-  local list = auras and type(auras.GetUnitAuras) == "function" and auras.GetUnitAuras(unit, "HELPFUL")
-  if type(list) ~= "table" then return hasByName(unit) end
-  for _, aura in ipairs(list) do
-    if not ns.IsSecret(aura.name) and w.set[aura.name] then return true end
+-- Whether a unit has one of a group's names: from the list when there is one, else one by-name lookup per name.
+local function hasGroup(unit, g, listed)
+  if listed then return listed[g] == true end
+  for _, name in ipairs(g.names) do
+    if hasBuff(unit, name) then return true end
   end
   return false
 end
@@ -269,14 +308,19 @@ local function outOfSight(unit)
   return not ns.IsSecret(seen) and seen == false
 end
 
--- The first watched buff you know, if the unit has none of the watched buffs; else nil.
+-- The first watched buff you can give that the unit has none of (a buff's ranks, single and group versions, and a
+-- paladin's blessings count as one: any of them will do), by the name you know; else nil.
 -- While the client hides auras, or can't see the unit, a lookup can't see a buff, so an absent
 -- buff proves nothing: unknown shows no marker rather than a false alarm.
 function RH.MissingBuff(unit)
   if ns.AurasSecret() or outOfSight(unit) then return nil end
   local w = watched()
-  if not w.give or hasWatched(unit, w) then return nil end
-  return w.give
+  if not w.give then return nil end
+  local listed = listedGroups(unit, w)
+  for _, g in ipairs(w.groups) do
+    if g.give and not hasGroup(unit, g, listed) then return g.give end
+  end
+  return nil
 end
 
 -- Parts ------------------------------------------------------------------------------------
