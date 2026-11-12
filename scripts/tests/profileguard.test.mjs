@@ -549,3 +549,21 @@ it("H44-12-R2: a pick that applies at once also answers the loss at logout", () 
   const after = lost.savedVariables();
   expect([after.char.guard.stamp, after.account.guard.chars["Tester-ForeverTest"].profile], "the live pick answered the loss").toEqual([9000, "Raid"]);
 });
+
+// What is staged, and whether the reload is offered.
+const stagedOffer = (addon) => addon.eval("return { ns.PendingProfileName() or false, Vanguard_Reload:IsShown() }");
+it("H46-40-R2 using the restored profile, then taking the switch back, takes its reload offer back", () => {
+  const bravo = sharedRestore({ name: "Tester", accent: 0.9 }, { name: "Bravo", accent: 0.1, lua: 'VanguardCharDB.profile = "Default"' }, false);
+  bravo.eval("ns.SettingsGuard.UseRestored()");
+  expect(stagedOffer(bravo), "Main staged and offered").toEqual(["Main", true]);
+  bravo.slash("profile Default");
+  expect(stagedOffer(bravo), "nothing staged, no offer").toEqual([false, false]);
+});
+it("H46-40-R2 a blank character file's profile, staged again, takes its reload offer back with the switch", () => {
+  const first = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Alt = {}\n" });
+  first.slash("profile Alt");
+  const lost = relog(relog(first), { char: "nil" });
+  expect(stagedOffer(lost), "Alt staged and offered").toEqual(["Alt", true]);
+  lost.slash("profile Default");
+  expect(stagedOffer(lost), "nothing staged, no offer").toEqual([false, false]);
+});

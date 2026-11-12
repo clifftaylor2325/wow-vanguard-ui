@@ -442,29 +442,15 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
--- The reload offer the last staged switch made, so a pick that takes the switch back can withdraw it.
-local stagedOffer
-
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
--- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
--- (ns.WarnSpecWins has said so).
+-- applies it offered (naming what differs, when that alone waits; ns.OfferProfileReload takes it back with the
+-- switch). No offer when the spec's own profile loads instead (ns.WarnSpecWins has said so).
 local function switchTo(name)
   if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
   if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
-  stagedOffer = wait and why .. " " .. wait or why
-  ns.OfferReload(stagedOffer)
+  ns.OfferProfileReload(name, wait and why .. " " .. wait or why)
 end
-
--- A pick that takes the staged switch back (this command, the Profiles page's Use, the header picker) takes its
--- reload offer back too. The listeners run before switchTo keeps a fresh offer, so a new stage is never withdrawn.
-ns.OnProfileStaged(function()
-  if stagedOffer and not ns.PendingProfileName() then
-    ns.WithdrawReload(stagedOffer)
-    stagedOffer = nil
-  end
-end)
 
 -- The existing profile a typed name means: its exact name, else the first (in name order) that differs
 -- only by case; nil when none does.
@@ -563,6 +549,13 @@ local function importProgress(percent)
   ns.TextProgress(ns.Format(L["Importing… {percent}%"], { percent = percent }))
 end
 
+-- The reload an import needs: one that staged a profile is offered as that stage's (taken back with the switch);
+-- a partial import's is owed whatever is staged.
+local function offerImportReload(done, detail)
+  if detail.profile then return ns.OfferProfileReload(detail.profile, done) end
+  ns.OfferReload(done)
+end
+
 -- The end of /vg import: why it failed (the box stays, to try again), or the notes (fonts and
 -- textures this client lacks, the backup), the UI scale question for a whole profile that
 -- carries one, then the reload (when nothing needs one, what happened is said in chat at once).
@@ -574,7 +567,7 @@ local function imported(done, detail)
   ns.HideText()
   printLines(detail.notes)
   if not detail.reload then chat(done) end
-  ns.OfferDisplay(detail.display, function() if detail.reload then ns.OfferReload(done) end end)
+  ns.OfferDisplay(detail.display, function() if detail.reload then offerImportReload(done, detail) end end)
 end
 
 -- /vg import: a box to paste into. A large string is read a frame's work at a time, with

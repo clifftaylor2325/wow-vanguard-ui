@@ -251,6 +251,7 @@ end
 -- is the profile that loads (a spec's own profile wins over it, as ns.WarnSpecWins has said), as importedText does.
 local function matchedText(name, result)
   result.reload = ns.ProfileAfterReload() == name
+  result.profile = result.reload and name or nil
   if result.reload then return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name }) end
   return ns.Format(L["This string matches profile {profile}."], { profile = name })
 end
@@ -288,6 +289,7 @@ end
 -- loads (a spec's own profile wins over it, as ns.WarnSpecWins has said).
 local function importedText(name, result)
   result.reload = ns.ProfileAfterReload() == name
+  result.profile = result.reload and name or nil
   if result.reload then return ns.Format(L["Imported as profile {profile}; this character will use it after a reload."], { profile = name }) end
   return ns.Format(L["Created profile {profile}."], { profile = name })
 end
@@ -347,7 +349,8 @@ end
 -- and the profile the import lands in is backed up (importTarget, ns.BackupProfile), unless a whole string matches a
 -- profile this account has (it writes nothing). A whole profile becomes a new profile this character switches to (or the one it matches); a
 -- partial string merges into the profile used after the reload. Returns what happened and the result
--- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
+-- { display (a whole profile's UI scale block, or nil), reload, profile (the one staged, when the reload applies it), notes,
+-- backup }, or nil and why not.
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
@@ -551,6 +554,35 @@ end
 ---@return string
 function ns.LoadingProfileName()
   return ns.ProfileAfterReload() or ns.ProfileName()
+end
+
+do
+  -- The reload offer the last staged profile made ({ name, why }), so a stage that no longer loads it takes it back.
+  local profileOffer
+
+  -- Offers the reload that applies a profile just staged (a typed switch, a whole import, the settings-loss guard),
+  -- when it is the one that loads (a spec's own profile wins over it). The offer an earlier stage made is taken back
+  -- first, so the dialog never keeps a reason for a profile that no longer loads. Returns true when offered.
+  ---@param name string
+  ---@param why string
+  ---@return boolean offered
+  function ns.OfferProfileReload(name, why)
+    if ns.ProfileAfterReload() ~= name then return false end
+    if profileOffer then ns.WithdrawReload(profileOffer.why) end
+    profileOffer = { name = name, why = why }
+    ns.OfferReload(why)
+    return true
+  end
+
+  -- A pick that takes the staged switch back, or stages another, takes the offer back (the listeners run before a new
+  -- stage offers). A new, deleted or backed-up profile and a spec map change also tell the listeners: the offer
+  -- stays while its profile still loads.
+  ns.OnProfileStaged(function()
+    if profileOffer and ns.ProfileAfterReload() ~= profileOffer.name then
+      ns.WithdrawReload(profileOffer.why)
+      profileOffer = nil
+    end
+  end)
 end
 
 -- Offers the reload when the spec's profile just set (/vg spec, or the Profiles page's button) is not the one in use.
