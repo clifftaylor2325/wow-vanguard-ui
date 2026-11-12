@@ -353,6 +353,18 @@ it("H46-4-50 a staged hand pick survives a swap to a spec with its own profile a
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return { VanguardCharDB.pendingProfile, ns.LoadingProfileName() }"), "back in spec 1 the hand pick is staged again").toEqual(["Mine", "Mine"]);
 });
+it("H46-4-R1 /vg profile copy writes into the profile its question named, though a spec change moved the loading profile", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Src = { theme = { accent = { 0, 0, 1 } } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.slash("profile copy Src");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks about Default").toContain("profile Default with profile Src's");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.theme.accent[3], VanguardDB.profiles.Heal.theme.accent[3] }"), "Default took Src's, Heal is untouched").toEqual([1, 0]);
+});
 // A character on Default whose spec 2 uses Heal (a module switch that differs when `waits`), logged in as spec 1.
 function offerCharacter(waits) {
   const heal = waits ? "{ modules = { Bags = false } }" : "{}";
