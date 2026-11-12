@@ -729,6 +729,18 @@ local function playerName()
   return type(name) == "string" and name or L["you"]
 end
 
+-- What a frame's own plain Left and Right click do where the list binds neither: Vanguard's tiles set *type1 target and
+-- *type2 togglemenu (Modules/RaidFrames.lua RF.INIT), which the game falls back to with no type1 or type2
+-- (/home/user/blizz/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifiedAttribute).
+local FRAME_CLICKS = { BUTTON1 = "target", BUTTON2 = "menu" }
+
+-- The binding a key or click would run on a frame: the list's, else the frame's own plain click, else nil.
+local function tileBinding(key)
+  local b = CC.Binding(key)
+  if b or not FRAME_CLICKS[key] then return b end
+  return { key = key, action = FRAME_CLICKS[key] }
+end
+
 -- The note after a line whose binding Vanguard knows does nothing (as /vg binds says it), else "".
 local function wontRunNote(b)
   local why = CC.WontRun(b)
@@ -743,7 +755,7 @@ end
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
 -- nothing, or that nothing is bound.
 local function describe(key)
-  local b = CC.Binding(key)
+  local b = tileBinding(key)
   if not b then return nothingBound(CC.KeyName(key)) end
   local line = ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
   return line .. wontRunNote(b)

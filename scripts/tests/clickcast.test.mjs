@@ -582,6 +582,27 @@ it("H45-19-R2 the test tile says a binding the game won't run does nothing, as /
   expect(note).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
 });
 
+it("H45-19-R3 with nothing bound on plain Left or Right click, the test tile says what the frame does by itself", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const plain = [tileSays(addon, "LeftButton"), tileSays(addon, "RightButton"), tileSays(addon, "MiddleButton")];
+  addon.keys({ shift: true });
+  const shifted = tileSays(addon, "LeftButton");
+  addon.keys({ shift: false });
+  expect({ plain, shifted }).toEqual({
+    plain: ["Left click -> Target on Tester", "Right click -> Unit menu on Tester", "Middle click -> nothing bound"],
+    shifted: "Shift + Left click -> nothing bound",
+  });
+});
+
+it("H45-19-R3 the frame's own click carries the does-nothing note where the game's click bindings leave it out", () => {
+  const addon = priest(GAME_CLICKS_LUA + "__gameClicks = { { type = 3, actionID = 2, button = \"RightButton\", modifiers = 0 } }");
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(tileSays(addon, "LeftButton")).toContain("Left click -> Target on Tester  ");
+  expect(tileSays(addon, "LeftButton")).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
+  expect(tileSays(addon, "RightButton")).toBe("Right click -> Unit menu on Tester");
+});
+
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
 const encoded = (addon, list) => addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = ${list} })`);
 
