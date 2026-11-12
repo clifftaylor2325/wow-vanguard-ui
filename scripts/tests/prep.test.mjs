@@ -158,6 +158,17 @@ it("prep: nothing is checked in combat, and /vg prep waits for the fight to end"
   expect(rows(addon).map((r) => r[0]), "a mage at 60 is short of runes and powder").toEqual(["Rune of Teleportation", "Rune of Portals", "Arcane Powder"]);
 });
 
+it("prep: a class reagent that is also on Keep stocked is one row and one name in the low-supply warning (H45-33-201)", () => {
+  const addon = character("MAGE", 60, { extra: `__wfgWorld.items[17020] = { name = "TEST-ONLY Arcane Powder", classID = 15, subClassID = 0 }` });
+  addon.eval("__carry(17020, 5)");
+  addon.slash("stock 17020 30");
+  enter(addon);
+  addon.slash("prep");
+  const powder = rows(addon).filter((r) => /Arcane Powder/.test(r[0]));
+  expect(powder, "one row, with the larger want (30 against the class's)").toEqual([["TEST-ONLY Arcane Powder", "5 / 30"]]);
+  expect(addon.eval("local low, order = ns.GetModule('InstancePrep').LowSupplies() local n = 0 for _, k in ipairs(order) do if k == 17020 then n = n + 1 end end return n"), "once in the warning's order").toBe(1);
+});
+
 it("prep: once per visit at the door, gone after Hide after or the close button", () => {
   const addon = character("MAGE", 60);
   enter(addon);
@@ -422,4 +433,12 @@ it("prep buffs: /vg prep buffs prints its count line and 'no check' in the clien
   addon.slash("prep buffs");
   expect(chatHas(addon, /Deine 1 Stärkungszauber und die Instanzvorbereitung, für die jeder zählt:/), "the count line").toBe(true);
   expect(chatHas(addon, /Haste of the Camp -> keine Prüfung/), "a buff no check counts it for").toBe(true);
+});
+
+it("prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)", () => {
+  const addon = loggedIn(PREP_ENV + CLICK_LUA + BUFF_ENV, { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true C_Spell.GetSpellName = nil GetSpellInfo = nil");
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /keine, die dieser Client kennt, also keine Zeile/), "the German line").toBe(true);
+  expect(chatHas(addon, /none this client knows, so no row/), "not the English").toBe(false);
 });

@@ -70,7 +70,7 @@ end
 local function craftRows()
   return {
     { "header", L["Craft queue"] },
-    check(L["Craft queue and recipe ranking"], setting("CraftQueue", "on")),
+    check(L["Craft queue and recipe ranking"], liveMethod("CraftQueue", "on", "Show")),
     { "slider", L["Seconds per craft"], { min = 1, max = 60, step = 1 }, setting("CraftQueue", "secs") },
     { "button", L["List the craft queue in chat"], function() ns.GetModule("CraftQueue").Command("") end },
   }

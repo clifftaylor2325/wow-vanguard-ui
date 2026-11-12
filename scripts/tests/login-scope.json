@@ -333,6 +333,7 @@
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)",
+      "prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)",
       "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
@@ -344,6 +345,7 @@
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
       "prep: a /reload inside the dungeon does not bring the door card back",
+      "prep: a class reagent that is also on Keep stocked is one row and one name in the low-supply warning (H45-33-201)",
       "prep: a client without the bag, item or instance calls checks what it can",
       "prep: a hidden count skips its row without an error",
       "prep: a ready check shows the card, packed or not, unless switched off",

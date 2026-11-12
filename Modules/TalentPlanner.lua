@@ -594,10 +594,11 @@ end
 
 -- Painting ----------------------------------------------------------------------------------------
 
--- Reads the tree and plan again and paints the marks and the bar; nothing while the window is away.
+-- Reads the tree and plan again and paints the marks and the bar; while the talents window is away only the order window.
 function TP.Refresh()
   local frame = TP.Frame()
-  if not TP.settings or not frame or not frame:IsVisible() then return end
+  if not TP.settings then return end
+  if not frame or not frame:IsVisible() then return TP.RefreshOrder() end
   TP.tree = TP.ReadTree()
   if not TP.tree then return end
   local plan = TP.Reconcile(TP.tree, TP.Plan())
@@ -785,9 +786,17 @@ end
 -- width (each widens to its label).
 TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 444, 84
 
+-- The tree as the order window shows it: the one the last repaint read while the talents window shows, else read now
+-- (the cached one is of a window that is away, and its ranks may be old).
+local function orderTree()
+  local frame = TP.Frame()
+  if frame and frame:IsVisible() and TP.tree then return TP.tree end
+  return TP.ReadTree()
+end
+
 -- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
 function TP.MoveInOrder(nodeID, step)
-  local tree, plan = TP.tree or TP.ReadTree(), TP.Plan()
+  local tree, plan = orderTree(), TP.Plan()
   if not tree then return end
   local ids = TP.OrderedIDs(tree, plan)
   for i, id in ipairs(ids) do
@@ -839,7 +848,7 @@ end
 function TP.RefreshOrder()
   local f = TP.orderFrame
   if not (f and f:IsShown()) then return end
-  local tree, plan = TP.tree or TP.ReadTree(), TP.Plan()
+  local tree, plan = orderTree(), TP.Plan()
   local ids = tree and TP.OrderedIDs(tree, plan) or {}
   f.rows.Reset()
   for i, id in ipairs(ids) do paintOrderRow(f.rows.Next(), tree, plan, id, i) end
@@ -971,19 +980,21 @@ function TP.ImportDialog()
   end)
 end
 
--- Empties this spec group's plan (the answer Yes to TP.AskClear).
-function TP.Clear()
-  local plan = TP.Plan()
+-- Empties the plan of a spec group (the current one when none is named; the answer Yes to TP.AskClear).
+function TP.Clear(group)
+  local plan = TP.Plan(group)
   plan.ranks, plan.order = {}, nil
   TP.Refresh()
   ns.Chat(L["Talent plan cleared."])
 end
 
 -- /vg talents clear and Clear this spec's plan: asks first (a "danger" question: it can't be undone), then empties it.
+-- The group is taken when the question is asked: a switch of talent group before the click must not clear the other group's plan.
 function TP.AskClear()
-  local points = countRanks(TP.Plan().ranks)
+  local group = TP.SpecGroup()
+  local points = countRanks(TP.Plan(group).ranks)
   local question = TP.Plural(points, L["Clear this spec's talent plan (1 point planned)? This can't be undone."], L["Clear this spec's talent plan ({count} points planned)? This can't be undone."])
-  ns.Ask(question, L["Clear"], TP.Clear, nil, "danger")
+  ns.Ask(question, L["Clear"], function() TP.Clear(group) end, nil, "danger")
 end
 
 -- Commands and options ------------------------------------------------------------------------------

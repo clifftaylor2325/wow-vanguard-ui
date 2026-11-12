@@ -128,6 +128,18 @@ it("upgrades: a guide string parses, and a long hostile paste is refused quickly
   expect(Date.now() - start, "and it takes no time").toBeLessThan(1000);
 });
 
+it("upgrades: switching Gear upgrades off closes the wizard, and an import box left open says it is off (H45-33-101)", () => {
+  const addon = loggedIn(GEAR_ENV);
+  addon.slash("weights wizard");
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  expect(addon.eval("return Vanguard_WeightsWizard:IsShown()"), "the wizard goes with the module").toBe(false);
+  addon.eval("ns.SetModuleEnabled('Upgrades', true)");
+  addon.slash("weights import");
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  addon.eval(`Vanguard_TextEdit:SetText('( Tool: v1: "TEST-ONLY": Strength=1 )') Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect([addon.eval("return #ns.errors"), addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Gear upgrades is switched off/)], "Import says it is off, no error, the box closes").toEqual([0, false, true]);
+});
+
 it("upgrades: the weights wizard has a slider for every stat, and saves only on Save", () => {
   const addon = loggedIn(GEAR_ENV);
   // Runs Lua in the client.
@@ -355,5 +367,22 @@ it("A1-1: on Retail a bow worn alone gives an off-hand item no verdict; a one-ha
     __worn[16] = __link(26)`, { client: RETAIL_CLIENT });
   expect(retail.eval("return __line(23)"), "a held item beside a bow: no line").toBe(false);
   retail.eval("__worn[16] = __link(27)");
-  expect(retail.eval("return __line(23)"), "a wand shares the gun's equip location and takes one hand: the off hand is open").toBe("Upgrade: fills an empty slot");
+  expect(retail.eval("return __line(23)"), "a gun-less INVTYPE_RANGEDRIGHT the client gives no subclass for: still two-handed, no line").toBe(false);
+});
+
+// H45-33-102: Retail's INVTYPE_RANGEDRIGHT is shared by guns, crossbows and wands; the weapon subclass (the 7th answer of
+// GetItemInfoInstant, ItemDocumentation.lua; Enum.ItemWeaponSubclass in ItemConstantsDocumentation.lua) tells a wand (19, one hand).
+it("H45-33-102: on Retail a wand is one-handed and a gun is two-handed, by the item's weapon subclass", () => {
+  const retail = loggedIn(TWO_HANDER_ENV + `__gear[27] = { "INVTYPE_RANGEDRIGHT", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 5 } } __gear[28] = { "INVTYPE_RANGEDRIGHT", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 6 } }
+    __sub = { [27] = 19, [28] = 3 }
+    local base = C_Item.GetItemInfoInstant
+    C_Item.GetItemInfoInstant = function(link) local id, a, b, loc, icon = base(link) local n = tonumber(tostring(link):match("item:(%d+)")) return id, a, b, loc, icon, 2, __sub[n] end`, { client: RETAIL_CLIENT });
+  retail.eval("__worn[16], __worn[17] = __link(27), nil");
+  expect(retail.eval("return __line(23)"), "a wand worn alone leaves the off hand open").toBe("Upgrade: fills an empty slot");
+  retail.eval("__worn[16] = __link(28)");
+  expect(retail.eval("return __line(23)"), "a gun worn alone does not").toBe(false);
+  retail.eval("__worn[16], __worn[17] = __link(8), __link(9)");
+  // The percent an item is over what is worn, rounded.
+  const pct = (n) => retail.eval(`local p = ns.GetModule('Upgrades').Compare(__link(${n})) return p and math.floor(p + 0.5) or false`);
+  expect([pct(27), pct(28)], "a wand (5 dps) against the main hand alone (3 dps); a gun (6 dps) against both hands (3 dps and a 2 str shield); Retail weighs dps at 0.5").toEqual([67, -14]);
 });

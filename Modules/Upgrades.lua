@@ -83,13 +83,6 @@ UP.ONE_HAND = { INVTYPE_WEAPON = true }
 -- The equip locations that go in the off hand only: a weapon made for it, a shield, a held item.
 UP.OFF_HAND_ONLY = { INVTYPE_WEAPONOFFHAND = true, INVTYPE_SHIELD = true, INVTYPE_HOLDABLE = true }
 
--- The equip locations of a main-hand item that leaves no room for an off hand. Retail's INVTYPE_RANGEDRIGHT is
--- left out on purpose: a wand shares it with guns and crossbows and takes one hand.
-UP.FILLS_BOTH_HANDS = ns.ClientData({
-  forever = { INVTYPE_2HWEAPON = true },
-  retail = { INVTYPE_2HWEAPON = true, INVTYPE_RANGED = true },
-})
-
 -- Weights ---------------------------------------------------------------------------------
 
 -- The role weights are picked for: the setting, else (auto) your group role, else (on Retail) your specialization's
@@ -289,18 +282,28 @@ local function offHandWeapon()
   return loc == "INVTYPE_WEAPON" or loc == "INVTYPE_WEAPONOFFHAND"
 end
 
+-- Whether the item of equip location loc takes both hands. Retail's INVTYPE_RANGEDRIGHT is shared by guns, crossbows
+-- and wands: a wand (told by its weapon subclass, ItemDocumentation.lua's GetItemInfoInstant) takes one hand, and an
+-- item whose subclass the client does not give counts as a two-hander.
+local function takesBothHands(link, loc)
+  if not UP.TWO_HANDED[loc] then return false end
+  local wand = (Enum.ItemWeaponSubclass or {}).Wand
+  if loc ~= "INVTYPE_RANGEDRIGHT" or not wand then return true end
+  return ns.PlainNumber(select(7, C_Item.GetItemInfoInstant(link))) ~= wand
+end
+
 -- Whether a two-hander is worn with nothing in the off hand: the empty slot is not one an off-hand item can fill.
 local function twoHanderAlone()
   if GetInventoryItemLink("player", UP.OFF_HAND) then return false end
   local link = GetInventoryItemLink("player", UP.MAIN_HAND)
-  return link ~= nil and UP.FILLS_BOTH_HANDS[select(4, C_Item.GetItemInfoInstant(link))] == true
+  return link ~= nil and takesBothHands(link, select(4, C_Item.GetItemInfoInstant(link)))
 end
 
 -- What an item of equip location loc is compared with: both hands for a two-hander, the weaker hand for a
 -- one-hander while a weapon is worn in each, else the weakest of its slots. An off-hand item beside a two-hander
 -- worn alone has nothing to be compared with (nil, and not an empty slot): it would need a main hand to go with it.
-local function wornScore(loc, slots)
-  if UP.TWO_HANDED[loc] then return bothHands() end
+local function wornScore(link, loc, slots)
+  if takesBothHands(link, loc) then return bothHands() end
   if UP.ONE_HAND[loc] and offHandWeapon() then return weakest({ UP.MAIN_HAND, UP.OFF_HAND }) end
   if UP.OFF_HAND_ONLY[loc] and twoHanderAlone() then return nil, false, nil end
   return weakest(slots)
@@ -359,8 +362,8 @@ end
 
 -- The rating in a stat of what an item of equip location loc would replace: both hands for a two-hander, else the
 -- worn item.
-local function wornRating(short, loc, worn)
-  if not UP.TWO_HANDED[loc] then return ratingIn(short, worn) end
+local function wornRating(short, c)
+  if not takesBothHands(c.link, c.loc) then return ratingIn(short, c.worn) end
   return ratingIn(short, GetInventoryItemLink("player", UP.MAIN_HAND)) + ratingIn(short, GetInventoryItemLink("player", UP.OFF_HAND))
 end
 
@@ -371,7 +374,7 @@ local function capOne(c, short, old, new)
   local cap, w, per = UP.Cap(c.kind, short), c.weights[short], UP.PerUnit(short, c.kind)
   local now = cap > 0 and w and per and UP.NOW[short](c.kind)
   if not now then return old, new end
-  local worn, item, full = wornRating(short, c.loc, c.worn) / per, ratingIn(short, c.link) / per, w * per
+  local worn, item, full = wornRating(short, c) / per, ratingIn(short, c.link) / per, w * per
   local room = math.max(0, cap - (now - worn))
   return old - full * math.max(0, worn - room), new - full * math.max(0, item - room)
 end
@@ -387,7 +390,7 @@ end
 -- The worn score, the new one (both nil while either side's stats haven't loaded; stats past their caps taken off), whether
 -- the slot is empty, and the worn link.
 local function scores(link, loc, slots)
-  local old, empty, worn = wornScore(loc, slots)
+  local old, empty, worn = wornScore(link, loc, slots)
   if empty then return nil, nil, true end
   local new = score(link)
   if not (old and new) then return nil, nil, false, worn end
@@ -629,6 +632,7 @@ end
 function UP.ImportDialog()
   if not UP.settings then return UP.Wizard.SayNotStarted() end
   ns.AskText(L["Paste a Vanguard or guide site weights string, then Import"], function(text)
+    if not UP.settings then ns.HideText() return UP.Wizard.SayNotStarted() end
     local done, detail, skipped = UP.Import(text)
     if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
     ns.HideText()
@@ -712,5 +716,6 @@ end
 -- (no settings: IsUpgrade is false, the wizard and the import say it is not started), as after a login with it off.
 function UP.Disable()
   for _, arrow in pairs(vgUpgrade) do arrow:Hide() end
+  UP.Wizard.Close()
   UP.settings = nil
 end

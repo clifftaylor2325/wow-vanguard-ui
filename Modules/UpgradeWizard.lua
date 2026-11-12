@@ -207,6 +207,11 @@ function WZ.SayNotStarted()
   ns.Chat(L["Gear upgrades is switched off: turn it on under Modules first."])
 end
 
+-- Hides the wizard when it was built (the module went off: its unsaved draft belongs to the profile that ran).
+function WZ.Close()
+  if frame then frame:Hide() end
+end
+
 -- Opens the wizard with the weights this profile uses now.
 function WZ.Open()
   if not UP.settings then return WZ.SayNotStarted() end

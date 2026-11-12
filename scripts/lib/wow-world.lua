@@ -249,6 +249,8 @@ Enum = {
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
   -- NumericRuleFormatterSharedDocumentation.lua (both clients).
   NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 },
+  -- A subset of Enum.ItemWeaponSubclass (ItemConstantsDocumentation.lua, both clients): Guns 3, Crossbow 18, Wand 19.
+  ItemWeaponSubclass = { Guns = 3, Crossbow = 18, Wand = 19 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
   SpellBookSpellBank = { Player = 0, Pet = 1 },
   SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },

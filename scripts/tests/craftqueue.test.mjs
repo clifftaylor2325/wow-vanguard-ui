@@ -76,10 +76,11 @@ it("queues the recipe on display, lists it with what's short, and takes crafts o
   expect(queue(addon), "in combat: nothing").toEqual([[100, 3], [102, 1]]);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 100);
   expect(queue(addon)[0], "your own craft comes off").toEqual([100, 2]);
-  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 2 left in the queue\./), "chat says so").toBe(true);
+  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 3 crafts left in the queue\./), "chat counts crafts (2 + 1), not recipes").toBe(true);
   addon.slash("craft done");
   addon.slash("craft done");
   expect(queue(addon), "done takes one a time, the entry goes at its last").toEqual([[102, 1]]);
+  expect(chatHas(addon, /Crafted TEST-ONLY Linen Bag\. 1 craft left in the queue\./), "one is said in the singular").toBe(true);
   addon.slash("craft clear");
   expect([Object.keys(queue(addon)).length, chatHas(addon, /Craft queue emptied/)], "clear").toEqual([0, true]);
   addon.slash("craft done");
@@ -243,6 +244,46 @@ it("the options have the switch and the pace", () => {
   addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Craft queue")');
   expect(addon.find("^Craft queue and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
   expect(addon.find("^Seconds per craft").text, "the pace").toBe("Seconds per craft");
+});
+
+it("the options switch hides and shows the panel at once, as the Mail tools switch does (H45-33-3)", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then page = p end end
+    for _, row in ipairs(page.rows()) do if row[2] == "Craft queue and recipe ranking" then __set = row[4] end end`);
+  addon.eval("__set(false)");
+  expect(addon.eval(`return { ${CQ}.frame:IsShown(), ${CQ}.Active() }`), "off: the panel goes with the switch").toEqual([false, false]);
+  addon.eval("__set(true)");
+  expect(addon.eval(`return ${CQ}.frame:IsShown()`), "on: it is back with the profession window open").toBe(true);
+});
+
+// ItemUtil.lua's GetCraftingReagentCount counts the reagent bank and the warband bank on Retail
+// (live Blizzard_FrameXMLUtil/ItemUtil.lua); the harness models it with world.warbandCounts.
+it("on WoW Retail, a reagent held only in the warband bank is not short; on Forever the bags and bank count (H45-33-4)", () => {
+  const retail = crafter("", ON, RETAIL_CLIENT);
+  retail.world.openProfession(100);
+  retail.eval("__wfgWorld.warbandCounts[2589] = 3 __wfgWorld.warbandCounts[2320] = 1 C_Item.GetItemCount = function() return 0 end");
+  retail.slash("craft add");
+  expect(say(retail, "craft", /You have every reagent\./), "Retail: the warband bank's reagents count").toBe(true);
+  const forever = crafter("", ON);
+  forever.world.openProfession(100);
+  forever.eval("C_Item.GetItemCount = function(id, bank) return bank and 99 or 0 end __wfgWorld.warbandCounts = {}");
+  forever.slash("craft add");
+  expect(say(forever, "craft", /You have every reagent\./), "Forever: the bank counts").toBe(true);
+});
+
+// live Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua CraftingReagentSlotSchematic.reagents lists
+// one CraftingReagent per quality rank, and Blizzard_FrameXMLUtil/ProfessionsUtil.lua AccumulateReagentsInPossession sums them.
+it("on WoW Retail, rank 2 of a tiered reagent covers a craft that lists rank 1 first (H45-31-R1)", () => {
+  const addon = crafter(`
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Ore rank 1" } __wfgWorld.items[9002] = { name = "TEST-ONLY Ore rank 2" }
+    __wfgWorld.recipes[103] = { recipeID = 103, name = "TEST-ONLY Bar", outputItemID = 4238, quantityMin = 1, quantityMax = 1,
+      reagentSlotSchematics = { { reagents = { { itemID = 9001 }, { itemID = 9002 } }, quantityRequired = 3, reagentType = 1 } } }
+    C_Item.GetItemCount = function(id) return id == 9002 and 3 or 0 end`, ON, RETAIL_CLIENT);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar")`);
+  expect(say(addon, "craft", /You have every reagent\./), "three of rank 2 cover three ore").toBe(true);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar") C_Item.GetItemCount = function(id) return id == 9001 and 2 or id == 9002 and 1 or 0 end`);
+  expect(say(addon, "craft", /Short of: TEST-ONLY Ore rank 1 x3\./), "ranks add up: 3 held of 6 needed").toBe(true);
 });
 
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {

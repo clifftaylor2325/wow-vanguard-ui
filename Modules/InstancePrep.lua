@@ -188,12 +188,24 @@ local function durabilityRow()
   if p and p < PR.settings.durability then return { label = L["Durability"], value = p .. "%" } end
 end
 
+-- Adds a Keep-stocked row to the rows, or, when an item is already there (a class reagent kept stocked), lets the one
+-- row stand with the larger want, the rule PR.BuyRows states: the card and the warning name the item once.
+local function addStockRow(rows, row)
+  for _, r in ipairs(rows) do
+    if r.id and r.id == row.id then
+      if row.need > r.need then r.label, r.value, r.need = row.label, row.value, row.need end
+      return
+    end
+  end
+  rows[#rows + 1] = row
+end
+
 -- Everything short, in the card's order: class rows, food, bandages, potions, durability, stock.
 function PR.Rows()
   local rows, counts, want = PR.ReagentRows(), PR.Consumables() or {}, PR.settings.want
   for _, c in ipairs(PR.CONSUMABLES) do rows[#rows + 1] = short(c[2], counts[c[1]], want[c[1]]) end
   rows[#rows + 1] = durabilityRow()
-  for _, r in ipairs(PR.StockRows()) do rows[#rows + 1] = r end
+  for _, r in ipairs(PR.StockRows()) do addStockRow(rows, r) end
   return rows
 end
 

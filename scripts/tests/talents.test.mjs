@@ -353,6 +353,36 @@ it("talent planner: /vg talents clear and the Talents page's Clear button ask fi
   expect([planned(), chatHas(addon, /Talent plan cleared\./)], "Clear empties it").toEqual([0, true]);
 });
 
+it("talent planner: Clear answered after a spec switch empties the plan it was asked about, not the new spec's (H45-33-1)", () => {
+  const addon = open();
+  addon.eval(`__group = 1 C_SpecializationInfo.GetActiveSpecGroup = function() return __group end
+    VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" }, { ranks = { [102] = 2 }, hash = "1-2-3" } }`);
+  addon.slash("talents clear");
+  addon.eval("__group = 2");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local p = VanguardCharDB.talentPlans return { next(p[1].ranks) == nil, p[2].ranks[102] }"), "group 1 is emptied, group 2 kept").toEqual([true, 2]);
+});
+
+it("talent planner: the order window repaints after Clear and a spec switch while the talents window is away (H45-33-R1)", () => {
+  const addon = loggedIn(TRAITS_ENV + WINDOW_ENV);
+  addon.eval(`__group = 1 C_SpecializationInfo.GetActiveSpecGroup = function() return __group end
+    C_SpecializationInfo.GetCombatConfigIDForSpecGroup = function() return 501 end
+    VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" }, { ranks = { [102] = 2 }, hash = "1-2-3" } }`);
+  addon.slash("talents order");
+  // The order window's shown rows as text.
+  const rows = () => addon.eval(`local out = {} local f = ${TP}.orderFrame for i = 1, f.rows.used do if f.rows[i]:IsShown() then out[#out + 1] = f.rows[i].text:GetText() end end return out`);
+  expect(addon.eval(`return ${TP}.Frame():IsVisible()`), "the talents window is away").toBe(false);
+  expect(rows().length, "one row for the plan").toBe(1);
+  addon.eval("__group = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  addon.update(0.01);
+  expect(rows(), "the other group's plan shows after a switch").toEqual(["1. Wand Specialization (2)"]);
+  addon.eval("__group = 1");
+  addon.slash("talents clear");
+  addon.click("Vanguard_Question.confirm");
+  expect([Object.values(rows()).length, addon.eval(`return ${TP}.orderFrame.empty:IsShown()`)], "cleared: no rows and the note").toEqual([0, true]);
+});
+
 it("talent planner: a plan made on another tree keeps the talents still there and says what was dropped", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 9, [104] = 1, [999] = 2 }, hash = "old" } } ${TP}.Refresh()`);
