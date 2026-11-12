@@ -100,6 +100,20 @@ it("i18n: no locale gives another text the translation of a caption the options 
   }
 });
 
+it("i18n: no locale gives a renamed options row's new caption and its old caption one translation (ns.English would pick either and the tip would repeat the caption)", () => {
+  const names = fs.readFileSync(path.join(root, "Core", "OptionsNames.lua"), "utf8");
+  const table = names.slice(names.indexOf("O.RENAMED = {"), names.indexOf("\n}", names.indexOf("O.RENAMED = {")));
+  const pairs = [...table.matchAll(/\["([^"]+)"\]\s*=\s*L\["([^"]+)"\]/g)].map((m) => ({ fresh: m[1], old: m[2] }));
+  expect(pairs.length, "the renamed rows were found").toBeGreaterThan(10);
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    for (const { fresh, old } of pairs) {
+      const text = entries.get(fresh) ?? entries.get(`${fresh} (reload)`);
+      expect(text === undefined || text !== entries.get(old), `${locale}: "${fresh}" and "${old}" share the translation "${text}"`).toBe(true);
+    }
+  }
+});
+
 it("i18n: the hint after an unknown /vg situation keeps every situation word as typed in every locale (Modules/Situations.lua refuses a translated word)", () => {
   const keys = [
     "Situations: solo, party, raid, pvp, instance or resting.",
