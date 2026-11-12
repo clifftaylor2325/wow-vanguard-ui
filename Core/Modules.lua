@@ -305,7 +305,7 @@ function ns.ModuleAwaitsFight(name)
   local def = modules[name]
   if not (life.queued and def and def.live) then return false end
   if running(def) then return life.restarts[name] == true or not keeps(name) end
-  return startable(def)
+  return not def.failed and startable(def)
 end
 
 -- Whether a module waits for a reload: a reload-only one whose wanted state changed since login or whose Disable
