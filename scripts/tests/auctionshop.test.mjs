@@ -936,4 +936,6 @@ it("H45-31-R2 the shop's listings view and the Up now card name the same time le
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   const upNow = addon.eval(`return ${HELPER}.TimeLeft({ timeLeftSeconds = 2150 })`);
   expect([view(addon)[3][0][2], upNow], "2150 seconds is 35 whole minutes on both").toEqual(["35 min", "35 min"]);
+  const mine = addon.eval(`return { ${HELPER}.TimeLeft({ timeLeftSeconds = 119, containsOwnerItem = true }), ${HELPER}.TimeLeft({ timeLeftSeconds = 119 }), ${HELPER}.TimeLeft({ timeLeftSeconds = 7300, containsOwnerItem = true }) }`);
+  expect(mine, "H45-D-G3A5 your own auction's minutes round up (119 s is 2 min), another's down, hours down").toEqual(["2 min", "1 min", "2 h"]);
 });

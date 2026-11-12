@@ -272,11 +272,18 @@ function AH.Cheapest(commodity, key, suffix)
   return best
 end
 
+-- A listing's seconds left as the card reads them: one of your own rounds its minutes up (119 s is 2 min, as
+-- before), another's down as the shop's view does.
+local function secondsLeft(r, secs)
+  if ns.IsTrue(r.containsOwnerItem) and secs < 3600 then return math.ceil(secs / 60) * 60 end
+  return secs
+end
+
 -- A listing's time left: hours or minutes from its seconds, else its band as the shop's view
 -- names it (AH.BandText: the game's words, TIME_LEFT_SHORT...), else nothing.
 function AH.TimeLeft(r)
   local secs = ns.PlainNumber(r.timeLeftSeconds)
-  if secs then return AH.SecondsText(secs) end
+  if secs then return AH.SecondsText(secondsLeft(r, secs)) end
   return AH.BandText(ns.PlainNumber(r.timeLeft))
 end
 
