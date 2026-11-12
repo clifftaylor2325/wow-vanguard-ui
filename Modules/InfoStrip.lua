@@ -204,8 +204,8 @@ function IS.ResumeSession(_, isLogin, isReload)
   IS.PaintRates()
 end
 
--- Starts the rates counting again from now (a right-click on a rate); the gold tooltip's earned and spent
--- still count from the login.
+-- Starts the rates and the auction total counting again from now (a right-click on a rate); the gold tooltip's
+-- earned and spent still count from the login.
 function IS.RestartSession()
   local old = IS.session or {}
   IS.session = nil
@@ -213,6 +213,7 @@ function IS.RestartSession()
   IS.session.earned, IS.session.spent = old.earned or 0, old.spent or 0
   keepSession()
   IS.PaintRates()
+  IS.Paint("ahgold")
 end
 
 -- Counts the money earned and spent since the last change (for the gold tooltip). A first plain read (the

@@ -661,6 +661,17 @@ it("H45-9-101 the info strip: just after midnight the date changes with the time
   expect([block(addon, "clock").text, block(addon, "date").text], "the new time beside the new date").toEqual(["00:00", "Tue 13 Oct"]);
 });
 
+it("H45-9-102 the info strip: a right-click restart starts the auction total again too", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { ahgold = true } } }" });
+  addon.eval(`__sold = 50000
+    ns.AuctionLedger.SessionSales = function(since) return since and since < ns.AuctionPrices.Now() - 1 and __sold or 0 end`);
+  later(addon, 120);
+  addon.eval("ns.GetModule('InfoStrip').Paint('ahgold')");
+  expect(block(addon, "ahgold").shown, "this session's sales show").toBe(true);
+  addon.eval("local IS = ns.GetModule('InfoStrip') IS.Click(IS.hits.goldrate, 'RightButton')");
+  expect(block(addon, "ahgold").shown, "started again from now: no sales yet, so no total").toBe(false);
+});
+
 // A block's tooltip on hover, each line "label|value", and whether it goes with the mouse.
 const blockTip = (addon, key) => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnEnter(hit)
   local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. (l.right and "|" .. l.right or "") end
