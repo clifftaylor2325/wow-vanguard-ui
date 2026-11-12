@@ -633,12 +633,21 @@ local function paneParts(pane)
   GW.SkinBar(pane.StandingBar)
 end
 
+-- A check box label the game just painted: the text colour when it is gold; when it is the game's own colour (a grey),
+-- that colour kept and the label's remembered token dropped, so a theme refresh does not repaint over it. A colour
+-- the client hides is left alone (SetTextColor refuses a secret from addon code).
+local function lightOrForget(fs)
+  if isGold(fs) then return colorText(fs, "text") end
+  if type(fs) ~= "table" or not fs.GetTextColor or not T.ColorToken(fs) then return end
+  local r, g, b = fs:GetTextColor()
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  if r and g and b then T.ColorRGB(fs, r, g, b) end
+end
+
 -- Puts one check box label back in the text colour whenever the game paints it gold (a grey one stays grey). Retail
 -- sets it in the pane's Refresh, which an EventRegistry callback holds by value, so a hook on the pane never runs.
 local function keepLabelLight(label)
-  GW.HookAfter(label, "SetTextColor", function(fs)
-    if isGold(fs) then colorText(fs, "text") end
-  end)
+  GW.HookAfter(label, "SetTextColor", lightOrForget)
 end
 
 -- After the pane's Refresh (each entry picked), its check box labels the game painted gold again go back to the
@@ -650,8 +659,7 @@ local function keepCheckLabels(pane)
   if type(pane.Refresh) ~= "function" then return end
   hooksecurefunc(pane, "Refresh", ns.Guard("hook pane Refresh", function()
     for _, key in ipairs(GW.PANE_CHECKS) do
-      local label = type(pane[key]) == "table" and pane[key].Label
-      if isGold(label) then colorText(label, "text") end
+      if type(pane[key]) == "table" then lightOrForget(pane[key].Label) end
     end
   end))
 end

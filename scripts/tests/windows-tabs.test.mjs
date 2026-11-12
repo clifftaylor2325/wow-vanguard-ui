@@ -988,6 +988,11 @@ it("side panes: a check box label the game paints gold turns light even when the
   expect(addon.eval("return __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label)"), "the label is light again at once").toBe(true);
   addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(0.5, 0.5, 0.5)");
   expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a grey one stays grey").toBe(0.5);
+  // Blizzard_UIPanels_Game/Camelot/ReputationFrame.lua:784-787 paints the label gold or grey on each Refresh.
+  addon.eval("ns.Theme.Refresh()");
+  expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a theme refresh leaves the grey alone").toBe(0.5);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB())");
+  expect(addon.eval("return { __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label), ns.Theme.ColorToken(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label) }"), "gold again: light, and the token is back").toEqual([true, "text"]);
   const bare = loggedIn(SIDE_PANE_ENV + "ReputationFrame.ReputationDetailFrame.WatchFactionCheckbox.Label = nil TokenFrame.DetailFrame.InactiveCheckbox = 5");
   expect(bare.eval("return #ns.errors"), "a check box without a label, or that is not a frame").toBe(0);
 });
