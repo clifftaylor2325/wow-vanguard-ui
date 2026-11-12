@@ -210,11 +210,12 @@ end
 
 -- Commands ------------------------------------------------------------------------------------
 
--- How many lines are saved, in how many windows.
+-- How many lines are saved, in how many windows (an entry that is not a list, from a damaged save, is not counted:
+-- with history off nothing prunes it before logout).
 function CHH.Counts()
   local lines, windows = 0, 0
   for _, list in pairs(CHH.Store()) do
-    lines, windows = lines + #list, windows + 1
+    if type(list) == "table" then lines, windows = lines + #list, windows + 1 end
   end
   return lines, windows
 end

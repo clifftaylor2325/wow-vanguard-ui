@@ -261,3 +261,12 @@ it("H44-19-R4 chat history: a tab closed while the module is switched off still 
   expect(addon.eval("return #(VanguardCharDB.chatHistory[2] or {})"), "closed while off: dropped").toBe(0);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("H46-29-R1 chat history: /vg history counts only real lists, so a damaged saved window gives no error", () => {
+  const addon = loggedIn("", { savedVariables: `VanguardCharDB.chatHistory = { [2] = 5, [4] = "old format", [3] = { "1790000000|ffffff|x" } }` });
+  addon.slash("history");
+  expect(chatHas(addon, /Saved chat lines: 1, in windows: 1\./), "only the list is counted").toBe(true);
+  addon.slash("history clear");
+  expect(question(addon), "the clear question counts the same").toEqual([true, "Forget all saved chat lines (lines: 1, windows: 1)? This can't be undone."]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
