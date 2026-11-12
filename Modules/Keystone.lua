@@ -82,11 +82,13 @@ local function build()
   return f
 end
 
--- A frame's rectangle (left, right, bottom, top) as plain numbers, or nil where the client hides one.
+-- A frame's rectangle (left, right, bottom, top) in screen units (its own edges times its effective scale, so a
+-- row shrunk to fit its spot compares with the keystone), or nil where the client hides an edge or the scale.
 local function rect(frame)
+  local s = ns.PlainNumber(frame:GetEffectiveScale())
   local l, r = ns.PlainNumber(frame:GetLeft()), ns.PlainNumber(frame:GetRight())
   local b, t = ns.PlainNumber(frame:GetBottom()), ns.PlainNumber(frame:GetTop())
-  if l and r and b and t then return l, r, b, t end
+  if s and l and r and b and t then return l * s, r * s, b * s, t * s end
   return nil
 end
 
