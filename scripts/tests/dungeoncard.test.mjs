@@ -248,3 +248,12 @@ it("Instance prep switched off inside a dungeon ends the visit it was tracking",
   addon.eval("__t = 2000 ns.SetModuleEnabled('InstancePrep', false)");
   expect([addon.eval("return ns.DungeonCard.inside"), addon.eval("return VanguardCharDB.dungeonRuns[389].at")]).toEqual([null, 2000]);
 });
+
+it("a reload or log out with the card switched off inside a dungeon still ends the visit at that time", () => {
+  const addon = character(ON, "__t = 1000 time = function() return __t end");
+  visit(addon, 1000);
+  expect(addon.eval("return ns.DungeonCard.inside or 0"), "noted at the door").toBe(389);
+  addon.eval("local m = ns.GetModule('InstancePrep') m.settings.dungeonCard = false __t = 2500");
+  addon.fire("PLAYER_LOGOUT");
+  expect([addon.eval("return ns.DungeonCard.inside"), addon.eval("return VanguardCharDB.dungeonRuns[389].at")], "the visit ends at the log out").toEqual([null, 2500]);
+});
