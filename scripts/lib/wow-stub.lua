@@ -704,6 +704,10 @@ end
 
 -- Reparents a region (the preview and tests read __parent). Like the game, a frame without a
 -- fixed strata takes its new parent's strata.
+-- Approximation (H44-30-102): a reparent that takes a shown frame in or out of view runs no OnHide or OnShow here, and
+-- since aa9dd03 a later Hide() under the hidden parent runs none either, so OnHide work after such a reparent goes
+-- unexercised. Whether the client runs them at SetParent is not in Blizzard's source; smoke step 33.664a asks the game.
+-- Change this only once that step has an answer, with a stub-harness case citing it.
 function methods:SetParent(parent)
   detach(self.__parent, self)
   self.__parent = parent

@@ -5797,6 +5797,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: open the mail, the social window (friends cards with a presence dot), the guild window and your bags (with a currency tracked under the money line), wait for a talking head, and with `/vg` > Chat > Movers for floating windows (reload) on and reloaded pull a chat tab out of the dock; keep `/vg errors` in mind throughout. [Client: Forever and Retail.]
 - Expect: each window's close button sits in its corner, the friends cards' dots sit beside the names, the bag's search box and Sort fit the search row and the money line sits the padding inside the bag, the toasts stack clear of the talking head, the pulled-out chat window gets a handle under `/vg unlock`; `/vg errors` has no `attempt to compare a secret value` or `attempt to use a secret value` line from `Windows.lua`, `WindowsSocial.lua`, `GameAlerts.lua`, `Bags.lua`, `BagSections.lua` or `ChatWindows.lua`.
 - If it fails, paste: a screenshot of the window that looks wrong, and `/vg errors`.
+### 33.664a Does the game run OnHide when a shown frame is moved under a hidden parent (H44-30-102)
+
+- Do: `/run local p=CreateFrame("Frame") p:Hide() local f=CreateFrame("Frame",nil,UIParent) f:SetScript("OnHide",function() print("hide") end) f:SetScript("OnShow",function() print("show") end) f:SetParent(p) f:SetParent(UIParent)` [Client: Forever and Retail.]
+- Expect: a fact for the test harness, no right answer: chat prints `hide` at the first SetParent and `show` at the second, or prints nothing.
+- If it fails, paste: the chat lines (or that nothing printed), and the client.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
