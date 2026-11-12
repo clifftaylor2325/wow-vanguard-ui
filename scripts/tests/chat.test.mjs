@@ -1182,6 +1182,20 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("H46-29-51 chat extras: an http(s):// or www. address after an opening bracket or quote is linked, the bracket and quote left outside", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV);
+  // The say filter's text for a line: linked, or as it was.
+  const said = (line) => { const out = addon.eval(`return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", ${luaValue(line)}, "<name>") }`); return out[1] ?? line; };
+  const linkOf = (url) => `|Haddon:Vanguard:url:${url}|h[${url}]|h|r`;
+  expect(said("see https://example.test/x now"), "after a space, as before").toContain(linkOf("https://example.test/x"));
+  expect(said("see (https://example.test/x) now"), "in brackets").toMatch(/ \(\|c\w{8}\|Haddon:Vanguard:url:https:\/\/example\.test\/x\|h\[https:\/\/example\.test\/x\]\|h\|r\) now$/);
+  expect(said('Gildennachricht des Tages: "https://example.test/x"'), "in quotes, as the German message of the day is").toContain(`"|c`);
+  expect(said('Gildennachricht des Tages: "https://example.test/x"'), "the closing quote left outside").toContain(`${linkOf("https://example.test/x")}"`);
+  expect(said('say "www.example.test" now'), "a quoted www address with any ending").toContain(`${linkOf("www.example.test")}" now`);
+  expect(said("see (discord.gg/abc) now"), "a bare address in brackets, as before").toContain(`${linkOf("discord.gg/abc")}) now`);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat extras: a numbered template (German %1$s) still finds the guild message of the day", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Gildennachricht des Tages: \\"%1$s\\""');
   addon.eval('ChatFrame1:AddMessage("Gildennachricht des Tages: \\"Raid um 8, discord.gg/abc\\"")');
