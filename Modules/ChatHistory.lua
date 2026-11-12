@@ -172,7 +172,8 @@ local function rule(text)
 end
 
 -- Each sender link's line-number field, as a pattern and its zeroed form (0 is what the game writes for a link
--- with no line), and the censored-line report and show links reduced to its text. A Battle.net name is a protected string
+-- with no line), and the censored-line report and show links reduced to its text (the show link's rule cleans only history
+-- saved before keepable refused such lines). A Battle.net name is a protected string
 -- (|K...|k), so its field may hold a bar. A Discord guild line's sender is |Hdiscorduser:account:user:line:...
 CHH.NUMBERED = {
   { "(|Hplayer:[^:|]+):%d+:", "%1:0:" },
