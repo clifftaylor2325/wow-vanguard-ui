@@ -908,3 +908,23 @@ it("H45-31-1 searching a list again while a search is in flight counts only the 
   }
   expect(seen, "the old run's answer is not counted: never more than 3 of 3").toEqual(["0 of 3", "0 of 3", "1 of 3", "2 of 3", "3 of 3", "3 of 3"]);
 });
+
+it("H45-31-2 Filters on the lower of two equal entries changes that row, not the first", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Alpha" }');
+  addon.eval(`${HELPER}.PaintShop()`);
+  addon.click(`${TABLE}.rows[3]`, "RightButton");
+  addon.click("Vanguard_Menu.items[1]");
+  addon.eval(`${HELPER}.filterDialog.price:SetText("5s") ${HELPER}.SaveFilters()`);
+  const list = addon.eval(`local out = {} for i, e in ipairs(VanguardDB.ah.lists['TEST-ONLY Mats']) do out[i] = type(e) == "table" and (e.term .. "@" .. tostring(e.maxPrice)) or e end return out`);
+  expect(list).toEqual(["Alpha", "Beta", "Alpha@500"]);
+});
+
+it("H45-31-2 Remove on the lower of two equal entries removes that row", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Alpha" }');
+  addon.eval(`${HELPER}.PaintShop()`);
+  addon.click(`${TABLE}.rows[3]`, "RightButton");
+  addon.click("Vanguard_Menu.items[2]");
+  expect(addon.eval(`return VanguardDB.ah.lists['TEST-ONLY Mats']`)).toEqual(["Alpha", "Beta"]);
+});

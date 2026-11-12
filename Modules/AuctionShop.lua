@@ -985,7 +985,9 @@ local function filteredEntry(d)
 end
 
 -- Where entry sits in list now (a row above it may have gone, or Recent moved it), or nil once it is gone.
-local function placeOf(list, entry)
+-- The row it opened on wins while it still holds the entry, so an equal entry above is not taken for it.
+local function placeOf(list, entry, index)
+  if index and list[index] == entry then return index end
   for i, e in ipairs(list) do
     if e == entry then return i end
   end
@@ -996,7 +998,7 @@ end
 function AH.SaveFilters()
   local d = AH.filterDialog
   local list = AH.ListByName(d.listName)
-  local i = list and placeOf(list, d.entry)
+  local i = list and placeOf(list, d.entry, d.index)
   if i then list[i] = filteredEntry(d) end
   d:Hide()
   AH.PaintShop()
@@ -1105,7 +1107,7 @@ end
 function AH.EditFilters(listName, i)
   local d, list = AH.filterDialog or buildFilters(), AH.ListByName(listName)
   if not (list and list[i] ~= nil) then return end
-  d.listName, d.entry = listName, list[i]
+  d.listName, d.entry, d.index = listName, list[i], i
   fillFilters(d, list[i])
   d.alert:SetShown(listName ~= AH.RECENT)
   d:ClearAllPoints()
@@ -1119,7 +1121,7 @@ end
 function AH.RowAction(v)
   local c, name = AH.shopCard, AH.ListKey()
   local list = AH.ListByName(name)
-  local i = list and placeOf(list, c.menuEntry)
+  local i = list and placeOf(list, c.menuEntry, c.menuIndex)
   if not i then return end
   if v == "remove" then return AH.RemoveEntry(name, i) end
   AH.EditFilters(name, i)
@@ -1128,7 +1130,7 @@ end
 -- A row's menu (the dropdown menu's, opened by a hidden dropdown under the row).
 function AH.RowMenu(r)
   local d = AH.shopCard.rowMenu
-  AH.shopCard.menuEntry = r.item
+  AH.shopCard.menuEntry, AH.shopCard.menuIndex = r.item, r.index
   W.CloseMenu()
   d:ClearAllPoints()
   d:SetPoint("BOTTOMLEFT", r, "BOTTOMLEFT", 22, 0)
