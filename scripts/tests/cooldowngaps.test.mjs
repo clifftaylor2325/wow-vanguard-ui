@@ -195,6 +195,21 @@ it("draws the spells you choose, with the game's duration object or plain number
   expect(chatHas(addon, /Showing spell 501\./), "says so").toBe(true);
 });
 
+it("H46-18-51 /vg gaps reads its words in any case, and keeps the item or spell name as typed", () => {
+  const addon = on(SPELLS_ENV, "");
+  // The chosen items and spells, as saved.
+  const chosen = () => addon.eval("local s = ns.GetModule('CooldownGaps').settings return { s.items, s.spells }");
+  addon.slash("gaps Add TEST-ONLY Healthstone");
+  addon.slash("gaps Spell Add Guard");
+  expect(chosen(), "Add and Spell Add choose, the names found as typed").toEqual(["5512", "502"]);
+  addon.slash("gaps REMOVE 5512");
+  addon.slash("gaps spell Remove 502");
+  expect(chosen(), "Remove takes them off").toEqual(["", ""]);
+  addon.slash("gaps add 5512");
+  addon.slash("gaps Clear");
+  expect(chosen(), "Clear forgets them").toEqual(["", ""]);
+});
+
 it("a spell with hidden numbers and no object shows nothing; a hidden-length object still sweeps; the global cooldown is not a sweep", () => {
   const addon = on(SPELLS_ENV + "__spellCd[501] = { { __secret = true }, { __secret = true } }");
   addon.slash("gaps spell add 501");
