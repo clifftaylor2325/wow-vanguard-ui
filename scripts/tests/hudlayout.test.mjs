@@ -2,7 +2,7 @@
 // (Core/HudLayout.lua): the keep's wall and gatehouse and the Standards banners (Modules/UnitFrameLayouts.lua).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RISE, UNITS_ENV, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, RISE, TICKS_ENV, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 // A 1920 x 1080 canvas with the client's percent curve, so a banner can show its percent.
 const WIDE = "__wfgStub.setScreen(1920, 1080) CurveConstants = { ScaleTo100 = { Evaluate = function(_, x) return x * 100 end } }";
@@ -249,4 +249,29 @@ it("setup and options: The keep and Standards are layout choices in setup (your 
   expect(addon.eval('__click("Where the frames stand") return ns.HudLayout()'), "the General page's cycle row steps to The keep").toBe("fort");
   expect(addon.eval('__click("Where the frames stand") return ns.HudLayout()'), "then Standards").toBe("standards");
   expect(addon.eval('__click("Where the frames stand") return { ns.HudLayout(), tostring(VanguardDB.profiles.Default.hudLayout) }'), "then round to Centered (nothing saved)").toEqual(["centered", "nil"]);
+});
+
+// Where the power-bar spark is on a standing bar (TEST-ONLY): its centre's offset from the bar's foot and the bar's size.
+const SPARK_LUA = `local PT = ns.GetModule("PowerTicks") local b, s = PT.bar, PT.spark
+  return { b:GetOrientation(), s:IsShown(), s:GetLeft() + s:GetWidth() / 2 - b:GetLeft(), s:GetBottom() + s:GetHeight() / 2 - b:GetBottom(),
+    b:GetWidth(), b:GetHeight(), s:GetWidth(), s:GetHeight(), s:GetRotation() }`;
+
+it("Standards: the five-second spark rises up the power line from its foot, turned to lie across it, instead of creeping sideways", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + TICKS_ENV, onLayout("standards"));
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  const [orient, shown, x, y, barW, barH, sparkW, sparkH, turn] = (addon.eval("__wfgStub.advance(2.5)"), addon.eval(SPARK_LUA));
+  expect([orient, shown], "the power bar stands on end and the spark shows").toEqual(["VERTICAL", true]);
+  expect([x, y], "half-way through the five seconds it's centred on the line, half-way up it").toEqual([barW / 2, barH / 2]);
+  expect([sparkW, sparkH, turn], "it is as wide as the line, a thin streak, turned a quarter so it lies across the line").toEqual([barW, 6, Math.PI / 2]);
+  addon.eval("__wfgStub.advance(2.4)");
+  expect(addon.eval(SPARK_LUA)[3], "near the end it is near the top").toBeCloseTo(barH * 0.98, 1);
+});
+
+it("Standards: a spark mid-sweep moves along the new axis when the layout changes under it", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + TICKS_ENV);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  addon.eval("__wfgStub.advance(2.5) ns.SetHudLayout('standards') __wfgStub.update(0.01)");
+  const [orient, , x, y, barW, barH] = addon.eval(SPARK_LUA);
+  expect([orient, x, y > 0 && y < barH, barW > 0], "the spark follows the standing bar at once, on one anchor").toEqual(["VERTICAL", barW / 2, true, true]);
+  expect(addon.eval(`local n = 0 for _ in pairs(ns.GetModule("PowerTicks").spark.__points) do n = n + 1 end return n`), "one anchor").toBe(1);
 });
