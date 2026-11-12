@@ -342,9 +342,11 @@ GW.ADD_COMMUNITY_ATLAS = "communities-icon-addgroupplus"
 -- A community row's name in the text colour (the game colours it green), the add row's plus grey instead of green, and its
 -- selected look following the game's Selection plate (shown by Init, which the game runs again on every update). The game
 -- draws every row from one pool and never tints the icon itself, so any other icon is untinted: the plus's frame may come
--- back as a club's (its desaturation the game resets).
+-- back as a club's (its desaturation the game resets). A finder row the game disables (the club finder is unavailable)
+-- keeps the disabled colour on its name; Init enables every row first, so a reused row goes back to the text colour.
 local function paintCommunityRow(row)
-  paintText(row.Name, "text")
+  local enabled = type(row.IsEnabled) ~= "function" or ns.IsTrue(row:IsEnabled())
+  paintText(row.Name, enabled and "text" or "disabled")
   local icon = row.Icon
   if type(icon) == "table" and icon.GetAtlas then
     local plus = icon:GetAtlas() == GW.ADD_COMMUNITY_ATLAS
