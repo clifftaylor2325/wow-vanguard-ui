@@ -11,6 +11,14 @@ import { expectErrors, INSIDES_LUA, isTok, loggedIn, WINDOWS_ENV, windowState } 
 // string takes the role and the colour.
 const READERS_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
   function __button(b) return ns.Theme.HoverParts(b) ~= nil end
+  -- The shown theme "Down" pictures on a button: a dropdown with a chevron has one, not a chevron and a centred arrow.
+  function __downArrows(b)
+    local n = 0
+    for _, r in ipairs({ b:GetRegions() }) do
+      if r.__kind == "Texture" and type(r.__texture) == "string" and r.__texture:match("Down") and r:IsShown() and r:GetAlpha() > 0 then n = n + 1 end
+    end
+    return n
+  end
   function __arrow(b) return ns.Theme.ArrowParts(b) ~= nil end
   function __plate(b) return select("#", b:GetRegions()) > 0 end
   function __box(b) return __faded(b, b.searchIcon) and b.searchIcon.__alpha == 1 end
@@ -637,7 +645,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   -- A progress bar of the open achievement ("700/1000"): the game's raw green bar in its pool (AchievementProgressBarTemplate).
   objectives.progressBars = { bar(objectives) }
   function AchievementObjectives_DisplayCriteria(frame)
-    local colours = { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
+    local colours = __nextColours or { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
     for i, c in ipairs(colours) do
       frame.criterias[i].Name:SetTextColor(c[1], c[2], c[3], 1)
       frame.metas[i].Label:SetTextColor(c[1], c[2], c[3], 1)
@@ -809,6 +817,22 @@ it("R2.19 the achievements window: black criteria and meta labels become light, 
   addon.eval("AchievementFrame:Hide() AchievementFrame:Show() AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
   expect([addon.eval("return __criteriaReds()[1][1][1]"), addon.eval("return #ns.errors")], "the hook is added once however often the window opens, and the next achievement is lit again").toEqual([text, 0]);
 });
+// AchievementObjectives_DisplayCriteria (Blizzard_AchievementUI/Mainline/Blizzard_AchievementUI.lua, live :2043-2051) paints a
+// criterion's Name black, green or 0.6 grey, and a pooled criterion frame comes back for the next achievement.
+// (The model's __nextColours is what the next display paints, so the pooled first criterion comes back grey.)
+it("H46-25-101 a criterion lit for a completed achievement keeps the game's green or grey after a theme refresh", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
+  const text = addon.eval("return (ns.Theme.RGB('text'))");
+  addon.eval("__nextColours = { { 0.6, 0.6, 0.6 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
+  addon.eval("ns.Theme.Refresh()");
+  const [names, labels] = addon.eval("return __criteriaReds()");
+  expect([names[0][0], labels[0][0], addon.eval("return ns.Theme.ColorToken(AchievementFrameAchievementsObjectives.criterias[1].Name)")], "the pooled criterion keeps the game's grey and the meta label its grey, with no token").toEqual([0.6, 0.6, null]);
+  expect(addon.eval("return (ns.Theme.RGB('text'))"), "the theme colour itself is unchanged").toBe(text);
+});
 it("R2.19 the achievements window: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
   const off = loggedIn(ACHIEVEMENT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.fire("ADDON_LOADED", "Blizzard_AchievementUI");
@@ -881,7 +905,11 @@ const AH_ENV = `${READERS_ENV}
     local form = __well(nil, parent) form.CreateAuctionLabel, form.CreateAuctionTabLeft, form.ItemDisplay = __text(form, "Create Auction"), __art(form), __well(nil, form)
     local function row(key, fill) local r = CreateFrame("Frame", nil, form) r.Label = __text(r, key) fill(r) form[key] = r end
     row("QuantityInput", function(r) r.InputBox = CreateFrame("EditBox", nil, r) __art(r.InputBox) r.MaxButton = __mkbutton(r) end)
-    row("PriceInput", function(r) r.MoneyInputFrame = __ahLargeInput(r) end)
+    row("PriceInput", function(r)
+      r.MoneyInputFrame, r.LabelTitle = __ahLargeInput(r), __text(r, "Buyout")
+      -- AuctionHouseSellFrame SetLabelColor (Blizzard_AuctionHouseUI/Shared/Blizzard_AuctionHouseSellFrame.lua:22-25) paints both labels.
+      function r:SetLabelColor(c) self.Label:SetTextColor(c:GetRGB()) self.LabelTitle:SetTextColor(c:GetRGB()) end
+    end)
     row("SecondaryPriceInput", function(r) r.LabelTitle, r.MoneyInputFrame = __text(r, "Bid"), __ahLargeInput(r) end)
     row("Duration", function(r) r.Dropdown = __mkbutton(r, "Arrow") end)
     for _, key in ipairs({ "Deposit", "TotalPrice", "UnitPrice" }) do row(key, function(r) r.MoneyDisplayFrame = __ahMoney(r) end) end
@@ -927,7 +955,7 @@ const AH_ENV = `${READERS_ENV}
       out[#out + 1] = { tile = __ahTile(form), item = __ahTile(form.ItemDisplay), head = form.CreateAuctionLabel:GetText() == "CREATE AUCTION" and form.CreateAuctionTabLeft.__alpha == 0,
         labels = __ahLit(form.QuantityInput.Label) and __ahLit(form.SecondaryPriceInput.LabelTitle) and __ahLit(form.Duration.Label),
         quantity = __faded(form.QuantityInput.InputBox) and __button(form.QuantityInput.MaxButton), boxes = boxes,
-        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 0,
+        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 0 and __downArrows(form.Duration.Dropdown) == 1,
         money = __ahThemed(form.Deposit.MoneyDisplayFrame) and __ahThemed(form.TotalPrice.MoneyDisplayFrame) and __ahThemed(form.UnitPrice.MoneyDisplayFrame),
         buttons = __button(form.PostButton) and __button(form.BuyButton), check = ns.Theme.CheckParts(form.BuyoutModeCheckButton) ~= nil and __ahLit(form.BuyoutModeCheckButton.Text) }
     end
@@ -978,6 +1006,28 @@ it("R3.5 the auction house panels: money bar, search bar, categories, lists, for
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
   expect(addon.eval("return __ahParts(AuctionHouseFrame)").painted, "a second show paints nothing new").toBe(parts.painted);
 });
+// The item sell form's price row: UpdatePostState (Shared/Blizzard_AuctionHouseItemSellFrame.lua:402-413) calls SetLabelColor
+// with RED_FONT_COLOR for a buyout under the bid, else NORMAL_FONT_COLOR, on every item, price and quantity change.
+const LABEL_COLORS = `
+  NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
+  RED_FONT_COLOR = { GetRGB = function() return 1, 0.1, 0.1 end }
+  function __price() return AuctionHouseFrame.ItemSellFrame.PriceInput end
+  function __priceReds() local p = __price() return { p.Label.__textColor[2], p.LabelTitle.__textColor[2], ns.Theme.ColorToken(p.Label) } end`;
+it("H46-25-100 the price row's labels stay light when the game paints them gold, and red survives a refresh and a second show", () => {
+  const addon = loggedIn(`${AH_WINDOW} ${LABEL_COLORS}`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  const light = addon.eval("return (ns.Theme.RGB('text'))");
+  addon.eval("__price():SetLabelColor(NORMAL_FONT_COLOR)");
+  expect(addon.eval("return __ahLit(__price().Label) and __ahLit(__price().LabelTitle)"), "gold from the game goes back to the text colour").toBe(true);
+  expect(addon.eval("return __priceReds()[3]"), "and keeps its token").toBe("text");
+  addon.eval("__price():SetLabelColor(RED_FONT_COLOR) ns.Theme.Refresh()");
+  expect(addon.eval("return __priceReds()"), "red stays red after a theme refresh, with no token").toEqual([0.1, 0.1]);
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
+  expect(addon.eval("return __priceReds()[1]"), "and after the window is shown again").toBe(0.1);
+  addon.eval("__price():SetLabelColor(NORMAL_FONT_COLOR)");
+  expect([addon.eval("return __ahLit(__price().Label)"), addon.eval("return (ns.Theme.RGB('text'))"), addon.eval("return #ns.errors")], "light again when the buyout is fine").toEqual([true, light, 0]);
+});
 it("R3.6 the auction house panels: one part that fails is named and the rest are still dressed; labels and the money line have room", () => {
   expectErrors(/^auction house CommoditiesSellList: eval:\d+: TEST-ONLY layout$/);
   const addon = loggedIn(`${AH_WINDOW}
@@ -1006,7 +1056,7 @@ it("R3.5 the auction house panels: the money lines take the theme font back afte
   addon.eval("AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject() AuctionHouseFrame.BuyDialog.PriceFrame:SetFontAndIconDisabled(true)");
   expect(themed(), "the game's font object and its disabled look both followed").toEqual([true, true]);
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject()");
-  expect(themed(), "showing again hooks nothing twice").toEqual([true, true]);
+  expect(themed(), "still themed after showing again").toEqual([true, true]);
 });
 // The lit look of a row (the selected fill and rail), or null when T.Row never dressed it.
 const rowLit = (addon, row) => addon.eval(`local p = ns.Theme.RowParts(${row}) return p and { p.fill:IsShown(), p.rail:IsShown() } or false`);
@@ -1031,7 +1081,10 @@ it("R3.5 the auction house panels: result lines are theme rows lit with the game
   const list = "AuctionHouseFrame.BrowseResultsFrame.ItemList";
   expect(addon.eval(`return select("#", ${list}.HeaderContainer:GetChildren())`), "no header buttons before the game lays the columns out").toBe(0);
   addon.eval(`${list}:UpdateTableBuilderLayout() ${list}:UpdateTableBuilderLayout()`);
-  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() return { __button(h), h.Arrow.__alpha }`), "the header button is a theme button that keeps its sort arrow").toEqual([true, 0]);
+  // The game shows the Arrow on the sorted column only (Blizzard_AuctionHouseTableBuilder.lua SetArrowState), so a
+  // hidden Arrow must leave no theme arrow behind.
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() h.Arrow:Hide() return { __button(h), h.Arrow:GetAlpha(), h.Arrow:IsShown(), __downArrows(h) }`), "the header button is a theme button that keeps its sort arrow, and shows none on an unsorted column").toEqual([true, 1, false, 0]);
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() h.Arrow:Show() return { h.Arrow:IsShown(), h.Arrow:GetAlpha(), __downArrows(h) }`), "the game's arrow shows on the sorted column").toEqual([true, 1, 0]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("R3.5 the auction house panels: category rows are theme rows, lit with the game's selection and put right after each set-up", () => {
@@ -1049,7 +1102,37 @@ it("R3.5 the auction house panels: category rows are theme rows, lit with the ga
   addon.eval("__cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(nil)");
   expect(addon.eval("return __ahLit(__cat.Text)"), "the gold the game puts back when the mouse leaves is made light again").toBe(true);
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __wfgStub.hover(nil)");
-  expect(addon.eval("return { __ahLit(__cat.Text), #ns.errors }"), "showing again hooks nothing twice").toEqual([true, 0]);
+  expect(addon.eval("return { __ahLit(__cat.Text), #ns.errors }"), "still light after showing again, with no error").toEqual([true, 0]);
+});
+it("R3.5 the auction house panels: a category row's leave hook is added once however often the window shows and the game sets the row up", () => {
+  const addon = loggedIn(AH_WINDOW + `
+    __cat = __ahCategory(AuctionHouseFrame.CategoriesList.ScrollBox)
+    __leaves = 0
+    local hook = __cat.HookScript
+    -- TEST-ONLY spy: how many OnLeave hooks the row gets.
+    __cat.HookScript = function(self, script, fn) if script == "OnLeave" then __leaves = __leaves + 1 end return hook(self, script, fn) end`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  const first = addon.eval("return __leaves");
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() AuctionHouseFilterButton_SetUp(__cat, { selected = true }) AuctionHouseFilterButton_SetUp(__cat, { selected = false })");
+  expect(first, "the row got its leave hooks").toBeGreaterThan(0);
+  expect(addon.eval("return __leaves"), "and a second show or two set-ups add none").toBe(first);
+});
+it("the skin's once-only hook helpers run a hook once however often they are asked for it", () => {
+  const addon = loggedIn(`${WINDOWS_ENV}
+    __GW = ns.GetModule("Windows")
+    __runs = { after = 0, global = 0, script = 0 }
+    -- TEST-ONLY frame and global.
+    __frame = CreateFrame("Frame", nil, UIParent) function __frame:Method() end
+    TEST_ONLY_GLOBAL = function() end`);
+  addon.eval(`
+    for _ = 1, 2 do
+      __GW.HookAfter(__frame, "Method", function() __runs.after = __runs.after + 1 end)
+      __GW.HookGlobalOnce("TEST_ONLY_GLOBAL", "test global", function() __runs.global = __runs.global + 1 end)
+      __GW.HookScriptOnce(__frame, "OnShow", "test script", function() __runs.script = __runs.script + 1 end)
+    end
+    __frame:Method() TEST_ONLY_GLOBAL() __frame:Hide() __frame:Show()`);
+  expect(addon.eval("return { __runs.after, __runs.global, __runs.script, #ns.errors }"), "each hook ran once").toEqual([1, 1, 1, 0]);
 });
 it("R3.5 the auction house panels: with Vanguard's own page on or off the game's panels are dressed and the page is the same", () => {
   const dress = "__ah(AuctionHouseFrame) AuctionHouseFrame:Hide() AuctionHouseFrame:Show()";
@@ -1160,4 +1243,14 @@ it("keeps a dressed money line in the theme font after the game recolours it, an
   expect(face("QuestProgressRequiredMoneyFrame"), "the dressed line is re-fonted").not.toBe("TEST-ONLY-GAME");
   expect(face("TestOnlyPlainMoney"), "a line no skin dressed stays the game's").toBe("TEST-ONLY-GAME");
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+it("H46-C-G6 a lit criterion keeps its token when the window is shown again, and follows a theme change", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
+  const name = "AchievementFrameAchievementsObjectives.criterias[1].Name";
+  addon.eval("AchievementFrame:Hide() AchievementFrame:Show()");
+  addon.eval("ns.Theme.Settings().variant = 'vellum' ns.Theme.Refresh()");
+  expect([addon.eval(`return ns.Theme.ColorToken(${name})`), addon.eval(`return ${name}.__textColor[1]`)]).toEqual(["text", addon.eval("return (ns.Theme.RGB('text'))")]);
 });

@@ -403,7 +403,7 @@ const COMMUNITIES_ENV = PAGES_ENV + INSIDES_LUA + `
     for _, k in ipairs({ "Background", "IconRing", "GuildTabardBorder", "Selection", "Icon", "GuildTabardBackground", "GuildTabardEmblem", "FavoriteIcon", "UnreadNotificationIcon", "InvitationIcon" }) do row[k] = __art(row) end
     row.Selection:Hide() row.Name = __text(row, "Club")
     if id == 2 then row.Icon:SetAtlas("communities-icon-addgroupplus") end
-    function row:Init(club) self.Selection:SetShown(club == __selected) end
+    function row:Init(club) self.Selection:SetShown(club == __selected) if club == __disabledClub then self:Disable() else self:Enable() end end
     row:Init(id)
     return row
   end
@@ -468,6 +468,12 @@ it("guild window: the communities list rows are theme rows, art faded but their 
   expect(addon.eval("return { ns.Theme.RowParts(__b).rail:IsShown(), #CommunitiesFrame.CommunitiesList.ScrollBox.callbacks }"), "a page switch dresses nothing twice").toEqual([true, 1]);
   addon.eval('__b.Icon:SetDesaturated(false) __b.Icon:SetAtlas(nil) __b.Icon:SetTexture("TEST-ONLY-avatar") __b:Init(3)');
   expect(addon.eval("local r, g, b = __b.Icon:GetVertexColor() return { r, g, b }"), "the add row's frame reused for a club: its avatar keeps no tint").toEqual([1, 1, 1]);
+  // Blizzard_Communities/CommunitiesList.lua CommunitiesListEntryMixin:Init enables the row, then CheckForDisabledReason ->
+  // SetEntryEnabled(false) disables it (GameFontDisable) when the club finder is unavailable (H46-26-1).
+  addon.eval("__disabledClub = 4 __b:Init(4)");
+  expect([isTok(addon, addon.eval("return __b.Name.__textColor"), "disabled"), addon.eval("return __b:IsEnabled()")], "a disabled finder row's name is in the disabled colour").toEqual([true, false]);
+  addon.eval("__disabledClub = nil __b:Init(4)");
+  expect(isText(addon, "__b.Name"), "an enabled row goes back to the text colour on the next Init").toBe(true);
 });
 
 it("guild roster: the Show Offline box, count, column strip and headers, rows and profession headers in the theme", () => {

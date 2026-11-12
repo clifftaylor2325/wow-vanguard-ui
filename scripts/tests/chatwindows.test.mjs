@@ -495,3 +495,23 @@ it("chat windows: Find lists a restored player line once, though the window show
   expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 line with "sword"');
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+// TEST-ONLY: two whisper pop-outs (temporary windows ChatFrame11 and 12, listed in CHAT_FRAMES), each holding one
+// line. The game marks a pop-out in use when it opens it and clears the mark when FCF_Close hides it, keeping the
+// frame for reuse (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCF_OpenTemporaryWindow :886, :920;
+// FCF_Close :1788-1791); whispers in popout mode go to that window only (FCFManager_ShouldSuppressMessage, :2798).
+const POPOUT_ENV = `
+  __wfgWorld.chatWindows[1] = "General"
+  ChatFrame1.GetNumMessages = function() return 0 end ChatFrame1.GetMessageInfo = function() end
+  for i, line in ipairs({ "TEST-ONLY Name whispers: sword for sale", "TEST-ONLY Other whispers: old sword" }) do
+    local frame = FCF_OpenTemporaryWindow("WHISPER", "TEST-ONLY Name")
+    frame.inUse = true
+    frame.GetNumMessages = function() return 1 end frame.GetMessageInfo = function() return line end
+  end
+  ChatFrame12.inUse = false ChatFrame12:Hide()
+`;
+it("H46-29-2 chat find: a whisper pop-out window's lines are found; a closed pop-out's are not", () => {
+  const addon = loggedIn(POPOUT_ENV);
+  expect(addon.eval("return { ns.GetModule('ChatWindows').Find('sword') }")).toEqual(['Chat: 1 line with "sword"', "TEST-ONLY Name whispers: |cff" + addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))") + "sword|r for sale"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

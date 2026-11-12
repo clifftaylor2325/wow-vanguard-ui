@@ -1257,7 +1257,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
+    "general|General|10|63", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
     "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|59", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
@@ -1776,6 +1776,31 @@ it("Escape and a click outside close a dropdown menu", () => {
   expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Options:IsShown() }"), "Escape in the options window closes the menu first and leaves the window").toEqual([false, true]);
   addon.key("Vanguard_Options", "ESCAPE");
   expect(addon.eval("return Vanguard_Options:IsShown()"), "a second Escape closes the window").toBe(false);
+});
+
+// H46-21-50: the game's own Escape closes every window in its list at once (Blizzard_UIParentPanelManager.lua
+// CloseWindows / CloseSpecialWindows), so the open menu holds the keyboard and takes Escape itself.
+it("H46-21-50 Escape on an open dropdown menu closes the menu alone, and other keys pass on", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval("__pass = {}");
+  openDropdown(addon, 4);
+  addon.eval("Vanguard_Menu.SetPropagateKeyboardInput = function(self, v) __pass[#__pass + 1] = v end");
+  addon.eval('__other = CreateFrame("Frame", "TestOnlyOther", UIParent) __other:Show()');
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "an open menu holds the keyboard").toBe(true);
+  addon.key("Vanguard_Menu", "A");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass] }"), "another key passes on").toEqual([true, true]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass], __other:IsShown() }"), "Escape closes the menu and stops here").toEqual([false, false, true]);
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "a closed menu lets the keyboard go").toBe(false);
+});
+
+it("H46-21-50 a menu opened in a fight holds no keyboard", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  setCombat(addon, true);
+  openDropdown(addon, 4);
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu:IsKeyboardEnabled() }"), "shown, no keys held; Escape closes it through the special frames").toEqual([true, false]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "the key script does nothing in a fight").toBe(true);
 });
 
 it("Left and Right step a focused slider by its step", () => {
@@ -2649,4 +2674,56 @@ it("options: while the spec's profile overrides a staged pick, Copy here names t
     .toBe("Replaces every setting in profile Heal with profile Default's. It can't be undone.");
   profileButton(addon, "Heal  (in use)", "use");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "Use on the running profile clears the staged pick").toBeFalsy();
+});
+
+it("Escape closes the options window with the close sound and the fade, as the close button does (H46-23-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`ns.Options.Show("general")
+    __sounds, __closes = {}, 0
+    local T = ns.Theme local sound, close = T.Sound, T.CloseWindow
+    T.Sound = function(kind, ...) __sounds[#__sounds + 1] = kind return sound(kind, ...) end
+    T.CloseWindow = function(...) __closes = __closes + 1 return close(...) end`);
+  addon.key("Vanguard_Options", "ESCAPE");
+  expect(addon.eval("return { table.concat(__sounds, ','), __closes, Vanguard_Options:IsShown() }"), "the close sound, the fade, the window gone").toEqual(["close", 1, false]);
+});
+
+it("options: the addons button's tooltip counts what the badge counts, not a fallback kept by ns.Quiet (H46-23-5)", () => {
+  const addon = loggedIn();
+  expectErrors("TEST-ONLY fallback: eval:2: TEST-ONLY refused");
+  addon.eval('ns.Quiet("TEST-ONLY fallback", function() error("TEST-ONLY refused") end) ns.ErrorBadge.Update()');
+  // The tooltip lines after pointing at the addons button.
+  const lines = () => addon.eval(`local b = CreateFrame("Button") Vanguard_OnAddonCompartmentEnter("Vanguard", b)
+    local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
+  expect([addon.eval("return { ns.LoudErrorCount(), #ns.errors }"), lines().length], "one quiet entry kept, no error line").toEqual([[0, 1], 2]);
+});
+
+it("options: pages built before a profile change are built again, so the Damage style row and the chat lists follow the new profile (H46-23-50)", () => {
+  const addon = loggedIn('__wfgWorld.units.player.class = "DRUID" __wfgWorld.units.player.className = "Druid"\n' + CLICK_LUA);
+  addon.eval('ns.Settings("ChatWatch").phrases = { "TEST-ONLY old phrase" } ns.Options.Show("town") ns.Options.Show("chat")');
+  const style = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "town" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Damage style" then row = r end end end end`;
+  addon.eval(`VanguardDB.profiles.Other = { Upgrades = { styles = { DRUID = "balance" } }, ChatWatch = { phrases = { "TEST-ONLY new phrase" } } }`);
+  addon.eval('VanguardDB.profiles.Default = VanguardDB.profiles.Other ns.ProfileChanged() ns.Options.Show("town")');
+  expect(addon.eval(`${style} row[5]("feral") return { row[4](), ns.Settings("Upgrades").styles.DRUID, VanguardDB.profiles.Other.Upgrades.styles.DRUID }`), "the row writes the profile in use")
+    .toEqual(["feral", "feral", "feral"]);
+  addon.eval('ns.Options.Show("chat")');
+  expect([addon.eval('return __click("Remove: TEST-ONLY old phrase")'), addon.eval('return __click("Remove: TEST-ONLY new phrase")')], "the Chat page lists the new profile's phrase, not the old one").toEqual([false, true]);
+});
+
+it("H46-24-53: General has a Grid spacing slider, and the Modules page a switch per registered skin", () => {
+  const addon = loggedIn(CLICK_LUA + 'Vanguard.RegisterSkin("TESTONLY", function() end)');
+  addon.eval('ns.Options.Show("general")');
+  const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then
+    local before = w.get() w.set(64) w:Refresh() return { before = before, now = ns.MoverOptions().gridSize, text = w.value:GetText() } end end`);
+  expect(slider, "the slider starts at the 32 px default and sets the spacing the command does").toEqual({ before: 32, now: 64, text: "64" });
+  addon.slash("unlock");
+  addon.eval('ns.MoverOptions().grid = true ns.ShowGrid = function(size) __grid = size end');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then w.set(96) end end`);
+  expect(addon.eval("return __grid"), "while unlocked the grid is drawn again at once").toBe(96);
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval('return __click("Skin for TESTONLY")') && addon.eval("return ns.Settings('skins').TESTONLY"), "the skin's switch turns it off like /vg skins TESTONLY off").toBe(false);
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "and it waits for the reload").toBe(true);
+  const none = loggedIn(CLICK_LUA);
+  none.eval('ns.Options.Show("modules")');
+  expect(none.eval('return __find("Skins for other addons") == nil'), "no skin registered, no skin rows").toBe(true);
 });

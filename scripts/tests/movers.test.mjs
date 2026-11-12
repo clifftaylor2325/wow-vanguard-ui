@@ -725,6 +725,12 @@ it("a saved match is watched when the dependent registers before its target (H45
   expect(addon.eval(`return __t:GetScript("OnSizeChanged") ~= nil`), "the target's size is watched").toBe(true);
 });
 
+it("H46-21-2 restoring a spot keeps a frame's own width beside its matched width", () => {
+  const addon = loggedIn();
+  addon.eval("ns.SetMoverSize('xpbar', 'width', 300) ns.SetMoverMatch('xpbar', 'width', 'cast_player')");
+  addon.eval("local spot = ns.Copy(ns.Settings('positions').xpbar) ns.ResetMovers('xpbar') ns.RestoreMoverLinks('xpbar', spot)");
+  expect(addon.eval("local s = ns.Settings('positions').xpbar return { s.w, s.match and s.match.width }"), "own width and match both come back").toEqual([300, "cast_player"]);
+});
 // Turns every reload-only module off in every profile, so a pick applies at once (ns.SwitchProfileNow).
 const LIVE_OFF = `for _, name in ipairs(ns.ModuleNames()) do
   if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules = p.modules or {} p.modules[name] = false end end

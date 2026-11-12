@@ -33,7 +33,7 @@ it("the meter is off by default and /vg meter on shows it", () => {
   expect(addon.eval("return Vanguard_Meter == nil"), "off until you turn it on: not even built, so no mover").toBe(true);
   addon.slash("meter on");
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
-  expect(chatHas(addon, /Vanguard's meter is on, showing damage per second/), "chat says how it stands").toBe(true);
+  expect(chatHas(addon, /Vanguard's meter is on, showing Damage per second/), "chat says how it stands").toBe(true);
   addon.slash("meter dps");
   addon.slash("meter off");
   expect([addon.frame("Vanguard_Meter").visible, chatHas(addon, /Vanguard's meter is off/)], "and off again").toEqual([false, true]);
@@ -230,7 +230,7 @@ it("the title steps through every kind, a right click through the segments, and 
   expect([heads(addon)[0], rows(addon)[0][2], addon.eval("return __asked[#__asked]")], "overall segment, damage taken: the total, asked with both keys").toEqual(["Damage taken · Overall", "4.5K", "0:7"]);
   addon.slash("meter previous");
   addon.slash("meter nonsense");
-  expect(chatHas(addon, /showing damage taken · previous fight/), "words pick the segment; an unknown one only reports").toBe(true);
+  expect(chatHas(addon, /showing Damage taken · Previous fight/), "words pick the segment; an unknown one only reports").toBe(true);
   addon.slash("meter this");
   addon.slash("meter overall");
   addon.slash("meter current");

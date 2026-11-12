@@ -878,3 +878,29 @@ it("a dropdown shows the choice picked from it (H45-21-50)", () => {
     return dd.text:GetText()`);
   expect(text, "the box no longer reads Choose one").not.toBe("Choose one");
 });
+
+it("a second word typed with a capital works like its lower-case form (H46-24-50)", () => {
+  expectErrors("TEST-ONLY case: x");
+  const addon = loggedIn("", { savedVariables: "time = function() return 1793900000 end" });
+  addon.slash("grid On");
+  expect(addon.eval("return ns.MoverOptions().grid"), "grid On").toBe(true);
+  addon.slash("grid OFF");
+  expect(addon.eval("return ns.MoverOptions().grid"), "grid OFF").toBe(false);
+  addon.slash("variant Contrast");
+  expect(addon.eval("return ns.Theme.Settings().variant"), "variant Contrast").toBe("contrast");
+  addon.slash("corners Rounded");
+  expect(addon.eval("return ns.Theme.Settings().corners"), "corners Rounded").toBe("rounded");
+  addon.slash("accent ff0000");
+  addon.slash("accent Reset");
+  expect(addon.eval("return select(1, ns.Theme.Accent()) ~= 1"), "accent Reset").toBe(true);
+  addon.clearChat();
+  addon.slash("theme Reset");
+  expect(chatHas(addon, /Theme back to defaults/), "theme Reset").toBeTruthy();
+  addon.slash("reset All");
+  expect(chatHas(addon, /No frame called/), "reset All does not look for a frame called All").toBeFalsy();
+  addon.eval('ns.Report("TEST-ONLY case", "x")');
+  addon.slash("errors Clear");
+  expect(addon.eval("return #ns.errors"), "errors Clear clears").toBe(0);
+  addon.slash("cooldowns Setup");
+  expect(addon.frame("Vanguard_CooldownWizard").visible, "cooldowns Setup opens the wizard").toBe(true);
+});

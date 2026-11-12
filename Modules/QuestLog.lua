@@ -161,9 +161,9 @@ function QL.Details(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   selectInGame(id)
-  local text = ns.CallIf(_G, "GetQuestLogQuestText")
+  local text, hidden = ns.CallIf(_G, "GetQuestLogQuestText"), ns.QuestParts.RewardsHidden(id)
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
-    rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
+    rewards = not hidden and rewardItems(id) or {}, money = not hidden and moneyLine(id) or "", watched = QL.IsWatched(id),
     shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Line(id) })
 end
 
@@ -308,10 +308,12 @@ end
 
 -- Opens the log, on a quest when given one, with every zone the game folded opened (QT.OpenFolds).
 function QL.Open(id)
+  local other = id ~= nil and id ~= QL.selected
   QL.selected = id or QL.selected
   ns.GetModule("QuestTracker").OpenFolds()
   QL.frame:Show()
   QL.Refresh()
+  if other then QL.frame.detailScroll:ScrollTo(0) end
 end
 
 -- Opens or closes the log.
@@ -398,11 +400,24 @@ function QL.Disable()
   if QL.toggle and type(ClearOverrideBindings) == "function" then ns.OutOfCombat(function() ClearOverrideBindings(QL.toggle) end, "quest log keys") end
 end
 
+-- Whether Vanguard's own quest log is in use: the module live and its window switched on (a window built earlier in
+-- the session stays built when the switch goes off).
+function QL.InUse()
+  return ns.ModuleLive("QuestLog") and QL.frame ~= nil and QL.settings ~= nil and QL.settings.own == true
+end
+
+-- Own window off: the toggle hook and the theme gate (kept from an earlier run in the session) point at nothing, so
+-- the game's quest log button opens the game's log again.
+local function pointAway(scope)
+  scope:Point("quest log toggle", nil)
+  scope:Point("theme", nil)
+end
+
 -- Module entry point (Core/Modules.lua): the window and the key's button are made once a session; everything else
 -- goes through the scope.
 function QL.Enable(settings, scope)
   QL.settings = settings
-  if not settings.own then return end
+  if not settings.own then return pointAway(scope) end
   ns.GetModule("QuestTracker").KeepFoldsOpen()
   if not QL.frame then QL.Build() end
   scope:Mover(QL.frame, "questlog", L["Quest log"], QL.SPOT)

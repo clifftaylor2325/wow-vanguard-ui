@@ -248,11 +248,13 @@ local function takeDisplay(data)
 end
 
 -- A whole profile whose settings equal one this account has: this character uses that one
--- (after a reload, unless it is already the one in use), and nothing is added.
+-- (after a reload), and nothing is added; a match with the profile in use changes nothing, a staged pick stays.
 local function importMatch(name, result)
-  ns.UseProfile(name)
-  result.reload = name ~= ns.ProfileName()
-  if result.reload then return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name }) end
+  if name ~= ns.ProfileName() then
+    ns.UseProfile(name)
+    return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name })
+  end
+  result.reload, result.display = false, nil
   return ns.Format(L["This string matches profile {profile}, which this character already uses: nothing new to import."], { profile = name })
 end
 
@@ -282,27 +284,44 @@ local function importedText(name, result)
   return ns.Format(L["Created profile {profile}."], { profile = name })
 end
 
--- A whole imported profile: saved under a free name (without its display block, which goes
--- in the result, and with this player's pixel-perfect scale), and this character switches to it
--- on reload; one that matches a profile this account has uses that profile instead of making another copy.
--- Either way it answers a settings loss (Core/SettingsGuard.lua).
-local function importWhole(data, result)
-  result.display = takeDisplay(data)
-  ownPixelScale(data)
-  ns.SettingsGuard.Imported()
-  local match = ns.MatchingProfile(ns.StripPayload(data))
-  if match then return importMatch(match, result) end
+-- The profile an import of this kind lands in or backs up: a partial string goes into the profile used after
+-- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
+-- makes or picks a profile, so the running one is what a backup holds.
+local function importTarget(kind)
+  return kind == "parts" and ns.LoadingProfileName() or ns.ProfileName()
+end
+
+-- The import's notes: each font or bar texture the string names that this client lacks, then where the backup is.
+local function importNotes(payload, backup, name)
+  local notes = ns.MissingMedia(payload)
+  notes[#notes + 1] = ns.Format(L["Profile {profile} as it was before this import is saved as profile {backup}."], { profile = name, backup = backup })
+  return notes
+end
+
+-- A whole imported profile that matches none here: the profile in use is backed up, then it is saved under a free
+-- name (without its display block, which goes in the result, and with this player's pixel-perfect scale), and this
+-- character switches to it on reload.
+local function importNew(data, result)
+  local source = importTarget("profile")
+  local backup = ns.BackupProfile(source)
+  result.backup, result.notes = backup, importNotes(data, backup, source)
   local name = freeName("Imported")
   VanguardDB.profiles[name] = data
   ns.UseProfile(name)
   return importedText(name, result)
 end
 
--- The profile an import of this kind lands in or backs up: a partial string goes into the profile used after
--- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
--- makes or picks a profile, so the running one is what a backup holds.
-local function importTarget(kind)
-  return kind == "parts" and ns.LoadingProfileName() or ns.ProfileName()
+-- A whole imported profile: one that matches a profile this account has uses that profile instead of making another
+-- copy, and writes nothing, so it makes no backup (importNew does). Either way it answers a settings loss
+-- (Core/SettingsGuard.lua). Returns what happened and the result.
+local function importWhole(data)
+  local result = { display = takeDisplay(data), reload = true }
+  ownPixelScale(data)
+  ns.SettingsGuard.Imported()
+  local match = ns.MatchingProfile(ns.StripPayload(data))
+  if not match then return importNew(data, result), result end
+  result.notes = ns.MissingMedia(data)
+  return importMatch(match, result), result
 end
 
 -- A partial string: its tables merge into the named profile, key by key; a theme it carries keeps
@@ -315,28 +334,21 @@ local function importParts(data, name)
   return ns.Format(L["Imported {parts} settings into profile {profile}."], { parts = parts, profile = name })
 end
 
--- The import's notes: each font or bar texture the string names that this client lacks, then where the backup is.
-local function importNotes(payload, backup, name)
-  local notes = ns.MissingMedia(payload)
-  notes[#notes + 1] = ns.Format(L["Profile {profile} as it was before this import is saved as profile {backup}."], { profile = name, backup = backup })
-  return notes
-end
-
 -- Applies a decoded string (scope and settings, or nil and why not; Core/Serialize.lua): an
 -- older string is upgraded first, the other computer's own state is left out (ns.WithoutClientState),
--- and the profile the import lands in is backed up (importTarget, ns.BackupProfile). A
--- whole profile becomes a new profile this character switches to (or the one it matches); a
+-- and the profile the import lands in is backed up (importTarget, ns.BackupProfile), unless a whole string matches a
+-- profile this account has (it writes nothing). A whole profile becomes a new profile this character switches to (or the one it matches); a
 -- partial string merges into the profile used after the reload. Returns what happened and the result
 -- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
   ns.WithoutOtherClientDefaults(ns.WithoutClientState(payload), kind)
+  if kind == "profile" then return importWhole(payload) end
   local target = importTarget(kind)
   local backup = ns.BackupProfile(target)
   local result = { notes = importNotes(payload, backup, target), backup = backup, reload = true }
-  local text = kind == "profile" and importWhole(payload, result) or importParts(payload, target)
-  return text, result
+  return importParts(payload, target), result
 end
 
 -- Applies an import string at once (ns.StartImport, Core/ProfileStrings.lua, spreads a large

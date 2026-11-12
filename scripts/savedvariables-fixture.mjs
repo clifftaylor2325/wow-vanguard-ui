@@ -16,10 +16,11 @@ import { SERIALIZE_SV } from "./lib/sv-serialize.mjs";
 
 const OUT = "scripts/fixtures/savedvariables";
 
-// The script run inside the unpacked version: its own harness, one login, the tables as Lua.
-const RUN = `
+// The script run inside the unpacked version: its own harness, one login, the tables as Lua. seed is the account
+// file's version line, empty for a release from before Core/DB.lua kept a version (a real player's file has none).
+const run = (seed) => `
 import { createAddon } from "./scripts/lib/lua-harness.mjs";
-const addon = createAddon({ savedVariables: "VanguardDB = { version = 2, profiles = {}, setupDone = true }\\nVanguardCharDB = {}\\n" });
+const addon = createAddon({ savedVariables: "VanguardDB = { ${seed}profiles = {}, setupDone = true }\\nVanguardCharDB = {}\\n" });
 addon.login();
 addon.slash("unlock"); addon.slash("lock"); addon.advance(2);
 addon.fire("PLAYER_LOGOUT");
@@ -35,6 +36,12 @@ function unpack(version, scratch) {
   return dir;
 }
 
+// The version line a tag's account file starts with: none when its Core/DB.lua has no DB_VERSION.
+function seedVersion(dir) {
+  const hasVersion = /^local DB_VERSION = \d+/m.test(fs.readFileSync(path.join(dir, "Core/DB.lua"), "utf8"));
+  return hasVersion ? "version = 2, " : "";
+}
+
 // The fixture's text: a header saying what made it, then the tables.
 function fixture(version, lua) {
   const head = [
@@ -48,7 +55,7 @@ function fixture(version, lua) {
 // Writes one version's fixture.
 function write(version, scratch) {
   const dir = unpack(version, scratch);
-  fs.writeFileSync(path.join(dir, "fixture-run.mjs"), RUN);
+  fs.writeFileSync(path.join(dir, "fixture-run.mjs"), run(seedVersion(dir)));
   const lua = execFileSync(process.execPath, ["fixture-run.mjs"], { cwd: dir, encoding: "utf8", maxBuffer: 1 << 26 });
   fs.writeFileSync(path.join(root, OUT, `${version}.lua`), fixture(version, lua));
   console.log(`wrote ${OUT}/${version}.lua`);

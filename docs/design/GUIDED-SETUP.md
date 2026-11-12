@@ -49,11 +49,11 @@ Each row shows its caption, with `· recommended` after it while Vanguard recomm
 
 | Row | Default | Recommended | Why |
 |---|---|---|---|
-| Larger text (115%) | Off | Off; **On with a controller** (`InputUtil.IsGamepadUIEnabled`) | Couch distance; the review's accessibility item 8 |
+| Larger text (115%) | Off | Offered; **On with a controller** (`InputUtil.IsGamepadUIEnabled`) | Couch distance; the review's accessibility item 8 |
 | Colour vision: Safer colours | Off | Off | A need, not a taste; offered, never pushed |
 | Calm HUD out of combat | Off | Off | Some players love it, many miss their bars; offered |
 | Reduce motion | Off | Off | Offered here so players who need it find it |
-| Shield HUD look | On (Shield) | On | The signature look; the row turns it back on for a profile that kept Plain, or off for one that prefers the flat frames |
+| Shield HUD look | On (Shield) | On | The signature look; a first run leaves a look the profile already picked (Plain, Rimmed, Hairline or Tabs), Use recommended sets Shield, and the row switches it off for one that prefers the flat frames |
 
 ### Step 5, Game settings (the game's own; Vanguard records the old value so turning it back puts yours back)
 
@@ -83,7 +83,7 @@ Not offered (Vanguard has no control for them, and CLAUDE.md says not to add a s
 | Show the game's Cooldown Manager | On | Guides recommend it; it ships off in the game |
 | Glow a buff near its end | On | Pairs with the manager |
 | Timer numbers on target and focus auras | On | Most asked-for aura detail |
-| Group threat panel | On for **Tanking**, off otherwise | Tanks watch threat on the group |
+| Group threat panel | On for **Tanking**, offered otherwise | Tanks watch threat on the group |
 | Action bars | **Three plus the two right-edge bars** (bars 4 and 5, shown on mouseover) | Vanilla classes carry more spells than three bars hold by level 40 |
 | Key setup at your next login (Forever) | Offered (off) | Key setup's once-only offer at the next login; its key data is not yet confirmed in game, so the row starts off and only a player who ticks it gets the offer (decision D4, 2026-11-09) |
 

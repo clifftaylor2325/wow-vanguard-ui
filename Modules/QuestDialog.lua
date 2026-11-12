@@ -242,14 +242,21 @@ local function acceptOffer()
   ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, QD.asked)
 end
 
+-- A detail page's choices, rewards and money line: none of them where the game hides the quest's rewards.
+local function offerRewards()
+  if QP.RewardsHidden(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))) then return {}, {}, "" end
+  return QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), QD.MoneyLine()
+end
+
 -- A quest's details: accept it (or acknowledge one the game already accepted), or decline.
 function QD.DetailPage()
   local auto = ns.CallIf(_G, "QuestGetAutoAccept") == true
+  local choices, rewards, money = offerRewards()
   return {
     title = QP.WithMark(ns.CallIf(_G, "GetTitleText"), ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))), text = ns.CallIf(_G, "GetQuestText"), objectives = ns.CallIf(_G, "GetObjectiveText"),
     needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
-    choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
+    choices = choices, rewards = rewards, money = money,
     extras = QD.PageExtras(), primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], acceptOffer },
     secondary = not auto and { L["Decline"], function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }
@@ -261,10 +268,37 @@ function QD.CostLine()
   return cost > 0 and ns.Format(L["Costs {money}"], { money = ns.GetModule("InfoStrip").Money(cost) }) or ""
 end
 
+-- One required currency's card as the game's progress page draws it (what it asks for as the count); nil when the
+-- client gave none. Its tooltip is the currency's, by its place among the required currencies.
+local function requiredCurrency(i)
+  local info = ns.CallIf(C_QuestOffer, "GetQuestRequiredCurrencyInfo", i)
+  if type(info) ~= "table" then return nil end
+  return { kind = "required", index = i, currency = true, name = info.name, texture = info.texture, quality = info.quality, count = ns.PlainNumber(info.requiredAmount) }
+end
+
+-- The required items the game draws (QuestFrameProgressItems_Update): none while the quest hides them all, and not a
+-- slot it hides (IsQuestItemHidden not 0); each keeps its slot number. A missing call or a secret answer keeps the slot.
+local function requiredItems()
+  local out = {}
+  if ns.IsTrue(ns.CallIf(C_QuestOffer, "GetHideRequiredItems")) then return out end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestItems")) or 0 do
+    local hidden = ns.PlainNumber(ns.CallIf(_G, "IsQuestItemHidden", i))
+    if hidden == nil or hidden == 0 then out[#out + 1] = slotCard("required", i) end
+  end
+  return out
+end
+
+-- What the progress page asks you to hand in: the items, then the currencies (the game's "Required items").
+function QD.Required()
+  local out = requiredItems()
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestCurrencies")) or 0 do out[#out + 1] = requiredCurrency(i) end
+  return out
+end
+
 -- A quest you're turning in: what it still needs (items, and the money it costs), and Continue once you have it.
 function QD.ProgressPage()
   return {
-    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems")), money = QD.CostLine(),
+    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Required(), money = QD.CostLine(),
     primary = { L["Continue"], function() ns.CallIf(_G, "CompleteQuest") end, ns.CallIf(_G, "IsQuestCompletable") == true }, escape = GOODBYE,
   }
 end
@@ -504,6 +538,12 @@ local function itemArrived()
   ns.Soon("questdialog items", QD.Redraw)
 end
 
+-- The quest log changed: a talk with lines (gossip or a greeting) redraws on the next frame, as the game's own gossip
+-- and greeting windows do on QUEST_LOG_UPDATE (a quest turned complete lights its line). One comparison while none shows.
+local function questsChanged()
+  if QD.frame:IsShown() and (QD.key == "gossip" or QD.key == "greeting") then ns.Soon("questdialog items", QD.Redraw) end
+end
+
 -- The module switched off (Core/Modules.lua), always out of combat: the game's gossip and quest windows get back the
 -- events Vanguard took, by the same path as the session hand-back switch, so the next talk opens them, and a talk
 -- that is open moves to them. Vanguard's dialog, mover and handlers go with the scope. Needs an in-game look: that
@@ -525,4 +565,5 @@ function QD.Enable(settings, scope)
   scope:On("PLAYER_REGEN_DISABLED", releaseKeys)
   scope:On("QUEST_ITEM_UPDATE", QD.Redraw)
   scope:On("GET_ITEM_INFO_RECEIVED", itemArrived)
+  scope:On("QUEST_LOG_UPDATE", questsChanged)
 end

@@ -48,7 +48,7 @@ end
 
 -- The ruleset the client names, else nil: "season<N>" while a season is on (C_Seasons), else
 -- "hardcore" on Hardcore rules (C_GameRules). Forever documents C_GameRules but has no C_Seasons, which
--- is asked only where a client has it. The Classic or Modern preset is shown by /vg realm, not part of the
+-- is asked only where a client has it. The Classic or Enhanced preset (the game's Modern) is shown by /vg realm, not part of the
 -- key: a key that gains a part orphans the data kept under the old one, so it waits on a probe paste.
 function H.Ruleset()
   if ask("C_Seasons", "HasActiveSeason") == true then
@@ -305,6 +305,7 @@ end
 
 -- /vg launch [clear]: what is saved from before launch, or (clear, once launch has passed) removes it.
 function H.Launch(arg)
+  arg = (arg or ""):lower()
   if arg == "clear" and not H.Launched() then return ns.Chat(L["Launch is on 4 November 2026; nothing is cleared before then."]) end
   local text = betaText(arg == "clear" and H.ClearBeta() or H.Beta())
   if not text then return ns.Chat(L["No prices, sales or characters saved from before launch."]) end

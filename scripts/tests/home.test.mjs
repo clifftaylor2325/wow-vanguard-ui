@@ -91,9 +91,10 @@ it("home: /vg realm prints the realm, ruleset, side, data key and how your name 
   expect([chatHas(addon, /Ruleset: none named by the client/), chatHas(addon, /Your name in chat: \?-ForeverTest/)], "none named; a hidden name").toEqual([true, true]);
 });
 
-// TEST-ONLY game rules as Forever documents them: the Classic or Modern preset enum, self-found and the game mode record.
+// TEST-ONLY game rules as Forever documents them: the Classic or Enhanced preset enum, self-found and the game mode record.
 const FOREVER_RULES = `
-  Enum.ForeverExperiencePreset = { Classic = 0, Modern = 1 }
+  -- Forever names the second preset Enhanced (the login screen says Modern): Blizzard_APIDocumentationGenerated/GameRulesDocumentation.lua, ForeverExperiencePreset.
+  Enum.ForeverExperiencePreset = { Classic = 0, Enhanced = 1 }
   __preset, __self = 1, true
   C_GameRules = {
     IsHardcoreActive = function() return false end,
@@ -106,7 +107,7 @@ const FOREVER_RULES = `
 it("home: /vg realm names the Forever preset, self-found and game mode, none of which join the key", () => {
   const addon = loggedIn(FOREVER_RULES);
   addon.slash("realm");
-  expect(chatHas(addon, /Rules: preset Modern {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
+  expect(chatHas(addon, /Rules: preset Enhanced {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
   expect(home(addon)[4], "the key stays realm and side").toBe("ForeverTest-Alliance");
   addon.eval("__preset, __self = 7, false Enum.ForeverExperiencePreset = nil");
   addon.slash("realm");
@@ -169,7 +170,7 @@ it("home: /vg launch counts what the beta left, and clears only data stamped bef
   addon.slash("launch clear");
   expect([chatHas(addon, /Launch is on 4 November 2026/), left(addon)], "before launch nothing goes").toEqual([true, [3, 4, 2, 4, 3]]);
   addon.eval("__now = " + LIVE_DAY);
-  addon.slash("launch clear");
+  addon.slash("launch Clear");
   expect(chatHas(addon, /Cleared what was saved from before launch: 2 prices, 3 sales, 1 characters\./), "cleared").toBe(true);
   expect(left(addon), "the live prices, sales, auctions and characters stay in order; the price count is redone").toEqual([1, 2, 1, 3, 1]);
   expect(addon.eval("return VanguardDB.ah.ledgers['ForeverTest-Alliance'].records[1].amount"), "the live sale kept").toBe(9);
@@ -186,13 +187,14 @@ it("home: a house saved without its price table clears to a count of none, with 
     "nothing to clear: the count is none, and no error").toEqual([true, 0, 0]);
 });
 
-it("home: the first login after launch says once that beta data is saved; the Town and gear button asks before clearing", () => {
+it("home: the first login after launch says once that beta data is saved", () => {
   const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
   addon.fire("PLAYER_LOGIN");
   expect(chatHas(addon, /Still saved from the beta: 2 prices, 3 sales, 1 characters\./), "told").toBe(true);
-  addon.eval("__said = 0");
+  addon.clearChat();
   addon.fire("PLAYER_LOGIN");
-  expect(addon.eval("return VanguardDB.launchNoticed"), "and marked, so not again").toBe(true);
+  expect(chatHas(addon, /Still saved from the beta/), "not said again at the next login").toBe(false);
+  expect(addon.eval("return VanguardDB.launchNoticed"), "and marked").toBe(true);
   addon.eval("time = function() return " + BETA_DAY + " end VanguardDB.launchNoticed = nil");
   addon.fire("PLAYER_LOGIN");
   expect(addon.eval("return VanguardDB.launchNoticed"), "before launch: not marked").toBe(null);

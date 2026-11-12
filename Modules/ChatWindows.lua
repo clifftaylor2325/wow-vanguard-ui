@@ -74,11 +74,18 @@ local function remember(frame)
   if type(FCF_SavePositionAndDimensions) == "function" then FCF_SavePositionAndDimensions(frame) end
 end
 
+-- Saves the window's new size: in the game's chat layout, and for the main window (whose size the game's Edit Mode
+-- sets again at every UI load) as the size Chat keeps for this character and puts back.
+local function sized(frame)
+  remember(frame)
+  if frame == _G.ChatFrame1 then ns.GetModule("Chat").KeepSize(widthOf(frame), heightOf(frame)) end
+end
+
 -- get/set for one window's width (its height kept as it is).
 function CW.WidthSetting(frame)
   return function() return widthOf(frame) end, function(v)
     frame:SetSize(v, heightOf(frame))
-    remember(frame)
+    sized(frame)
   end
 end
 
@@ -86,7 +93,7 @@ end
 function CW.HeightSetting(frame)
   return function() return heightOf(frame) end, function(v)
     frame:SetSize(widthOf(frame), v)
-    remember(frame)
+    sized(frame)
   end
 end
 
@@ -377,11 +384,31 @@ local function savedLines(shown)
   return out
 end
 
+-- Whether a temporary window (a whisper pop-out) is in use: the game marks it so, or it is docked or showing. A closed
+-- one keeps its frame, hidden and no longer marked, for the next pop-out to reuse (forever
+-- Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCF_OpenTemporaryWindow :886, :920; FCF_Close :1788-1791).
+local function temporaryInUse(frame)
+  return frame.inUse == true or frame.isDocked ~= nil or (type(frame.IsShown) == "function" and frame:IsShown())
+end
+
+-- The windows Find reads: every window in use, then each temporary window in use (CHAT_FRAMES past the permanent ones,
+-- ChatFrame11 and up: a whisper sent to a pop-out is in no other window).
+local function searchedFrames()
+  local out = {}
+  for _, w in ipairs(CW.Windows()) do out[#out + 1] = w.frame end
+  local names = type(CHAT_FRAMES) == "table" and CHAT_FRAMES or {}
+  for i = windowCount() + 1, #names do
+    local frame = _G[names[i]]
+    if type(frame) == "table" and temporaryInUse(frame) then out[#out + 1] = frame end
+  end
+  return out
+end
+
 -- Every line to look through, oldest first: the saved ones no window shows, then each window's own.
 local function allLines()
   local shown, all = {}, {}
-  for _, w in ipairs(CW.Windows()) do
-    for _, text in ipairs(frameLines(w.frame)) do shown[text] = true all[#all + 1] = text end
+  for _, frame in ipairs(searchedFrames()) do
+    for _, text in ipairs(frameLines(frame)) do shown[text] = true all[#all + 1] = text end
   end
   local saved = savedLines(shown)
   for _, text in ipairs(all) do saved[#saved + 1] = text end

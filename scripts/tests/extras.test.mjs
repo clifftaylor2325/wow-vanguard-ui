@@ -810,6 +810,17 @@ it("quiet the game: the error line drops what the action bar already shows, and 
   old.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
   expect(old.eval("return UIErrorsFrame.__lines"), "an error line without the per-type switch is left alone").toEqual([["TEST-ONLY not ready", 51]]);
 });
+it("H46-30-52 the AFK screen: switched on while you are away it shows at once, and stays hidden when you are not", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", false)');
+  addon.eval("__afk = true");
+  addon.eval('ns.SetModuleEnabled("AfkScreen", true)');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "away: the screen is up").toBe(true);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", false)');
+  addon.eval("__afk = false");
+  addon.eval('ns.SetModuleEnabled("AfkScreen", true)');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "here: it stays hidden").toBe(false);
+});
 it("the AFK screen: a dimmed screen and a card while you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV);
   // The AFK screen and its card's texts.

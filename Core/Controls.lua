@@ -444,6 +444,21 @@ local function closeWhenOwnerGone(m)
   if host and not host:IsVisible() then W.CloseMenu() end
 end
 
+-- Escape closes the menu first, over a dialog or window under it that would otherwise take the key (the game's
+-- Escape path closes the windows in its list in one go). The menu holds the keyboard while shown out of combat
+-- and passes every other key on; the game's own Escape handler list is never touched (an addon's insert there
+-- would taint it). In a fight no key is held, and ns.CloseOnEscape stays the way in.
+local function holdMenuKeys()
+  menu:HookScript("OnShow", ns.Guard("menu keys show", ns.HoldKeyboard))
+  menu:HookScript("OnHide", ns.Guard("menu keys hide", ns.HoldKeyboard))
+  ns.ReleaseKeyboardInCombat(menu)
+  menu:HookScript("OnKeyDown", ns.Guard("menu key", function(m, key)
+    if ns.InCombat() or not ns.Client.Has("keyPropagate") then return end
+    if key == "ESCAPE" then W.CloseMenu() end
+    m:SetPropagateKeyboardInput(key ~= "ESCAPE")
+  end))
+end
+
 -- Escape and a fight close the menu (a fight, so its click catcher is never up over the action bars; a menu opened in a
 -- fight gets no catcher at all, so the next click on a bar is not swallowed). The menu
 -- showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
@@ -487,7 +502,7 @@ local function menuFrame()
   menu:SetClampedToScreen(true)
   menu:EnableMouseWheel(true)
   menu:SetScript("OnMouseWheel", scrollMenu)
-  for _, add in ipairs({ addMenuThumb, addMeasure, addCatcher, wireMenuState }) do add() end
+  for _, add in ipairs({ addMenuThumb, addMeasure, addCatcher, wireMenuState, holdMenuKeys }) do add() end
   menu:Hide()
   return menu
 end

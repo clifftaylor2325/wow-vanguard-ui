@@ -175,13 +175,25 @@ local function link(t)
   return type(t) == "table" and ns.Copy(t) or nil
 end
 
--- Every mover's saved spot as plain fields ({} for one at its default), with its links (Core/MoverLinks.lua).
+-- A saved spot as plain fields ({} for one at its default), with its links (Core/MoverLinks.lua).
+local function spotOf(saved)
+  local p = tbl(saved)
+  return { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha,
+    rel = link(p.rel), match = link(p.match), w = p.w, h = p.h }
+end
+
+-- Every mover's saved spot as plain fields.
 local function spotsNow()
   local out, saved = {}, ns.Settings("positions")
-  for _, m in ipairs(ns.MoverList()) do
-    local p = tbl(saved[m.key])
-    out[m.key] = { point = p.point, relPoint = p.relPoint, x = p.x, y = p.y, scale = p.scale, alpha = p.alpha,
-      rel = link(p.rel), match = link(p.match), w = p.w, h = p.h }
+  for _, m in ipairs(ns.MoverList()) do out[m.key] = spotOf(saved[m.key]) end
+  return out
+end
+
+-- The saved spots of keys that have no mover yet (a frame that comes up later), as spotOf reads them.
+local function absentSpots(now)
+  local out = {}
+  for key, saved in pairs(ns.Settings("positions")) do
+    if now[key] == nil then out[key] = spotOf(saved) end
   end
   return out
 end
@@ -228,12 +240,15 @@ local function diffModule(ov, module, after, before)
 end
 
 -- Only what changed from one snapshot to another, as an override: { positions, settings }; nil when nothing did.
+-- A frame or module that was not there in the first (before.absent holds a frame's saved spot) counts as unchanged.
 function SI.Diff(before, after)
   local ov = {}
   for key, spot in pairs(after.positions) do
-    if not same(spot, before.positions[key]) then put(ov, "positions", key, spot) end
+    if not same(spot, before.positions[key] or tbl(before.absent)[key] or {}) then put(ov, "positions", key, spot) end
   end
-  for module, values in pairs(after.settings) do diffModule(ov, module, values, tbl(before.settings[module])) end
+  for module, values in pairs(after.settings) do
+    if before.settings[module] then diffModule(ov, module, values, before.settings[module]) end
+  end
   return next(ov) and ov or nil
 end
 
@@ -400,15 +415,44 @@ end
 -- Recording ------------------------------------------------------------------------------------
 
 -- Starts recording a situation's override: the base is kept, that situation's override shows, and
--- what you change until SI.StopRecording is kept. Refused in combat (like unlocking). True when started.
+-- what you change until SI.StopRecording is kept. Refused in combat (like unlocking) and while the module is off. True when started.
 function SI.StartRecording(name)
-  if not SI.LABELS[name] or ns.InCombat() then return false end
+  if not SI.LABELS[name] or ns.InCombat() or not running() then return false end
   if SI.recording then SI.StopRecording() end
   SI.RestoreBase()
   SI.applied, SI.base, SI.recording = nil, SI.Snapshot(), name
+  SI.base.absent = absentSpots(SI.base.positions)
   write(tbl(tbl(db().overrides)[name]))
   ns.SetMoverSuffix(ns.Format(L[" · recording {situation}"], { situation = SI.LABELS[name] }))
   return true
+end
+
+-- Carries over the old override's spots for frames that had no mover when recording started and were not changed.
+local function keepSpots(ov, old, base)
+  for key, spot in pairs(tbl(old.positions)) do
+    if base.positions[key] == nil and tbl(ov.positions)[key] == nil then put(ov, "positions", key, ns.Copy(spot)) end
+  end
+end
+
+-- The same for the settings of modules that were not running when recording started.
+local function keepSettings(ov, old, base)
+  for module, values in pairs(tbl(old.settings)) do
+    for key, v in pairs(tbl(values)) do
+      if base.settings[module] == nil and tbl(tbl(ov.settings)[module])[key] == nil then
+        ov.settings = ov.settings or {}
+        put(ov.settings, module, key, value(v))
+      end
+    end
+  end
+end
+
+-- The new override with what the old one held for what was not on screen to record: a frame without a mover or a module
+-- that was not running (a pass through the situation must not delete it). Nil when the result is empty.
+local function keepUnshown(diff, old, base)
+  local ov = diff or {}
+  keepSpots(ov, old, base)
+  keepSettings(ov, old, base)
+  return next(ov) and ov or nil
 end
 
 -- Stops recording: what differs from the base is saved as the situation's override (nothing clears it),
@@ -416,7 +460,7 @@ end
 function SI.StopRecording()
   local name = SI.recording
   if not name then return false end
-  local ov = SI.Diff(SI.base, SI.Snapshot())
+  local ov = keepUnshown(SI.Diff(SI.base, SI.Snapshot()), tbl(db().overrides[name]), SI.base)
   db().overrides[name] = ov
   SI.base, SI.recording = SI.Pick(SI.base, ov or {}), nil
   SI.RestoreBase()
@@ -482,6 +526,7 @@ SI.UNKNOWN = ns.ClientData({
 -- Starts recording from a command or the options, and says how it went.
 local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
+  if not running() then return ns.Chat(SI.OFF_TEXT) end
   if not SI.StartRecording(name) then return ns.Chat(L["Recording can't start in a fight. Try again after it."]) end
   ns.Chat(ns.Format(L["Recording for {situation}: move frames (/vg unlock) and change settings, then /vg situation stop."], { situation = SI.LABELS[name] }))
   ns.Options.RebuildPage("situations")

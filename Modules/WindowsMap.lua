@@ -287,7 +287,7 @@ GW.QUEST_DETAIL_BUTTONS = { "AbandonButton", "ShareButton", "TrackButton" }
 -- Whether Vanguard's own quest log is on, standing in for the game's quest panel (it is built only when on).
 local function ownQuestLog()
   local log = ns.GetModule("QuestLog")
-  return log ~= nil and log.frame ~= nil and ns.ModuleLive("QuestLog")
+  return log ~= nil and log.InUse()
 end
 
 -- The quest list's tools: the search box (its magnifier kept), the settings gear on a control tile, and the quest count's
@@ -736,7 +736,7 @@ end
 
 -- The Legacy cards' texts, by key, as { role, colour }: the game colours them for its dark plates (dim grey while
 -- locked or unfinished), the theme's text tiers clear 4.5:1 on a panel. A key a card lacks is skipped.
-GW.LEGACY_TEXTS = { Title = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
+GW.LEGACY_TEXTS = { Label = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
 -- The points crests (a bronze crown over a shield) by key, and the frame art round a card's icon.
 GW.LEGACY_CRESTS = { "Shield", "PointsIcon", "PointsBadge", "LegacyPointShield" }
 GW.LEGACY_ICON_ART = { "IconBorder", "IconFrame", "IconRing" }
@@ -750,10 +750,12 @@ local function lightTexts(card)
 end
 
 -- One crest (a texture, or a frame holding them): the bronze taken out of it and tinted in the border colour, so the
--- number on it stays the brightest thing.
+-- number on it stays the brightest thing. A frame with an Icon texture (the game's Shield buttons) is flattened
+-- through that, so its Check and CheckBackground (shown on a completed challenge) keep their own colours.
 local function flattenCrest(part)
   if type(part) ~= "table" then return end
   if part.SetDesaturated then part:SetDesaturated(true) T.Tint(part, "borderHi") end
+  if type(part.Icon) == "table" and part.Icon.SetDesaturated then return flattenCrest(part.Icon) end
   if not part.GetRegions then return end
   for _, region in ipairs({ part:GetRegions() }) do
     if region.SetDesaturated then flattenCrest(region) end
@@ -872,12 +874,14 @@ local function skinCollapse(button)
 end
 
 -- One category row of the challenge list: a theme row (the game's bars faded, the unseen-challenges dot kept) lit while
--- the game has the category selected, its plus or minus in the text colour.
+-- the game has the category selected, its plus or minus in the text colour. The game puts its gold back on the name
+-- on every hover (CheckHighlightTitle), so the name follows that too.
 local function skinCategory(row)
   GW.DressRow(row, { "NotificationIcon" })
   skinCollapse(row.CollapseButton)
   followCategory(row)
   GW.HookAfter(row, "SetSelected", followCategory)
+  GW.HookAfter(row, "CheckHighlightTitle", followCategory)
 end
 
 -- The challenge list's top: the filter dropdown (its label light), the search box and the no-challenges line, and

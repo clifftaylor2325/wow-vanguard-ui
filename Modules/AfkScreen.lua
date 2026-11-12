@@ -349,6 +349,7 @@ function AFK.Enable(settings, scope)
   scope:Frame(AFK.frame):Hide()
   listen(scope)
   watchPrompts(scope)
+  AFK.Update()
 end
 
 -- Switched off: the state of one away spell is forgotten, so a later start begins as a login does.

@@ -13,6 +13,10 @@ import { loggedIn } from "./helpers.mjs";
 
 const DIR = path.join(root, "scripts/fixtures/savedvariables");
 // The released versions with a fixture, oldest first.
+const RELEASES = ["0.6.0", "0.7.0", "0.7.1", "0.7.2", "0.7.3", "0.7.4", "0.7.5", "0.8.0", "0.9.0", "0.9.1", "0.9.2", "0.9.3", "0.9.4", "0.9.5", "0.9.6"];
+// The first release that wrote the account file's version number (Core/DB.lua's DB_VERSION): a player's file from an
+// earlier one has none, and loads through every migration from 0 on.
+const FIRST_STAMPED = "0.9.3";
 // Today's database version (Core/DB.lua's DB_VERSION).
 const DB_VERSION = Number(fs.readFileSync(path.join(root, "Core/DB.lua"), "utf8").match(/^local DB_VERSION = (\d+)/m)[1]);
 const VERSIONS = fs.readdirSync(DIR).filter((f) => f.endsWith(".lua")).map((f) => f.slice(0, -4)).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
@@ -28,13 +32,30 @@ function upgraded(source, client) {
 // What a login on old SavedVariables must keep and reach: no error, setup done, the Default profile, today's DB version.
 const state = (addon) => addon.eval("return { #ns.errors, VanguardDB.setupDone == true, ns.ProfileName(), VanguardDB.version, Vanguard_Options:IsShown() }");
 
-it("there is a fixture for every release from 0.6.0 to 0.9.3", () => {
-  expect(VERSIONS).toEqual(expect.arrayContaining(["0.6.0", "0.7.0", "0.7.5", "0.8.0", "0.9.0", "0.9.3"]));
+// A fixture's source as that release's player had it: the generator seeds VanguardDB with version = 2 for every tag,
+// so the line is taken out of the files made before the release wrote one.
+function asWritten(version, source) {
+  if (version.localeCompare(FIRST_STAMPED, "en", { numeric: true }) >= 0) return source;
+  const at = source.indexOf("VanguardCharDB = ");
+  return source.slice(0, at).replace(/^  version = \d+,\n/m, "") + source.slice(at);
+}
+
+it("there is a fixture for every release from 0.6.0 to 0.9.6", () => {
+  expect(VERSIONS).toEqual(RELEASES);
+});
+
+it("a release older than 0.9.3 loads with no version number and is migrated from 0", () => {
+  const source = asWritten("0.9.2", fs.readFileSync(path.join(DIR, "0.9.2.lua"), "utf8"));
+  expect(source).not.toMatch(/^  version = /m);
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
+    const addon = upgraded(source, client);
+    expect(addon.eval("return { VanguardDB.version, VanguardDB.profiles.Default.MenuStrip.glyphs }"), "the 0.9.3 migration ran").toEqual([DB_VERSION, false]);
+  }
 });
 
 for (const version of VERSIONS) {
   it(`${version}'s saved settings load on both clients and survive a second save`, () => {
-    const source = fs.readFileSync(path.join(DIR, `${version}.lua`), "utf8");
+    const source = asWritten(version, fs.readFileSync(path.join(DIR, `${version}.lua`), "utf8"));
     for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
       const addon = upgraded(source, client);
       expect(state(addon), `${version} on ${client ? "Retail" : "Forever"}`).toEqual([0, true, "Default", DB_VERSION, true]);

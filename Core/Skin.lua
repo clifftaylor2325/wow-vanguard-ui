@@ -97,6 +97,18 @@ function ns.SkinList()
   return out
 end
 
+-- True when the profile wants another addon's skin switched differently from how it stands on screen: a skin that ran
+-- (it can't be taken off without a reload) the profile turns off, or one that did not run it turns on.
+---@param profile table
+---@return boolean
+function ns.SkinsWaitFor(profile)
+  local wanted = type(profile.skins) == "table" and profile.skins or {}
+  for _, name in ipairs(order) do
+    if (skins[name].ran == true) == (wanted[name] == false) then return true end
+  end
+  return false
+end
+
 ns.On("PLAYER_LOGIN", function()
   loggedIn = true
   for _, name in ipairs(order) do
