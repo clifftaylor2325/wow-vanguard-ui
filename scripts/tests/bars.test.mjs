@@ -1273,11 +1273,10 @@ it("H45-22-80 bars: a DataBars layout stamp that is not a number is migrated, no
   }
 });
 
-// TEST-ONLY: one click edge on bar 1 button 2, with the client's flip of a CheckButton's check stood in first
-// (/home/user/blizz/forever/Interface/AddOns/Blizzard_Transmog/Blizzard_Transmog.lua:1961-1967 reads the flipped state
-// in OnClick, and Blizzard_ActionBar/Shared/StanceBar.lua:119-125 undoes it with SetChecked(not GetChecked())). The
-// cases read the check after PostClick, which is the truth whether or not the stub flips it as well. Returns it.
-const clickEdge = (addon, down) => addon.eval(`local b = Vanguard_Bar1Button2 b.__checked = not b.__checked b:Click("LeftButton", ${down}) return b:GetChecked()`);
+// TEST-ONLY: one click edge on bar 1 button 2. The stub flips an enabled CheckButton's check before OnClick, as the
+// client does (Blizzard_Transmog.lua:1961-1967 reads the flipped state in OnClick), so the check a case reads is
+// only right when PostClick puts it back to the truth. Returns it.
+const clickEdge = (addon, down) => addon.eval(`local b = Vanguard_Bar1Button2 b:Click("LeftButton", ${down}) return b:GetChecked()`);
 
 // The game's action buttons put the check right after every click (/home/user/blizz/forever/Interface/AddOns/
 // Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml:178 PostClick ->
