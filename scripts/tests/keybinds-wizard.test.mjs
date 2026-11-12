@@ -552,3 +552,18 @@ it("H44-10-51 step 3: a character key set where only what a key does now differs
   expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), charKeys(addon, "TOGGLEBACKPACK")],
     "the character's F still opens the bags").toEqual([true, 1, ["F"]]);
 });
+
+it("H45-6-2 step 3: a key bound after the list was drawn, in the same key set, stops Apply and the list says (now ...)", () => {
+  const addon = warrior();
+  addon.world.setAction(61, { type: "spell", id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("[x] F: your Shield Bash on bar 2");
+  addon.eval('SetBinding("F", "TOGGLEBACKPACK") SaveBindings(1)');
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(keys(addon, ["F"]), "the player's own key stays").toEqual(["TOGGLEBACKPACK"]);
+  expect(chatHas(addon, /Your bars or keys changed since this list was made/)).toBe(true);
+  expect([win(addon).shown, win(addon).step]).toEqual([true, 3]);
+  expect(ready(addon).join("\n")).toMatch(/F: .*\(now /);
+});

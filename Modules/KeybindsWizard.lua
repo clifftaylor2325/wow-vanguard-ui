@@ -36,7 +36,7 @@ WZ.onApply = {}
 -- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live and full
 -- (the plans of the ticked entries and of every entry), off ({ [entry id] = true } for an unticked change, by
 -- entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit (the chord pressed last), placeNew
--- (step 3's tick box for new spells).
+-- (step 3's tick box for new spells), shown (the signature of the plan the list was last drawn from).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -546,17 +546,24 @@ local function listRow(s, i, text, y)
   return W.GrowRow(r)
 end
 
--- Lists every change and every key that stays, and hides the parts left over from a longer list.
+-- Hides the parts left over from a longer list.
+local function hideLeftovers(s)
+  for _, pool in pairs(s.pools) do
+    for n = pool.used + 1, #pool do pool[n]:Hide() end
+  end
+end
+
+-- Lists every change and every key that stays, and takes the signature of what the list shows (the keys as they are
+-- now), so Apply stops when a key or a bar changed after the list was drawn.
 function fillReady(s)
   for _, pool in pairs(s.pools) do pool.used = 0 end
   local y = 0
+  state.shown = KA.Signature(state.live)
   for i, row in ipairs(state.rows) do
     local text = rowText(row, state.entries[i])
     if text then y = y + listRow(s, i, text, y) end
   end
-  for _, pool in pairs(s.pools) do
-    for n = pool.used + 1, #pool do pool[n]:Hide() end
-  end
+  hideLeftovers(s)
   s.view:Fit(math.max(y, SIZE.line))
 end
 
@@ -675,7 +682,7 @@ local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined, keys = kept()
   if changes == 0 and #declined > 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
-  if not KA.Apply(entries, set, KA.Signature(state.live)) then return relist() end
+  if not KA.Apply(entries, set, state.shown) then return relist() end
   WZ.frame:Hide()
   ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined, keys)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
