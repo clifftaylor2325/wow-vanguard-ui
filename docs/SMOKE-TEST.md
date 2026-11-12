@@ -6895,6 +6895,120 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The dimmed AFK screen comes up at once, and any key ends it.
 - If it fails, paste: nothing unless it stays hidden.
 
+### 33.812 The Upgrades list follows a changed stat weight at once (H46-31-102; WoW Forever and Retail)
+
+- Do: At the auction house, with Upgrades picked on the Lists tab, type /vg weights set STR 0. [Client: Forever and Retail.]
+- Expect: The list repaints at once, and rows that only gained from Strength are gone.
+- If it fails, paste: the Upgrades rows before and after.
+
+### 33.813 An empty Sell card shows no late warning (H46-31-103 and H46-31-R2; WoW Forever and Retail)
+
+- Do: Post your last stack of an item, close the auction house and cause a red error line within 3 seconds (try to mount indoors), then open the house again later and look at the Posting tab. [Client: Forever and Retail.]
+- Expect: Chat may say "Post: the game said ...", but the empty Sell card shows only its guide line, no warning.
+- If it fails, paste: the Sell card's guide line.
+
+### 33.814 The Lists and Posting tabs switch asks for a reload (H46-31-201; WoW Forever and Retail)
+
+- Do: Untick Lists and Posting tabs under /vg, Town and gear, then open the auction house; /reload and open it again. [Client: Forever and Retail.]
+- Expect: The options footer asks for a reload and the two tabs still work until then; after the reload they are gone.
+- If it fails, paste: the footer text.
+
+### 33.815 The Crafting costs switch hides and shows the panel at once (H46-31-202; WoW Forever and Retail)
+
+- Do: Open a recipe in the profession window, then untick Crafting costs and profit under /vg, Town and gear, and tick it again. [Client: Forever and Retail.]
+- Expect: The cost panel beside the window hides at once and shows again for the same recipe when ticked.
+- If it fails, paste: whether it hid and whether it came back.
+
+### 33.816 A reagent the client names late gets its name and icon (H46-31-203; WoW Forever and Retail)
+
+- Do: After a /reload, open a recipe with a reagent you have never seen and look at the cost panel's reagent rows. [Client: Forever and Retail.]
+- Expect: Within a moment the row reads the reagent's name with its icon, not "item 123".
+- If it fails, paste: the row's text.
+
+### 33.817 Merchant helpers switched on at an open merchant (H46-32-1; WoW Forever and Retail)
+
+- Do: At an open merchant, switch Merchant helpers off and on again under Modules (or /vg disable merchant, then /vg enable merchant), then Shift-click a stackable item for sale. [Client: Forever and Retail.]
+- Expect: The Stack and Max panel hangs under the game's quantity window, as at a merchant opened with the module on.
+- If it fails, paste: whether the panel showed, and a screenshot of the quantity window.
+
+### 33.818 The combined bag with the gamepad interface on (H46-32-102, pick of a decision still open; WoW Forever)
+
+- Do: With a controller, the game's gamepad interface on and Combined bag in sections ticked, open the combined bag and collapse one bag with the controller; then turn the gamepad interface off and open the bag again. [Client: Forever.]
+- Expect: With the gamepad interface on, the bag is the game's plain combined grid with no Vanguard headers, its per-bag tiles in the grid and not over slots, the collapsed bag hidden; with it off, the sections are back.
+- If it fails, paste: a screenshot with the gamepad interface on and one with it off.
+
+### 33.819 The Train all switch at an open trainer (H46-33-R1; WoW Forever)
+
+- Do: At a class trainer with Train all showing, untick Train all button at trainers under /vg, Town and gear, then tick it again. [Client: Forever.]
+- Expect: The button leaves the trainer window at once, and comes back when ticked.
+- If it fails, paste: whether the button left and whether it came back.
+
+### 33.820 The combined bag's upgrade arrow follows the weights and its switch (H46-33-102; WoW Forever)
+
+- Do: Open the combined bag with an upgrade arrow showing, change a stat weight in the stat weights wizard and Save (or /vg weights set str 0), then untick Arrow on upgrades in the combined bag. [Client: Forever.]
+- Expect: The arrow updates at once each time, with no bag update needed.
+- If it fails, paste: what the arrow did after each change.
+
+### 33.821 The craft queue's Next line says to set the count (H46-33-1; WoW Forever)
+
+- Do: Queue 3 of a recipe (/vg craft add 3 with it open), then type /vg craft next. [Client: Forever.]
+- Expect: Chat reads "Next: 3 x <recipe>. Set the count in the profession window, then press Create."; Create makes the count set in the game's box.
+- If it fails, paste: the chat line.
+
+### 33.822 The reputation bar's percent reads like the XP bar's (H46-34-1; WoW Forever and Retail)
+
+- Do: On a German, French or Spanish client, watch a reputation and look at the XP and reputation bars. [Client: Forever and Retail.]
+- Expect: The reputation bar writes its percent the same way as the XP bar (with the space before the % the language uses).
+- If it fails, paste: both bars' texts.
+
+### 33.823 The Dungeon card keeps a visit ended while it was off (H46-34-102; WoW Forever)
+
+- Do: Inside a dungeon, switch the Dungeon card off; leave the dungeon, switch it on, /reload outside, then walk back in within 30 minutes. [Client: Forever.]
+- Expect: The card says "Last run: today".
+- If it fails, paste: the card's line.
+
+### 33.824 The group board probe speaks your language (H46-34-105; WoW Forever)
+
+- Do: On a client in another language than English, open the group board and type /vg lfg probe. [Client: Forever.]
+- Expect: The channel names, the filter and the on or off word are all in your language.
+- If it fails, paste: the two probe lines.
+
+### 33.825 The Buyback word matches the merchant's tab (H46-37-303; WoW Forever, Chinese clients)
+
+- Do: At a merchant on a zhCN and then a zhTW client, sell one item and compare the Buyback tab's own label with the word in Vanguard's chat line. [Client: Forever.]
+- Expect: The same word (zhCN 购回, zhTW 買回).
+- If it fails, paste: the tab label and the chat line.
+
+### 33.826 The sell list and vendor words in any case (H46-40-F1; WoW Forever and Retail)
+
+- Do: Type /vg junk add <item link>, then /vg junk Remove <the same link> (capital R); then /vg vendors Clear. [Client: Forever and Retail.]
+- Expect: The item leaves the sell list (it is not added again), and the remembered merchants are forgotten.
+- If it fails, paste: the chat lines.
+
+### 33.827 Taking a staged profile switch back closes its reload offer (H46-10-11; WoW Forever and Retail)
+
+- Do: Type /vg profile <another profile> so the reload offer comes up, leave it up, then type /vg profile <the profile you use> (or press Use on it on the Profiles page). [Client: Forever and Retail.]
+- Expect: The reload offer closes either way (the command also says this character already uses that profile).
+- If it fails, paste: whether the offer stayed, and its text.
+
+### 33.828 The accent usage line names class and reset (H46-4-103; WoW Forever and Retail)
+
+- Do: Type /vg accent nonsense. [Client: Forever and Retail.]
+- Expect: Chat reads "Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper | class | reset", each bar shown.
+- If it fails, paste: the chat line.
+
+### 33.829 An import that matches a profile while your spec's own profile wins (H46-40-F3; WoW Forever and Retail)
+
+- Do: Use a profile Mine and export it from the Profiles page (copy the string); switch to another profile, give your current spec (on WoW Forever, your talents) a profile of its own with /vg spec <that profile>, /reload, then import the copied string. [Client: Forever and Retail.]
+- Expect: Chat says "This string matches profile Mine." and that your spec's profile switches back at the reload; no reload offer comes up and nothing promises Mine after a reload.
+- If it fails, paste: the chat lines and the reload offer's text, if one came up.
+
+### 33.830 A Filtered tab closed with the Chat filter module off (H46-40-F4; WoW Forever and Retail)
+
+- Do: With the chat filter on and its Filtered tab made, switch Chat filter off under Modules and /reload; close the Filtered tab (its tab menu, Close Chat Window) and make a new chat window from the main tab's menu; then switch Chat filter on under Modules and wait for a spam line in Trade. [Client: Forever and Retail.]
+- Expect: The new window keeps its own name and gets no spam; a new Filtered tab is made for the caught line.
+- If it fails, paste: the tab names along the chat dock.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
