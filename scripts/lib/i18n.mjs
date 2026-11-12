@@ -178,6 +178,19 @@ export function parseCsv(text) {
   return rows.filter((r) => r.length > 1 || (r[0] ?? "") !== "");
 }
 
+// The keys a CSV has a row for, translated or not: an emptied cell is still a row.
+export function csvKeys(text) {
+  const [head, ...rows] = parseCsv(text);
+  const keyColumn = head.indexOf("key");
+  return new Set(rows.map((r) => (r[keyColumn] ?? "").replace(/\r\n/g, "\n")));
+}
+
+// The keys a locale translates and the code still uses that a CSV has no row for. Importing that CSV
+// would silently drop them, so the import refuses it.
+export function missingRows(entries, keys, rowKeys) {
+  return [...entries.keys()].filter((k) => keys.has(k) && !rowKeys.has(k));
+}
+
 // The translations in a CSV: Map key -> translation, every row that has one. The note
 // column is for translators and reviewers; machine drafts ship too (Cliff, 2026-10-26:
 // translations ship as drafted and players' feedback corrects them).

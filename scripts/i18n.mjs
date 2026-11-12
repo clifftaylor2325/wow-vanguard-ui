@@ -7,12 +7,13 @@
 //   node scripts/i18n.mjs import <locale> <file>  writes Locales/<locale>.lua from the CSV's translated rows
 //
 // The CSV columns are key, english, translation, context, note. Every row with a
-// translation is imported; the note (such as "machine" for a draft) is for reviewers.
+// translation is imported (a CSV must hold a row for every translation the locale has: import a full
+// export, and empty a cell to remove a translation); the note (such as "machine" for a draft) is for reviewers.
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOCALES, commandWords, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, parseLocale, writeLocale } from "./lib/i18n.mjs";
+import { LOCALES, commandWords, csvKeys, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, missingRows, parseLocale, writeLocale } from "./lib/i18n.mjs";
 import { tocFiles } from "./lib/lua-harness.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,15 +53,26 @@ function exportLocale(keys, locale, file) {
   else process.stdout.write(csv);
 }
 
+// Exits 1 when the CSV lacks a row for a translation the locale has (a partial CSV would delete it);
+// an emptied cell is a row, so removing a translation on purpose still works.
+function refuseMissingRows(keys, locale, text) {
+  const missing = missingRows(entriesOf(locale), keys, csvKeys(text));
+  if (missing.length === 0) return;
+  console.error(`${missing.length} translated rows have no row in the CSV (first: ${missing[0]}): import a full export, with a cell emptied to remove a translation`);
+  process.exit(1);
+}
+
 // Writes one locale's file from a CSV's translated rows, keeping only rows the code still uses; exits 1 on a
-// bad row (a /vg command typed differently from the English is one).
+// bad row (a /vg command typed differently from the English is one) or a CSV that lacks existing translations.
 function importLocale(keys, locale, file) {
-  const entries = importCsv(fs.readFileSync(file, "utf8"));
+  const text = fs.readFileSync(file, "utf8");
+  refuseMissingRows(keys, localeArg(locale), text);
+  const entries = importCsv(text);
   const words = commandWords(fs.readFileSync(path.join(root, "Core/Slash.lua"), "utf8"));
   const problems = localeProblems(entries, keys, words).filter((p) => !p.startsWith("orphaned"));
   if (problems.length) (console.error(problems.join("\n")), process.exit(1));
   const kept = new Map([...entries].filter(([k]) => keys.has(k)));
-  fs.writeFileSync(localeFile(localeArg(locale)), writeLocale(locale, kept));
+  fs.writeFileSync(localeFile(locale), writeLocale(locale, kept));
   console.log(`Locales/${locale}.lua: ${kept.size} translations (${entries.size - kept.size} rows no longer in the code)`);
 }
 

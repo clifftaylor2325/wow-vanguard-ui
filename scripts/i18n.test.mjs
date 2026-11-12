@@ -1,10 +1,11 @@
 // The string table's tooling (scripts/lib/i18n.mjs) and the locale files it writes.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { expect, it } from "vitest";
-import { LOCALES, commandWords, commandsIn, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
+import { LOCALES, commandWords, commandsIn, csvKeys, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, missingRows, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
 import { root, tocFiles } from "./lib/lua-harness.mjs";
 
 it("i18n: a Lua string round-trips through quoting, escapes and all", () => {
@@ -107,4 +108,29 @@ it("a translation holding a carriage return is a problem", () => {
 it("a CRLF line break inside a quoted CSV cell imports as a line feed", () => {
   const csv = 'key,english,translation,context,note\n"two\r\nlines",x,"zwei\r\nZeilen",,\n';
   expect(importCsv(csv)).toEqual(new Map([["two\nlines", "zwei\nZeilen"]]));
+});
+
+it("a CSV that lacks a row for a translation the locale has is a partial import and is listed as missing", () => {
+  const keys = new Map([["Bags", "a:1"], ["Zone", "a:2"], ["two\nlines", "a:3"]]);
+  const entries = new Map([["Bags", "Taschen"], ["Zone", "Zone"], ["Gone", "Weg"]]);
+  const partial = "key,english,translation,context,note\nBags,Bags,Taschen,,\n";
+  expect(missingRows(entries, keys, csvKeys(partial))).toEqual(["Zone"]);
+});
+
+it("a full export with one cell emptied is not partial: the emptied row is still a row and its translation is removed", () => {
+  const keys = new Map([["Bags", "a:1"], ["Zone", "a:2"], ["two\nlines", "a:3"]]);
+  const entries = new Map([["Bags", "Taschen"], ["Zone", "Zone"], ["two\nlines", "zwei\nZeilen"]]);
+  const emptied = exportCsv(entries, keys).replace("Zone,Zone,Zone,a:2", "Zone,Zone,,a:2").replace(/\n/g, "\r\n");
+  expect(missingRows(entries, keys, csvKeys(emptied))).toEqual([]);
+  expect([...importCsv(emptied).keys()].sort()).toEqual(["Bags", "two\nlines"]);
+});
+
+it("the command line refuses to import a one-row CSV over a locale that has translations, and writes nothing", () => {
+  const before = fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8");
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "vg-i18n-")), "partial.csv");
+  fs.writeFileSync(file, "key,english,translation,context,note\nBags,Bags,Taschen,,\n");
+  // Runs the import of the one-row CSV.
+  const run = () => execFileSync("node", ["scripts/i18n.mjs", "import", "deDE", file], { cwd: root, stdio: "pipe" });
+  expect(run).toThrow(/import a full export/);
+  expect(fs.readFileSync(path.join(root, "Locales", "deDE.lua"), "utf8")).toBe(before);
 });
