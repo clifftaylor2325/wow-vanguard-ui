@@ -252,6 +252,8 @@ it("/vg graphics apply: what it can't do, it says", () => {
   addon.eval("__wfgStub.inCombat = false C_CVar.SetCVar = nil SetCVar = nil");
   expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "no way to set").toEqual([["This client can't change its settings."], ["Nothing to undo: /vg graphics apply hasn't changed anything."]]);
 });
+// The client's SetCVar answers a success bool: C_CVar.SetCVar returns it (forever Blizzard_APIDocumentationGenerated/CVarDocumentation.lua:131-148,
+// live :118-135) and the global passes it on (Blizzard_SharedXMLBase/CvarUtil.lua:9-15), so false is a refused CVar.
 it("/vg graphics apply: a SetCVar that answers false for Graphics Quality counts as refused", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV);
   check(addon);
