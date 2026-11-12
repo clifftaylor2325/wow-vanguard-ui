@@ -306,3 +306,15 @@ it("a switched-off aura container shows nothing in Edit Mode, though its preview
     return { off, c.__groups[1].buttons[1].__shown }`);
   expect(shown).toEqual([false, true]);
 });
+
+// FCF_GetNextOpenChatWindowIndex looks only up to Constants.ChatFrameConstants.MaxChatWindows, 10, and answers nil
+// past it (Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:26-34, ChatConstantsDocumentation.lua:214); then
+// FCF_OpenNewWindow returns nothing, else `chatFrame, chatFrameIndex` (Mainline/FloatingChatFrame.lua, forever
+// :707-710 and :755, live :522-525 and :570).
+it("FCF_OpenNewWindow gives the window and its number up to the tenth window, then nothing", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local made = {}
+    for n = 1, 8 do local f, i = FCF_OpenNewWindow("TEST-ONLY " .. n) made[n] = f:GetName() .. " " .. i end
+    return { made[1], made[8], select("#", FCF_OpenNewWindow("TEST-ONLY full")) }`);
+  expect(out).toEqual(["ChatFrame3 3", "ChatFrame10 10", 0]);
+});

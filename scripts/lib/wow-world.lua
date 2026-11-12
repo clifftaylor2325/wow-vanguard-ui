@@ -2520,20 +2520,28 @@ local function makeChatWindow(i)
   table.insert(CHAT_FRAMES, "ChatFrame" .. i)
 end
 
+-- The last chat window number, Constants.ChatFrameConstants.MaxChatWindows (ChatConstantsDocumentation.lua:214, both
+-- clients).
+world.maxChatWindows = 10
+
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
 -- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
--- used, and shown each time; returns the window. Two approximations: "shown" is frame:IsShown() where the game reads
--- the saved shown flag, and the harness never docks a window it opens (the game does, FloatingChatFrame.lua:752).
+-- used, and shown each time; returns the window and its number. Past the last window number there is none to take,
+-- and it returns nothing (FCF_GetNextOpenChatWindowIndex stops at Constants.ChatFrameConstants.MaxChatWindows;
+-- Mainline/FloatingChatFrame.lua FCF_OpenNewWindow, forever :707-710 and :755, live :522-525 and :570). Two
+-- approximations: "shown" is frame:IsShown() where the game reads the saved shown flag, and the harness never docks a
+-- window it opens (the game does, FloatingChatFrame.lua:752).
 function FCF_OpenNewWindow(name)
   local i = 3
   while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
+  if i > world.maxChatWindows then return end
   world.chatWindows[i] = name
   NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
   makeChatWindow(i)
   _G["ChatFrame" .. i]:Show()
   _G["ChatFrame" .. i .. "Tab"]:Show()
-  return _G["ChatFrame" .. i]
+  return _G["ChatFrame" .. i], i
 end
 
 -- The next temporary window's number: 12.x starts at Constants.ChatFrameConstants.MaxChatWindows + 1, 11
