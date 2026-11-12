@@ -83,6 +83,8 @@ it("lifecycle: QuestLog switched off clears its override binding and goes quiet"
 
 it("lifecycle: BrokerStrip switched off hides the strip", () => {
   const addon = login();
+  addon.eval("Vanguard_BrokerStrip:Show()");
+  expect(addon.eval("return Vanguard_BrokerStrip:IsShown()"), "shown first").toBe(true);
   addon.eval('ns.SetModuleEnabled("BrokerStrip", false)');
   expect(addon.eval("return Vanguard_BrokerStrip:IsShown()")).toBe(false);
   expect(addon.eval("return #ns.errors")).toBe(0);
@@ -111,8 +113,14 @@ it("lifecycle: DataBars switched off gives the game's XP bar its Edit Mode handl
 
 it("lifecycle: DataBars stopped, a late visibility repaint does not show its bars again", () => {
   const addon = login();
-  addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") if DB.xpBar then DB.UpdateXP() DB.UpdateReputation() end');
-  expect(addon.eval('local DB = ns.GetModule("DataBars") return { DB.xpBar == nil or not DB.xpBar:IsShown(), DB.repBar == nil or not DB.repBar:IsShown() }')).toEqual([true, true]);
+  addon.eval(`local DB = ns.GetModule("DataBars")
+    DB.Line = function() return { cur = 50, max = 100, rested = 0 } end
+    DB.Reputation = function() return { name = "Faction", standing = 5, cur = 10, max = 100 } end
+    DB.UpdateXP() DB.UpdateReputation()`);
+  const shown = 'local DB = ns.GetModule("DataBars") return { DB.xpBar:IsShown(), DB.repBar:IsShown() }';
+  expect(addon.eval(shown), "both bars shown with a line each").toEqual([true, true]);
+  addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") DB.UpdateXP() DB.UpdateReputation()');
+  expect(addon.eval(shown)).toEqual([false, false]);
 });
 
 it("lifecycle: QuestLog stopped with the tracker off, a zone-in no longer opens the game's folded quest zones", () => {
