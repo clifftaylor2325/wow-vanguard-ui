@@ -21,7 +21,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SLATE = [0x13 / 255, 0x16 / 255, 0x1c / 255];
 const BRASS = [0xd9 / 255, 0xa4 / 255, 0x41 / 255];
 const CHECKS = [[0.25, 0.25, 0.25], [0.4, 0.4, 0.4]];
-// How much each image is scaled up, the gap between cells, and the tallest a cell may be.
+// How much each image is scaled up, and the gap between cells.
 const SCALE = 4;
 const GAP = 8;
 

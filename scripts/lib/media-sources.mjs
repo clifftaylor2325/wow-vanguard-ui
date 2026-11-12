@@ -286,8 +286,8 @@ export const TEXTURES = {
 
 // An icon's stroke, in grid units: two pixels where icons are shown (16 px).
 const STROKE = 2;
-// The dispel badge letters' stroke, bolder than STROKE since they're shown at about 12 px, with the
-// top-right corner left to the type's mark.
+// The dispel badge letters' stroke: the same 2 units as STROKE, on letters shrunk to 0.7 of the cell
+// (so they read heavier for their size), with the top-right corner left to the type's mark.
 const LETTER_SMALL = 2;
 // A dispel letter's points shrunk to 0.7 and moved to the lower left of the 16-unit cell.
 const dispelLetter = (points) => points.map(([x, y]) => [0.5 + x * 0.7, 4.6 + y * 0.7]);

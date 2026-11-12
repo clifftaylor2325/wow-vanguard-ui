@@ -26,6 +26,13 @@ it("a file line splits into its path and its tags, values lower-cased and comma-
   expect(tocLine("  Core/A.lua  ")).toEqual({ path: "Core/A.lua", allow: null, exclude: [], unknown: [] });
 });
 
+it("a tag's game types may be space-separated, as Blizzard's own TOCs write them", () => {
+  // live/Interface/AddOns/Blizzard_SharedXML/Blizzard_SharedXML.toc:57 'TableBuilder.lua [ExcludeLoadGameType vanilla tbc wrath]'
+  const entry = tocLine("Modules/X.lua [ExcludeLoadGameType standard camelot] [AllowLoadGameType Wrath tbc]");
+  expect(entry).toMatchObject({ allow: ["wrath", "tbc"], exclude: ["standard", "camelot"] });
+  expect(loadsOn(entry, "forever") || loadsOn(entry, "retail")).toBe(false);
+});
+
 it("only file lines are entries, each with its line number", () => {
   expect(tocEntries(TOC).map((e) => [e.path, e.line])).toEqual([
     ["Core/Events.lua", 4], ["Modules/Forever.lua", 5], ["Modules/Retail.lua", 6], ["Modules/Mainline.lua", 7], ["Modules/Classic.lua", 8],
