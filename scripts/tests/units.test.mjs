@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -376,9 +376,9 @@ it("combo points for rogues and druids", () => {
 });
 
 it("combo points on retail grow to your maximum, and WoW Forever stays at five", () => {
-  const retail = loggedIn(RETAIL + UNITS_ENV + `__units.player.class = "ROGUE" __cp, __max = 6, 7
+  const retail = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp, __max = 6, 7
     GetComboPoints = nil Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and __cp or 0 end
-    UnitPowerMax = function(unit, kind) return kind == 4 and __max or 0 end`, NO_RAID);
+    UnitPowerMax = function(unit, kind) return kind == 4 and __max or 0 end`, { ...NO_RAID, client: RETAIL_CLIENT });
   // The row's width, how many pips show, and how many are lit.
   const row = () => retail.eval(`local CP = ns.GetModule("ComboPoints") local shown, lit = 0, 0
     for _, p in ipairs(CP.pips) do if p:IsShown() then shown = shown + 1 end if p.fill:IsShown() then lit = lit + 1 end end

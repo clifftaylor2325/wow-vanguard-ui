@@ -4,7 +4,8 @@
 // headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_ENGINE_LUA, RAID_ENV, RETAIL, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, GAME_ENGINE_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
 import { CC, bindings, priestly } from "./clickcast-helpers.mjs";
 
 const CP = "ns.ClickCastPresets";
@@ -328,11 +329,11 @@ it("click presets: another addon's raid frames or click casting: a line says why
 });
 
 it("click presets: a retail client keeps the class layout button and offers no presets", () => {
-  const addon = priestly(loggedIn(RETAIL + CLICK_LUA));
+  const addon = priestly(loggedIn(CLICK_LUA, { client: RETAIL_CLIENT }));
   addon.eval('ns.Options.Show("clickcast")');
   expect([choices(addon), addon.eval('return __click("Priest healing layout")')], "the old button").toEqual([[], true]);
   expect(addon.eval(`return ${CP}.Record() == nil`), "it keeps no preset record").toBe(true);
-  const blocked = priestly(loggedIn(RETAIL + CLICK_LUA + "__wfgStub.world.loaded.VuhDo = true"));
+  const blocked = priestly(loggedIn(CLICK_LUA + "__wfgStub.world.loaded.VuhDo = true", { client: RETAIL_CLIENT }));
   blocked.eval('ns.Options.Show("clickcast")');
   expect([textsWith(blocked, "Vanguard's click casting works only on its own frames").length, blocked.eval('return __click("Priest healing layout")')], "another raid frame addon changes nothing there").toEqual([0, true]);
 });

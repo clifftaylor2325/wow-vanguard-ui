@@ -1,9 +1,9 @@
 // profiles: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("profile strings", () => {
@@ -85,7 +85,7 @@ it("export and import", () => {
   src.slash("export");
   const text = src.eval("return Vanguard_TextEdit:GetText()");
   expect(text.startsWith("VG1:profile:") && src.eval("return Vanguard_TextDialog:IsShown()"), "/vg export shows the string, selected to copy").toBeTruthy();
-  const dst = loggedIn(RETAIL);
+  const dst = loggedIn("", { client: RETAIL_CLIENT });
   dst.slash("import");
   dst.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}); Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect(dst.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "a whole-profile import becomes a new profile this character uses after the reload").toEqual(["Default", "Imported"]);

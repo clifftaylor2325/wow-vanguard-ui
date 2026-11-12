@@ -1,7 +1,8 @@
 // actionflyout: a flyout on a Vanguard action bar opens Vanguard's own list, never the game's SpellFlyout.
 
 import { expect, it } from "vitest";
-import { RETAIL, loggedIn, setCombat } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY flyouts in the world: 1 a three-spell Teleport (one spell not known), 2 a Call Pet (slot 1 without a
 // pet), 3 a flyout bigger than the list, and the spell icons by id.
@@ -118,7 +119,7 @@ it("on WoW Forever a flyout lists one button per spell, at the highest rank know
 });
 
 it("on Retail a flyout's slots are listed as they come, same names or not", () => {
-  const addon = loggedIn(RETAIL + RANKED);
+  const addon = loggedIn(RANKED, { client: RETAIL_CLIENT });
   place(addon, 1, 7);
   expect(ranked(addon)).toEqual([4, 5487, 9634, 201, 203]);
 });
@@ -224,7 +225,7 @@ it("a spell button of the list closes it after the click the game acts on, and s
 });
 
 it("on Retail the list is the same, and the bar buttons are wrapped the same way", () => {
-  const addon = loggedIn(RETAIL + FLYOUTS);
+  const addon = loggedIn(FLYOUTS, { client: RETAIL_CLIENT });
   place(addon, 1, 1);
   expect(addon.eval("return Vanguard_Bar3Button12.__wraps.OnClick == ns.GetModule('ActionBars').FLYOUT_PRE"), "wrapped").toBe(true);
   expect(run(addon, PRE), "and opens").toEqual([false, "nil"]);

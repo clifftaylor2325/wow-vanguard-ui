@@ -2,8 +2,8 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, RETAIL, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -303,8 +303,8 @@ it("minimap: the game's emptied cluster takes no mouse and its zone button is hi
 it("minimap: the box goes with the map when the game hides it (Toggle Minimap, the tutorial) and comes back with it, on both clients", () => {
   // Whether the map's box shows.
   const box = (addon) => addon.eval("return Vanguard_Minimap:IsShown()");
-  for (const client of ["", RETAIL]) {
-    const addon = loggedIn(client + UI_ENV);
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
+    const addon = loggedIn(UI_ENV, { client });
     addon.eval("Minimap:Hide()");
     expect(box(addon), "the map hidden: the empty box goes").toBe(false);
     addon.eval("Minimap:Show()");
@@ -1504,7 +1504,7 @@ it("faster auto-loot: under master loot the game's loot window keeps every slot"
   expect(on.eval("return __looted"), "a client without GetLootMethod still takes them").toEqual([3, 1]);
 });
 it("faster auto-loot: with no plain loot method, a group's slots are left to the game and a solo player's are taken, on both clients", () => {
-  for (const client of ["", RETAIL]) {
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
     const on = loggedIn(LOOT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
     // Opens loot in or out of a group after `setup` and returns what fast loot took.
     const looted = (inGroup, setup) => {

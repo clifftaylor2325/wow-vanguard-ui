@@ -3,10 +3,10 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "/vg opens the options window").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
@@ -422,7 +422,7 @@ it("H45-7-2 options: a search for the words of a Reset this page row lights no p
 });
 
 it("options: a live row of a module that is off saves its value without an error", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');
   addon.eval('__click("Glow a buff near its end")');
   addon.eval('ns.Options.Show("tools")');
@@ -1833,7 +1833,7 @@ it("H17-3-1: on WoW Forever the reload offer's Tab ring stops at Later (a key ca
   expect([ring(forever, "Vanguard_Reload.cancel"), ring(forever, "Vanguard_Reload.accept")], "Forever: the second Tab stays on Later").toEqual([true, false]);
   forever.key("Vanguard_Reload", "ENTER");
   expect([forever.eval("return Vanguard_Reload:IsShown()"), chatHas(forever, /Type \/reload/)], "Enter presses Later: the dialog closes, no chat line").toEqual([false, false]);
-  const retail = loggedIn(RETAIL + "UISpecialFrames = {}");
+  const retail = loggedIn("UISpecialFrames = {}", { client: RETAIL_CLIENT });
   retail.eval(`ns.OfferReload("A change.")`);
   retail.key("Vanguard_Reload", "TAB");
   retail.key("Vanguard_Reload", "TAB");
@@ -2376,7 +2376,7 @@ it("options JumpTo marks the row for a Russian caption typed in small letters", 
 
 
 it("options General: the accent swatch of the chosen preset carries a check, and it moves with the accent", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV);
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT });
   addon.slash("");
   // The presets whose swatch shows the check.
   const checked = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
@@ -2450,7 +2450,7 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
 });
 
 it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const result = addon.eval(`local rows = {}
     for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
@@ -2477,7 +2477,7 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
 });
 
 it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O = ns.Options
     O.AddRowKind("boom", function() error("TEST-ONLY card build") end, 20)
@@ -2507,7 +2507,7 @@ it("dropdowns: a menu opened in a fight puts no click catcher over the screen, o
 });
 
 it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O, res = ns.Options, {}
     local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
@@ -2554,7 +2554,7 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
 // H45-40-2: Pixel-perfect can save a shared bar size (24 to 64) past a single bar's Button size slider (24 to 48); a caption
 // click on a value past the slider's end steps it to the end, then wraps as usual.
 it("H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
   addon.eval('ns.Options.Show("actionbars")');
   // The shared size and bar 1's own size.
   const sizes = () => addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.bars[1].size or false }');

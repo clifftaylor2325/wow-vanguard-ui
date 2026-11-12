@@ -1,8 +1,8 @@
 // special: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, CLICK_LUA, RETAIL, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { ACTIONS_ENV, CLICK_LUA, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY pet buttons with the template art the client makes (a background and the state textures), a stance and an extra action button.
 const BUTTONS_ENV = `
@@ -141,7 +141,7 @@ const ONE_FORM = "\n__wfgWorld.setStances({ { icon = 'A' } })";
 it("the spots hide as the game hides its bars: a vehicle, an override bar, mind control, no pet, a pet battle", () => {
   const forever = loggedIn(SEATED_ENV + ONE_FORM);
   expect(drivers(forever), "Forever has no pet battles").toEqual(["[vehicleui][overridebar][nopet] hide; show", "[vehicleui][possessbar][overridebar] hide; show"]);
-  const retail = loggedIn(RETAIL + SEATED_ENV + ONE_FORM);
+  const retail = loggedIn(SEATED_ENV + ONE_FORM, { client: RETAIL_CLIENT });
   expect(drivers(retail).map((d) => d.startsWith("[petbattle] hide; ")), "Retail hides them in a pet battle too").toEqual([true, true]);
 });
 
