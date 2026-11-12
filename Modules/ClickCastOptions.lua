@@ -729,10 +729,15 @@ local function playerName()
   return type(name) == "string" and name or L["you"]
 end
 
+-- The line for a key or click with nothing bound on it, under its name for people.
+local function nothingBound(name)
+  return ns.Format(L["{key} -> nothing bound"], { key = name })
+end
+
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", or that nothing is bound.
 local function describe(key)
   local b = CC.Binding(key)
-  if not b then return ns.Format(L["{key} -> nothing bound"], { key = CC.KeyName(key) }) end
+  if not b then return nothingBound(CC.KeyName(key)) end
   return ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
 end
 
@@ -741,9 +746,18 @@ local function tileKey(tile, chord)
   tile.result:SetText(describe(chord))
 end
 
--- A click on the tile, as the mouse binding it would be.
+-- A mouse button the bindings don't take (Button6 and up: W.MOUSE_BUTTONS stops at 5), named for people: "Button 9",
+-- or the client's own name when it has no number.
+local function otherButtonName(button)
+  local n = button:match("^Button(%d+)$")
+  return n and ns.Format(L["Button {n}"], { n = n }) or button
+end
+
+-- A click on the tile, as the mouse binding it would be; a button no binding can take has nothing bound.
 local function tileClick(tile, button)
-  tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. (W.MOUSE_BUTTONS[button] or 1)))
+  local n = W.MOUSE_BUTTONS[button]
+  if not n then return tile.result:SetText(nothingBound(CC.KeyName(W.Modifiers() .. otherButtonName(button)))) end
+  tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. n))
 end
 
 -- The pointer is over the tile: it asks for a press (W.HoverKeys reads keys until the pointer leaves).

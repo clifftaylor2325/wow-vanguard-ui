@@ -339,7 +339,7 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   addon.click(tile, "RightButton");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "the layout's right click is the unit menu").toBe("Right click -> Unit menu on Tester");
   addon.click(tile, "Button9");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "an unknown mouse button reads as the left one").toBe("Left click -> Target on Tester");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "H45-19-1: a button no binding takes has nothing bound").toBe("Button 9 -> nothing bound");
   addon.wheel(tile, 1);
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Wheel up -> nothing bound");
   addon.hover(null);
@@ -551,6 +551,27 @@ it("with the game's own click bindings, the page marks a Target or Unit menu bin
   addon.eval("GameTooltip = nil");
   addon.hover(cell(addon, "BUTTON3"));
   addon.hover(null);
+});
+
+// What the Try it tile says for a click, over a page already showing.
+const tileSays = (addon, button) => {
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.hover(tile);
+  addon.click(tile, button);
+  const text = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.hover(null);
+  return text;
+};
+
+it("H45-19-1 the test tile names a mouse button no binding takes, modifiers too, and says nothing is bound", () => {
+  const addon = priest();
+  addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
+  const plain = tileSays(addon, "Button9");
+  addon.keys({ shift: true });
+  const shifted = tileSays(addon, "Button12");
+  const unnumbered = tileSays(addon, "OddButton");
+  addon.keys({ shift: false });
+  expect({ plain, shifted, unnumbered }).toEqual({ plain: "Button 9 -> nothing bound", shifted: "Shift + Button 12 -> nothing bound", unnumbered: "Shift + OddButton -> nothing bound" });
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
