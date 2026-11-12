@@ -34,9 +34,14 @@ suche = "suche" # German "looking for", in the group board's and chat filter's d
 groupe = "groupe" # French "group", in the group board's frFR test
 paeth = "paeth" # the Paeth predictor, PNG's filter type 4 (scripts/lib/media-scenes.mjs)
 tages = "tages" # German "of the day", the guild message of the day's template in a deDE test
+ein = "ein" # German "a", in the locale import's deDE test rows
+ist = "ist" # German "is", in a deDE label the text-fit baseline lists
+alle = "alle" # German "all", in the nameplates' deDE test
+deine = "deine" # German "your", in instance prep's deDE chat line test
 # Code and test names.
 fo = "fo" # a test's local for Vanguard_focus
 failer = "failer" # a test helper: the function that fails on purpose
+xdescribe = "xdescribe" # the skipped-suite alias the stray .only/.skip check looks for
 mis = "mis" # the prefix in "mis-sized"
 
 [default.extend-identifiers]
