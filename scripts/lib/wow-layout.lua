@@ -271,7 +271,9 @@ end
 -- Width: the one set (unless stretched between its left and right edges), else what the anchors give (a font
 -- string: its text's).
 function methods:GetWidth(ignoreRect)
-  if self.__width and (ignoreRect == true or not stretched(self, "L", "R")) then return self.__width end
+  local given = self.__width
+  if self.__kind == "FontString" then given = stub.givenTextWidth(self) end
+  if given and (ignoreRect == true or not stretched(self, "L", "R")) then return given end
   if self.__kind == "FontString" and not laidOut(self) then return textWidth(self) end
   return rectOf(self).width / self:GetEffectiveScale()
 end
@@ -292,7 +294,8 @@ function methods:GetSize(ignoreRect) return self:GetWidth(ignoreRect), self:GetH
 function methods:GetStringWidth()
   if stub.textMetrics ~= "font" then return textWidth(self) end
   local natural = self:GetUnboundedStringWidth()
-  return self.__width and math.min(natural, self.__width) or natural
+  local given = stub.givenTextWidth(self)
+  return given and math.min(natural, given) or natural
 end
 
 -- Whether the client would have a rect for this widget.

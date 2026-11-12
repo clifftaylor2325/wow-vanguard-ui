@@ -717,7 +717,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     end
     check(AchievementFrameSummaryCategoriesStatusBar, AchievementFrameSummaryCategoriesStatusBarTitle, AchievementFrameSummaryCategoriesStatusBarText)
     for i = 1, 12 do local b = _G["AchievementFrameSummaryCategoriesCategory" .. i] check(b, b.Label, b.Text) end
-    return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
+    return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth() == title:GetUnboundedStringWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
   end
   -- TEST-ONLY reader of the open achievement's progress bar: its art faded and its fill the dim accent.
   function __criteriaBar()
@@ -764,7 +764,7 @@ it("R2.19 the achievements window: its title and points sit in the title row, th
   const layout = addon.eval("return __achievementLayout()");
   const drop = addon.eval("return ns.Theme.CONTROL.inset - ns.Theme.Padding(AchievementFrame)");
   const [point, onWindow, relPoint, x, y, width, points] = layout.title;
-  expect([point, onWindow, relPoint, x, width, points], "the title on one line, centred on the window's top (not on the faded plate above it)").toEqual(["CENTER", true, "TOP", 0, 0, 1]);
+  expect([point, onWindow, relPoint, x, width, points], "the title on one line, centred on the window's top (not on the faded plate above it), as wide as its text").toEqual(["CENTER", true, "TOP", 0, true, 1]);
   expect(y, "level with the close button's middle, to the pixel").toBeCloseTo(-drop, 0);
   expect(layout.points, "the points just right of the title (the shield follows them)").toEqual(["LEFT", true, "RIGHT", 8, 1]);
   expect(layout.bars, "all thirteen bars: the dim accent, not the game's raw green, and the name and count centred in the text colour").toBe(13);
