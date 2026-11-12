@@ -128,6 +128,18 @@ it("upgrades: a guide string parses, and a long hostile paste is refused quickly
   expect(Date.now() - start, "and it takes no time").toBeLessThan(1000);
 });
 
+it("upgrades: switching Gear upgrades off closes the wizard, and an import box left open says it is off (H45-33-101)", () => {
+  const addon = loggedIn(GEAR_ENV);
+  addon.slash("weights wizard");
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  expect(addon.eval("return Vanguard_WeightsWizard:IsShown()"), "the wizard goes with the module").toBe(false);
+  addon.eval("ns.SetModuleEnabled('Upgrades', true)");
+  addon.slash("weights import");
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  addon.eval(`Vanguard_TextEdit:SetText('( Tool: v1: "TEST-ONLY": Strength=1 )') Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect([addon.eval("return #ns.errors"), addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Gear upgrades is switched off/)], "Import says it is off, no error, the box closes").toEqual([0, false, true]);
+});
+
 it("upgrades: the weights wizard has a slider for every stat, and saves only on Save", () => {
   const addon = loggedIn(GEAR_ENV);
   // Runs Lua in the client.

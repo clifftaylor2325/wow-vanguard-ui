@@ -629,6 +629,7 @@ end
 function UP.ImportDialog()
   if not UP.settings then return UP.Wizard.SayNotStarted() end
   ns.AskText(L["Paste a Vanguard or guide site weights string, then Import"], function(text)
+    if not UP.settings then ns.HideText() return UP.Wizard.SayNotStarted() end
     local done, detail, skipped = UP.Import(text)
     if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
     ns.HideText()
@@ -712,5 +713,6 @@ end
 -- (no settings: IsUpgrade is false, the wizard and the import say it is not started), as after a login with it off.
 function UP.Disable()
   for _, arrow in pairs(vgUpgrade) do arrow:Hide() end
+  UP.Wizard.Close()
   UP.settings = nil
 end
