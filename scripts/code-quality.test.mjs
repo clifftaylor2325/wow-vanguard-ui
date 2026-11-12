@@ -152,6 +152,25 @@ function fontRolesPass() {
   expect(problems("Modules/t.lua", src)).toBe("");
 }
 
+// Statements outside the theme that write a color or a font size in a shape the first rule missed (H44-25-5).
+const WRITTEN_COLORS = ["local c = CreateColor(1, 0.82, 0)", "local c = { r = 1, g = 0.82, b = 0 }", "local c = { r = 0.2, g = 0.5, b = 1, a = 0.5 }", 'local c = CreateColorFromHexString("ffd100")'];
+const WRITTEN_SIZES = ["fs:SetTextHeight(14)", "fs:SetFont(p, x or 12, '')", "fs:SetFont(T.Font(T.Face(true)), 14, '')", "fs:SetFont(p, 12.5)"];
+// Statements that look alike and are not a written color or size.
+const NOT_WRITTEN = ["local c = CreateColor(r, g, b)", "local c = { r = r, g = g, b = b }", "local c = { r = 200, g = 100, b = 50 }", "local c = CreateColorFromHexString(hex)", "font:SetFont(was[1], was[2], was[3])", "fs:SetFont(p, size + 2, '')", "fs:SetFont(p, size(fs) or other, '')", "GA.SetFont(fs, 12)", "fs:SetTextHeight(h)"];
+
+// A color or a font size written in one of the shapes the first rule missed fails outside the theme, and each of them has a line.
+function writtenShapesFail() {
+  for (const stmt of WRITTEN_COLORS) expect(problems("Modules/t.lua", `${stmt}\n`), stmt).toMatch(/color numbers/);
+  for (const stmt of WRITTEN_SIZES) expect(problems("Modules/t.lua", inFn(stmt)), stmt).toMatch(/font size/);
+  expect(checkSource("Modules/t.lua", "local a = 1\n\nlocal c = CreateColor(1, 1, 1)\n")[0].line).toBe(3);
+}
+
+// Computed colors and sizes, indexes, a module's own dotted SetFont and the theme itself pass.
+function writtenShapesPass() {
+  for (const stmt of NOT_WRITTEN) expect(problems("Modules/t.lua", inFn(stmt)), stmt).toBe("");
+  expect(problems("Core/Theme.lua", "local c = CreateColor(1, 0.82, 0)\nlocal d = { r = 1, g = 0, b = 0 }\n")).toBe("");
+}
+
 // Color numbers outside addon Lua are ignored.
 function colorAddonOnly() {
   expect(problems("scripts/lib/t.lua", "local C = { 0.2, 0.6, 1 }\n")).toBe("");
@@ -348,6 +367,8 @@ describe(
     it("fonts: SetFont with a written size fails", fontMethodSizeFails);
     it("fonts: SetFont with a call for its path and a written size fails", fontCallPathSizeFails);
     it("fonts: roles and computed sizes pass", fontRolesPass);
+    it("colors and fonts: CreateColor, r/g/b tables, hex strings, SetTextHeight and 'x or 12' sizes fail", writtenShapesFail);
+    it("colors and fonts: computed ones, indexes and a module's dotted SetFont pass", writtenShapesPass);
   },
 );
 

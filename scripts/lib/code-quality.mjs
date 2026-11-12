@@ -312,10 +312,13 @@ function functionProblems(fn, kinds, documented) {
 const COLOR_SCOPE = /^(Core|Modules)\/.+\.lua$/;
 const COLOR_HOME = "Core/Theme.lua";
 // A color setter called with a number as its first argument.
-const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor)\s*\(\s*[-\d.]/g;
+const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorTexture|SetBackdropColor|SetBackdropBorderColor|SetShadowColor|CreateColor)\s*\(\s*[-\d.]/g;
+
 // A table of three or four numbers (checked below to be 0-1: a color).
 const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
 const COLOR_TABLE = new RegExp(String.raw`\{${NUM},${NUM},${NUM}(?:,${NUM})?\}`, "g");
+// A color table written with r, g and b number fields ({ r = 1, g = 0.82, b = 0 }), checked to be 0-1 as well.
+const RGB_FIELDS = new RegExp(String.raw`\br\s*=${NUM},\s*g\s*=${NUM},\s*b\s*=${NUM}`, "g");
 const COLOR_MESSAGE = "color numbers outside Core/Theme.lua: use a theme color (T.RGB, T.Color, T.Tint, T.BarColor, T.Paint)";
 
 // Lua source with comments and strings blanked out (newlines kept), so rules see only code.
@@ -330,13 +333,19 @@ function luaCodeOnly(src) {
   return out + src.slice(last);
 }
 
-// Offsets of color tables: three or four numbers, all between 0 and 1.
+// Offsets of color tables: three or four numbers, or r, g and b fields, all between 0 and 1.
 function colorTables(code) {
   const hits = [];
-  for (const m of code.matchAll(COLOR_TABLE)) {
+  for (const m of [...code.matchAll(COLOR_TABLE), ...code.matchAll(RGB_FIELDS)]) {
     if (m.slice(1).filter(Boolean).every((v) => Number(v) <= 1)) hits.push(m.index);
   }
   return hits;
+}
+
+// Offsets of CreateColorFromHexString calls given a written string ("ff8800"): a color the theme does not own.
+function hexStringColors(src) {
+  const tokens = codeTokens(src);
+  return tokens.flatMap((t, i) => (t.text === "CreateColorFromHexString" && tokens[i + 1]?.text === "(" && tokens[i + 2]?.kind === "string" ? [t.start] : []));
 }
 
 // A |c color escape with its color written out ("|cff3d9eff").
@@ -348,21 +357,32 @@ function colorProblems(file, src) {
   const code = luaCodeOnly(src);
   const line = lineIndex(src);
   const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code));
-  hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index));
+  hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index), ...hexStringColors(src));
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
 
-// A font set with a written size: T.SetFont(...) or :SetFont(path, 12, ...).
-// The first argument may hold one call, as in fs:SetFont(T.Font(true), 14).
-const FONT_SIZE = /\bT\.SetFont\s*\(|:SetFont\s*\((?:[^,()]|\([^()]*\))*,\s*\d/g;
+// A font sized with T.SetFont(...) or fs:SetTextHeight(14); :SetFont(path, 12) is read by writtenFontSize.
+const FONT_SIZE = /\bT\.SetFont\s*\(|:SetTextHeight\s*\(\s*\d/g;
 const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
+
+// True when the token at tokens[i] is the method :SetFont whose second argument is a written size: a number, or
+// `x or 12`. A number inside brackets (was[2]) or a computed size is not, and a dotted call is a module's own.
+function writtenFontSize(tokens, i) {
+  if (tokens[i].text !== "SetFont" || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
+  const size = callArgs(tokens, i + 1)[1] ?? [];
+  let head = size.length;
+  while (head > 0 && /^[\d.]$/.test(size[head - 1].text)) head--;
+  return head < size.length && (head === 0 || size[head - 1].text === "or");
+}
 
 // Fonts sized outside the theme's text roles: [{ line, message }].
 function fontProblems(file, src) {
   if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
   const code = luaCodeOnly(src);
+  const tokens = codeTokens(src);
+  const found = [...code.matchAll(FONT_SIZE)].map((m) => m.index).concat(tokens.flatMap((t, i) => (writtenFontSize(tokens, i) ? [t.start] : [])));
   const line = lineIndex(code);
-  return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
+  return found.map((at) => ({ line: line(at), message: FONT_MESSAGE }));
 }
 
 // Spacing constants ---------------------------------------------------------------------
