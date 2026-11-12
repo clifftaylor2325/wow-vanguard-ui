@@ -52,10 +52,11 @@ function ns.CopyProfile(from, into)
   return into
 end
 
--- Deletes a profile (never the active or the staged one). A character using it, or with it staged,
+-- Deletes a profile (never the active, the staged or the one the next reload loads). A character using it, or with it staged,
 -- falls back to Default at its next load (Core/DB.lua); a spec set to it uses the character's profile.
 function ns.DeleteProfile(name)
-  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
+  local inUse = name == ns.ProfileName() or name == ns.SelectedProfileName() or name == ns.LoadingProfileName()
+  if not VanguardDB.profiles[name] or inUse then
     return false
   end
   VanguardDB.profiles[name] = nil

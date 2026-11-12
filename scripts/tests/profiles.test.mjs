@@ -287,6 +287,16 @@ it("a staged profile that no longer exists is dropped when it would be applied",
   addon.login();
   expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone == nil, VanguardCharDB.pendingProfile == nil }"), "the character keeps its profile, and the deleted one isn't made again empty").toEqual(["Default", true, true]);
 });
+it("the profile the next reload loads can't be deleted, though a staged pick differs from it", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Healer = {}, Other = {} } }\nVanguardCharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval("__spec = 1 VanguardCharDB.specProfiles[1] = 'Default' VanguardCharDB.pendingProfile = 'Other'");
+  expect(addon.eval("return ns.LoadingProfileName()"), "the spec's profile wins over the staged pick at login").toBe("Default");
+  expect(addon.eval("return ns.DeleteProfile('Default')"), "ns.DeleteProfile refuses it").toBe(false);
+  addon.slash("profile delete Default");
+  expect([chatHas(addon, /Can't delete/), addon.eval("return VanguardDB.profiles.Default ~= nil")], "and so does /vg profile delete").toEqual([true, true]);
+});
 it("the spec change events stage the spec's profile, whatever they pass", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Healer = {} } }\nVanguardCharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });

@@ -478,10 +478,11 @@ local function copyProfile(name)
   end)
 end
 
--- /vg profile delete <name>: after asking, deletes a profile that is neither in use nor staged.
+-- /vg profile delete <name>: after asking, deletes a profile that is neither in use, staged nor loaded next.
 local function deleteProfile(name)
   local refused = L["Can't delete that one (missing, or in use)."]
-  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then return chat(refused) end
+  local inUse = name == ns.ProfileName() or name == ns.SelectedProfileName() or name == ns.LoadingProfileName()
+  if not VanguardDB.profiles[name] or inUse then return chat(refused) end
   local warning = L["Deletes profile {profile} for every character on this account. It can't be undone."]
   confirmProfile(ns.Format(warning, { profile = name }), L["Delete"], function()
     chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or refused)
