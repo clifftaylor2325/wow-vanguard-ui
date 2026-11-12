@@ -27,7 +27,7 @@ process.stdout.write(addon.eval(${JSON.stringify(SERIALIZE_SV)}));`;
 
 // The released tree of a version in a scratch folder, sharing this clone's node_modules.
 function unpack(version, scratch) {
-  execFileSync("git", ["fetch", "-q", "--depth", "1", "origin", "tag", `v${version}`], { cwd: root });
+  execFileSync("git", ["fetch", "-q", "origin", "tag", `v${version}`], { cwd: root });
   const dir = path.join(scratch, version);
   fs.mkdirSync(dir, { recursive: true });
   execFileSync("sh", ["-c", `git archive v${version} | tar -x -C "${dir}"`], { cwd: root });
