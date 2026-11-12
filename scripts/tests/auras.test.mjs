@@ -1118,6 +1118,16 @@ it("H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on 
   expect(buttons.map((b) => onPixel(insetOf(addon, b))), "each icon's inset is one pixel at the new scale").toEqual([true, true, true]);
 });
 
+it("H45-15-50 auras: your weapon enchant cells go back on whole pixels after a scale change, as the buffs beside them", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  // The first enchant cell's icon inset and one pixel at the cell's scale.
+  const cell = () => addon.eval(`local c = ns.GetModule('PlayerAuras').cells[1] local p = c.icon.__points.TOPLEFT
+    return { p.x, ns.Theme.PixelAtScale(c:GetEffectiveScale()) }`);
+  addon.eval("ns.GetModule('PlayerAuras').holder:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(onPixel(cell()), "the main hand's cell: its inset is one pixel at the new scale").toBe(true);
+});
+
 it("H44-5-7 auras: an icon the client holds back at a scale change goes on whole pixels once it lets go and aura information is plain", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1") __b = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]');
