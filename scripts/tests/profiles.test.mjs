@@ -409,6 +409,10 @@ it("H46-21-51 withdrawing a spec offer brings back the earlier reason still owed
   expect(reloadAfter("ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "an offer with nothing earlier hides").toBe(false);
   expect(reloadAfter("ns.OfferReload('A.') Vanguard_Reload:Hide() ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "a closed dialog starts clean").toBe(false);
 });
+it("H46-C-G5 an offer repeated for the same reason keeps the earlier one, and a withdrawn earlier reason is not offered again", () => {
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.OfferReload('B.') ns.WithdrawReload('B.')"), "A stays owed").toEqual([true, "A."]);
+  expect(reloadAfter("ns.OfferReload('S.') ns.OfferReload('X.') ns.WithdrawReload('S.') ns.OfferReload('S.') ns.WithdrawReload('S.')"), "X stays, S is not offered again").toEqual([true, "X."]);
+});
 it("Copy here, a partial import and /vg profile copy write into the profile the reload loads, not a hand pick a spec overrides", () => {
   const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Raid = {}, Src = { theme = { accent = { 0, 0, 1 }, reduceMotion = true } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
   const addon = createAddon({ savedVariables: sv });

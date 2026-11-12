@@ -579,12 +579,21 @@ local function reloadDialog()
   return reload
 end
 
+-- The reason the dialog held before this one, kept while it stays up: offering the reason on show again keeps it, and
+-- offering the earlier one back puts the one it replaced in its place.
+local function earlierReason(f, why)
+  if not f:IsShown() then return nil end
+  if f.why == why then return f.earlier end
+  if f.earlier == why then return f.why end
+  return f.earlier or f.why
+end
+
 -- Offers a reload, for changes that apply after one; the dialog grows to fit its reason. It is raised even when it was
 -- already open (Show then fires no OnShow), so Reload's overlay is laid over it again (out of combat; in combat it is
 -- put away and comes back after).
 function ns.OfferReload(why)
   local f = reloadDialog()
-  f.earlier = f:IsShown() and f.why ~= why and (f.earlier or f.why) or nil
+  f.earlier = earlierReason(f, why)
   f.why = why
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
@@ -600,6 +609,7 @@ end
 -- dialog: safe in combat.
 ---@param why string
 function ns.WithdrawReload(why)
+  if reload and reload:IsShown() and reload.earlier == why then reload.earlier = nil end
   if not (reload and reload:IsShown() and reload.why == why) then return end
   local earlier = reload.earlier
   reload.earlier, reload.why = nil, nil
