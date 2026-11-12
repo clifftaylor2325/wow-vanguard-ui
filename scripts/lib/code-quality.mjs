@@ -433,18 +433,24 @@ function colorProblems(file, src) {
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
 
-// A font sized with T.SetFont(...) or fs:SetTextHeight(14); :SetFont(path, 12) is read by writtenFontSize.
-const FONT_SIZE = /\bT\.SetFont\s*\(|:SetTextHeight\s*\(\s*\d/g;
+// A font sized with T.SetFont(...); fs:SetFont(path, 12) and fs:SetTextHeight(14) are read by writtenFontSize.
+const FONT_SIZE = /\bT\.SetFont\s*\(/g;
 const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
+// The argument that holds the size, by font method: fs:SetFont(path, size, flags), fs:SetTextHeight(size).
+const FONT_SIZE_ARG = new Map([["SetFont", 1], ["SetTextHeight", 0]]);
 
-// True when the token at tokens[i] is the method :SetFont whose second argument is a written size: a number, or
-// `x or 12`. A number inside brackets (was[2]) or a computed size is not, and a dotted call is a module's own.
+// True when the token at tokens[i] is the method :SetFont or :SetTextHeight whose size argument is a written size:
+// one that starts with a number (12, 12 * scale), or `x or 12`. A number inside brackets (was[2]), a size worked out
+// from a name (size + 2) or a vararg (...) is not, and a dotted call is a module's own.
 function writtenFontSize(tokens, i) {
-  if (tokens[i].text !== "SetFont" || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
-  const size = callArgs(tokens, i + 1)[1] ?? [];
+  const arg = FONT_SIZE_ARG.get(tokens[i].text);
+  if (arg === undefined || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
+  const size = callArgs(tokens, i + 1)[arg] ?? [];
+  if (/^\d$/.test(size[0]?.text ?? "")) return true;
   let head = size.length;
   while (head > 0 && /^[\d.]$/.test(size[head - 1].text)) head--;
-  return head < size.length && (head === 0 || size[head - 1].text === "or");
+  const number = size.slice(head).some((t) => /^\d$/.test(t.text));
+  return number && (head === 0 || size[head - 1].text === "or");
 }
 
 // Fonts sized outside the theme's text roles: [{ line, message }].
