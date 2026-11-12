@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -357,4 +357,21 @@ it("hunt H44-14-21: frames moved after a screen preset keep Undo setup, and a la
   expect(preset[1], "the preset took a backup, so Undo shows").toBe(true);
   const layout = movedOnAllSet((addon) => { addon.eval('__click("Centered: healing")'); setupClick(addon, "next"); setupClick(addon, "back"); });
   expect(layout[0].filter((line) => line === "Frames moved"), "the layout's own line stands instead").toEqual([]);
+});
+
+// Takes Pixel-perfect on the Screen step of a first run at the given screen size and walks to All set.
+const pixelPerfectToAllSet = (addon) => {
+  setupClick(addon, "next");
+  addon.eval('__click("Pixel-perfect (sharpest)")');
+  nexts(addon, 7);
+  return allSet(addon)[0];
+};
+
+it("H46-24-2: a screen preset's text size is not listed on All set as a Larger text change", () => {
+  const env = ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA;
+  const addon = loggedIn(env + "__wfgStub.setScreen(1920, 1080)", { firstRun: true });
+  expect(pixelPerfectToAllSet(addon), "Pixel-perfect alone, the Comfort row never touched").not.toContain("Larger text (115%): On");
+  const big = loggedIn(env + "__wfgStub.setScreen(3840, 2160)", { firstRun: true, savedVariables: "VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = 1.15 } } } }" });
+  expect(pixelPerfectToAllSet(big).join("|"), "and the mirror: Larger on, then a 4K preset at 100%, no Off line either").not.toContain("Larger text");
+  expect(big.eval("return ns.Theme.Settings().textScale"), "the preset did take the text back to 100%").toBe(1);
 });

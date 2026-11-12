@@ -100,8 +100,9 @@ local DONE_CHANGED = L["All set. Done closes setup. This run changed:"]
 local DONE_SAME = L["All set. This run changed nothing: Done closes setup."]
 
 -- The picks the switches stage (by row key), which rows the player touched this run, what each row's settings
--- were when setup opened (one value per options row), and whether this is the account's first run.
-local picks, touched, snap, firstRun = {}, {}, {}, false
+-- were when setup opened (one value per options row), whether this is the account's first run, and which rows
+-- setup itself switched this run.
+local picks, touched, snap, firstRun, applied = {}, {}, {}, false, {}
 
 -- Finding the rows ---------------------------------------------------------------------------------
 
@@ -203,11 +204,12 @@ local function changeLine(spec)
   return ns.Format(L["{setting}: {value}"], { setting = spec.caption, value = isOn(spec) and L["On"] or L["Off"] })
 end
 
--- The guided rows this run changed, as lines for the All set step.
+-- The guided rows this run changed, as lines for the All set step: only a row setup switched itself (a screen
+-- preset's text size moves the Larger text row without the player touching it).
 function G.Changes()
   local out = {}
   for _, spec in ipairs(builtRows()) do
-    if isOn(spec) ~= wasOn(spec) then out[#out + 1] = changeLine(spec) end
+    if applied[spec.key] and isOn(spec) ~= wasOn(spec) then out[#out + 1] = changeLine(spec) end
   end
   return out
 end
@@ -233,7 +235,7 @@ end
 -- Setup opened (before it takes its own snapshot: a first read fills a module's defaults in): takes the rows'
 -- snapshot and starts their picks; first is true on the account's first run.
 function G.Begin(first)
-  firstRun, touched = first == true, {}
+  firstRun, touched, applied = first == true, {}, {}
   for _, spec in ipairs(builtRows()) do
     snap[spec.key] = {}
     for i, a in ipairs(spec.access) do snap[spec.key][i] = a.get() end
@@ -257,6 +259,7 @@ function G.Leave(key)
     if spec.access and picks[spec.key] ~= isOn(spec) then
       ns.Setup.Backup()
       setOn(spec, picks[spec.key])
+      applied[spec.key] = true
     end
   end
 end
