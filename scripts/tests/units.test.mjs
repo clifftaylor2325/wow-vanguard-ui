@@ -570,7 +570,7 @@ it("swing timer: at login it asks for every hand's reach and dims the one out of
   const addon = loggedIn(RANGE_ENV);
   expect(addon.eval("local c = __wfgWorld.swingRangeChecks return { c[0], c[1], c[2] }"), "it asks the client to report every hand's reach").toEqual([true, true, true]);
   expect(unitEvents(addon, "PLAYER_SWING_RANGE_UPDATE").plain, "it hears the client's range event").toBe(1);
-  expect(swingAlphas(addon), "the main hand dims, as the game's own timer does; no check for the others is not out of range").toEqual([0.4, 1, 1]);
+  expect(swingAlphas(addon), "only the main hand, which the client reports out of reach, dims to 0.4; the others stay full because no check for them is not out of range").toEqual([0.4, 1, 1]);
 });
 
 it("swing timer: the client's range event dims and restores a row", () => {

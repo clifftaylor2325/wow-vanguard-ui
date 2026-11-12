@@ -610,8 +610,8 @@ export const TICKS_ENV = `
   C_Spell.GetSpellPowerCost = function(id) return __costs[id] end
 `;
 
-// The spark: shown, where it sits along the bar (its TOP point's x) and whether its timer runs.
-export const spark = (addon) => addon.eval(`local PT = ns.GetModule("PowerTicks") local top = PT.spark.__points.TOP
+// The spark: shown, where it sits along the bar (its centre point's x) and whether its timer runs.
+export const spark = (addon) => addon.eval(`local PT = ns.GetModule("PowerTicks") local top = PT.spark.__points.CENTER
   return { PT.spark:IsShown(), top and top.x or -1, PT.driver.__scripts.OnUpdate ~= nil }`);
 
 // TEST-ONLY swings: a client with the swing timer, and you a warrior.
