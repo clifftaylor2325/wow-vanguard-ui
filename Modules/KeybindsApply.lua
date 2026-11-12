@@ -753,15 +753,13 @@ local function undoRun(run)
   ns.Chat(ns.Format(L["No key changed, but {count} button(s) couldn't be put back yet. Put everything back restores them."], { count = #left }))
 end
 
--- Records one applied key: its first pre-image, and every character it placed spells for, while the key still did
--- what Vanguard last set; else the pre-image this run took (the player changed it in between).
+-- Records one applied key: every character it placed spells for, whatever the key did in between, and its first
+-- pre-image while the key still did what Vanguard last set; else the pre-image this run took (the player changed it).
 local function keepKey(run, rec, row)
   local old, now, by = rec.keys[row.key], run.keys[row.key], { [me()] = true }
   local before = now
-  if type(old) == "table" and now == old.after then
-    before = old.before
-    for name in pairs(type(old.by) == "table" and old.by or {}) do by[name] = true end
-  end
+  if type(old) == "table" and now == old.after then before = old.before end
+  for name in pairs(type(old) == "table" and type(old.by) == "table" and old.by or {}) do by[name] = true end
   rec.keys[row.key] = { before = before, after = row.command, by = by }
 end
 

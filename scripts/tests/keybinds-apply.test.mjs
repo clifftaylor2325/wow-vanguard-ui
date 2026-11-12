@@ -412,6 +412,21 @@ it("a second character puts the account's keys back; the first one's spells go b
   expect(again.savedVariables().account.keyPending["Aren-ForeverTest"], "nothing waits").toBe(undefined);
 });
 
+it("H45-20-1 a second character's Apply of an account key the player rebound keeps the first character's spells in the record", () => {
+  const first = rogue();
+  expect(ka(first, 'return KA.Apply({ { key = "F", spell = 1766, slot = 61 } })')).toBe(true);
+  const second = loggedIn('__wfgWorld.setUnit("player", { name = "Thrall" })', { savedVariables: `VanguardDB = ${dump(first, "VanguardDB")}\nVanguardCharDB = {}\n` });
+  second.eval(`__wfgWorld.bindingSets[1] = ${dump(first, "__wfgWorld.bindingSets[1]")} LoadBindings(1)`);
+  second.world.learn(1766, { name: "Kick" });
+  second.eval('SetBinding("F", "TOGGLEWORLDMAP") SaveBindings(1)');
+  expect(ka(second, 'return KA.Apply({ { key = "F", spell = 1766, slot = 61 } })')).toBe(true);
+  expect(Object.keys(second.savedVariables().account.keyRestore.keys.F.by).sort(), "both characters").toEqual(["Aren-ForeverTest", "Thrall-ForeverTest"]);
+  second.clearChat();
+  ka(second, "KA.PutBackAll()");
+  expect(chatHas(second, /Spells moved on Aren's bars go back when you log in as Aren\.$/)).toBe(true);
+  expect(second.savedVariables().account.keyPending["Aren-ForeverTest"], "Aren's spells wait").toBeTruthy();
+});
+
 it("waiting spells stay waiting while the cursor holds something, and go back at the next load screen", () => {
   const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
   addon.eval("__wfgWorld.setAction(61, { id = 1766 }) C_Spell.PickupSpell(1784)");

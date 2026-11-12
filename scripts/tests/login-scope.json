@@ -220,6 +220,7 @@
       "H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back",
       "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
       "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
+      "H45-20-1 a second character's Apply of an account key the player rebound keeps the first character's spells in the record",
       "Only this character: the plan is worked out in the character's own keys",
       "Only this character: the set switches first, Account keeps its keys, and the key rows go in the character's file",
       "Plan: a bar 2 or 3 entry finds its spell on its own bar first, then the other; a bar 1 entry stays on its own button",
