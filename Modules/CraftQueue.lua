@@ -117,13 +117,15 @@ function CQ.AddShown(arg)
   CQ.Add(id, n, data and data.name)
 end
 
--- The reagents the queue needs, by item ID (a count each), with the recipes' names for a line of chat.
+-- The reagents the queue needs, by first-rank item ID: a count each, and the IDs of every quality rank that serves.
 local function needs()
-  local total = {}
+  local total, ranks = {}, {}
   for _, e in ipairs(CQ.Mine().queue) do
-    for _, r in ipairs((CR.Read(e.id) or { reagents = {} }).reagents) do total[r.id] = (total[r.id] or 0) + r.qty * e.n end
+    for _, r in ipairs((CR.Read(e.id) or { reagents = {} }).reagents) do
+      total[r.id], ranks[r.id] = (total[r.id] or 0) + r.qty * e.n, r.ids
+    end
   end
-  return total
+  return total, ranks
 end
 
 -- How many of a reagent you hold the way the game counts it for a craft: Retail through ItemUtil (bags, reagent bank and
@@ -133,11 +135,19 @@ local function held(id)
   return ns.PlainNumber(ns.CallIf(ItemUtil, "GetCraftingReagentCount", id)) or 0
 end
 
+-- How many of a reagent slot you hold across every quality rank (the game counts them all toward a craft).
+local function heldOf(ids)
+  local have = 0
+  for _, id in ipairs(ids) do have = have + held(id) end
+  return have
+end
+
 -- The reagents still short of what the queue needs: { id, short } in item order.
 function CQ.Short()
   local out = {}
-  for id, qty in pairs(needs()) do
-    local have = held(id)
+  local total, ranks = needs()
+  for id, qty in pairs(total) do
+    local have = heldOf(ranks[id])
     if have < qty then out[#out + 1] = { id = id, short = qty - have } end
   end
   table.sort(out, function(a, b) return a.id < b.id end)

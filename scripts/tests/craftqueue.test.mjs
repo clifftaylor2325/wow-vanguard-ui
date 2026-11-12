@@ -272,6 +272,20 @@ it("on WoW Retail, a reagent held only in the warband bank is not short; on Fore
   expect(say(forever, "craft", /You have every reagent\./), "Forever: the bank counts").toBe(true);
 });
 
+// live Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua CraftingReagentSlotSchematic.reagents lists
+// one CraftingReagent per quality rank, and Blizzard_FrameXMLUtil/ProfessionsUtil.lua AccumulateReagentsInPossession sums them.
+it("on WoW Retail, rank 2 of a tiered reagent covers a craft that lists rank 1 first (H45-31-R1)", () => {
+  const addon = crafter(`
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Ore rank 1" } __wfgWorld.items[9002] = { name = "TEST-ONLY Ore rank 2" }
+    __wfgWorld.recipes[103] = { recipeID = 103, name = "TEST-ONLY Bar", outputItemID = 4238, quantityMin = 1, quantityMax = 1,
+      reagentSlotSchematics = { { reagents = { { itemID = 9001 }, { itemID = 9002 } }, quantityRequired = 3, reagentType = 1 } } }
+    C_Item.GetItemCount = function(id) return id == 9002 and 3 or 0 end`, ON, RETAIL_CLIENT);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar")`);
+  expect(say(addon, "craft", /You have every reagent\./), "three of rank 2 cover three ore").toBe(true);
+  addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar") C_Item.GetItemCount = function(id) return id == 9001 and 2 or id == 9002 and 1 or 0 end`);
+  expect(say(addon, "craft", /Short of: TEST-ONLY Ore rank 1 x3\./), "ranks add up: 3 held of 6 needed").toBe(true);
+});
+
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {
   const addon = crafter("", ON, RETAIL_CLIENT);
   addon.world.openProfession(100);
