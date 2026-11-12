@@ -1496,6 +1496,8 @@ C_SwingTimer = {
 world.money = 123456
 world.bags = { [0] = {}, {}, {}, {}, {} }
 world.bagSizes = { [0] = 16, 16, 16, 16, 16 }
+-- Each bag's family, as GetContainerNumFreeSlots gives it (32 a herb bag, 1 a quiver); a bag not listed takes anything.
+world.bagFamilies = {}
 world.items = {
   [6948] = { name = "Hearthstone", icon = "Interface\\Icons\\INV_Misc_Rune_01", quality = 1, sellPrice = 0, classID = 15, subClassID = 0 },
   [159] = { name = "Refreshing Spring Water", icon = "Interface\\Icons\\INV_Drink_07", quality = 1, sellPrice = 5, classID = 0, subClassID = 5 },
@@ -1549,11 +1551,11 @@ GetItemCount = C_Item.GetItemCount
 C_Container = {
   -- A bag's slot count.
   GetContainerNumSlots = function(bag) return world.bagSizes[bag] or 0 end,
-  -- Free slots, and the bag's family (0: anything).
+  -- Free slots, and the bag's family (world.bagFamilies[bag]; 0: anything).
   GetContainerNumFreeSlots = function(bag)
     local used = 0
     for _ in pairs(world.bags[bag] or {}) do used = used + 1 end
-    return (world.bagSizes[bag] or 0) - used, 0
+    return (world.bagSizes[bag] or 0) - used, world.bagFamilies[bag] or 0
   end,
   -- Item info in a bag slot, as the client's table (world.bags entry .locked and .bound for isLocked and isBound).
   GetContainerItemInfo = function(bag, slot)
