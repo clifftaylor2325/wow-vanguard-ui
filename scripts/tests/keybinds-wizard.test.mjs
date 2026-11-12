@@ -4,7 +4,8 @@
 // after first-run setup, and putting keys back from the card. Characters and icons here are test-only.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY spells a level-12 warrior knows, with their icons: { id, name }.
 const WARRIOR_SPELLS = [[78, "Heroic Strike"], [772, "Rend"], [7384, "Overpower"], [6343, "Thunder Clap"],
@@ -276,7 +277,7 @@ it("why it changes nothing: a bar addon, Vanguard's bars off, a gamepad; and ret
   const classless = warrior();
   classless.eval('__wfgWorld.setUnit("player", { class = "TEST-ONLY", className = "Tester" })');
   expect(classless.eval("return ns.KeybindsWizard.Blocked()")).toBe("Key setup has no layout for your class yet.");
-  const retail = loggedIn(CLICK_LUA, { client: RETAIL });
+  const retail = loggedIn(CLICK_LUA, { client: RETAIL_CLIENT });
   expect([open(retail), cardButton(retail, "Put everything back")], "no key setup buttons on retail").toEqual([false, false]);
   retail.eval("ns.KeybindsWizard.Open()");
   expect([retail.eval("return Vanguard_KeysWizard == nil"), chatHas(retail, /Vanguard's key setup is for WoW Forever only\.$/)]).toEqual([true, true]);
@@ -730,4 +731,16 @@ it("H45-6-R4 step 3: the gamepad interface switched on while Ready is open stops
   expect(keys(addon, ["F"]), "no key changed").toEqual([""]);
   expect([win(addon).shown, win(addon).step, win(addon).left]).toEqual([true, 1, "Close"]);
   expect(addon.texts("You play with a gamepad, so Vanguard won't change your keys.").length).toBe(1);
+});
+
+it("H46-20-50 Show what comes later leaves a spell the character already knows on its own key", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Brakk", class = "WARRIOR", className = "Warrior", level = 6 })');
+  for (const [id, name] of [[78, "Heroic Strike"], [772, "Rend"], [6343, "Thunder Clap"], [2457, "Battle Stance"]]) addon.world.learn(id, { name, icon: `TEST-ONLY-${id}` });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457, icon = "TEST-ONLY-BS" } })');
+  open(addon);
+  addon.eval('__click("Show me") __click("Show what comes later")');
+  expect(cap(addon, "4").grey, "Thunder Clap is known: key 4 is not greyed for it").toBe(false);
+  addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "4" then c.__scripts.OnEnter(c) end end`);
+  expect(tipText(addon)).not.toContain("Later: Thunder Clap");
 });

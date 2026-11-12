@@ -2,7 +2,8 @@
 // the menu-click fix across the groups), in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_CLICKS_LUA, RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, loggedIn } from "./helpers.mjs";
 import { CC, MENU_NOTICE, applies, bindings, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
@@ -285,7 +286,7 @@ it("H44-9-50 a typed spell's Bind answered after the switch binds nothing", () =
 });
 
 it("H44-9-50 Retail: Copy to spec 3 asked on spec 1 and answered on spec 2 copies nothing; a party member's spec event does not count", () => {
-  const addon = priest(RETAIL + "GetNumSpecializations = function() return 3 end __wfgSpec = 1 GetSpecialization = function() return __wfgSpec end");
+  const addon = priest("GetNumSpecializations = function() return 3 end __wfgSpec = 1 GetSpecialization = function() return __wfgSpec end", { client: RETAIL_CLIENT });
   addon.eval(`__wfgSpec = 3 ${CC}.Add("BUTTON4", "spell", "TEST-ONLY Three") __wfgSpec = 2 ${CC}.Add("BUTTON5", "spell", "TEST-ONLY Two")`);
   addon.eval(`__wfgSpec = 1 ${CC}.Add("BUTTON3", "spell", "TEST-ONLY One")`);
   // The keys of spec 3's list.

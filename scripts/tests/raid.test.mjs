@@ -230,6 +230,102 @@ it("H45-5-53 raid frames: in a fight the new layout waits for the fight to end",
   expect(gridLayout(addon)[0], "laid out when the fight ends").toBe("LEFT");
 });
 
+// TEST-ONLY: the client's group header, which the harness lacks (SecureGroupHeaderTemplate is a bare frame there). __anchor
+// ports the anchoring half of configureChildren (/home/user/blizz/forever/Interface/AddOns/Blizzard_RestrictedAddOnEnvironment/
+// SecureGroupHeaders.lua 133-260; live is the same): it calls SetPoint on every shown tile, which adds a point name beside
+// the ones a tile holds, and ClearAllPoints only on the tiles past the count. The header runs it on every attribute change and
+// roster event while visible (lines 60-73), so the port runs per attribute change too. Sorting and the header's size are left out.
+const HEADER_PORT = `
+  local OPPOSITE = { TOP = { "BOTTOM", 0, -1 }, BOTTOM = { "TOP", 0, 1 }, LEFT = { "RIGHT", 1, 0 }, RIGHT = { "LEFT", -1, 0 } }
+  local function tile(i) return _G["Vanguard_RaidUnitButton" .. i] end
+  function __anchor(h)
+    local point, columnPoint = h:GetAttribute("point") or "TOP", nil
+    local rel, xm, ym = unpack(OPPOSITE[point])
+    local perColumn, columns = h:GetAttribute("unitsPerColumn"), 1
+    if perColumn and __members > perColumn then columns = math.min(math.ceil(__members / perColumn), h:GetAttribute("maxColumns") or 1) else perColumn = __members end
+    if columns > 1 then columnPoint = h:GetAttribute("columnAnchorPoint") end
+    local columnRel, cxm, cym = unpack(OPPOSITE[columnPoint or "TOP"])
+    local spacing, last = h:GetAttribute("columnSpacing") or 0, math.min(perColumn * columns, __members)
+    for i = 1, last do
+      local b, inColumn = tile(i), (i - 1) % perColumn + 1
+      if i == 1 then
+        b:SetPoint(point, h, point, 0, 0)
+        if columnPoint then b:SetPoint(columnPoint, h, columnPoint, 0, 0) end
+      elseif inColumn == 1 then
+        b:SetPoint(columnPoint, tile(i - perColumn), columnRel, cxm * spacing, cym * spacing)
+      else
+        b:SetPoint(point, tile(i - 1), rel, math.abs(xm) * (h:GetAttribute("xOffset") or 0), math.abs(ym) * (h:GetAttribute("yOffset") or 0))
+      end
+    end
+    local i = last + 1
+    while tile(i) do tile(i):ClearAllPoints() i = i + 1 end
+  end
+  -- Tile i's anchors as "POINT>tile.RELPOINT" (the header as 0), sorted.
+  function __anchors(i)
+    local out = {}
+    for p, a in pairs(tile(i).__points) do out[#out + 1] = p .. ">" .. (a.rel == Vanguard_Raid and "0" or a.rel:GetName():match("%d+$")) .. "." .. a.relPoint end
+    table.sort(out)
+    return out
+  end
+`;
+
+// A group of n with 12 tiles made, laid out by the ported header, which listens as the client's does.
+const headerGrid = (n) => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + `__members = ${n} GetNumGroupMembers = function() return __members end
+    for i = 4, 12 do __units["raid" .. i] = { name = "TEST-ONLY M" .. i, hp = 500, maxhp = 1000, power = 0, maxpower = 0, ptype = "MANA", player = true, class = "MAGE" } end`);
+  addon.eval(`${HEADER_PORT}
+    for i = 1, 12 do __spawn(i, "raid" .. i):ClearAllPoints() end
+    Vanguard_Raid:HookScript("OnAttributeChanged", function(self) if self:IsVisible() then __anchor(self) end end)
+    __blocked = 0 ns.On("ADDON_ACTION_BLOCKED", function() __blocked = __blocked + 1 end)`);
+  rosterBecomes(addon, n);
+  return addon;
+};
+
+// The roster becomes n: the client's header re-anchors on the event (not in a fight), then Vanguard hears it.
+function rosterBecomes(addon, n) {
+  addon.eval(`__members = ${n} if not __wfgStub.inCombat then __anchor(Vanguard_Raid) end`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.016);
+}
+
+// The anchors of the first tile, the second in its group, the next group's first and the third group's first.
+const tileAnchors = (addon) => [1, 2, 6, 11].map((i) => addon.eval(`return __anchors(${i})`));
+
+it("H46-17-1 raid frames: a raid growing past 10 and back to 10 anchors every tile in the new direction only", () => {
+  const addon = headerGrid(10);
+  rosterBecomes(addon, 11);
+  expect(addon.eval("return __anchors(2)"), "rows: tile 2 sits right of tile 1, with no column anchor left on it").toEqual(["LEFT>1.RIGHT"]);
+  expect(tileAnchors(addon), "the grown grid is anchored as one that started with 11").toEqual(tileAnchors(headerGrid(11)));
+  rosterBecomes(addon, 10);
+  expect(tileAnchors(addon), "back to columns: anchored as one that started with 10").toEqual(tileAnchors(headerGrid(10)));
+  expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
+it("H46-17-1 raid frames: Groups as rows in a party, then Sort by role, leave each tile one anchor", () => {
+  const addon = headerGrid(5);
+  setRaidRow(addon, "Groups as", '"rows"');
+  addon.update(0.016);
+  expect(addon.eval("return { __anchors(1), __anchors(2) }"), "rows: tile 1 on the header's left, tile 2 right of it").toEqual([["LEFT>0.LEFT"], ["LEFT>1.RIGHT"]]);
+  setRaidRow(addon, "Sort by role (tanks, healers, damage)", "true");
+  addon.update(0.016);
+  expect(addon.eval("return { __anchors(1), __anchors(2), Vanguard_Raid:GetAttribute('groupBy') }"), "sorted by role, the same direction: anchors kept").toEqual([["LEFT>0.LEFT"], ["LEFT>1.RIGHT"], "ASSIGNEDROLE"]);
+  setRaidRow(addon, "Groups as", '"columns"');
+  addon.update(0.016);
+  expect(addon.eval("return __anchors(2)"), "columns again: tile 2 above tile 1").toEqual(["BOTTOM>1.TOP"]);
+});
+
+it("H46-17-1 raid frames: a raid growing past 10 in a fight touches no tile until the fight ends", () => {
+  const addon = headerGrid(10);
+  const columns = tileAnchors(addon);
+  setCombat(addon, true);
+  rosterBecomes(addon, 11);
+  expect(tileAnchors(addon), "in the fight the tiles keep their columns' anchors").toEqual(columns);
+  setCombat(addon, false);
+  addon.update(0.016);
+  expect(tileAnchors(addon), "after it, anchored as a grid that started with 11").toEqual(tileAnchors(headerGrid(11)));
+  expect(addon.eval("return { __blocked, #ns.errors }"), "nothing blocked, nothing errors").toEqual([0, 0]);
+});
+
 it("H45-5-52 raid frames: a saved tile width, height or spacing outside the sliders' limits is dropped at login and in an import", () => {
   for (const field of ["width = 0", "height = 0", "height = -40", "width = 0/0", "height = 1/0", "spacing = -500", "width = 100000", "height = 4", "width = '5'"]) {
     const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: `VanguardDB.profiles = { Default = { RaidFrames = { ${field} } } }\n` });
@@ -653,7 +749,7 @@ it("raid frames: the indicators are named by where they sit, with a note, and th
     if w.__kind == "FontString" and w:GetText() == ${JSON.stringify(text)} then return true end
   end return false`);
   expect(["Right edge, top", "Right edge, second", "Right edge, third"].map(has), "the three captions (each with its reload tag)").toEqual([true, true, true]);
-  expect(has("Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."), "the note").toBe(true);
+  expect(has("Small icons at each tile's right edge under the missing-buff mark; the second and third sit under the name, where they fit."), "the note").toBe(true);
   expect(addon.eval('local out = {} for i, c in ipairs(ns.GetModule("RaidAuras").SOURCE_CHOICES) do out[i] = c[2] end return out'), "sentence case").toEqual(
     ["None", "External defensive", "Big defensive", "Important buff", "Your buffs", "Crowd control", "Dispellable debuff"]);
 });

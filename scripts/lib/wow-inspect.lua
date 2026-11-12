@@ -95,10 +95,8 @@ function __wfgInspectAll(accept)
   return out
 end
 
--- Whether a frame is the addon's own (made after the client's frames).
-local function addonMade(w)
-  return w.__id > stub.firstAddonFrame
-end
+-- Whether a frame is the addon's own (wow-textfit.lua's stub.addonMade: made after the client's frames, not the game's).
+local addonMade = stub.addonMade
 
 -- The visible frames parented straight to UIParent that the addon made, with
 -- rects: what a screenshot would show at the top level.

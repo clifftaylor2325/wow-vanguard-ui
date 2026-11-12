@@ -276,6 +276,9 @@ it("/vg perf: says what it can without the game's counters", () => {
   expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
   expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
   expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch | slow [reset]]"]);
+  expect(said(addon, "perf Watch"), "the word is read in any case: the same answer as lower case").toEqual(said(addon, "perf watch"));
+  expect(said(addon, "perf CPU"), "perf CPU is the cpu switch, not the usage").toEqual(said(addon, "perf cpu"));
+  expect(said(addon, "perf SLOW RESET")[0], "perf SLOW RESET starts the timings over").toBe("Vanguard's handler timings start over.");
 });
 it("/vg frame: a frame's state, anchors and parents, and with deep its textures and child frames", () => {
   const addon = loggedIn();

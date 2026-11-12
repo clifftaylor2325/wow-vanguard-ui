@@ -749,15 +749,30 @@ function RF.SpotFor(n)
   return raisedSpot(RF.SPOT, RF.Lift())
 end
 
+-- Takes every tile's anchors off (out of combat: the tiles are secure), so the header's next update anchors them anew.
+local function clearTileAnchors()
+  for _, b in ipairs(RF.buttons) do b:ClearAllPoints() end
+end
+
+-- Sets the groups' direction (grow). The client's header only adds anchors to the tiles it shows
+-- (SecureGroupHeaders.lua, configureChildren), so a tile would keep its old point beside the new one: each
+-- direction attribute that changes is set on tiles with none, and the update that change runs anchors them all.
+local function setDirection(header, grow)
+  for _, key in ipairs({ "columnAnchorPoint", "point" }) do
+    if header:GetAttribute(key) ~= grow[key] then clearTileAnchors() end
+    header:SetAttribute(key, grow[key])
+  end
+end
+
 -- Layout attributes: five at a time in group order (or sorted by role), as columns or rows (kind).
 local function layout(header, s, kind)
   local grow = RF.GROW[kind] or RF.GROW.columns
+  setDirection(header, grow)
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
   header:SetAttribute("groupingOrder", s.sortByRole and "TANK,HEALER,DAMAGER,NONE" or "1,2,3,4,5,6,7,8")
   header:SetAttribute("maxColumns", 8)
   header:SetAttribute("unitsPerColumn", RF.GROUP)
   header:SetAttribute("columnSpacing", s.spacing)
-  for _, key in ipairs({ "point", "columnAnchorPoint" }) do header:SetAttribute(key, grow[key]) end
   header:SetAttribute("xOffset", grow.xOffset > 0 and s.spacing or 0)
   header:SetAttribute("yOffset", grow.yOffset > 0 and s.spacing or 0)
 end

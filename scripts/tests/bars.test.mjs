@@ -1,8 +1,8 @@
 // bars: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, RETAIL, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -375,7 +375,7 @@ it("Hidden bar bindings stay intact", () => {
 });
 
 it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
-  const addon = loggedIn(RETAIL + ACTIONS_ENV);
+  const addon = loggedIn(ACTIONS_ENV, { client: RETAIL_CLIENT });
   // What key 1 is bound to click (nil: nothing of Vanguard's).
   const keyOne = () => addon.eval("return __overrides['1']");
   expect([keyOne(), barVis(addon).raw], "outside a battle: key 1 clicks Vanguard's button, and the bar's driver hides it in a pet battle").toEqual(["Vanguard_Bar1Button1:LeftButton", "[petbattle] hide; show"]);
@@ -1271,4 +1271,30 @@ it("H45-22-80 bars: a DataBars layout stamp that is not a number is migrated, no
     const addon = loggedIn(ACTIONS_ENV, { savedVariables: `VanguardDB.profiles = { Default = { DataBars = { layout = ${layout}, width = 476 } } }` });
     expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('DataBars').settings.layout, ns.GetModule('DataBars').settings.width }"), `layout ${layout}`).toEqual([true, 2, 478]);
   }
+});
+
+// TEST-ONLY: one click edge on bar 1 button 2. The stub flips an enabled CheckButton's check before OnClick, as the
+// client does (Blizzard_Transmog.lua:1961-1967 reads the flipped state in OnClick), so the check a case reads is
+// only right when PostClick puts it back to the truth. Returns it.
+const clickEdge = (addon, down) => addon.eval(`local b = Vanguard_Bar1Button2 b:Click("LeftButton", ${down}) return b:GetChecked()`);
+
+// The game's action buttons put the check right after every click (/home/user/blizz/forever/Interface/AddOns/
+// Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml:178 PostClick ->
+// Shared/ActionButton.lua:1567-1569 -> UpdateState :715-719); Vanguard's do the same.
+it("H46-18-1 bars: a key held through the start of a cast keeps the button lit after the release", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  clickEdge(addon, "true");
+  addon.eval("__actions[2].current = true");
+  addon.fire("ACTIONBAR_UPDATE_STATE");
+  addon.update(0);
+  expect(clickEdge(addon, "false"), "the release leaves the current action lit").toBe(true);
+  addon.update(1);
+  expect(addon.eval("return Vanguard_Bar1Button2:GetChecked()"), "and it stays lit while it is current").toBe(true);
+});
+
+it("H46-18-1 bars: a press slid off the button leaves a not-current action unlit", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect(clickEdge(addon, "true"), "the press does not light it").toBe(false);
+  addon.update(1);
+  expect(addon.eval("return Vanguard_Bar1Button2:GetChecked()"), "nor does anything later").toBe(false);
 });

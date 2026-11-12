@@ -163,10 +163,12 @@ local function aboveRow(player)
 end
 
 -- Puts the chip level with the player frame, a gap to its left when the chip fits there on the screen, else
--- just above the frame's left end (the Classic layout puts the frame 20 from the edge; a narrow canvas too).
+-- just above the frame's left end (the Classic layout puts the frame 20 from the edge; a narrow canvas too). Both
+-- are UIParent children: the frame's own left edge times its scale is the room in the chip's units.
 local function placeChip(chip, player)
   chip:ClearAllPoints()
-  if (player:GetLeft() or 0) >= chip:GetWidth() + T.SPACE.gap then
+  local room = (ns.PlainNumber(player:GetLeft()) or 0) * (ns.PlainNumber(player:GetScale()) or 1)
+  if room >= chip:GetWidth() + T.SPACE.gap then
     return chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
   end
   local row = aboveRow(player)

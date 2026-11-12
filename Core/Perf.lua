@@ -243,9 +243,10 @@ end
 -- /vg perf [cpu|watch|slow]: the report now (with the busiest functions), profiling on or off, the timed
 -- report, or the slowest handlers.
 function P.Command(rest)
-  if rest == "cpu" then return P.ToggleProfiling() end
-  if rest == "watch" then return P.Watch() end
-  if rest == "slow" or rest == "slow reset" then return P.SlowCommand(rest:sub(6)) end
+  local word = rest:lower()
+  if word == "cpu" then return P.ToggleProfiling() end
+  if word == "watch" then return P.Watch() end
+  if word == "slow" or word == "slow reset" then return P.SlowCommand(word:sub(6)) end
   if rest ~= "" then return ns.Chat(L["Usage: /vg perf [cpu | watch | slow [reset]]"]) end
   P.Report(true)
 end

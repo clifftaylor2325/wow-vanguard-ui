@@ -1282,7 +1282,8 @@ end
 -- /vg plates: what the game's plate settings are and how many plates Vanguard drew (#377).
 -- Vanguard dresses every plate the game makes, so no enemy plate means the game made none.
 function NP.Command(rest)
-  if rest == "enemies on" or rest == "enemies off" then return setEnemies(rest == "enemies on") end
+  local word = (rest or ""):lower():match("^enemies%s+(%a+)$")
+  if word == "on" or word == "off" then return setEnemies(word == "on") end
   ns.Chat(platesLine(countPlates()))
   if cvarState("nameplateShowEnemies") == "off" then
     ns.Chat(L["The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V."])

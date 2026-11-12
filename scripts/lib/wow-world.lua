@@ -119,7 +119,10 @@ world.client = "forever"
 world.locale = "enUS"
 -- ActionButtonUseKeyDown starts on: the default is not in Blizzard's source and is not confirmed in game (the value
 -- docs/SMOKE-TEST.md's totem step expects); stub.secureActs and GetCVarBool both read this one value.
-world.cvars = { ActionButtonUseKeyDown = "1" }
+-- loadDeprecationFallbacks starts on too, so the fallback globals the world defines (IsPlayerSpell,
+-- ChatFrame_AddMessageEventFilter) agree with the CVar that gates them (Blizzard_DeprecatedSpellBook/
+-- Deprecated_SpellBook.lua:4-6). That it is on by default is a guess: no Blizzard file sets it; needs the game.
+world.cvars = { ActionButtonUseKeyDown = "1", loadDeprecationFallbacks = "1" }
 world.sounds = {}
 world.reloads = 0
 world.keys = {}
@@ -269,7 +272,7 @@ Enum = {
   CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
   -- DurationTextBindingSharedDocumentation.lua (both clients).
   DurationTextBindingProperty = { RemainingDuration = 0, RemainingPercent = 1, ElapsedDuration = 2, ElapsedPercent = 3, TotalDuration = 4, StartTime = 5, EndTime = 6 },
-  LuaCurveType = { Linear = 0, Step = 1 },
+  LuaCurveType = { Linear = 0, Step = 1, Cosine = 2, Cubic = 3 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
   -- NumericRuleFormatterSharedDocumentation.lua (both clients).
   NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 },
@@ -695,30 +698,79 @@ end
 
 AnchorUtil = { FlowDirection = { LeftToRight = 1, RightToLeft = 2, TopToBottom = 3, BottomToTop = 4 } }
 
--- Color curves: the color at a value, by the nearest step below it.
+-- Curves (CurveUtilDocumentation.lua, both clients): CreateCurve makes a number curve and CreateColorCurve a colour
+-- curve, each with SetType and the points calls. Evaluate interpolates between the two points around x, clamped to
+-- the end points, unless the type is Step (LuaCurveObjectConstantsDocumentation.lua: Linear "Linearly interpolates
+-- between points", Step "snapping to values exactly"; Cosine and Cubic are taken as Linear, a guess). An unset type
+-- interpolates: Blizzard_SharedXMLBase/CurveConstants.lua:3-6 builds ZeroToOne with no SetType as "the identity
+-- function" (for a colour curve this is inferred from the number curve).
+local curveMethods = {}
+curveMethods.__index = curveMethods
+
+-- SetType picks the curve's kind (Enum.LuaCurveType).
+function curveMethods:SetType(t) self.kind = t end
+-- AddPoint keeps a value (a number, or a colour on a colour curve) at x.
+function curveMethods:AddPoint(x, value) self.points[#self.points + 1] = { x = x, value = value } end
+-- ClearPoints drops every point, so the curve can be filled again.
+function curveMethods:ClearPoints() self.points = {} end
+
+-- The points nearest x at or below it and at or above it (nil past that end).
+local function curveNeighbours(points, x)
+  local below, above
+  for _, p in ipairs(points) do
+    if p.x <= x and (not below or p.x > below.x) then below = p end
+    if p.x >= x and (not above or p.x < above.x) then above = p end
+  end
+  return below, above
+end
+
+-- A value t of the way from a to b: a number, or a colour component by component.
+local function blendCurveValues(a, b, t)
+  if type(a) == "number" then return a + (b - a) * t end
+  -- One component, a missing one (alpha) counting as 1.
+  local function mix(k) return (a[k] or 1) + ((b[k] or 1) - (a[k] or 1)) * t end
+  return CreateColor(mix("r"), mix("g"), mix("b"), mix("a"))
+end
+
+-- The value at x: the nearest point at or below on a Step curve (the lowest point below them all), else blended.
+function curveMethods:Evaluate(x)
+  local below, above = curveNeighbours(self.points, x)
+  local edge = below or above
+  if not edge then return nil end
+  if self.kind == Enum.LuaCurveType.Step or not (below and above) or below.x == above.x then return edge.value end
+  return blendCurveValues(below.value, above.value, (x - below.x) / (above.x - below.x))
+end
+
+-- A new curve with no points and no type.
+local function newCurve()
+  return setmetatable({ points = {} }, curveMethods)
+end
+
 C_CurveUtil = {
-  -- A curve object: AddPoint(x, color), Evaluate(x).
-  CreateColorCurve = function(kind)
-    local curve = { kind = kind, points = {} }
-    -- SetType picks the curve kind; AddPoint keeps a color at a value; Evaluate gives the color of the nearest point at or below.
-    function curve:SetType(t) self.kind = t end
-    function curve:AddPoint(x, color) self.points[#self.points + 1] = { x = x, color = color } end
-    -- ClearPoints drops every point, so the curve can be filled again.
-    function curve:ClearPoints() self.points = {} end
-    -- The color of the nearest point at or below x.
-    function curve:Evaluate(x)
-      local best
-      for _, p in ipairs(self.points) do if p.x <= x and (not best or p.x > best.x) then best = p end end
-      return best and best.color or self.points[1] and self.points[1].color
-    end
-    return curve
-  end,
+  CreateCurve = newCurve,
+  CreateColorCurve = newCurve,
   -- One of two colors by a boolean the client may hide (a hidden one is read through the harness's rawget, as a hidden number is).
   EvaluateColorFromBoolean = function(flag, ifTrue, ifFalse)
     if seenSecret(flag) then flag = rawget(flag, "n") end
     return flag and ifTrue or ifFalse
   end,
 }
+
+-- The client's shared curves, built as Blizzard_SharedXMLBase/CurveConstants.lua builds them (loaded on both
+-- clients: Blizzard_SharedXMLBase.toc:41).
+CurveConstants = {}
+-- A curve of the client's type through the points (x1, y1) and (x2, y2); no type leaves it unset, as ZeroToOne is.
+local function shareCurve(kind, y1, y2)
+  local c = C_CurveUtil.CreateCurve()
+  if kind then c:SetType(kind) end
+  c:AddPoint(0.0, y1)
+  c:AddPoint(1.0, y2)
+  return c
+end
+CurveConstants.ZeroToOne = shareCurve(nil, 0.0, 1.0)
+CurveConstants.ScaleTo100 = shareCurve(Enum.LuaCurveType.Linear, 0, 100)
+CurveConstants.Reverse = shareCurve(Enum.LuaCurveType.Linear, 1.0, 0.0)
+CurveConstants.ReverseTo100 = shareCurve(Enum.LuaCurveType.Linear, 100, 0)
 
 -- A numeric rule formatter, as Blizzard_APIDocumentationGenerated/StringUtilDocumentation.lua's
 -- C_StringUtil.CreateNumericRuleFormatter makes it (no argument; both clients): an object holding breakpoints, with
@@ -1008,11 +1060,10 @@ end
 -- Heal prediction, absorbs and heal calculators.
 function UnitGetIncomingHeals(unit) return uf(unit, "incomingHeals") or 0 end
 function UnitGetTotalAbsorbs(unit) return uf(unit, "absorbs") or 0 end
--- Fills a calculator with a unit (as the client does) and returns the unit's incoming heals.
+-- Fills a calculator with a unit, as the client does, and returns nothing (UnitDocumentation.lua's
+-- UnitGetDetailedHealPrediction lists no Returns; the calculator is the answer).
 function UnitGetDetailedHealPrediction(unit, _, calc)
   if calc then calc.unit = unit end
-  local u = resolveUnit(unit)
-  return u and (u.incomingHeals or 0) or 0, 0, 0
 end
 -- The client's heal prediction calculator, reading the unit's world fields.
 function CreateUnitHealPredictionCalculator()
@@ -1162,14 +1213,34 @@ local function tokenEvent(token)
   return "UNIT_NAME_UPDATE", token
 end
 
--- Fires the events for the fields that changed on a unit.
-local function fireUnitChanges(token, fields)
+-- The power type a power or combo change names: UNIT_POWER_UPDATE's payload is unitTarget, powerType, neither
+-- nilable (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, UnitPowerUpdate). A power change names the
+-- unit's own power (true here: UnitPowerType's token).
+local POWER_TYPE_OF = { power = true, combo = "COMBO_POINTS" }
+
+-- The power type a changed field names on unit u, or nil when its event names none.
+local function powerTypeOf(field, u)
+  local named = POWER_TYPE_OF[field]
+  if named == true then return u.ptypeName or "MANA" end
+  return named
+end
+
+-- Fires an event for a unit, with the power type after the token when the change names one.
+local function fireForUnit(event, token, powerType)
+  if powerType == nil then return stub.fire(event, token) end
+  stub.fire(event, token, powerType)
+end
+
+-- Fires the events for the fields that changed on a unit u: one per event, and one per power type for a power
+-- event (a power and a combo change in one call fire UNIT_POWER_UPDATE twice, each with its type).
+local function fireUnitChanges(token, fields, u)
   local fired = {}
   for field in pairs(fields) do
-    local event = UNIT_EVENTS[field]
-    if event and not fired[event] then
-      fired[event] = true
-      stub.fire(event, token)
+    local event, powerType = UNIT_EVENTS[field], powerTypeOf(field, u)
+    local key = event and event .. " " .. tostring(powerType)
+    if key and not fired[key] then
+      fired[key] = true
+      fireForUnit(event, token, powerType)
     end
   end
 end
@@ -1183,7 +1254,7 @@ function world.setUnit(token, fields)
   for k, v in pairs(fields or {}) do u[k] = v end
   world.units[token] = u
   refreshWatches()
-  if new then stub.fire(tokenEvent(token)) else fireUnitChanges(token, fields or {}) end
+  if new then stub.fire(tokenEvent(token)) else fireUnitChanges(token, fields or {}, u) end
   return u
 end
 
@@ -1426,7 +1497,8 @@ local function spellOf(key)
 end
 world.spell = spellOf
 
--- GetSpellInfo (the Forever client has it): name, rank, icon, castTime, minRange, maxRange, spellId.
+-- GetSpellInfo (a guess that the Forever client has it: its own Lua calls the global only in Classic-folder files):
+-- name, rank, icon, castTime, minRange, maxRange, spellId.
 function GetSpellInfo(key)
   local id, s = spellOf(key)
   if not s then return nil end
@@ -1483,7 +1555,8 @@ local function knowsSpell(id)
   end
   return false
 end
--- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default).
+-- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default: a
+-- guess, see world.cvars).
 IsPlayerSpell = knowsSpell
 
 -- Forgets every learned spell (the spellbook is empty again).
@@ -1589,10 +1662,12 @@ C_ActionBar = {
   -- deprecation fallbacks' shims over these).
   GetActionTexture = function(slot) return actionOf(slot).icon end,
   GetActionText = function(slot) return actionOf(slot).macro end,
-  -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
-  -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
+  -- Whether the slot's action is an item you wear (action.equipped). A slot number outside the bars answers
+  -- nothing (ActionBarFrameDocumentation.lua: RequiresValidActionSlot, whose FailureMode is ReturnNothing in
+  -- ActionBarSharedDocumentation.lua). actionID is not nilable, so a non-number raises; that text is the stub's own.
   IsEquippedAction = function(slot)
-    if type(slot) ~= "number" or slot < 1 or slot > 180 then error("Invalid action slot", 2) end
+    if type(slot) ~= "number" then error("Invalid action slot", 2) end
+    if slot < 1 or slot > 180 then return end
     return actionOf(slot).equipped == true
   end,
 }
@@ -1755,11 +1830,13 @@ C_MerchantFrame = {
   IsMerchantItemRefundable = function(i) local it = world.merchant and world.merchant.items[i] if it == nil or it.refundable == nil then return true end return it.refundable end,
 }
 
--- Trainers: world.trainer = { services = { { name, cost, available } } }.
+-- Trainers: world.trainer = { services = { { name, cost, available, icon, level, rank, category } } }.
 world.trainer = nil
--- The trainer API, read from world.trainer.
+-- The trainer API, read from world.trainer. GetTrainerServiceInfo answers in the client's order: name, kind, icon,
+-- required level, rank text, category (Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:469; the kind's words stay
+-- a guess).
 function GetNumTrainerServices() return world.trainer and #world.trainer.services or 0 end
-function GetTrainerServiceInfo(i) local s = world.trainer and world.trainer.services[i] if not s then return nil end return s.name, s.available ~= false and "available" or "unavailable", s.category or "" end
+function GetTrainerServiceInfo(i) local s = world.trainer and world.trainer.services[i] if not s then return nil end return s.name, s.available ~= false and "available" or "unavailable", s.icon, s.level, s.rank, s.category or "" end
 function GetTrainerServiceCost(i) local s = world.trainer and world.trainer.services[i] return s and s.cost or 0 end
 function BuyTrainerService(i) world.trained = world.trained or {} table.insert(world.trained, i) world.money = world.money - GetTrainerServiceCost(i) end
 
@@ -2582,17 +2659,26 @@ function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked, isRecraft)
   world.trackRecipe(recipeID, tracked, isRecraft)
 end
 
+-- Shows a recipe on the crafting page's form (its recipeInfo kept, as the game's GetRecipeInfo returns it).
+local function initRecipe(form, recipeInfo) form.currentRecipeInfo = recipeInfo end
+
+-- Gives the professions window its crafting page and the page's recipe form (live
+-- Blizzard_Professions/Blizzard_ProfessionsFrame.xml:28: one window holds the crafting, specialisation and orders
+-- pages; wow-retail-professions.lua adds the other two on Retail).
+function world.addCraftingPage(f)
+  f.CraftingPage = stub.newWidget("Frame", nil, f)
+  f.CraftingPage:SetAllPoints()
+  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
+  f.CraftingPage.SchematicForm.Init = initRecipe
+end
+
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()
   if ProfessionsFrame then return ProfessionsFrame end
   local f = stub.newWidget("Frame", "ProfessionsFrame", UIParent)
   f:SetSize(673, 594)
   f:SetPoint("TOPLEFT", 16, -116)
-  f.CraftingPage = stub.newWidget("Frame", nil, f)
-  f.CraftingPage:SetAllPoints()
-  f.CraftingPage.SchematicForm = stub.newWidget("Frame", nil, f.CraftingPage)
-  -- Shows a recipe (its recipeInfo kept, as the game's GetRecipeInfo returns it).
-  function f.CraftingPage.SchematicForm:Init(recipeInfo) self.currentRecipeInfo = recipeInfo end
+  world.addCraftingPage(f)
   stub.fire("ADDON_LOADED", "Blizzard_Professions")
   return f
 end

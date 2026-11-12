@@ -3,10 +3,10 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "/vg opens the options window").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
@@ -435,7 +435,7 @@ it("H45-7-2 options: a search for the words of a Reset this page row lights no p
 });
 
 it("options: a live row of a module that is off saves its value without an error", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');
   addon.eval('__click("Glow a buff near its end")');
   addon.eval('ns.Options.Show("tools")');
@@ -785,6 +785,19 @@ it("options: the font the profile uses, shared late by its addon, is offered by 
   addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])');
   addon.advance(0.1);
   expect(fonts(), "the one in use is").toContain("TEST-ONLY Font");
+});
+
+it("options: text drawn before the profile's font is shared wears it once its addon shares it, even in a burst of shares", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf";
+  addon.eval(`ns.Theme.Settings().font = "TEST-ONLY Late Font"
+    __fs = ns.Theme.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label")`);
+  expect(addon.eval("return (__fs:GetFont())"), "drawn before the share: Fira").toBe(FIRA);
+  addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Late Font", [[Interface\\AddOns\\TestOnly\\Late.ttf]])
+    lsm:Register("background", "TEST-ONLY Unrelated", [[Interface\\TEST-ONLY]])`);
+  addon.advance(1);
+  expect(addon.eval("return (__fs:GetFont())"), "the late share repaints it without a pick, though another share came in the same frame").toBe("Interface\\AddOns\\TestOnly\\Late.ttf");
 });
 
 it("options: a changed setting gets a dot that puts the default back", () => {
@@ -1245,7 +1258,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
-    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|59", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
@@ -1878,7 +1891,7 @@ it("H17-3-1: on WoW Forever the reload offer's Tab ring stops at Later (a key ca
   expect([ring(forever, "Vanguard_Reload.cancel"), ring(forever, "Vanguard_Reload.accept")], "Forever: the second Tab stays on Later").toEqual([true, false]);
   forever.key("Vanguard_Reload", "ENTER");
   expect([forever.eval("return Vanguard_Reload:IsShown()"), chatHas(forever, /Type \/reload/)], "Enter presses Later: the dialog closes, no chat line").toEqual([false, false]);
-  const retail = loggedIn(RETAIL + "UISpecialFrames = {}");
+  const retail = loggedIn("UISpecialFrames = {}", { client: RETAIL_CLIENT });
   retail.eval(`ns.OfferReload("A change.")`);
   retail.key("Vanguard_Reload", "TAB");
   retail.key("Vanguard_Reload", "TAB");
@@ -2421,7 +2434,7 @@ it("options JumpTo marks the row for a Russian caption typed in small letters", 
 
 
 it("options General: the accent swatch of the chosen preset carries a check, and it moves with the accent", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV);
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT });
   addon.slash("");
   // The presets whose swatch shows the check.
   const checked = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
@@ -2468,9 +2481,25 @@ it("the class accent: /vg accent class sets it, a shared profile gives each char
   const again = loggedIn("__repaints = 0", { savedVariables: shared });
   again.eval("local T = ns.Theme local refresh = T.Refresh T.Refresh = function() __repaints = __repaints + 1 return refresh() end T.FollowClassAccent()");
   expect(again.eval("return __repaints"), "a character whose colour the accent already is repaints nothing").toBe(0);
+  // A live switch to a profile another class saved takes this character's colour at once.
+  const live = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Shared = { modules = {}, theme = { accentClass = true, accent = { 0.78, 0.61, 0.43 } } } } }\nVanguardCharDB = { profile = "Default" }` });
+  live.eval(`for _, name in ipairs(ns.ModuleNames()) do if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Shared.modules[name] = false end end`);
+  live.login();
+  live.eval('ns.PickProfile("Shared")');
+  expect(live.eval("local c = RAID_CLASS_COLORS.MAGE local r, g, b = ns.Theme.Accent() return { ns.ProfileName(), r == c.r, g == c.g, b == c.b }"), "switched live to Shared: the mage's colour, not the warrior's").toEqual(["Shared", true, true, true]);
   const hidden = loggedIn("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end");
   hidden.slash("accent class");
   expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
+});
+
+it("H46-B-G2 the class accent: a profile reset leaves no theme table, and a profile notice adds none", () => {
+  const addon = loggedIn();
+  addon.slash("accent class");
+  expect(addon.eval("return type(ns.Profile().theme)"), "the class accent was chosen, so the profile has a theme").toBe("table");
+  addon.eval("ns.ResetProfile()");
+  expect(addon.eval("return type(ns.Profile().theme)"), "reset: the class accent listener filled nothing back in").toBe("nil");
+  addon.eval("ns.ProfileChanged()");
+  expect(addon.eval("return { type(ns.Profile().theme), #ns.errors }"), "a notice for a profile that never chose it adds no theme").toEqual(["nil", 0]);
 });
 
 it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
@@ -2495,7 +2524,7 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
 });
 
 it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const result = addon.eval(`local rows = {}
     for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
@@ -2522,7 +2551,7 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
 });
 
 it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O = ns.Options
     O.AddRowKind("boom", function() error("TEST-ONLY card build") end, 20)
@@ -2552,7 +2581,7 @@ it("dropdowns: a menu opened in a fight puts no click catcher over the screen, o
 });
 
 it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O, res = ns.Options, {}
     local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
@@ -2599,7 +2628,7 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
 // H45-40-2: Pixel-perfect can save a shared bar size (24 to 64) past a single bar's Button size slider (24 to 48); a caption
 // click on a value past the slider's end steps it to the end, then wraps as usual.
 it("H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
   addon.eval('ns.Options.Show("actionbars")');
   // The shared size and bar 1's own size.
   const sizes = () => addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.bars[1].size or false }');

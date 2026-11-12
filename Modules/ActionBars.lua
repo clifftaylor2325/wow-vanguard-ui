@@ -729,9 +729,12 @@ local function wireAttributes(b, action, index)
   b:SetAttribute("checkmouseovercast", true)
 end
 
--- Scripts: click on either edge of the press, drag to move actions, the tooltip.
+-- Scripts: click on either edge of the press, drag to move actions, the tooltip. The client flips a
+-- CheckButton's check on each click, so PostClick puts it back to the truth, as the game's own action
+-- buttons do (ActionButtonTemplate.xml PostClick -> UpdateState); SetChecked is safe in a fight.
 local function wireScripts(b)
   b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetScript("PostClick", ns.Guard("action button check", updateChecked))
   b:RegisterForDrag("LeftButton", "RightButton")
   b:SetScript("OnDragStart", onDragStart)
   b:SetScript("OnReceiveDrag", onReceiveDrag)
@@ -794,6 +797,20 @@ function AB.Bar1HalfWidth()
   local bar1 = AB.settings and AB.settings.bars[1]
   if not (bar1 and bar1.enabled) then return 0 end
   return barWidth(AB.settings, bar1, 1) / 2
+end
+
+-- Half the widest bottom-stack bar's width that stands in its own spot, in UIParent's units (0 with none on, or the
+-- module off): what stands between the keep's frames (Core/HudLayout.lua ns.KeepSpread). A bar you dragged away
+-- takes its width with it; one left in the stack with its own bigger buttons counts.
+---@return number
+function AB.StackHalfWidth()
+  local half = 0
+  for n, barSettings in ipairs(AB.settings and AB.settings.bars or {}) do
+    if AB.InStack(n) and barSettings.enabled and not ns.MoverSaved("bar" .. n) then
+      half = math.max(half, barWidth(AB.settings, barSettings, n) / 2)
+    end
+  end
+  return half
 end
 
 -- Bar 1's default height above the screen's bottom while bar 1 or the module is off: its spot in the default stack
@@ -874,22 +891,35 @@ local function restackBar(n)
   return true
 end
 
+-- Places the HUD layout's frames again when the width the keep stands its frames out with changed (AB.StackHalfWidth).
+local function refitLayout()
+  local half = AB.StackHalfWidth()
+  if half == AB.stackedHalf then return end
+  AB.stackedHalf = half
+  ns.RefitHudLayout()
+end
+
 -- Re-stacks the bottom bars after a bar's buttons, rows or size changed: each stacked bar whose
--- default point moved gets it, and the cast bar follows the stack's top. Only call out of combat.
+-- default point moved gets it, the cast bar follows the stack's top and the HUD layout the stack's width.
+-- Only call out of combat.
 function AB.Restack()
   for n in pairs(AB.bars) do restackBar(n) end
   AB.stackedTop = AB.StackTop(AB.settings)
   ns.GetModule("CastBars").FitPlayer()
   fitVehicleExit()
+  refitLayout()
 end
 
 -- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
 -- only when the stack's top did. Placing a frame (ns.SetMoverDefault) rounds every pixel-sized frame
 -- again (T.Rescale), which runs T.OnScale's listeners, so a re-stack that placed something every time
--- would run this without end. Nothing to do while the module is off (no settings, no bars).
+-- would run this without end. The stack's width is remembered for the HUD layout's refit (AB.Restack): this runs at
+-- the build and after the movers' own re-anchor (Core/Movers.lua), which put the layout's frames at spots worked out
+-- for it. Nothing to do while the module is off (no settings, no bars).
 function AB.RestackMoved()
   if not AB.settings then return end
   for n in pairs(AB.bars) do restackBar(n) end
+  AB.stackedHalf = AB.StackHalfWidth()
   fitVehicleExit()
   local top = AB.StackTop(AB.settings)
   if top == AB.stackedTop then return end

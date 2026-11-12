@@ -134,12 +134,25 @@ function G.ScreenSize()
   return tonumber(w) or 0, tonumber(h) or 0
 end
 
--- The screen line: its size and the sizes setup suggests for it.
-function G.ScreenLine()
-  local S, w, h = ns.Setup, G.ScreenSize()
+-- What setup offers for this screen: the preset for it, else Fit on a narrow canvas; nil when it offers neither.
+local function screenSizes(S)
   local p = S.ScreenPreset(S.DetectScreen())
-  local suggest = p and ns.Format(L["the {screen} sizes (UI scale {scale}%)"], { screen = p.text, scale = math.floor(p.ui * 100 + 0.5) }) or L["Pixel-perfect"]
-  return ns.Format(L["Screen {width} x {height}: setup suggests {sizes}; /vg setup, then Screen, applies it."], { width = w, height = h, sizes = suggest })
+  if p then
+    return ns.Format(L["the {screen} sizes (UI scale {scale}%)"], { screen = p.text, scale = math.floor(p.ui * 100 + 0.5) })
+  end
+  if S.OfferFit() then
+    return ns.Format(L["Fit my screen (UI scale {scale}%)"], { scale = math.floor(S.FitScale() * 100 + 0.5) })
+  end
+end
+
+-- The screen line: its size and the sizes setup suggests for it, or that setup has none for it.
+function G.ScreenLine()
+  local w, h = G.ScreenSize()
+  local sizes = screenSizes(ns.Setup)
+  if not sizes then
+    return ns.Format(L["Screen {width} x {height}: setup has no sizes of its own for this screen; yours stay as they are."], { width = w, height = h })
+  end
+  return ns.Format(L["Screen {width} x {height}: setup suggests {sizes}; /vg setup, then Screen, applies it."], { width = w, height = h, sizes = sizes })
 end
 
 -- The average of a list of numbers.

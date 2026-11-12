@@ -246,19 +246,21 @@ local function remembered()
   return c and c.count or 0
 end
 
--- /vg trainers [next|clear]: what's remembered, what the next levels bring, or forget it all.
+-- /vg trainers [next|clear] (the word in any case): what's remembered, what the next levels bring, or forget it all.
 function SR.TrainersCommand(rest)
-  if rest == "clear" then VanguardDB.trainers = nil return ns.Chat(L["Forgot every trainer."]) end
-  if rest == "next" then
+  local verb = (rest or ""):lower()
+  if verb == "clear" then VanguardDB.trainers = nil return ns.Chat(L["Forgot every trainer."]) end
+  if verb == "next" then
     local level = ns.PlainNumber(ns.Client.Call("UnitLevel", "player")) or 1
     return sayUpcoming(level, L["Trainers you've visited teach, in the next levels:"]) or ns.Chat(L["Nothing remembered for the next levels. Visit your trainer with Remember what trainers teach on (/vg > Town and gear)."])
   end
   ns.Chat(ns.Format(L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."], { count = remembered() }))
 end
 
--- /vg ranks [swap]: the older ranks on your bars, or put the newest on them.
+-- /vg ranks [swap] (the word in any case): the older ranks on your bars, or put the newest on them.
 function SR.RanksCommand(rest)
-  if rest == "swap" then return SR.Swap() end
+  local verb = (rest or ""):lower()
+  if verb == "swap" then return SR.Swap() end
   SR.List()
 end
 

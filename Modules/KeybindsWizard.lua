@@ -362,13 +362,20 @@ local function paintAs(cap, icon, grey, color, alpha)
   cap:SetAlpha(alpha)
 end
 
+-- The later entry for a key, when its spell is one the character does not know yet (a known one reads as it is now).
+local function laterAt(chord)
+  local i = indexFor(state.laterEntries, chord)
+  local spell = i and state.laterEntries[i].spell
+  if spell and not KL.KnowsNow(spell) then return i end
+end
+
 -- Paints a key on the preview: a change in full with its new icon; with "Show what comes later", a spell the
 -- character will learn, greyed; otherwise what the key does now, faint.
 local function paintPreview(cap)
   cap.chord = KV.Chord(KV.TabById(state.tab), cap.key)
   local i = indexFor(state.entries, cap.chord)
   if i and changesKey(i) then return paintAs(cap, rowIcon(state.rows[i]), false, "accentText", 1) end
-  local later = not i and indexFor(state.laterEntries, cap.chord)
+  local later = not i and laterAt(cap.chord)
   if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "muted", FADED) end
   local now = KV.Lookup(cap.chord)
   paintAs(cap, now and now.icon, false, KV.CapColor(now), FADED)
@@ -379,7 +386,7 @@ local function tipPreview(cap)
   GameTooltip:SetText(KV.KeyText(cap.chord))
   local now = KV.Lookup(cap.chord)
   GameTooltip:AddLine(now and now.place or L["Nothing is bound to this key."], T.RGB("text2"))
-  local later = not indexFor(state.entries, cap.chord) and indexFor(state.laterEntries, cap.chord)
+  local later = not indexFor(state.entries, cap.chord) and laterAt(cap.chord)
   local text = later and ns.Format(L["Later: {spell}, once you learn it"], { spell = spellText(state.laterEntries[later].spell) }) or keyText(cap.chord)
   GameTooltip:AddLine(text, T.RGB("accentText"))
 end

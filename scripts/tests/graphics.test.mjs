@@ -83,7 +83,11 @@ it("/vg graphics: nothing the client can't say is guessed", () => {
     expect(addon.eval("return ns.Graphics.Card() == nil"), "no card from " + get).toBe(true);
   }
   addon.eval("__wfgStub.setScreen(1365, 768)");
-  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a small screen: no preset, Pixel-perfect").toBe("Screen 1365 x 768: setup suggests Pixel-perfect; /vg setup, then Screen, applies it.");
+  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a small screen with room: no preset and no Fit, so no suggestion").toBe("Screen 1365 x 768: setup has no sizes of its own for this screen; yours stay as they are.");
+  addon.eval("__wfgStub.setScreen(1229, 768)");
+  const fit = addon.eval("return { ns.Setup.OfferFit(), ns.Setup.FitPreset().ui }");
+  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a narrow small screen: the Fit setup marks suggested, with its scale").toBe(`Screen 1229 x 768: setup suggests Fit my screen (UI scale ${Math.floor(fit[1] * 100 + 0.5)}%); /vg setup, then Screen, applies it.`);
+  expect(fit[0], "setup offers Fit there").toBe(true);
   addon.eval("GetPhysicalScreenSize = nil");
   expect(addon.eval("return { ns.Graphics.ScreenSize() }"), "no screen size").toEqual([0, 0]);
 });

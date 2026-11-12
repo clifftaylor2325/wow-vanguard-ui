@@ -264,15 +264,6 @@ function CP.HasOwnClicks()
   return now ~= ""
 end
 
--- Removes every mouse binding from the list shown (hover keys stay).
-local function dropMouse()
-  local keys = {}
-  for _, b in ipairs(CC.Bindings()) do
-    if CC.MouseParts(b.key) then keys[#keys + 1] = b.key end
-  end
-  for _, key in ipairs(keys) do CC.Remove(key) end
-end
-
 -- The keys of a preset's spell rows that its bindings (CP.Resolve) leave empty, as a set.
 local function openKeys(id, bound)
   local filled, open = {}, {}
@@ -303,16 +294,15 @@ end
 
 -- Applies a preset to the list the page shows: the list as it was is kept for Undo ("" when it was empty), unless an
 -- earlier preset already kept the one from before it, then every mouse binding is replaced with the preset's
--- (CP.Resolve); hover keys stay. The frames take it once, out of combat. False and why, changing nothing, when the
--- list couldn't be put back by Undo.
+-- (CP.Resolve, through CC.ReplaceMouse); hover keys stay. The frames take it once, out of combat. False and why,
+-- changing nothing, when the list couldn't be put back by Undo.
 function CP.Apply(id)
   local old, bound = CP.Record() or {}, CP.Resolve(id)
   local undo = undoText(old)
   local ok, why = undoable(old, undo)
   if not ok then return false, why end
   records()[CC.CurrentKey()] = { preset = id, undo = undo, open = openKeys(id, bound), told = old.told or {}, kept = old.kept or {} }
-  dropMouse()
-  for _, b in ipairs(bound) do CC.Add(b.key, b.action, b.value, b.spellID) end
+  CC.ReplaceMouse(bound)
   CP.Record().made = mouseText()
   if CP.OnApplied then CP.OnApplied() end
   return true
@@ -394,6 +384,13 @@ end
 -- Marks every offer the page shows now as told: after an answer the page names them, so they are not news for chat.
 local function markShown(rec)
   for _, o in ipairs(CP.Upgrades()) do rec.told[o.key .. ":" .. o.to] = true end
+end
+
+-- Marks the offers the page shows now on the list shown as told (Modules/ClickCastOptions.lua, after the player's own
+-- edit): one that appears because a binding was changed by hand is not news for chat either.
+function CP.MarkShown()
+  local rec = CP.Record()
+  if rec then markShown(rec) end
 end
 
 -- Puts an offered spell on its key (out of combat, like any change), as the preset's own: on a list still as the

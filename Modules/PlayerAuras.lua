@@ -68,22 +68,24 @@ function PA.Spec(holder, s)
       { filter = "HARMFUL", max = s.debuffs, size = s.size, debuff = true, newLine = true } } }
 end
 
--- Anchors the container `shift` units in from the holder's right edge, and remembers where.
+-- Anchors the container `shift` units in from the holder's right edge, remembers where, and widens the hover pad
+-- (below) by as much, so it lies under every row where the buffs stand (Retail's private aura row hangs on its left
+-- edge, Modules/RetailAuras.lua). Never sized from the container, whose size the client may hide.
 local function anchorAuras(shift)
   local frame = PA.auras.frame
   PA.placed = shift
   frame:ClearAllPoints()
   frame:SetPoint("TOPRIGHT", PA.holder, "TOPRIGHT", -shift, 0)
+  PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
 end
 
--- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
--- much, so it still lies under every row. The container is the client's aura container and may be protected, so
--- it moves only when the room changes, and a move asked for in a fight (an enchant gained or run out) waits for
--- the fight's end: until then the cells may lie over the first buffs. Each call replaces the waiting one, which
--- judges the room when it runs, so an enchant lost and put on again in one fight moves nothing.
+-- Moves the container (and the hover pad with it) over to leave room for n enchant cells at the right. The container
+-- is the client's aura container and may be protected, so it moves only when the room changes, and a move asked for
+-- in a fight (an enchant gained or run out) waits for the fight's end: until then the cells may lie over the first
+-- buffs. Each call replaces the waiting one, which judges the room when it runs, so an enchant lost and put on again
+-- in one fight moves nothing.
 function PA.PlaceAuras(n)
   local shift = n * (PA.look.size + PA.GAP)
-  PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
   ns.OutOfCombat(function() if PA.placed ~= shift then anchorAuras(shift) end end, "player auras place")
 end
 
@@ -230,7 +232,7 @@ end
 
 -- A pad over every row of the block, under its buttons: the holder is one row tall and the client's aura buttons
 -- can't be hooked, so the Calm HUD reads the mouse over the pad to bring the block back from any row. It feels the
--- mouse (never clicks) only once the Calm HUD quiets the block. PA.PlaceAuras keeps its width.
+-- mouse (never clicks) only once the Calm HUD quiets the block. anchorAuras keeps its width.
 local function hoverPad(holder, s)
   local pad = CreateFrame("Frame", nil, holder)
   pad:SetFrameLevel(holder:GetFrameLevel())
