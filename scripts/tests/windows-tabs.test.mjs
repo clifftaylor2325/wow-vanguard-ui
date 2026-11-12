@@ -1356,3 +1356,12 @@ it("keeps the game's colour on a reused side pane row through a theme refresh", 
   expect(addon.eval("return { second == first, second.Label.__textColor[1], second.Label.__textColor[2] }")).toEqual([true, 0.1, 1]);
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+it("H46-C-G2 a light check label keeps its theme token through Vanguard's own repaint and follows a variant change", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  const label = "ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label";
+  addon.eval(`${label}:SetTextColor(NORMAL_FONT_COLOR:GetRGB())`);
+  addon.eval("ns.Theme.Refresh()");
+  addon.eval("ns.Theme.Settings().variant = 'vellum' ns.Theme.Refresh()");
+  const want = addon.eval("return (ns.Theme.RGB('text'))");
+  expect(addon.eval(`return { ns.Theme.ColorToken(${label}), ${label}.__textColor[1] }`)).toEqual(["text", want]);
+});

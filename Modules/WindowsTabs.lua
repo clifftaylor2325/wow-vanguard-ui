@@ -633,12 +633,23 @@ local function paneParts(pane)
   GW.SkinBar(pane.StandingBar)
 end
 
+-- Whether a font string wears the colour of its own remembered token: Vanguard's repaint (a theme refresh), not the
+-- game's, so there is nothing of the game's to keep.
+local function paintedByTheme(fs)
+  local token = fs.GetTextColor and T.ColorToken(fs)
+  if not token then return false end
+  local r, g, b = fs:GetTextColor()
+  local tr, tg, tb = T.RGB(token)
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  return r ~= nil and g ~= nil and b ~= nil and math.abs(r - tr) + math.abs(g - tg) + math.abs(b - tb) < GW.GOLD_TOLERANCE
+end
+
 -- A check box label the game just painted: the text colour when it is gold; when it is the game's own colour (a grey),
 -- that colour kept and the label's remembered token dropped, so a theme refresh does not repaint over it. A colour
 -- the client hides is left alone (SetTextColor refuses a secret from addon code).
 local function lightOrForget(fs)
   if isGold(fs) then return colorText(fs, "text") end
-  GW.ForgetToken(fs)
+  if not paintedByTheme(fs) then GW.ForgetToken(fs) end
 end
 
 -- Puts one check box label back in the text colour whenever the game paints it gold (a grey one stays grey). Retail
