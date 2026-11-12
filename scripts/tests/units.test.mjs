@@ -1,7 +1,7 @@
 // units: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
@@ -82,7 +82,7 @@ it("unit frames wait for combat", () => {
 });
 
 it("unit frame health text settings apply at once", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }", { client: RETAIL });
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + "UnitHealthPercent = function() return 90 end CurveConstants = { ScaleTo100 = 1 }", { client: RETAIL_CLIENT });
   addon.slash("");
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Show health numbers") and Vanguard_player.healthText:GetText()'), "turning health numbers off clears them at once").toBe("");
@@ -247,7 +247,7 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
   expect(addon.eval("return Vanguard_player.healthText:GetText()") === "900", "if the client's percent fails, the value shows").toBeTruthy();
-  const retail = loggedIn(UNITS_ENV, { ...NO_RAID, client: RETAIL });
+  const retail = loggedIn(UNITS_ENV, { ...NO_RAID, client: RETAIL_CLIENT });
   expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 

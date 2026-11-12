@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, RETAIL, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
@@ -2702,7 +2703,7 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
 // Retail's PartyInviteRequest has no isCrossShard, so inviterGUID is the 7th value
 // (live/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua).
 it("H44-20-50 quiet the game: on Retail the inviter's GUID is the 7th payload value; a stranger is declined and a friend is not", () => {
-  const addon = loggedIn(INVITE_ENV, { client: RETAIL, savedVariables: INVITES_ON });
+  const addon = loggedIn(INVITE_ENV, { client: RETAIL_CLIENT, savedVariables: INVITES_ON });
   addon.eval('__friends.pal = "friend"');
   // Fires a Retail invite from the guid and counts the answers sent.
   const retailInvite = (guid) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false); addon.update(0); return addon.eval("return #__answers"); };
