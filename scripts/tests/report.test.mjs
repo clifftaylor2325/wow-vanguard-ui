@@ -61,17 +61,21 @@ it("/vg report lists the caught errors, newest last, with their stacks and no co
   expect(inner.at(-1).trim(), "the newest error's stack closes the list").toBe("Core/Events.lua:136: in metamethod '__add'");
 });
 
-it("/vg report stays under 8,000 characters: stacks go first, then the oldest errors", () => {
+it("/vg report stays under 8,000 characters: stacks shrink to their top line first, then the oldest errors go", () => {
   // The case plants 20 entries and the cap keeps all 20, so the guard judges every one of them.
   expectErrors(GENERATED);
   const addon = loggedIn();
-  addon.eval(`for i = 1, 20 do ns.Report("Module" .. i, string.rep("long message ", 30) .. i) end`);
+  addon.eval(`for i = 1, 20 do ns.Report("Module" .. i, string.rep("long message ", 30) .. i) end
+    -- TEST-ONLY stacks (the test client records none for errors raised from a test): 3 lines each.
+    for _, e in ipairs(ns.errors) do e.stack = "Modules/A.lua:1: in top\\nModules/B.lua:2\\nModules/C.lua:3" end`);
   const text = addon.eval("return ns.ReportText()");
+  expect(text.includes("    Modules/A.lua:1: in top"), "the top stack line survives the cut (H44-29-2)").toBe(true);
+  expect(text.includes("Modules/B.lua:2"), "the lines under it go").toBe(false);
   expect(text.length, "the report fits").toBeLessThanOrEqual(8000);
   const lines = text.split("\n");
   expect([lines[0], lines.at(-1)], "with both markers").toEqual(["### Vanguard report v1 ###", "### end ###"]);
   expect(text.includes("Module20: "), "the newest error is kept").toBe(true);
-  expect(lines.some((l) => /^\s+\S/.test(l)), "its stacks were trimmed to fit").toBe(false);
+  expect(lines.filter((l) => /^\s+\S/.test(l)).length, "each kept error keeps only its top stack line").toBe(lines.filter((l) => /^\[\d+\]/.test(l)).length);
   expect(text.includes("Module1: "), "and the oldest went once the stacks alone weren't enough").toBe(false);
   expect(addon.eval("return #ns.errors"), "the caught errors themselves are untouched").toBe(20);
 });

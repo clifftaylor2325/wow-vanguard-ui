@@ -818,31 +818,33 @@ local function reportHead()
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 
--- One caught error for the report: "[i] text  (xN)", then (when `stack`) up to REPORT_STACK stack lines, indented.
-local function errorLines(i, e, stack)
+-- One caught error for the report: "[i] text  (xN)", then up to `depth` of its stack lines, indented.
+local function errorLines(i, e, depth)
   local out = { string.format("[%d] %s  (x%d)", i, e.text, e.count) }
-  for line in (stack and tostring(e.stack) or ""):gmatch("[^\n]+") do
-    if #out <= REPORT_STACK then out[#out + 1] = "    " .. line end
+  for line in tostring(e.stack or ""):gmatch("[^\n]+") do
+    if #out <= depth then out[#out + 1] = "    " .. line end
   end
   return out
 end
 
--- The report with the caught errors from `first` on (newest last), each with its stack when `stacks`.
-local function reportText(first, stacks)
+-- The report with the caught errors from `first` on (newest last), each with `depth` stack lines.
+local function reportText(first, depth)
   local lines = reportHead()
   for i = first, #ns.errors do
-    for _, line in ipairs(errorLines(i, ns.errors[i], stacks)) do lines[#lines + 1] = line end
+    for _, line in ipairs(errorLines(i, ns.errors[i], depth)) do lines[#lines + 1] = line end
   end
   lines[#lines + 1] = "### end ###"
   return plain(table.concat(lines, "\n"))
 end
 
--- The whole /vg report text, at most REPORT_MAX characters: the stacks go first, then the oldest errors.
+-- The whole /vg report text, at most REPORT_MAX characters: the stacks shrink to their top line
+-- first, then the oldest errors go. The top line stays because the feedback form tells bugs that
+-- share a message apart by it, so a shortened report still finds the issue a full one filed.
 function ns.ReportText()
-  local text = reportText(1, true)
+  local text = reportText(1, REPORT_STACK)
   for first = 1, #ns.errors do
     if #text <= REPORT_MAX then return text end
-    text = reportText(first, false)
+    text = reportText(first, 1)
   end
   return text
 end
