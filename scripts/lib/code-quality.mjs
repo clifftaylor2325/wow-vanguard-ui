@@ -1169,3 +1169,9 @@ export function compareToBaseline(counts, baseline) {
     return { rule, count, baseline: base, status: count > base ? "above" : count < base ? "below" : "at" };
   });
 }
+
+// The rows of compareToBaseline that fail the run: above the baseline (a new finding) or below it (a stale baseline,
+// which must be lowered in the same commit, so it can never be spare room for a later finding).
+export function ratchetFailures(rows) {
+  return rows.filter((r) => r.status !== "at");
+}

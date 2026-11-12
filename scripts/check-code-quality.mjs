@@ -19,7 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { REPORT_RULES, checkSource, compareToBaseline, reportSource, sourceFiles as listSources } from "./lib/code-quality.mjs";
+import { REPORT_RULES, checkSource, compareToBaseline, ratchetFailures, reportSource, sourceFiles as listSources } from "./lib/code-quality.mjs";
 import { readToc, tocPaths } from "./lib/toc.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,14 +61,15 @@ function reportOnlyCounts(list) {
   return counts;
 }
 
-const NOTES = { above: "  ABOVE the baseline: fix the new finding (--report lists them)", below: "  below the baseline: lower it", at: "" };
+// What each row says when its count is not at its baseline.
+const NOTES = { above: "  ABOVE the baseline: fix the new finding (--report lists them)", below: "  BELOW the baseline: lower it in this commit", at: "" };
 
-// Prints each report-only count against its baseline; returns the rules that rose above it.
+// Prints each report-only count against its baseline; returns the rules that are above it or below it.
 function ratchet(counts, baseline) {
-  console.log(`\nReport-only rules (fail only above ${BASELINE}):`);
+  console.log(`\nReport-only rules (fail above or below ${BASELINE}):`);
   const rows = compareToBaseline(counts, baseline);
   for (const r of rows) console.log(`  ${r.rule.padEnd(30)} ${String(r.count).padStart(4)}  (baseline ${r.baseline})${NOTES[r.status]}`);
-  return rows.filter((r) => r.status === "above");
+  return ratchetFailures(rows);
 }
 
 // The files Vanguard.toc loads on any client (Lua only), as repo-relative paths without their tags.

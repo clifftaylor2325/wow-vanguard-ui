@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { DIAGNOSTIC_FILES, FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
+import { DIAGNOSTIC_FILES, FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, ratchetFailures, reportSource, sourceFiles, topLevelLocals, topLocalPeak } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -763,6 +763,12 @@ it("baseline: a count above fails, below asks to lower it, a missing rule counts
     { rule: UNWRAPPED, count: 0, baseline: 0, status: "at" },
   ]);
   expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at", "at", "at"]);
+});
+
+it("baseline: a count below its baseline fails too, so a baseline is exact and never spare room (H44-25-7)", () => {
+  const rows = compareToBaseline({ [ONUPDATE]: 3, [HANDLER]: 1, [UNWRAPPED]: 0 }, { [ONUPDATE]: 2, [HANDLER]: 4 });
+  expect(ratchetFailures(rows).map((r) => [r.rule, r.status])).toEqual([[ONUPDATE, "above"], [HANDLER, "below"]]);
+  expect(ratchetFailures(compareToBaseline({ [ONUPDATE]: 2 }, { [ONUPDATE]: 2 }))).toEqual([]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {

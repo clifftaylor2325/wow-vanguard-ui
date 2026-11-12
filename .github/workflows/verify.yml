@@ -84,6 +84,11 @@ jobs:
       - name: Code-quality scan
         if: steps.changes.outputs.docs_only != 'true'
         run: npm run quality
+      # A baseline only goes down: no number rose, and no list gained a line under an existing key, against the
+      # pull request's base (the first parent of its merge commit, which fetch-depth 2 brought). Never skipped.
+      - name: Baselines never rise against the base
+        if: steps.changes.outputs.docs_only != 'true'
+        run: node scripts/check-baselines.mjs --base HEAD^1
       - name: The TOC against the files on disk
         if: steps.changes.outputs.docs_only != 'true'
         run: node scripts/check-toc.mjs
