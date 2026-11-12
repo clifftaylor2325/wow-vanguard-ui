@@ -233,6 +233,12 @@ it("quest arrow on Retail: no Shift-click is promised, the arrow holds the quest
   expect([addon.eval("return GameTooltip.__lines[1].text"), chatHas(addon, /Arrow: off until you track a quest on the map\./)]).toEqual(["Pinned (the quest you track on the map)", true]);
 });
 
+it("H45-28-50 quest arrow on Retail with Follow the nearest quest on: the nearest quest is picked, not the one tracked on the map, and there is no Pin button", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV, { client: RETAIL_CLIENT });
+  addon.eval("__tracked = 90062 ns.QuestArrow.Pick()");
+  expect([arrow(addon)[4], addon.eval("return { ns.QuestArrow.current, ns.QuestArrow.held == true, Vanguard_QuestArrow.pin:IsShown() }")]).toEqual([true, [90061, false, false]]);
+});
+
 it("quest arrow: a failed quest is not pointed at, and the arrow moves on from it", () => {
   const addon = loggedIn(ARROW_ENV);
   addon.eval("ns.QuestArrow.Pick() __wfgWorld.quests[1].failed = true ns.QuestArrow.Pick()");
