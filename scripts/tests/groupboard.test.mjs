@@ -462,3 +462,24 @@ it("group board words: an English client keeps the English phrases, and an enGB 
 it("group board words: a client of a locale with no list reads the shared acronyms", () => {
   expect(parse(boardIn("xxXX"), "LFG ubrs"), "shared acronyms only").toEqual(["LFG", "Upper Blackrock Spire", ""]);
 });
+
+it("H46-34-105 /vg lfg probe: names the channels and the filter by the options' words, in a fixed order", () => {
+  const addon = board();
+  addon.eval("GetChannelList = nil");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /Reading: Numbered channels, Yell\. You are in channels: unknown/), "the options' own labels, channel first").toBe(true);
+  expect(chatHas(addon, /\(filter All posts, only my level on\)/), "the button's caption and on/off").toBe(true);
+});
+
+it("H46-34-105 /vg lfg probe: a German client's lines hold no English word of the board's own", () => {
+  const addon = createAddon({ client: '__wfgWorld.locale = "deDE"', savedVariables: SETUP_DONE });
+  addon.eval(WHISPER_ENV + CLICK_LUA);
+  addon.login();
+  addon.eval("GetChannelList = nil ns.GetModule('GroupBoard').settings.mine = false");
+  addon.slash("lfg probe");
+  const lines = Array.from(addon.chat()).filter((l) => /Lesend|Beiträge gespeichert/.test(l));
+  expect(lines, "channels, filter and the switch in German").toEqual([
+    expect.stringContaining("Lesend: Nummerierte Kanäle, Schreien. Du bist in den Kanälen: unbekannt"),
+    expect.stringContaining("(Filter Alle Beiträge, nur meine Stufe aus)"),
+  ]);
+});

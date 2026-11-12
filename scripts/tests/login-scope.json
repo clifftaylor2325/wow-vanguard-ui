@@ -164,6 +164,7 @@
     "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
+      "Instance prep switched off inside a dungeon ends the visit it was tracking",
       "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "a reload inside a dungeon more than an hour after the way in is the same visit, not 'Last run: today'",
       "a run earlier the same calendar day reads today, even 21 hours before",
@@ -176,6 +177,7 @@
       "the card counts calendar days: a run at 23:00 reads yesterday at 01:00 the next day, two hours later",
       "the card is off until switched on, and says nothing in combat or on a client without the calls",
       "the card says when you last came: nothing the first time, then days ago; a quick way back in is the same visit",
+      "the card switched off inside a dungeon still forgets the dungeon on the way out, so a later loading screen stamps nothing",
       "the card's headings are section headers (small muted capitals), its lines body text",
       "the level range, size and difficulty drop what the client does not give"
     ],

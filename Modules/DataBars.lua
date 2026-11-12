@@ -270,7 +270,8 @@ end
 function DB.ReputationText(rep)
   local head = repHead(rep)
   if rep.noNumbers or ns.IsSecret(head) then return head end
-  return string.format("%s  %s / %s (%d%%)", head, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
+  local values = { head = head, cur = DB.Short(rep.cur), max = DB.Short(rep.max), percent = math.floor(rep.cur / rep.max * 100) }
+  return ns.Format(L["{head}  {cur} / {max} ({percent}%)"], values)
 end
 
 -- Levelling detail -----------------------------------------------------------------------
