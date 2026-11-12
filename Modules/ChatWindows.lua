@@ -192,6 +192,12 @@ local function watchSaved(scope)
   end)
 end
 
+-- A floating window closed from its tab menu (FCF_Close never docks it, so FCF_DockFrame does not run): its handle and
+-- pin let go. The game closes the fallback window when it gives one.
+local function letClosed(frame, fallback)
+  letDocked(fallback or frame)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -429,6 +435,7 @@ function CW.Enable(settings, scope)
   if not settings.movers then return end
   watchDocking(scope)
   watchSaved(scope)
+  ns.OnChatWindowClosed("windows", letClosed)
   for _, window in ipairs(CW.Shown()) do
     if floating(window.index) then floatingMover(window) end
   end

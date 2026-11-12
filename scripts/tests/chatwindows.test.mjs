@@ -115,6 +115,18 @@ it("H45-29-1 chat windows: a window dropped on the dock keeps nothing, and a win
   expect(addon.eval("return #ns.errors") + hidden.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// TEST-ONLY model of FCF_Close for a floating window: FCF_UnDockFrame returns at once (not docked), then HideUIPanel and the tab goes;
+// FCF_DockFrame never runs (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCF_Close :1766 on).
+it("H45-29-R1 chat windows: a floating window closed from its tab menu gives up its handle", () => {
+  const addon = loggedIn(ENV + "FCF_Close = function(frame) frame:Hide() end", MOVERS_ON);
+  const keys = "local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out";
+  expect(addon.eval(keys), "open: a handle").toContain("chat2");
+  addon.eval("FCF_Close(ChatFrame1, ChatFrame2)");
+  expect(addon.eval(keys), "closed: the handle is gone from /vg unlock").not.toContain("chat2");
+  addon.eval("FCF_Close(ChatFrame1)");
+  expect(addon.eval("return #ns.errors"), "a window with no handle, or the main one, raises nothing").toBe(0);
+});
+
 it("chat windows: a floating window's unlock handle has the main chat's clamp insets, with the Combat Log's filter strip above", () => {
   const strip = "ChatFrame2.CombatLogQuickButtonFrame = CreateFrame('Frame') ChatFrame2.CombatLogQuickButtonFrame:SetHeight(24)";
   const addon = loggedIn(ENV + strip, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
