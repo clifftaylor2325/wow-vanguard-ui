@@ -13,8 +13,8 @@
 //      exception is ns.Soon's timer in Core/Combat.lua, which runs each job
 //      under ns.Try.
 //   5. Addon Lua (Core/, Modules/) uses no syntax newer than Lua 5.1: no goto or
-//      ::label::, no // , << , >> , & , | or ~ operator. The test harness parses
-//      Lua 5.3 and accepts them; the game does not, and the addon would not load.
+//      ::label::, no // , << , >> , & , | or ~ operator. The harness's optional fengari
+//      engine parses Lua 5.3 and accepts them; the game does not, and the addon would not load.
 //      Quoted strings use no \x, \z or \u{...} escape: luac5.1 accepts them, but the
 //      game reads them as plain letters while the harness decodes them.
 //   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals of the main chunk alive at
@@ -26,13 +26,14 @@
 //      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
 //      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
 //      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
-//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`, not compared, not in a
-//      negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
+//      name), an `if` on ns.InCombat() or the bare InCombatLockdown(), called (un-negated, not joined by `and`, not
+//      compared, not in a negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
 //      branch of an enclosing if) of the same function, or a call inside `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
-// More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
-// cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
-// for truth and long lines. They fail the scan only when a count rises above
+// More rules are report-only (reportSource below; REPORT_RULES names all eight): OnUpdate handlers
+// neither throttled nor cleared, unguarded script handlers, unwrapped text, secret truth tests,
+// pcall results tested for truth, long lines, English joined, chosen or formatted in a text sink,
+// and table-field functions with no comment. They fail the scan when a count is above or below
 // scripts/code-quality-baseline.json.
 
 import fs from "node:fs";
@@ -772,7 +773,7 @@ export function checkSource(file, src) {
 
 // Report-only rules (#263) -------------------------------------------------------------
 // Heuristics for the game rules that cause the subtlest bugs. They count, they don't
-// block: scripts/check-code-quality.mjs fails only when a count rises above its baseline in
+// block: scripts/check-code-quality.mjs fails when a count is above or below its baseline in
 // scripts/code-quality-baseline.json (a ratchet, like scripts/lua-coverage-floor.json). A
 // rule becomes blocking once it is quiet on main, as the first did. All have false positives
 // by design.
@@ -811,8 +812,6 @@ const SECURE_CALLS = new Set([
 // Files whose secure calls all run where the frame is made and set up, in the same safe
 // window. Add a file only after reading every call in it; empty means none is excused.
 export const SECURE_ALLOW = new Set([]);
-// Words that make a condition a combat check.
-const COMBAT_CHECKS = new Set(["InCombatLockdown", "InCombat"]);
 // Calls that are secure only as a method on a frame (fs:WrapScript(...)): their bare names are common words.
 const SECURE_METHODS = new Set(["WrapScript", "UnwrapScript", "Execute", "SetFrameRef"]);
 
@@ -953,14 +952,24 @@ function senseUnclear(words, head, at) {
   return ["=", "~"].includes(words[checkClose(words, at) + 1]) || insideNot(words, head);
 }
 
+// True when words[k] is a combat lockdown check, called: the game's global InCombatLockdown(), or ns.InCombat() with a
+// "." or ":" (H46-35-1). Another name's InCombat (UF.InCombat(unit), a unit's flag; ns.Combat.InCombat), a field read
+// without a call and C_X.InCombatLockdown() are not.
+function isCombatCheck(words, k) {
+  const owned = [".", ":"].includes(words[k - 1]);
+  const lockdown = words[k] === "InCombatLockdown" && !owned;
+  const addon = words[k] === "InCombat" && owned && words[k - 2] === "ns" && ![".", ":"].includes(words[k - 3]);
+  return words[k + 1] === "(" && (lockdown || addon);
+}
+
 // How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
 // joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
-// `or`), else null (also when its sense is unclear: compared, or in a negated bracket).
+// `or`), else null (also when it holds no check, or its sense is unclear: compared, or in a negated bracket).
 function combatSense(tokens, a, b) {
   const words = tokens.slice(a, b).map((t) => t.text);
-  const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
+  const at = words.findIndex((w, k) => isCombatCheck(words, k));
   if (at < 0) return null;
-  const head = words[at - 1] === "." ? at - 2 : at;
+  const head = [".", ":"].includes(words[at - 1]) ? at - 2 : at;
   if (senseUnclear(words, head, at)) return null;
   if (words[head - 1] === "not") return words.includes("or") ? null : "out";
   return words.includes("and") ? null : "in";
@@ -1094,30 +1103,59 @@ const TEXT_SINKS = new Set(["SetText", "AddLine", "AddDoubleLine", "Chat", "chec
 // True when a string token is words a player reads: it has a letter, and no backslash (a path).
 const isWords = (text) => /[A-Za-z]/.test(text) && !text.includes("\\") && !text.startsWith('"|T');
 
+// The sink a `local <name> = <a>.<b>.<Sink>` statement at tokens[i] names (`local chat = ns.Chat`), or null: the value
+// must be the sink itself, not its answer or a field of it.
+function aliasedSink(tokens, i) {
+  if (tokens[i].text !== "local" || tokens[i + 1]?.kind !== "word" || tokens[i + 2]?.text !== "=") return null;
+  let k = i + 3;
+  while ([".", ":"].includes(tokens[k + 1]?.text) && tokens[k + 2]?.kind === "word") k += 2;
+  const next = tokens[k + 1];
+  const value = tokens[k]?.kind === "word" && next?.kind !== "string" && !["(", ".", ":", "[", "{"].includes(next?.text);
+  return value && SHAPE_SINKS.has(tokens[k].text) ? tokens[k].text : null;
+}
+
+// The local names a file gives a sink anywhere in it (Core/Slash.lua's `local chat = ns.Chat`), as a Map from name
+// to sink, so a call through the name is read like the sink's own (H46-35-R1).
+function sinkAliases(tokens) {
+  const aliases = new Map();
+  tokens.forEach((t, i) => aliasedSink(tokens, i) && aliases.set(tokens[i + 1].text, aliasedSink(tokens, i)));
+  return aliases;
+}
+
+// The sink the word at tokens[i] calls: the sink a local name stands for (not when it is another table's field of
+// that name), else the word itself; undefined for a token that is not a word.
+function sinkName(tokens, i, aliases) {
+  if (tokens[i]?.kind !== "word") return undefined;
+  const owned = [".", ":"].includes(tokens[i - 1]?.text);
+  return (!owned && aliases.get(tokens[i].text)) || tokens[i].text;
+}
+
 // English literals handed straight to a text sink, not through L["…"]: [{ rule, line, message }].
 function unwrappedText(file, src) {
   if (!COLOR_SCOPE.test(file)) return [];
   const tokens = codeTokens(src);
   const line = lineIndex(src);
-  const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(tokens[i - 2]?.text) && isWords(t.text));
+  const aliases = sinkAliases(tokens);
+  const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(sinkName(tokens, i - 2, aliases)) && isWords(t.text));
   return hits.map((t) => ({ rule: REPORT_RULES[2], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
 }
 
 // The wider unwrapped-text rule (report-only, with a baseline of its own; unwrapped-text stays the narrow one). It reads
 // the whole text argument of a sink, not only a literal that comes first: `"a" .. x`, `cond and "a" or "b"`, `x or "a"`,
 // and the pattern handed to string.format, ns.Format or ("..."):format inside it. SHAPE_SINKS gives each sink's text
-// argument, counted from 0. A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
+// argument, counted from 0, or a list of them (AddDoubleLine's left and right text, H46-35-R2). A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
 // is not text, and only words count: format codes, {slots}, color and link escapes and the brand name are stripped first.
 const SHAPE_SINKS = new Map(Object.entries({
-  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: 0, AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
+  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: [0, 1], AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
   OfferReload: 0, ShowText: 0, Ask: 0, AskText: 0, DialogButton: 1,
 }));
 const FORMATTERS = new Set(["format", "Format"]);
 // The /vg diagnostics docs/PATTERNS.md lists as staying English (pasted into a bug report), each with the files that print
-// it: a file that prints one is not read by the wider rule. A test holds this table to that sentence of the doc.
+// it: a file that prints one is not read by the wider rule. In a file that prints other text too, `file:function` names
+// the one function that prints it, and only that function is not read. A test holds this table to that sentence of the doc.
 export const DIAGNOSTIC_FILES = {
-  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: [], report: [], errors: [],
-  frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
+  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: ["Core/Slash.lua:statusCommand"],
+  report: [], errors: [], frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
 };
 const DIAGNOSTIC_SET = new Set(Object.values(DIAGNOSTIC_FILES).flat());
 // What a literal carries that is not words: format codes, {slots}, |c and |r, |H...|h link markup and the brand.
@@ -1169,11 +1207,30 @@ function shapeLiterals(arg, narrow) {
   });
 }
 
-// The tokens of the text argument of the sink call at tokens[i], or an empty list when tokens[i] is not a sink call.
-function sinkArgument(tokens, i) {
-  const index = tokens[i].kind === "word" ? SHAPE_SINKS.get(tokens[i].text) : undefined;
-  const call = index !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
-  return call ? (callArgs(tokens, i + 1)[index] ?? []) : [];
+// The text arguments of the sink call at tokens[i] (aliases: sinkAliases), each as { arg, index }: its tokens and its
+// place, counted from 0. An empty list when tokens[i] is not a sink call.
+function sinkArguments(tokens, i, aliases) {
+  const indexes = SHAPE_SINKS.get(sinkName(tokens, i, aliases));
+  const call = indexes !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  const args = call ? callArgs(tokens, i + 1) : [];
+  return call ? [indexes].flat().map((index) => ({ arg: args[index] ?? [], index })) : [];
+}
+
+// The English literals in the text arguments of the sink call at tokens[i] (shapeLiterals). The narrow rule reads only
+// the first argument of a TEXT_SINKS sink, so a later one (AddDoubleLine's right text) is read whole here.
+function sinkLiterals(tokens, i, aliases) {
+  const narrow = TEXT_SINKS.has(sinkName(tokens, i, aliases));
+  return sinkArguments(tokens, i, aliases).flatMap(({ arg, index }) => shapeLiterals(arg, narrow && index === 0));
+}
+
+// The files DIAGNOSTIC_FILES names a function of (`file:function`).
+const DIAGNOSTIC_FUNCTION_FILES = new Set([...DIAGNOSTIC_SET].filter((entry) => entry.includes(":")).map((entry) => entry.split(":")[0]));
+
+// The functions of a file that DIAGNOSTIC_FILES names as `file:function`, as function spans (functionSpans); the
+// spans are found only in a file that has one.
+function diagnosticSpans(file, tokens) {
+  if (!DIAGNOSTIC_FUNCTION_FILES.has(file)) return [];
+  return functionSpans(tokens).filter((s) => DIAGNOSTIC_SET.has(`${file}:${s.name}`));
 }
 
 // English in a sink's text argument in a shape the narrow rule does not read (rule unwrapped-text-shapes).
@@ -1181,7 +1238,10 @@ function unwrappedShapes(file, src) {
   if (!COLOR_SCOPE.test(file) || DIAGNOSTIC_SET.has(file)) return [];
   const tokens = codeTokens(src);
   const line = lineIndex(src);
-  const hits = tokens.flatMap((t, i) => shapeLiterals(sinkArgument(tokens, i), TEXT_SINKS.has(t.text)));
+  const [aliases, diagnostic] = [sinkAliases(tokens), diagnosticSpans(file, tokens)];
+  // True when the token at i stands outside every diagnostic function.
+  const read = (i) => !diagnostic.some((s) => s.open < i && i < s.close);
+  const hits = tokens.flatMap((t, i) => (read(i) ? sinkLiterals(tokens, i, aliases) : []));
   return hits.map((t) => ({ rule: REPORT_RULES[6], line: line(t.start), message: `English text joined, chosen or formatted outside L[…]: ${t.text.slice(0, 48)}` }));
 }
 

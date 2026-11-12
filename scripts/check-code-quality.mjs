@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// Fails if any function is over the length limit or undocumented, or addon
-// Lua writes color numbers, or hands a hook, click or timer a callback that is
-// not an ns.Guard(...) call (rules in scripts/lib/code-quality.mjs).
+// Fails on a blocking problem (rules in scripts/lib/code-quality.mjs): a
+// function over the length limit or undocumented; in addon Lua, color numbers,
+// font sizes or spacing off the scale, a hook, click or timer callback that is
+// not an ns.Guard(...) call, syntax newer than Lua 5.1, too many top-level
+// locals, a secure call outside a combat guard, a file-scope subscription past
+// FILE_SCOPE_ALLOWED, or a live module's bare subscription; and a file the TOC
+// loads that luac5.1 cannot compile, when it is installed.
 //
-// Then prints the counts of the report-only rules (#263: secure calls outside
-// a combat guard, OnUpdate handlers neither throttled nor cleared, script
-// handlers that are not ns.Guard calls). Those fail
-// the run only when a count rises above its baseline in
+// Then prints the counts of the report-only rules (REPORT_RULES). Each fails
+// the run when its count is above or below its baseline in
 // scripts/code-quality-baseline.json, a ratchet like the coverage floor: when
 // a count drops, lower the baseline in the same commit.
 //
@@ -77,8 +79,9 @@ function tocLuaFiles() {
   return tocPaths(readToc(root)).filter((f) => f.endsWith(".lua"));
 }
 
-// Compiles each TOC file with the real Lua 5.1 compiler when it is installed (the harness parses
-// Lua 5.3, so only luac5.1 sees every error); prints what failed, or a note when luac5.1 is missing.
+// Compiles each TOC file with the real Lua 5.1 compiler when it is installed (the token rule knows only
+// the newer syntax it lists, and the optional fengari engine parses Lua 5.3, so luac5.1, the game's own
+// compiler, is the check that sees every error); prints what failed, or a note when luac5.1 is missing.
 function luacProblems() {
   if (spawnSync("luac5.1", ["-v"]).error) {
     console.log("luac5.1 not installed: only the token rule judges Lua 5.1 syntax (apt-get install lua5.1)");
