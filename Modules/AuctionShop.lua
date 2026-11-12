@@ -535,7 +535,7 @@ function AH.BandText(band)
 end
 
 -- Seconds left as "12 h" or "35 min".
-local function secondsText(secs)
+function AH.SecondsText(secs)
   if secs >= 3600 then return ns.Format(L["{count} h"], { count = math.floor(secs / 3600) }) end
   return ns.Format(L["{count} min"], { count = math.max(1, math.floor(secs / 60)) })
 end
@@ -552,7 +552,7 @@ end
 local function commodityListing(r)
   local unit, qty, secs = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeftSeconds)
   if not (unit and qty) then return nil end
-  return { price = unit, qty = qty, time = secs or 0, timeText = secs and secondsText(secs) or "" }
+  return { price = unit, qty = qty, time = secs or 0, timeText = secs and AH.SecondsText(secs) or "" }
 end
 
 -- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).

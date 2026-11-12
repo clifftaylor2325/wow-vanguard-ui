@@ -928,3 +928,12 @@ it("H45-31-2 Remove on the lower of two equal entries removes that row", () => {
   addon.click("Vanguard_Menu.items[2]");
   expect(addon.eval(`return VanguardDB.ah.lists['TEST-ONLY Mats']`)).toEqual(["Alpha", "Beta"]);
 });
+
+it("H45-31-R2 the shop's listings view and the Up now card name the same time left", () => {
+  const addon = atAuctionHouse(DUSTS + `__wfgWorld.ah.commodities[10940] = { { unitPrice = 1250, quantity = 20, timeLeftSeconds = 2150 } }`);
+  dustFound(addon);
+  addon.click(`${TABLE}.rows[1]`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  const upNow = addon.eval(`return ${HELPER}.TimeLeft({ timeLeftSeconds = 2150 })`);
+  expect([view(addon)[3][0][2], upNow], "2150 seconds is 35 whole minutes on both").toEqual(["35 min", "35 min"]);
+});

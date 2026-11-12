@@ -276,7 +276,7 @@ end
 -- names it (AH.BandText: the game's words, TIME_LEFT_SHORT...), else nothing.
 function AH.TimeLeft(r)
   local secs = ns.PlainNumber(r.timeLeftSeconds)
-  if secs then return secs >= 3600 and ns.Format(L["{count} h"], { count = math.floor(secs / 3600) }) or ns.Format(L["{count} min"], { count = math.max(1, math.ceil(secs / 60)) }) end
+  if secs then return AH.SecondsText(secs) end
   return AH.BandText(ns.PlainNumber(r.timeLeft))
 end
 
