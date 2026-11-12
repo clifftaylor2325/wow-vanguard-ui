@@ -1088,6 +1088,18 @@ it("H45-5-1 bars: the shared size keeps what setup's screen presets write (to 64
   expect(bar.eval('return ns.GetModule("ActionBars").settings.bars[1].size == nil'), "a bar's own size of 50 is still dropped").toBe(true);
 });
 
+it("H45-5-51 bars: a saved layout stamp that is not a number is treated as an old profile, at login and in an import", () => {
+  for (const stamp of ['"x"', "{}", "0/0"]) {
+    const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { layout = ${stamp} } } }\n` });
+    addon.eval(ACTIONS_ENV);
+    addon.login();
+    expect(addon.eval('return { #ns.errors, Vanguard_Bar1 ~= nil, ns.GetModule("ActionBars").settings.layout }'), `login with layout ${stamp}`).toEqual([0, true, 2]);
+    const read = addon.eval(`local ok, kind, data = pcall(ns.ReadPayload, "parts", { format = ns.PROFILE_FORMAT, ActionBars = { layout = ${stamp} } })
+      return { ok, kind, ok and data.ActionBars.layout }`);
+    expect(read, `import with layout ${stamp}`).toEqual([true, "parts", 2]);
+  }
+});
+
 it("an imported string's bar size that isn't a number is dropped before it is saved", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0, buttons = 200 } } } })

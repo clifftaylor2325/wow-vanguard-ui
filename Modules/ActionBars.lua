@@ -159,9 +159,11 @@ local function keepOldRightBars(saved)
 end
 -- Profiles saved before the Centered layout hold the old button size (36) and
 -- spacing (4) as values (ForeverUI 0.3.0 wrote every default in): once, put
--- them back to the new defaults, which match the data bars' new width.
+-- them back to the new defaults, which match the data bars' new width. A stamp that is not a number (a
+-- hand-edited file or a crafted string) counts as no stamp.
 local function centeredSpacing(saved)
-  if (saved.layout or 0) >= 2 then return end
+  local stamp = type(saved.layout) == "number" and saved.layout or 0
+  if stamp >= 2 then return end
   if saved.size == 36 then saved.size = nil end
   if saved.spacing == 4 then saved.spacing = nil end
   saved.layout = 2
