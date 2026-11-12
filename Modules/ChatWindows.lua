@@ -171,6 +171,27 @@ local function watchNewWindows(scope)
     function(gate) hooksecurefunc("FCF_OpenNewWindow", ns.Guard("hook FCF_OpenNewWindow", gate)) end)
 end
 
+-- The game saved a window's size and spot (the end of a tab drop, FCF_StopDragging; the resize grip's release): a floating
+-- window with a handle keeps where it was put, or the next pin run (Edit Mode closing) would put it back where the
+-- handle still was. The offsets are multiplied by the window's scale, as the pin divides them.
+local function keepDropped(frame)
+  local key = CW.floating[frame]
+  if not key then return end
+  local point, _, relPoint, x, y = ns.PlainPoint(frame, 1)
+  if not (point and x and y) then return end
+  local scale = ns.PlainNumber(frame:GetScale()) or 1
+  ns.SetMoverPoint(key, point, relPoint, x * scale, y * scale)
+end
+
+-- Hooks FCF_SavePositionAndDimensions (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua :1417, and the resize
+-- grip in FloatingChatFrame.xml :478-497), through the same gate as the docking hook.
+local function watchSaved(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_SavePositionAndDimensions) ~= "function" then return end
+  scope:Gate("chat layout saved", keepDropped, function(gate)
+    hooksecurefunc("FCF_SavePositionAndDimensions", ns.Guard("hook FCF_SavePositionAndDimensions", gate))
+  end)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -407,6 +428,7 @@ function CW.Enable(settings, scope)
   watchNewWindows(scope)
   if not settings.movers then return end
   watchDocking(scope)
+  watchSaved(scope)
   for _, window in ipairs(CW.Shown()) do
     if floating(window.index) then floatingMover(window) end
   end

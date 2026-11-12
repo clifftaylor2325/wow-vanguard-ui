@@ -83,6 +83,38 @@ it("chat windows: a floating window the player drags into the dock lets go of it
   expect(addon.eval("return #ns.errors"), "docking the main window, or one with no handle, raises nothing").toBe(0);
 });
 
+// TEST-ONLY model of the tab drop and the resize grip's release: both end in FCF_SavePositionAndDimensions, and the engine
+// (StartMoving / StartSizing) has re-anchored the window without a Lua SetPoint (forever Blizzard_ChatFrameBase/Mainline/
+// FloatingChatFrame.lua FCF_StopDragging :1402-1420; FloatingChatFrame.xml resize grip OnMouseUp :478-497).
+const DROP = (x, y) => `ChatFrame2.__points = { TOPLEFT = { point = 'TOPLEFT', rel = UIParent, relPoint = 'TOPLEFT', x = ${x}, y = ${y} } } FCF_SavePositionAndDimensions(ChatFrame2)`;
+// The floating window's first anchor after Edit Mode closes (every pin runs again).
+const AFTER_EDIT_MODE = "ns.PausePins(true) ns.PausePins(false) local p, _, r, x, y = ChatFrame2:GetPoint(1) return { p, x, y }";
+const MOVERS_ON = { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' };
+it("H45-29-1 chat windows: a floating window dragged by its tab or sized by its grip stays put when Edit Mode closes", () => {
+  const addon = loggedIn(ENV, MOVERS_ON);
+  addon.eval(DROP(400, -300));
+  expect(addon.eval(AFTER_EDIT_MODE), "the dropped spot, not the handle's old one").toEqual(["TOPLEFT", 400, -300]);
+  expect(addon.eval("return { ns.MoverPoint('chat2') }"), "the handle took the dropped spot").toEqual(["TOPLEFT", "TOPLEFT", 400, -300]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H45-29-1 chat windows: a scaled floating window's dropped spot is saved in the handle's units", () => {
+  const addon = loggedIn(ENV, MOVERS_ON);
+  addon.eval("ns.SetMoverScale('chat2', 2) " + DROP(200, -150));
+  expect(addon.eval("return { ns.MoverPoint('chat2') }"), "offsets times the scale").toEqual(["TOPLEFT", "TOPLEFT", 400, -300]);
+  expect(addon.eval(AFTER_EDIT_MODE), "and the pin puts the window back where it was dropped").toEqual(["TOPLEFT", 200, -150]);
+});
+
+it("H45-29-1 chat windows: a window dropped on the dock keeps nothing, and a window whose spot the client hides is left alone", () => {
+  const addon = loggedIn(ENV + DOCKING, MOVERS_ON);
+  addon.eval("FCF_DockFrame(ChatFrame2) ChatFrame1.__points = nil " + DROP(400, -300));
+  expect(addon.eval("return { ns.MoverSaved('chat2'), ns.MoverPoint('chat2') }"), "docked: the handle is gone and nothing was saved").toEqual([false]);
+  const hidden = loggedIn(ENV, MOVERS_ON);
+  hidden.eval(`__wfgWorld.holdSecret(ChatFrame2, "Anchoring") FCF_SavePositionAndDimensions(ChatFrame2)`);
+  expect(hidden.eval("return ns.MoverSaved('chat2')"), "secret anchoring: no save").toBe(false);
+  expect(addon.eval("return #ns.errors") + hidden.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat windows: a floating window's unlock handle has the main chat's clamp insets, with the Combat Log's filter strip above", () => {
   const strip = "ChatFrame2.CombatLogQuickButtonFrame = CreateFrame('Frame') ChatFrame2.CombatLogQuickButtonFrame:SetHeight(24)";
   const addon = loggedIn(ENV + strip, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
