@@ -297,10 +297,24 @@ it("the merchant helpers switched off live take the drawer off the open quantity
   expect(split(addon)[0], "Stack shows on the merchant's item").toBe(true);
   addon.eval('ns.SetModuleEnabled("Merchant", false)');
   expect([split(addon), addon.eval("return ns.FrameState('vgSplitBulk')[StackSplitFrame].drawer:IsShown()")], "off: the drawer and its buttons and line hidden").toEqual([[false, false, false, "Max 40 for 0s 80c"], false]);
+  addon.eval('MerchantFrame = { selectedTab = 1, IsShown = function() return true end }');
   addon.eval('ns.SetModuleEnabled("Merchant", true)');
-  addon.fire("MERCHANT_SHOW");
   addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
-  expect(split(addon)[0], "on again: the next opening has it").toBe(true);
+  expect(split(addon)[0], "H46-32-1 on again at the still-open merchant, no second MERCHANT_SHOW: the next opening has it").toBe(true);
+});
+
+it("H46-32-1 the merchant helpers switched on away from a merchant are not open, and /vg sell says to open one", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.eval('ns.SetModuleEnabled("Merchant", false)');
+  addon.eval('MerchantFrame = { selectedTab = 1, IsShown = function() return false end }');
+  addon.eval('ns.SetModuleEnabled("Merchant", true)');
+  expect(addon.eval("return ns.GetModule('Merchant').open"), "a hidden window is no merchant").toBe(false);
+  addon.slash("sell 159");
+  expect(chatHas(addon, /Open a merchant first/)).toBe(true);
+  addon.eval("MerchantFrame = nil");
+  addon.eval('ns.SetModuleEnabled("Merchant", false)');
+  addon.eval('ns.SetModuleEnabled("Merchant", true)');
+  expect(addon.eval("return ns.GetModule('Merchant').open"), "no MerchantFrame global at all: closed").toBe(false);
 });
 
 it("opening the quantity window for another item while it is open refreshes the drawer, and a stale press buys nothing", () => {

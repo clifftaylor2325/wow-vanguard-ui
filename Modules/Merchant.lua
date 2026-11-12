@@ -89,6 +89,13 @@ local function onMerchantClosed()
   MC.SetOpen(false)
 end
 
+-- Whether the merchant window is up: the game fires MERCHANT_SHOW once, so a module switched on at an open merchant
+-- reads the window instead of waiting for an event that does not come again.
+local function merchantShown()
+  local frame = _G.MerchantFrame
+  return type(frame) == "table" and frame:IsShown() == true
+end
+
 -- Module entry point (Core/Modules.lua): the merchant events through the scope, and the quantity window's hooks
 -- (gates, installed once a session). MC.Disable, in Modules/MerchantBulk.lua, hides the drawers it drew.
 function MC.Enable(settings, scope)
@@ -96,5 +103,6 @@ function MC.Enable(settings, scope)
   MC.MoveSellList(settings)
   scope:On("MERCHANT_SHOW", onMerchant)
   scope:On("MERCHANT_CLOSED", onMerchantClosed)
+  MC.open = merchantShown()
   MC.HookSplit()
 end
