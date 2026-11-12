@@ -390,6 +390,11 @@ local function leftDoor()
   if cardOn() then ns.DungeonCard.Left() end
 end
 
+-- The game is saving (a reload or a log out): inside a dungeon that is leaving it, so the card's hour counts from now.
+function PR.OnLogout()
+  if cardOn() then ns.DungeonCard.Left() end
+end
+
 -- You came into a world: at a dungeon or raid's door, once per visit (a reload
 -- inside doesn't count again: the event says so, as the memory of the visit is gone),
 -- the card shows if something is low. Not in combat.
@@ -472,6 +477,7 @@ function PR.Enable(settings, scope)
   PR.settings, PR.lowNow = settings, nil
   card(scope)
   scope:On("PLAYER_ENTERING_WORLD", PR.OnEnter)
+  scope:On("PLAYER_LOGOUT", PR.OnLogout)
   scope:On("READY_CHECK", PR.OnReadyCheck)
   scope:On("BAG_UPDATE_DELAYED", PR.OnBags)
   scope:On("PLAYER_ENTERING_WORLD", PR.OnWorld)
