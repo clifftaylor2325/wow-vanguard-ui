@@ -1039,7 +1039,10 @@ it("R3.5 the auction house panels: result lines are theme rows lit with the game
   const list = "AuctionHouseFrame.BrowseResultsFrame.ItemList";
   expect(addon.eval(`return select("#", ${list}.HeaderContainer:GetChildren())`), "no header buttons before the game lays the columns out").toBe(0);
   addon.eval(`${list}:UpdateTableBuilderLayout() ${list}:UpdateTableBuilderLayout()`);
-  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() return { __button(h), h.Arrow.__alpha }`), "the header button is a theme button that keeps its sort arrow").toEqual([true, 0]);
+  // The game shows the Arrow on the sorted column only (Blizzard_AuctionHouseTableBuilder.lua SetArrowState), so a
+  // hidden Arrow must leave no theme arrow behind.
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() h.Arrow:Hide() return { __button(h), h.Arrow:GetAlpha(), h.Arrow:IsShown(), __downArrows(h) }`), "the header button is a theme button that keeps its sort arrow, and shows none on an unsorted column").toEqual([true, 1, false, 0]);
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() h.Arrow:Show() return { h.Arrow:IsShown(), h.Arrow:GetAlpha(), __downArrows(h) }`), "the game's arrow shows on the sorted column").toEqual([true, 1, 0]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("R3.5 the auction house panels: category rows are theme rows, lit with the game's selection and put right after each set-up", () => {

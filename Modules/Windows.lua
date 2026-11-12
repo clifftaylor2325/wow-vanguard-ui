@@ -2192,12 +2192,20 @@ local function skinListLine(row)
   followSelected(row)
 end
 
+-- A column heading as a theme button that keeps the game's own sort arrow: the game shows it on the sorted column only
+-- and flips it for the direction (Blizzard_AuctionHouseTableBuilder.lua SetArrowState), so no fixed arrow is added.
+local function skinHeader(header)
+  if type(header) ~= "table" or not header.CreateTexture then return end
+  T.Button(header)
+  GW.ShowTexture(header.Arrow)
+end
+
 -- The sort buttons of a list's header row (the table builder makes them as the list lays out): theme buttons that keep
 -- their sort arrow.
 local function skinHeaders(list)
   local row = list.HeaderContainer
   if type(row) ~= "table" or not row.GetChildren then return end
-  for _, header in ipairs({ row:GetChildren() }) do GW.SkinDropdown(header) end
+  for _, header in ipairs({ row:GetChildren() }) do skinHeader(header) end
 end
 
 -- A result list (AuctionHouseItemListTemplate): its dark tile and bronze frame faded for an inset, its empty-state,
