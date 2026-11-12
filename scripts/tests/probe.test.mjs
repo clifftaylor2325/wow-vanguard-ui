@@ -395,5 +395,5 @@ it("/vg probe legacy copes with a window without a panel, secret ids, a failing 
   expect(chatHas(addon, /treeID nil|treeID table|nodes unknown/), "no trait calls").toBe(true);
   addon.world.combat(true);
   addon.slash("probe legacy");
-  expect(chatHas(addon, /Not in combat\./), "nothing is read in combat").toBe(true);
+  expect(chatHas(addon, /Not in a fight: try again after it\./), "nothing is read in combat").toBe(true);
 });

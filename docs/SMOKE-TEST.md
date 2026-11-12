@@ -5261,7 +5261,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.467 The Legacy probe from its new home (Forever)
 
 - Do: open the Legacy window once, close it, then type `/vg probe legacy`; then type it once in a fight.
-- Expect: the same lines as before: the window loaded, its three pages with their keys, the perk panel's ids and node count, and the globals with Legacy in the name. In the fight it says "Not in combat."
+- Expect: the same lines as before: the window loaded, its three pages with their keys, the perk panel's ids and node count, and the globals with Legacy in the name. In the fight it says "Not in a fight: try again after it."
 - If it fails, paste: the chat lines.
 
 ### 33.468 Probe still answers (Forever)
