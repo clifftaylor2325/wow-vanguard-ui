@@ -83,7 +83,11 @@ it("/vg graphics: nothing the client can't say is guessed", () => {
     expect(addon.eval("return ns.Graphics.Card() == nil"), "no card from " + get).toBe(true);
   }
   addon.eval("__wfgStub.setScreen(1365, 768)");
-  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a small screen: no preset, Pixel-perfect").toBe("Screen 1365 x 768: setup suggests Pixel-perfect; /vg setup, then Screen, applies it.");
+  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a small screen with room: no preset and no Fit, so no suggestion").toBe("Screen 1365 x 768: setup has no sizes of its own for this screen; yours stay as they are.");
+  addon.eval("__wfgStub.setScreen(1229, 768)");
+  const fit = addon.eval("return { ns.Setup.OfferFit(), ns.Setup.FitPreset().ui }");
+  expect(addon.eval("return ns.Graphics.ScreenLine()"), "a narrow small screen: the Fit setup marks suggested, with its scale").toBe(`Screen 1229 x 768: setup suggests Fit my screen (UI scale ${Math.floor(fit[1] * 100 + 0.5)}%); /vg setup, then Screen, applies it.`);
+  expect(fit[0], "setup offers Fit there").toBe(true);
   addon.eval("GetPhysicalScreenSize = nil");
   expect(addon.eval("return { ns.Graphics.ScreenSize() }"), "no screen size").toEqual([0, 0]);
 });
@@ -251,6 +255,15 @@ it("/vg graphics apply: what it can't do, it says", () => {
   expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "nothing in combat").toEqual([["Settings don't change in combat: try /vg graphics apply after the fight."], ["Settings don't change in combat: try /vg graphics undo after the fight."]]);
   addon.eval("__wfgStub.inCombat = false C_CVar.SetCVar = nil SetCVar = nil");
   expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "no way to set").toEqual([["This client can't change its settings."], ["Nothing to undo: /vg graphics apply hasn't changed anything."]]);
+});
+// The client's SetCVar answers a success bool: C_CVar.SetCVar returns it (forever Blizzard_APIDocumentationGenerated/CVarDocumentation.lua:131-148,
+// live :118-135) and the global passes it on (Blizzard_SharedXMLBase/CvarUtil.lua:9-15), so false is a refused CVar.
+it("/vg graphics apply: a SetCVar that answers false for Graphics Quality counts as refused", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV);
+  check(addon);
+  addon.eval("local set = SetCVar SetCVar = function(n, v) if n == 'graphicsQuality' then return false end return set(n, v) end C_CVar.SetCVar = SetCVar");
+  expect(said(addon, "graphics apply").pop(), "refused").toBe("Set not Graphics Quality (the client refused it), your screen's sizes. /vg graphics undo puts your settings back.");
+  expect(said(addon, "graphics undo").length, "undo still usable").toBeGreaterThan(0);
 });
 it("/vg graphics apply: a refused Graphics Quality is named, and an unreadable setting is not put back", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV);

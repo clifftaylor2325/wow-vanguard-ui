@@ -308,6 +308,13 @@ local function watchTargets(key)
   end
 end
 
+-- The profile in use was switched or replaced (a live switch, Reset profile, Copy here): the frames its links point
+-- at are watched, as when a mover registers. A profile with no saved spots has no links, and is left without a table.
+ns.OnProfileChanged(ns.Guard("watch the links of the profile in use", function()
+  if not ns.Profile().positions then return end
+  for _, m in ipairs(ns.MoverList()) do watchTargets(m.key) end
+end))
+
 -- A mover was registered (its module built its frame): it watches the frames it links to and, when a
 -- frame is linked to it, its own size; the frames linked to it are placed again (they may have been waiting for it).
 function K.Registered(key)

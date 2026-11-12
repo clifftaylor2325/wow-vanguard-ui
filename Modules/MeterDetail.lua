@@ -117,19 +117,31 @@ function MT.SayRecap(src)
   if link then ns.Chat(ns.Format(L["Death recap: {link}"], { link = link })) end
 end
 
--- A meter line's source as a plain key ("GUID:creature ID"), or nil when the client hides either.
-local function sourceKey(src)
-  local guid, creature = src.sourceGUID, src.sourceCreatureID
-  if ns.IsSecret(guid) or ns.IsSecret(creature) or type(guid) ~= "string" then return nil end
-  return guid .. ":" .. tostring(creature)
+-- A Deaths line's key: its death recap ID (never hidden by the client, one per death) when it is a plain number.
+local function deathKey(src)
+  local id = src.deathRecapID
+  if ns.IsSecret(id) or type(id) ~= "number" or id <= 0 then return nil end
+  return "death:" .. id
 end
 
--- Whether the open panel shows this line's source. The meter repaints from a new read every
--- half second and the client hands out new tables each time, so the source is matched by key.
-local function showing(d, src)
+-- A meter line's source as a plain key: its death recap ID, else "GUID:creature ID", else (a creature line the
+-- game gives no GUID, as its own window matches it) "creature:ID"; nil when the client hides a part it needs.
+local function sourceKey(src)
+  local guid, creature, death = src.sourceGUID, src.sourceCreatureID, deathKey(src)
+  if death then return death end
+  if ns.IsSecret(guid) or ns.IsSecret(creature) then return nil end
+  if type(guid) == "string" then return guid .. ":" .. tostring(creature) end
+  return type(creature) == "number" and "creature:" .. creature or nil
+end
+
+-- Whether the open panel shows this line's source. The meter repaints from a new read every half second and the
+-- client hands out new tables each time, so the source is matched by key. A line with no key (everything about
+-- it hidden in a fight) is matched by the row clicked, and only when the open line had no key either.
+local function showing(d, src, row)
   if d.src == src then return true end
-  local key = d.src and sourceKey(src)
-  return key ~= nil and key == sourceKey(d.src)
+  local open, key = d.src and sourceKey(d.src), sourceKey(src)
+  if open or key then return open == key end
+  return row ~= nil and d.row == row
 end
 
 -- The panel's anchors on each side of the meter: its own corner, the meter's corner, the side's sign.
@@ -173,12 +185,13 @@ local function placeDetail(d)
   d:SetPoint(own, MT.frame, meter, sign * MT.DETAIL_SPACE, lift)
 end
 
--- Opens the panel for a meter line (a click on the same player's row again closes it).
-function MT.OpenDetail(src)
+-- Opens the panel for a meter line (a click on the same player's row again closes it); `row` is the meter row
+-- clicked, which stands in for the line when the client hides all of it.
+function MT.OpenDetail(src, row)
   local d = MT.detail or buildDetail()
-  if d:IsShown() and showing(d, src) then return d:Hide() end
+  if d:IsShown() and showing(d, src, row) then return d:Hide() end
   placeDetail(d)
-  d.src = src
+  d.src, d.row = src, row
   MT.Give(d.title, "SetText", src.name)
   d:Show()
   MT.PaintDetail()

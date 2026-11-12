@@ -380,6 +380,15 @@ local function matchName(names, text)
   end
 end
 
+-- The line after a module switched on: it runs now (a live module that started), starts once a module it needs
+-- is on, or waits for the reload (a reload-only module, or a live one whose reload-only parent is built then).
+local function enabledLine(name)
+  local def = ns.GetModule(name)
+  if def and def.live and ns.ModuleLive(name) then return L["{module} enabled."] end
+  if def and def.live and ns.ModuleMissingParent(name) then return L["{module} enabled. It starts once {parent} is on."] end
+  return L["{module} enabled. /reload to apply."]
+end
+
 -- The line after a module's switch moved: a live module has gone on or off (or will when the fight ends); any
 -- other waits for the reload.
 local function switchedLine(name, on)
@@ -387,8 +396,8 @@ local function switchedLine(name, on)
   if ns.ModuleAwaitsFight(name) then
     return on and L["{module} enabled after the fight."] or L["{module} disabled after the fight."]
   end
-  if def and def.live then return on and L["{module} enabled."] or L["{module} disabled."] end
-  return on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."]
+  if on then return enabledLine(name) end
+  return def and def.live and L["{module} disabled."] or L["{module} disabled. /reload to apply."]
 end
 
 -- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
@@ -400,7 +409,7 @@ local function setModule(on)
       return chat(ns.Format(L["No module called {name}. /vg modules lists them."], { name = rest }))
     end
     ns.SetModuleEnabled(name, on)
-    chat(ns.Format(switchedLine(name, on), { module = name }))
+    chat(ns.Format(switchedLine(name, on), { module = name, parent = ns.ModuleMissingParent(name) }))
   end
 end
 
@@ -434,10 +443,12 @@ local function skinsCommand(rest)
 end
 
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
--- applies it offered (naming what differs, when that alone waits).
+-- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
+-- (ns.WarnSpecWins has said so).
 local function switchTo(name)
   if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
-  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
   ns.OfferReload(wait and why .. " " .. wait or why)
 end
@@ -474,7 +485,7 @@ local function copyProfile(name)
   if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
   local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
   confirmProfile(ns.Format(warning, { into = into, from = name }), L["Copy here"], function()
-    local copied = ns.CopyProfile(name)
+    local copied = ns.CopyProfile(name, into)
     if not copied then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
     ns.Options.ProfileCopied(copied)
     ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = copied }))
@@ -506,8 +517,9 @@ local PROFILE_ACTIONS = {
 -- /vg profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
-    local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
-    return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
+    local later = ns.ProfileAfterReload()
+    local text = later and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
+    return chat(ns.Format(text, { profile = ns.ProfileName(), next = later, all = table.concat(ns.ProfileNames(), ", ") }))
   end
   -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
   if VanguardDB.profiles[rest] then return switchTo(rest) end
@@ -835,9 +847,12 @@ local function errorLines(i, e, depth)
   return out
 end
 
--- The report with the caught errors from `first` on (newest last), each with `depth` stack lines.
+-- The report with the paused sites and blocked calls (as /vg errors lists them), then the caught errors from `first` on
+-- (newest last), each with `depth` stack lines.
 local function reportText(first, depth)
   local lines = reportHead()
+  for _, line in ipairs(pausedLines()) do lines[#lines + 1] = line end
+  for _, line in ipairs(blockedLines()) do lines[#lines + 1] = line end
   for i = first, #ns.errors do
     for _, line in ipairs(errorLines(i, ns.errors[i], depth)) do lines[#lines + 1] = line end
   end

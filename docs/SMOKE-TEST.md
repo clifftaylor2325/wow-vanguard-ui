@@ -6443,6 +6443,320 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the row shows Shield at once, the frames keep Hairline until the fight ends, then the plate and the bars change together.
 - If it fails, paste: /vg errors.
 
+### 33.737 The focus cast bar clears the raid grid under Tabs (H46-3-1, H46-A-G2; WoW Forever and Retail)
+
+- Do: default profile, HUD look Tabs, join a party (then a raid of ten), focus a caster and let it cast; then switch General > HUD layout > Where the frames stand to The keep and back. [Client: Forever and Retail.]
+- Expect: the focus's cast bar stands clear under the raid grid's bottom tile, and the grid and the Party pets and targets column move at once when the layout changes; in a raid of 25 or 40 it still reaches the grid's foot (known: Cliff's option B).
+- If it fails, paste: /vg frame on Vanguard_CastBar_focus and Vanguard_RaidHolder.
+
+### 33.738 Party pets and targets stay put over the raid frames under Tabs (H46-3-2; WoW Forever and Retail)
+
+- Do: default profile (raid frames show your party), Unit frames > Party pets and targets on, HUD look Tabs, join a 5-player party. [Client: Forever and Retail.]
+- Expect: the pets and targets column stands just over the top party tile, as under Plain, not about 84 units higher.
+- If it fails, paste: /vg frame on Vanguard_PartyExtras and Vanguard_RaidHolder.
+
+### 33.739 Cast bars over untabbed frames under Tabs (H46-13-3; WoW Forever and Retail)
+
+- Do: HUD look Tabs, Unit frames > Versus deck on, target a caster; then deck off, HUD layout The keep, focus a caster. [Client: Forever and Retail.]
+- Expect: with the deck on, the target's cast bar sits as close over the target frame as under Plain; under The keep the focus's cast bar sits as close over the focus frame as under Plain.
+- If it fails, paste: /vg frame on Vanguard_CastBar_target and Vanguard_CastBar_focus.
+
+### 33.740 Reset theme in a fight waits for the fight to end (H46-4-1; WoW Forever and Retail)
+
+- Do: set HUD look to Hairline out of combat, start a fight (a training dummy), open General and press Reset theme, and watch your frame until the fight ends. [Client: Forever and Retail.]
+- Expect: the frames stay Hairline until the fight ends, then turn Shield in one step (bars and plates together).
+- If it fails, paste: what the player frame looked like during the fight, and /vg errors.
+
+### 33.741 The footer errors line keeps to its count when the room is short (H46-4-5, H46-A-G1, H46-A-C1; WoW Forever)
+
+- Do: on a German client at Text size 130%, after any error (/vg errors lists one), switch Unit frames, Minimap and Chat off on Modules, then change General > Frame to size once. [Client: Forever.]
+- Expect: the footer still shows the red errors line as its bare count (the number of errors, or of paused parts when one is paused), hovering shows the full sentence, clicking it lists the errors, and the reload notice is shortened instead.
+- If it fails, paste: a screenshot of the footer.
+
+### 33.742 Leaving unlock without saving keeps the new profile's frames (H46-4-51; WoW Forever)
+
+- Do: turn every module that needs a reload off in two profiles (so a pick applies at once), give profile B a moved frame, /vg unlock on profile A, /vg profile B, then Exit without saving on the unlock bar, and /reload. [Client: Forever.]
+- Expect: profile B's moved frame is still where B had it.
+- If it fails, paste: /vg frame on that frame before and after.
+
+### 33.743 /vg profile names the profile the reload loads (H46-4-100, H46-4-R2; WoW Forever)
+
+- Do: on a character whose current spec has its own profile (say Heal, mapped with /vg spec Heal and in use), type /vg profile Mine, then /vg profile with no name. [Client: Forever.]
+- Expect: chat says the spec's profile takes over at the reload and never that this character will use Mine after it; the listing reads 'Profile: Heal   (all: ...)' with nothing after a reload; no reload is offered.
+- If it fails, paste: the chat lines.
+
+### 33.744 /vg report carries the paused parts and blocked calls (H46-4-101; WoW Forever and Retail)
+
+- Do: after /vg errors shows a paused part or a blocked call (or any error), type /vg report and read the copy box. [Client: Forever and Retail.]
+- Expect: the 'Paused after ...' and 'Calls the game blocked from Vanguard:' lines, when /vg errors has them, sit after the Errors line and before the first error.
+- If it fails, paste: those lines.
+
+### 33.745 An imported UI scale survives the spec's own profile (H46-4-R3; WoW Forever)
+
+- Do: on a spec whose own profile is in use with Pixel-perfect on, /vg import a whole-profile string with a UI scale, answer Use it, then /reload. [Client: Forever.]
+- Expect: the UI scale you accepted is still the game's scale after the reload, chat says 'Created profile Imported.' and no reload is offered.
+- If it fails, paste: the /vg status line before and after the reload.
+
+### 33.746 Raid status switched on during a ready check (H46-5-1, H46-A-C2; WoW Forever and Retail)
+
+- Do: in a raid or party, switch Raid status off under Modules, have the leader start a ready check, then switch Raid status on before answering; after that check ends, switch Raid status off and on again within a few seconds. [Client: Forever and Retail.]
+- Expect: during the check every tile shows its tick or waiting mark at once and tiles that never answered turn to the cross when it ends; switched on after the check ended, no tile shows a ready mark.
+- If it fails, paste: /run print(GetReadyCheckStatus("player"), GetReadyCheckTimeLeft()) during the check, and /vg errors.
+
+### 33.747 Two unticked keys on Ready (H46-6-1; WoW Forever)
+
+- Do: on a level 12 or higher warrior put Shield Bash on bar 2 button 2 and bind T to Toggle Character Pane; open Set up keys, Show me, Next; tick Place new spells as I learn them; untick the F line, then the T line; Apply; then train any spell. [Client: Forever.]
+- Expect: once F is unticked the T line reads "T: Hamstring, and Shield Bash moves to bar 3" and keeps that line with an empty box when unticked; after the training T still opens the character pane, bar 2 button 2 still holds Shield Bash, and chat has no "Hamstring is now on T".
+- If it fails, paste: the Ready list's F and T lines and the chat lines.
+
+### 33.748 A window docked again forgets its old spot (H46-7-50; WoW Forever and Retail)
+
+- Do: Movers for floating windows on (reload); drag Loot out of the dock and /reload; in /vg unlock leave its handle somewhere; drag Loot back into the dock, then drag it out again to a different spot; /reload. [Client: Forever and Retail.]
+- Expect: Loot is where you last dropped it.
+- If it fails, paste: where it sits after the reload, and /vg errors.
+
+### 33.749 A gossip level picker closes with the talk (H46-8-1; Retail)
+
+- Do: talk to a Skoldus Hall gossip NPC so the game's level picker opens, tick then untick the hand-back for the session (or switch Quests off and on), then walk away from the NPC. [Client: Retail.]
+- Expect: the game's picker closes with the talk.
+- If it fails, paste: pass or fail, and /vg errors.
+
+### 33.750 Quest automation leaves adventure map offers alone (H46-8-R1; Retail)
+
+- Do: with Quests automation 'accept quests' on, click a quest pin on an adventure map (a scouting or zone-choice map) to read its offer. [Client: Retail.]
+- Expect: the quest is not accepted until you press the map's own Accept; no 'Accepted:' chat line.
+- If it fails, paste: pass or fail, and /vg errors.
+
+### 33.751 Up now's shared cheapest price undercuts it (H46-9-1; WoW Forever and Retail)
+
+- Do: at the auction house, put a commodity you have listed on the Sell card where another seller shares your cheapest price, then click that row in Up now. [Client: Forever and Retail.]
+- Expect: Your price is 1 under that row (as the suggestion), not the row's price.
+- If it fails, paste: the Up now row and the Price line.
+
+### 33.752 A reagent held at another rank counts as held (H46-9-2; Retail)
+
+- Do: open a recipe that has quality ranks while holding the slot's reagents as another rank, type 1 beside Add reagents and click it. [Client: Retail.]
+- Expect: chat says You have every reagent. and Keep stocked (/vg stock) gains nothing for that reagent.
+- If it fails, paste: the chat line and /vg stock.
+
+### 33.753 Banked reagents are not bought again (H46-9-50; WoW Forever and Retail)
+
+- Do: queue a craft whose reagents sit only in your bank (warband bank on Retail), run /vg craft stock, then visit a merchant that sells one of them. [Client: Forever and Retail.]
+- Expect: Keep stocked gains nothing for it and the merchant buys none.
+- If it fails, paste: /vg craft, /vg stock and the chat.
+
+### 33.754 Graphics apply names the value the client kept (H46-10-2; WoW Forever and Retail)
+
+- Do: /vg graphics apply, then /dump GetCVar('graphicsQuality'). [Client: Forever and Retail.]
+- Expect: the 'Set Graphics Quality N' line names the value the dump shows, or says the client refused it.
+- If it fails, paste: both lines.
+
+### 33.755 Chat history keeps no hidden-message placeholder (H46-10-4; WoW Forever and Retail)
+
+- Do: chat history on, wait for a stranger's channel line the game hides ('click to show'), then /reload. [Client: Forever and Retail.]
+- Expect: the restored block does not hold that placeholder line (an older save's one is plain text with no click-to-show link).
+- If it fails, paste: the restored lines around it.
+
+### 33.756 A pet line's detail closes on a second click (H46-10-5; WoW Forever and Retail)
+
+- Do: Vanguard meter on, out of combat after a fight with a pet or guardian line, click that line, wait a second, click it again. [Client: Forever and Retail.]
+- Expect: the second click closes the panel.
+- If it fails, paste: whether it closed.
+
+### 33.757 Your line's detail closes on a second click in a fight (H46-10-6; WoW Forever and Retail)
+
+- Do: Vanguard meter on, in a fight click your own line, wait a second, click it again; then do the same on a Deaths line. [Client: Forever and Retail.]
+- Expect: the panel closes; on Deaths one recap line prints, not two.
+- If it fails, paste: whether it closed or reopened.
+
+### 33.758 /vg enable says when a module waits for its parent (H46-10-10; WoW Forever and Retail)
+
+- Do: turn Unit frames off and reload, then /vg enable ComboPoints. [Client: Forever and Retail.]
+- Expect: the line says it starts once UnitFrames is on, not that it is enabled.
+- If it fails, paste: the line.
+
+### 33.759 The fight recap leaves out Deaths 0 (H46-10-51; WoW Forever and Retail)
+
+- Do: Combat tools, tick Recap in chat after each fight; kill one mob without dying, then type /vg recap. [Client: Forever and Retail.]
+- Expect: the Fight recap line has no 'Deaths 0' part.
+- If it fails, paste: the Fight recap line.
+
+### 33.760 A shared font turns up after login (H46-11-50; WoW Forever and Retail)
+
+- Do: Set General, Font to a font from a load-on-demand addon (or one that registers its fonts at its own login), /reload, then load that addon. [Client: Forever and Retail.]
+- Expect: Vanguard's text (the options window, unit frame names) switches to that font without picking it again.
+- If it fails, paste: the /vg status text line.
+
+### 33.761 The client's deprecation fallbacks (H46-12-6; WoW Forever)
+
+- Do: On a fresh WoW Forever install, type /run print(GetCVar("loadDeprecationFallbacks"), type(IsPlayerSpell)) in chat. [Client: Forever.]
+- Expect: 1 function (the test harness assumes the fallbacks are on by default).
+- If it fails, paste: the printed line.
+
+### 33.762 The keep lets go of a dragged frame edge by edge (H46-13-1; WoW Forever and Retail)
+
+- Do: HUD layout The keep on a screen it holds on (1440p, or 1080p pixel-perfect with button size 38), /vg unlock, drag action bar 1 to the top of the screen, lock; then drag your cast bar up the middle; then drag the focus frame to the top. [Client: Forever and Retail.]
+- Expect: no plate stretches after any of them: with bar 1 moved the wall's top stays on your frame and the gatehouse hides, with the cast bar moved the gatehouse hides, with the focus moved the wall and gatehouse hide; Reset on each brings them back.
+- If it fails, paste: /vg frame Vanguard_Keep before and after.
+
+### 33.763 The keep's frames stand inside the wall (H46-13-R1; WoW Forever and Retail)
+
+- Do: 1080p in pixel-perfect mode, button size 38, HUD layout The keep. [Client: Forever and Retail.]
+- Expect: your frame and your target's stand inside the wall with the bars, as on a screen at the game's UI scale.
+- If it fails, paste: /vg frame on Vanguard_Keep and Vanguard_player.
+
+### 33.764 The keep holds only where it fits (H46-13-R2; WoW Forever and Retail)
+
+- Do: 1080p at the game's own UI scale (no pixel-perfect), HUD layout The keep; then switch pixel-perfect on. [Client: Forever and Retail.]
+- Expect: at the game's UI scale the frames keep their Centered spots and no wall shows; in pixel-perfect mode at button size 38 the wall shows and the target of target and the target's cast bar are clear of the bag and menu bar.
+- If it fails, paste: /vg frame on Vanguard_targettarget and the menu bar.
+
+### 33.765 The keep's wall holds everything on it (H46-13-100; WoW Forever and Retail)
+
+- Do: The keep on a 1080p screen in pixel-perfect mode; target something that has a target and is casting. [Client: Forever and Retail.]
+- Expect: the wall's plate runs under action bar 3, the target of target and the target's cast bar, and past the cast bar's right end and the focus's left.
+- If it fails, paste: /vg frame on Vanguard_Keep, Vanguard_targettarget and Vanguard_CastBar_target.
+
+### 33.766 The keep's frames move out with bigger buttons (H46-13-101; WoW Forever and Retail)
+
+- Do: Setup, Screen step Pixel-perfect on a 1440p screen, Layout step The keep; then General, action button size 50, then 43. [Client: Forever and Retail.]
+- Expect: your frame, the pet, your target, the target of target and the target's cast bar stay clear of the action bars at both sizes, and move out or in when the size changes.
+- If it fails, paste: /vg frame on Vanguard_player, Vanguard_CastBar_target and Vanguard_Bar1.
+
+### 33.767 The gatehouse stops under the swing timer (H46-13-102; WoW Forever)
+
+- Do: A warrior or rogue, The keep on a screen it holds on, auto-attack a training dummy; then /vg unlock, drag the swing timer up the screen, lock. [Client: Forever.]
+- Expect: while the swing bars sit over the gatehouse, its top stops just under them and no crest shows; with the swing timer dragged away the gatehouse is full height with its crest.
+- If it fails, paste: /vg frame on Vanguard_Keep and Vanguard_SwingTimer.
+
+### 33.768 A small banner's debuffs wrap in fives (H46-13-103; WoW Forever and Retail)
+
+- Do: HUD layout Standards, /reload, focus a target next to a training dummy and put six or more of your debuffs on it. [Client: Forever and Retail.]
+- Expect: the focus's debuffs run in lines of five under its banner, clear of your action buttons, the swing timer and the chat.
+- If it fails, paste: a screenshot.
+
+### 33.769 Standards needs a screen about 1180 wide (H46-13-104; WoW Forever and Retail)
+
+- Do: A 4:3 screen (or a 1024 x 768 window) at the game's UI scale, HUD layout Standards, a hunter with a pet; then widen the window. [Client: Forever and Retail.]
+- Expect: the frames keep their Centered spots and sizes (no banners) until the window is past about 1180 UI units wide; then the banners stand.
+- If it fails, paste: /vg frame on Vanguard_focus and Vanguard_PetBar.
+
+### 33.770 Tall party frames grow up from the foot (H46-13-2; WoW Forever and Retail)
+
+- Do: Raid frames off (or Show party in raid frames off), in a five-player party set Unit frames, Frame sizes, Party height to 60, and focus a caster. [Client: Forever and Retail.]
+- Expect: the party column grows upward; its lowest frame stays clear of the focus frame, its cast bar and the pet frame.
+- If it fails, paste: /vg frame on Vanguard_party4 and Vanguard_focus.
+
+### 33.771 The Cooldown Manager row hides the crest (H46-13-50; Retail)
+
+- Do: Shield look, keystone shown, a UI scale that makes the canvas 768 tall; track 8 or more essential cooldowns; /vg unlock, drag the Cooldowns handle into the gap between your frame and your target's, lock. [Client: Retail.]
+- Expect: the crest and rail are gone while the row is there.
+- If it fails, paste: a screenshot.
+
+### 33.772 The status chip clears a small frame near the edge (H46-13-51; WoW Forever)
+
+- Do: Unit frames, Status chip on, Instance prep buff checks on; /vg unlock, set your frame's handle scale to 60% and drag it near the left edge, about a chip's width from it; lock. [Client: Forever.]
+- Expect: the chip sits above the frame's left end, not over it.
+- If it fails, paste: a screenshot.
+
+### 33.773 A class accent follows each character on a shared profile (H46-14-50; WoW Forever and Retail)
+
+- Do: On a mage, /vg accent class in a new profile Shared; log a warrior in, pick Shared, log out; log the mage in on Default, then pick Shared in General, Profiles. [Client: Forever and Retail.]
+- Expect: the accent (window borders, the selected page row) turns the mage's light blue at once, not the warrior's brown.
+- If it fails, paste: /vg status's accent line.
+
+### 33.774 Private aura spots while an enchant runs out (H46-15-50; Retail)
+
+- Do: With 12 or more buffs and a poison, oil or imbue on, start a fight and let the enchant run out (or remove it) during the fight. [Client: Retail.]
+- Expect: the six private aura spots left of your buffs stay clear of the leftmost buff for the whole fight; the buffs slide over by one cell when it ends.
+- If it fails, paste: a screenshot of the block during the fight.
+
+### 33.775 The target's private aura spot over a taller target of target (H46-15-2; Retail)
+
+- Do: Set Unit frames, Frame sizes, Target of target height to 40, target a player who has a private aura in a boss fight; then pick HUD layout Standards and look again. [Client: Retail.]
+- Expect: the spot right of the target frame stands just above the target of target (above its banner under Standards), never over its name or bar.
+- If it fails, paste: /vg frame on the spot and a screenshot.
+
+### 33.776 Raid indicators clear of the name and the status (H46-15-3; WoW Forever and Retail)
+
+- Do: On default raid tiles (100 x 48) look at a player with a long name under a crowd-control effect; then set Raid frames Height to 44 and look at a hurt player under a crowd-control effect. [Client: Forever and Retail.]
+- Expect: at 48 the crowd-control icon sits below the name, clear of its last letters; at 44 it is left out (only the top indicator shows) and the missing-health number reads in full.
+- If it fails, paste: a screenshot of one tile.
+
+### 33.777 The power tick spark on a Standards banner (H46-16-50; WoW Forever)
+
+- Do: As a mage, HUD layout Standards, cast Frostbolt out of combat and watch the thin power line down the outer side of your banner. [Client: Forever.]
+- Expect: a short spark rises from the foot of the line to its top over five seconds, then goes.
+- If it fails, paste: a screenshot at about 2 s.
+
+### 33.778 No interrupt mark beside a friend's cast (H46-16-51; WoW Forever and Retail)
+
+- Do: In a group, with Interrupt mark on cast bars on and an interrupt learned, target a friendly healer while they cast a heal, then a hostile caster. [Client: Forever and Retail.]
+- Expect: no diamond beside the friend's cast bar; the diamond beside the hostile caster's.
+- If it fails, paste: a screenshot of each.
+
+### 33.779 Raid tiles after a change of direction (H46-17-1; WoW Forever and Retail)
+
+- Do: In a party with Groups as Columns, switch Groups as to Rows on the Raid frames page, then tick Sort by role; in a raid with Stack big raids on, watch the grid as the 11th player joins and as it drops back to 10 (out of combat). [Client: Forever and Retail.]
+- Expect: each time the tiles sit in clean columns or rows, none on top of another or stretched, with no reload.
+- If it fails, paste: /vg frame Vanguard_RaidUnitButton2 after each change, and a screenshot.
+
+### 33.780 Each missing ticked buff gets its mark (H46-17-51; WoW Forever)
+
+- Do: As a mage in a group, tick Arcane Intellect and Dampen Magic under Buffs to watch on the Healing page, and give a party member Arcane Intellect only. [Client: Forever.]
+- Expect: that member's tile shows the Dampen Magic mark; once they have both, the mark goes.
+- Do (also): as a priest tick only Power Word: Fortitude and have a party member buffed with Prayer of Fortitude only; as a mage tick Amplify Magic and Dampen Magic and cast one of them on a party member (H46-B-G3-1 and G3-5). [Client: Forever.]
+- Expect (also): the Prayer of Fortitude member shows no mark; the member with one Magic spell shows no mark for the other, and one with neither shows the Amplify Magic mark.
+- If it fails, paste: a screenshot of the tile and the ticked rows.
+
+### 33.781 An action button's lit look after a click (H46-18-1; WoW Forever and Retail)
+
+- Do: Out of combat, with Cast action keybinds on key down on (the default), put a cast-time spell on bar 1, target a dummy, hold its key about half a second and let go while it casts; then press the mouse on another bar 1 button with no target, slide off it and let go. [Client: Forever and Retail.]
+- Expect: the first button keeps its lit look until the cast ends; the second is not left lit.
+- If it fails, paste: /vg frame over the button that is wrong.
+
+### 33.782 Forget every class's trainers (H46-18-52; WoW Forever)
+
+- Do: With Remember what trainers teach on and a trainer visited, open /vg, Town and gear, Spell ranks, click Forget every class's trainers..., answer No; click it again and answer Forget; then type /vg trainers. [Client: Forever.]
+- Expect: the question names every class on this account; No changes nothing; Forget prints its line and /vg trainers then says 0 trainer service(s) remembered.
+- If it fails, paste: the chat lines.
+
+### 33.783 The click casting page after a talent switch (H46-19-50; WoW Forever)
+
+- Do: With dual talents, put a starter layout on Primary and leave Secondary without one; /reload; open the options window (/vg) on General, switch to Secondary talents with the window open, then click Click casting. [Client: Forever.]
+- Expect: the grid, Starter layout... and Clear all show, and no "These bindings came from" row.
+- If it fails, paste: /vg errors.
+
+### 33.784 A click-casting cell's tooltip after a new rank (H46-19-54; WoW Forever)
+
+- Do: Bind Flash Heal's top row (not a rank) to a click, train its next rank, hover that cell on the Click casting page. [Client: Forever.]
+- Expect: the tooltip shows the new rank.
+- If it fails, paste: the tooltip's rank line.
+
+### 33.785 The Try it tile on a click the game's window binds (H46-19-53; WoW Forever and Retail)
+
+- Do: In the game's Click Casting window bind a spell to Button 4 and leave Button 4 empty on Vanguard's Click casting page; hover the Try it tile and press Button 4. [Client: Forever and Retail.]
+- Expect: "Button 4 -> nothing bound" followed by the reason that the game's own Click Casting window binds that click.
+- If it fails, paste: the tile's line.
+
+### 33.786 No later spell on a key you already filled (H46-20-50; WoW Forever)
+
+- Do: A level 6 warrior who knows Thunder Clap but not Overpower: open key setup, Show me, tick Show what comes later, hover key 4. [Client: Forever.]
+- Expect: key 4 is not greyed with Thunder Clap's icon and its tooltip has no "Later: Thunder Clap" line.
+- If it fails, paste: the tooltip text.
+
+### 33.787 The keep gives way when the bag and menu bar reaches it (H46-B-G3-2; WoW Forever and Retail)
+
+- Do: On a 1080p screen at the game's own UI scale (no pixel-perfect), HUD layout The keep, /reload; then /vg unlock, drag the bag and menu bar up out of the corner, lock; then reset the bar. [Client: Forever and Retail.]
+- Expect: after the reload your frame and your target's stand at their Centered spots and sizes with no wall; with the bar moved the keep comes up; with it reset the frames go back to Centered.
+- If it fails, paste: /vg frame Vanguard_player and /vg frame Vanguard_Keep after each step.
+
+### 33.788 The keep steps in when bar 1 is dragged away (H46-B-G3-7; WoW Forever and Retail)
+
+- Do: The keep on a 1440p screen with bar 1's own button size at 50; /vg unlock, drag bar 1 to the top of the screen, lock; then reset bar 1. [Client: Forever and Retail.]
+- Expect: with bar 1 away your frame and your target's step back in to their drawn spots; with it reset they stand out again, clear of the bars.
+- If it fails, paste: /vg frame Vanguard_player before and after.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

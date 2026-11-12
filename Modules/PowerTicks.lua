@@ -26,6 +26,8 @@ PT.MANA, PT.ENERGY = 0, 3
 PT.SWEEPS = { mana = { 5, false }, energy = { 2, true } }
 -- How many repeating sweeps run with no tick seen before the spark gives up (full energy has none).
 PT.MISSED = 3
+-- How thick the spark is across its sweep, in units.
+PT.THICKNESS = 6
 
 -- Timing --------------------------------------------------------------------------------------
 
@@ -41,19 +43,45 @@ function PT.Fraction(now)
   if gone < length then return gone / length end
 end
 
+-- Where the spark's centre sits from the bar's bottom-left corner a fraction along a lying bar.
+local function acrossBar(bar, at)
+  return at * bar:GetWidth(), bar:GetHeight() / 2
+end
+
+-- The same along a standing bar (the Standards HUD layout stands the power bar on end).
+local function upBar(bar, at)
+  return bar:GetWidth() / 2, at * bar:GetHeight()
+end
+
+PT.PLACE = { HORIZONTAL = acrossBar, VERTICAL = upBar }
+
 -- Moves the spark along the bar (one anchor, moved in place each frame); it
 -- hides, and the timer stops, once a sweep is over.
 function PT.Tick()
   local at = PT.Fraction(GetTime())
   PT.spark:SetShown(at ~= nil)
   if not at then PT.driver:SetScript("OnUpdate", nil) return end
-  PT.spark:SetPoint("TOP", PT.bar, "TOPLEFT", at * PT.bar:GetWidth(), 0)
+  local place = PT.PLACE[PT.bar:GetOrientation()] or PT.PLACE.HORIZONTAL
+  local across, along = place(PT.bar, at)
+  PT.spark:SetPoint("CENTER", PT.bar, "BOTTOMLEFT", across, along)
 end
 
--- Starts a sweep from now; the spark is as tall as the bar.
+-- Sizes and turns the spark for the bar's orientation: as tall as a lying bar, and across a standing one as a thin
+-- streak turned a quarter (the Spark texture is a vertical streak).
+function PT.Shape()
+  local bar, spark = PT.bar, PT.spark
+  if bar:GetOrientation() == "VERTICAL" then
+    spark:SetSize(bar:GetWidth(), PT.THICKNESS)
+    return spark:SetRotation(math.pi / 2)
+  end
+  spark:SetSize(PT.THICKNESS, bar:GetHeight())
+  spark:SetRotation(0)
+end
+
+-- Starts a sweep from now, the spark shaped for the bar as it stands.
 function PT.Start()
   PT.from = GetTime()
-  PT.spark:SetHeight(PT.bar:GetHeight())
+  PT.Shape()
   PT.driver:SetScript("OnUpdate", PT.Tick)
   PT.Tick()
 end
@@ -108,7 +136,7 @@ end
 -- The spark on the player frame's power bar, and the timer that moves it.
 local function build(bar)
   PT.bar, PT.driver = bar, CreateFrame("Frame")
-  PT.spark = T.Tint(T.Spark(bar, 6), "spark")
+  PT.spark = T.Tint(T.Spark(bar, PT.THICKNESS), "spark")
   PT.spark:Hide()
 end
 

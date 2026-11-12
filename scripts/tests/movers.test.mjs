@@ -731,3 +731,47 @@ it("H46-21-2 restoring a spot keeps a frame's own width beside its matched width
   addon.eval("local spot = ns.Copy(ns.Settings('positions').xpbar) ns.ResetMovers('xpbar') ns.RestoreMoverLinks('xpbar', spot)");
   expect(addon.eval("local s = ns.Settings('positions').xpbar return { s.w, s.match and s.match.width }"), "own width and match both come back").toEqual([300, "cast_player"]);
 });
+// Turns every reload-only module off in every profile, so a pick applies at once (ns.SwitchProfileNow).
+const LIVE_OFF = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules = p.modules or {} p.modules[name] = false end end
+end`;
+// Raid's frame spot (h46a), as { point, x, y } or "none".
+const RAID_SPOT = `local p = VanguardDB.profiles.Raid.positions.h46a return p and { p.point, p.x, p.y } or "none"`;
+const RAID_SAVED = 'VanguardDB.profiles = { Default = {}, Raid = { positions = { h46a = { point = "TOPLEFT", relPoint = "TOPLEFT", x = 300, y = -300 } } } }\n';
+
+it("H46-4-51 Exit without saving after a live profile switch keeps the new profile's spots", () => {
+  const addon = loggedIn(LIVE_OFF, { savedVariables: RAID_SAVED });
+  addon.eval(`__a = CreateFrame("Frame", nil, UIParent) __a:SetSize(100, 20) ns.Mover(__a, "h46a", "A", { "CENTER", "CENTER", 0, 0 })`);
+  addon.slash("unlock");
+  expect(addon.eval('return ns.PickProfile("Raid")'), "the pick applied at once").toBe(true);
+  const raid = addon.eval(RAID_SPOT);
+  addon.eval("ns.ExitWithoutSaving()");
+  expect(addon.eval(RAID_SPOT), "Raid's own spot is still there").toEqual(raid);
+});
+
+it("H46-4-51 Exit without saving after Reset profile, Copy here or an import into the profile in use puts back that profile as it was then", () => {
+  const addon = loggedIn("", { savedVariables: 'VanguardDB.profiles = { Default = { positions = { h46a = { point = "TOPLEFT", relPoint = "TOPLEFT", x = 300, y = -300 } } }, Other = {} }\n' });
+  addon.eval(`__a = CreateFrame("Frame", nil, UIParent) __a:SetSize(100, 20) ns.Mover(__a, "h46a", "A", { "CENTER", "CENTER", 0, 0 })`);
+  const spot = 'local p = ns.Profile().positions return p and p.h46a and p.h46a.x or "none"';
+  addon.slash("unlock");
+  addon.eval("ns.ResetProfile()");
+  addon.eval("ns.ExitWithoutSaving()");
+  expect(addon.eval(spot), "the reset profile stays reset").toBe("none");
+  addon.slash("unlock");
+  addon.eval('ns.CopyProfile("Other")');
+  addon.eval("ns.ExitWithoutSaving()");
+  expect(addon.eval(spot), "Copy here stays copied").toBe("none");
+  expect(addon.eval("ns.ProfileChanged() return #ns.errors"), "a profile change while locked remembers nothing and fails nothing").toBe(0);
+});
+
+it("H46-4-52 after a live profile switch the new profile's links follow their target's size", () => {
+  const addon = loggedIn(LIVE_OFF, { savedVariables: 'VanguardDB.profiles = { Default = {}, Raid = { positions = { h46d = { rel = { to = "h46t", side = "RIGHT", x = 0, y = 0 } } } } }\n' });
+  addon.eval(`__t = CreateFrame("Frame", nil, UIParent) __t:SetSize(100, 20) ns.Mover(__t, "h46t", "T", { "CENTER", "CENTER", 0, 100 })
+    __d = CreateFrame("Frame", nil, UIParent) __d:SetSize(100, 20) ns.Mover(__d, "h46d", "D", { "CENTER", "CENTER", 0, -100 })`);
+  expect(addon.eval('return ns.PickProfile("Raid")'), "the pick applied at once").toBe(true);
+  const out = addon.eval(`local w = __t:GetWidth() + 100 __t:SetWidth(w)
+    local s = __t:GetScript("OnSizeChanged") if s then s(__t, w, __t:GetHeight()) end
+    return { s ~= nil, __t:GetRight(), __d:GetLeft() }`);
+  expect(out[0], "the target's size is watched").toBe(true);
+  expect(out[2], "the dependent stays at the target's right edge").toBeCloseTo(out[1], 0);
+});

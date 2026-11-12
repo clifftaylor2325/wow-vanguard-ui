@@ -276,6 +276,14 @@ local function ownPixelScale(data, name)
   data.theme.pixelScale, data.theme.pixelMultiple = mine.pixelScale, mine.pixelMultiple
 end
 
+-- The sentence for a whole profile saved under `name` and staged: the reload offer only when it is the profile that
+-- loads (a spec's own profile wins over it, as ns.WarnSpecWins has said).
+local function importedText(name, result)
+  result.reload = ns.ProfileAfterReload() == name
+  if result.reload then return ns.Format(L["Imported as profile {profile}; this character will use it after a reload."], { profile = name }) end
+  return ns.Format(L["Created profile {profile}."], { profile = name })
+end
+
 -- The profile an import of this kind lands in or backs up: a partial string goes into the profile used after
 -- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
 -- makes or picks a profile, so the running one is what a backup holds.
@@ -300,7 +308,7 @@ local function importNew(data, result)
   local name = freeName("Imported")
   VanguardDB.profiles[name] = data
   ns.UseProfile(name)
-  return ns.Format(L["Imported as profile {profile}; this character will use it after a reload."], { profile = name })
+  return importedText(name, result)
 end
 
 -- A whole imported profile: one that matches a profile this account has uses that profile instead of making another
@@ -366,12 +374,19 @@ local function stagedTheme(name)
   return profile.theme
 end
 
--- Turns Vanguard's pixel-perfect scale off in the profile this character uses after the reload
--- (an import is only staged, so the profile on screen keeps its own), since it would replace the game's UI scale.
-local function pixelScaleOffAfterReload()
-  local name = ns.SelectedProfileName()
+-- Turns Vanguard's pixel-perfect scale off in the named profile (the one on screen through the settings cache, else a
+-- staged one's saved theme, made when it has none).
+local function pixelScaleOff(name)
   local theme = name == ns.ProfileName() and ns.Theme.Settings() or stagedTheme(name)
   theme.pixelScale = false
+end
+
+-- Turns the pixel-perfect scale off where the chosen UI scale has to run: the profile this character uses after the
+-- reload (a spec's own profile wins over a staged pick), and the staged pick too, so it keeps that scale when it is
+-- used later.
+local function pixelScaleOffAfterReload()
+  pixelScaleOff(ns.LoadingProfileName())
+  pixelScaleOff(ns.SelectedProfileName())
 end
 
 -- Sets an imported profile's UI scale (the game's, out of combat) for the profile it was imported into.
@@ -551,12 +566,14 @@ local function ownTarget()
 end
 
 -- The profile the current spec switches to: its own, else (a spec with no profile of its own) the
--- character's, which also takes back a switch another spec staged. Nil when it stays as it is.
+-- character's, which also takes back a switch another spec staged (the character's is read first: taking the
+-- switch back moves what is selected). Nil when it stays as it is.
 local function specTarget()
   local name = ns.SpecProfile()
   if name then rememberOwn() return name end
+  local own = ownTarget()
   if specStaged() then ns.StageProfile(ns.ProfileName()) end
-  return ownTarget()
+  return own
 end
 
 -- Switches to the current spec's profile: at once mid-session when nothing waits for a reload (ns.SwitchProfileNow),

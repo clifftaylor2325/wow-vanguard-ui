@@ -84,6 +84,13 @@ local function mailRows()
   }
 end
 
+-- Asks before forgetting what trainers taught every class on the account (/vg trainers clear), which can't be undone.
+local function askForgetTrainers()
+  local SR = ns.GetModule("SpellRanks")
+  ns.Ask(L["Forget what trainers taught every class on this account? Trainer memory learns them again as you visit them."], L["Forget"],
+    function() SR.TrainersCommand("clear") end, function() end, "danger")
+end
+
 -- Spell ranks: the bar notice and trainer memory, both off until switched on.
 local function spellRankCard()
   return {
@@ -92,6 +99,7 @@ local function spellRankCard()
     check(L["Remember what trainers teach"], setting("SpellRanks", "trainerMemory")),
     { "button", L["Put the newest ranks on my bars"], function() ns.GetModule("SpellRanks").RanksCommand("swap") end },
     { "button", L["What trainers teach next"], function() ns.GetModule("SpellRanks").TrainersCommand("next") end },
+    { "button", L["Forget every class's trainers..."], askForgetTrainers },
   }
 end
 

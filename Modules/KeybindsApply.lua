@@ -510,11 +510,19 @@ local function storeFor(set)
   return set == Enum.BindingSet.Account and VanguardDB or VanguardCharDB
 end
 
+-- Drops a key row that is not a table (a hand-edited file may hold anything), so every reader sees table rows.
+local function cleanKeys(rec)
+  for key, row in pairs(rec.keys) do
+    if type(row) ~= "table" then rec.keys[key] = nil end
+  end
+  return rec
+end
+
 -- The key record kept for a set, { set, keys = { [key] = { before, after, by = { [character] = true } } } }, or
 -- nil. `by` names every character whose bars hold spells Vanguard placed for that key.
 local function recordFor(set)
   local rec = storeFor(set).keyRestore
-  return type(rec) == "table" and rec.set == set and type(rec.keys) == "table" and rec or nil
+  return type(rec) == "table" and rec.set == set and type(rec.keys) == "table" and cleanKeys(rec) or nil
 end
 
 -- The key record for a set, started when there is none.

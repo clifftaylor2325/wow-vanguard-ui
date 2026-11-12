@@ -106,10 +106,13 @@ function QA.TurnsIn()
 end
 
 -- Whether automation accepts the quest on offer: its switch is on (a quest shared by a player follows its
--- own), it does not flag you for PvP, which the game asks you about, and no item started it (that offer opened
--- while you looted, and takes your answer, never automation's). itemID is QUEST_DETAIL's questStartItemID.
+-- own), it does not flag you for PvP, which the game asks you about, no item started it (that offer opened
+-- while you looted, and takes your answer, never automation's), and it is not an adventure map's offer (the map's
+-- own Accept and Decline buttons take it: Blizzard_AdventureMap/AM_QuestDialog.lua). itemID is QUEST_DETAIL's
+-- questStartItemID.
 function QA.OffersAccept(itemID)
   local asked = ns.QuestParts.FlagsPVP() or ns.QuestParts.StartItem("QUEST_DETAIL", itemID)
+    or ns.CallIf(_G, "QuestIsFromAdventureMap") == true
   return QA.settings[fromPlayer() and "acceptShared" or "accept"] and not asked
 end
 

@@ -136,7 +136,7 @@ it("PlaceAction: an empty cursor leaves the slot alone, and a slot outside 1 to 
   addon.eval("__wfgWorld.setAction(5, { id = 133 }) PlaceAction(5)");
   expect([addon.eval("return { GetActionInfo(5) }"), addon.eval("return GetCursorInfo()")], "nothing in hand: nothing changes").toEqual([["spell", 133], null]);
   expect(addon.eval("return { (pcall(PlaceAction, 0)), (pcall(PlaceAction, 181)), (pcall(PlaceAction, 'x')), (pcall(PickupAction, 181)) }"), "bad slots raise").toEqual([false, false, false, false]);
-  expect(addon.eval("local _, err = pcall(PlaceAction, 181) return err"), "with the text IsEquippedAction uses (a guess for PlaceAction: unverified)").toMatch(/Invalid action slot$/);
+  expect(addon.eval("local _, err = pcall(PlaceAction, 181) return err"), "with the stub's own text (a guess for PlaceAction: unverified)").toMatch(/Invalid action slot$/);
   expect(addon.eval("return __wfgWorld.placed"), "the last slot asked for is kept").toBe(5);
 });
 

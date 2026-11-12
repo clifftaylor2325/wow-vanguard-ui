@@ -159,6 +159,20 @@ it("lifecycle: a live module whose Enable fails is reported and stays off; the n
   expect([addon.eval("return __tries"), live(addon, "TestBroken")]).toEqual([2, { TestBroken: true }]);
 });
 
+it("lifecycle: a live module that failed at login does not read 'Applies after the fight' when another switch moves in a fight", () => {
+  expectErrors("module TestBroken: broken on purpose");
+  const addon = lifeAddon("", `${MODULES}
+    local B = ns.Module("TestBroken", { defaults = {}, live = true })
+    __tries = 0
+    function B.Enable() __tries = __tries + 1 error("broken on purpose", 0) end
+    ns.Module("TestOther", { defaults = {}, live = true }).Enable = function() end`);
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("TestOther", false)');
+  expect(addon.eval('return { ns.ModuleAwaitsFight("TestBroken"), ns.ModuleAwaitsFight("TestOther"), ns.Options.ModuleNote("TestBroken") ~= "Applies after the fight" }'), "the failed module waits for nothing; the switched one does").toEqual([false, true, true]);
+  setCombat(addon, false);
+  expect([live(addon, "TestBroken"), addon.eval("return __tries")], "after the fight it is still off and was not tried again").toEqual([{ TestBroken: false }, 1]);
+});
+
 it("lifecycle: a module that requires one not registered before it is reported, and never runs", () => {
   expectErrors(/^module TestEarly: requires TestLater, which is not registered before it$/);
   const addon = lifeAddon("", `${MODULES}

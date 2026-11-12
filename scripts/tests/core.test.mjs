@@ -116,6 +116,27 @@ it("H44-28-2 /vg enable and disable: a live module's line has no /reload, a relo
   addon.slash("disable TESTONLY_Live");
   expect(chatHas(addon, /TESTONLY_Live disabled after the fight\./), "a switch made in a fight waits for it").toBe(true);
 });
+it("H46-10-10 /vg enable: a live module says enabled only when it runs; behind a parent that is off it says when it starts", () => {
+  const addon = loggedIn(`
+    ns.Module("TESTONLY_Parent", { Enable = function() end })
+    ns.Module("TESTONLY_Child", { live = true, requires = { "TESTONLY_Parent" }, Enable = function() end, Disable = function() end })
+  `, { savedVariables: "VanguardDB.profiles = { Default = { modules = { TESTONLY_Parent = false, TESTONLY_Child = false } } }" });
+  addon.slash("enable TESTONLY_Child");
+  expect(chatHas(addon, /TESTONLY_Child enabled\. It starts once TESTONLY_Parent is on\./), "parent off").toBe(true);
+  addon.slash("enable TESTONLY_Parent");
+  addon.clearChat();
+  addon.slash("enable TESTONLY_Child");
+  expect([chatHas(addon, /TESTONLY_Child enabled\. \/reload to apply\./), chatHas(addon, /TESTONLY_Child enabled\.$/)], "parent wanted but built only at the reload").toEqual([true, false]);
+});
+it("H46-10-10 /vg enable: a live module whose parent runs says enabled", () => {
+  const addon = loggedIn(`
+    ns.Module("TESTONLY_Parent", { Enable = function() end })
+    ns.Module("TESTONLY_Child", { live = true, requires = { "TESTONLY_Parent" }, Enable = function() end, Disable = function() end })
+  `, { savedVariables: "VanguardDB.profiles = { Default = { modules = { TESTONLY_Child = false } } }" });
+  addon.slash("enable TESTONLY_Child");
+  expect(chatHas(addon, /TESTONLY_Child enabled\.$/), "it runs now").toBe(true);
+  expect(addon.eval("return ns.ModuleMissingParent('TESTONLY_Child') == nil and ns.ModuleMissingParent('Nope') == nil"), "no parent missing").toBe(true);
+});
 it("H26-1-2 modules: ns.ModuleLive answers whether a module's frames are built this session, not its switch", () => {
   const addon = loggedIn(`
     ns.Module("TESTONLY_Early", { Enable = function() __early = { ns.ModuleLive("TESTONLY_Late"), ns.ModuleLive("TESTONLY_Off") } end })
@@ -255,6 +276,9 @@ it("/vg perf: says what it can without the game's counters", () => {
   expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
   expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
   expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch | slow [reset]]"]);
+  expect(said(addon, "perf Watch"), "the word is read in any case: the same answer as lower case").toEqual(said(addon, "perf watch"));
+  expect(said(addon, "perf CPU"), "perf CPU is the cpu switch, not the usage").toEqual(said(addon, "perf cpu"));
+  expect(said(addon, "perf SLOW RESET")[0], "perf SLOW RESET starts the timings over").toBe("Vanguard's handler timings start over.");
 });
 it("/vg frame: a frame's state, anchors and parents, and with deep its textures and child frames", () => {
   const addon = loggedIn();

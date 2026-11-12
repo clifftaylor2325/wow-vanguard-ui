@@ -4,7 +4,8 @@
 --   * /vg craft add [n]   queues n crafts (1 by default) of the recipe on display in the profession window;
 --   * /vg craft           lists the queue, with the reagents it still needs (bags and banks, as the game counts them for a craft);
 --   * /vg craft next      opens the first recipe in the profession window with its count typed in; you press Create;
---   * /vg craft stock     raises Keep stocked to what the queue needs and makes the Restock list (you buy);
+--   * /vg craft stock     raises Keep stocked to what the queue still needs in your bags (less what the banks and
+--                         other ranks hold) and makes the Restock list (you buy);
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
 --   * /vg craft top       the recipes you know that pay best per craft and per hour, from the prices;
 --   * /vg craft done|clear  takes the first craft off, or empties the queue.
@@ -128,26 +129,12 @@ local function needs()
   return total, ranks
 end
 
--- How many of a reagent you hold the way the game counts it for a craft: Retail through ItemUtil (bags, reagent bank and
--- warband bank), Forever in the bags and bank, as the Quest tracker counts a reagent.
-local function held(id)
-  if ns.IsForever() then return ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0 end
-  return ns.PlainNumber(ns.CallIf(ItemUtil, "GetCraftingReagentCount", id)) or 0
-end
-
--- How many of a reagent slot you hold across every quality rank (the game counts them all toward a craft).
-local function heldOf(ids)
-  local have = 0
-  for _, id in ipairs(ids) do have = have + held(id) end
-  return have
-end
-
 -- The reagents still short of what the queue needs: { id, short } in item order.
 function CQ.Short()
   local out = {}
   local total, ranks = needs()
   for id, qty in pairs(total) do
-    local have = heldOf(ranks[id])
+    local have = CR.Held(ranks[id])
     if have < qty then out[#out + 1] = { id = id, short = qty - have } end
   end
   table.sort(out, function(a, b) return a.id < b.id end)
@@ -200,12 +187,12 @@ function CQ.Next()
   ns.Chat(ns.Format(L["Next: {count} x {recipe}. Press Create in the profession window."], { count = e.n, recipe = recipeName(e) }))
 end
 
--- Keep stocked list raised to what the queue needs of each reagent, less what its other quality ranks already cover
--- (the count Short uses), so the two commands agree.
+-- Keep stocked list raised to what the queue needs of each reagent in your bags, less what the banks and its
+-- other quality ranks hold (the count Short uses), so the two commands agree.
 local function raiseStock(list)
   local total, ranks = needs()
   for id, qty in pairs(total) do
-    local want = qty - (heldOf(ranks[id]) - held(id))
+    local want = CR.StockGoal(id, ranks[id], qty)
     if want > 0 then list[id] = math.max(list[id] or 0, want) end
   end
 end

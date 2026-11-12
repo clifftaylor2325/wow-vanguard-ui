@@ -6,7 +6,8 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { loggedIn, RETAIL, setCombat } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY spells and the level each is trained at (remembered vanilla levels; Mortal Strike stands for a talent).
 const SPELLS = {
@@ -450,7 +451,7 @@ it("the question: a level below 10 alone doesn't ask, reaching 10 does; never wh
 });
 
 it("on a retail client nothing is asked or written", () => {
-  const addon = warrior({ client: RETAIL, level: 12 });
+  const addon = warrior({ client: RETAIL_CLIENT, level: 12 });
   kn(addon, `KN.Applied(${PRESET}, true)`);
   learn(addon, 772);
   expect([slots(addon, [2]), addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false")]).toEqual([[0], false]);

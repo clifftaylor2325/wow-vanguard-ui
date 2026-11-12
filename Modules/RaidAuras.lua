@@ -167,13 +167,24 @@ end
 
 -- Indicators ------------------------------------------------------------------------------
 
+-- The top of a slot at y in a column left of the first: under the name row and a status at its right too, which
+-- reach over that column (the first stays under the missing-buff mark, clear of both).
+local function underTexts(z, y)
+  local top = math.max(y, z.name[2] + z.name[4] + 1)
+  if z.status[5] == "RIGHT" then top = math.max(top, z.status[2] + z.status[4] + 1) end
+  return top
+end
+
 -- Where slot n sits: the tile's right edge under the missing-buff mark, filling down as far as the
--- icon strip allows, then a column to the left. Nil when not even one fits.
+-- icon strip allows, then a column to the left under the texts. Nil when it doesn't fit above the strip.
 local function indicatorSlot(z, n)
   local step, y0 = RA.IND_SIZE + 1, z.missing[2] + z.missing[4] + 1
   local rows = math.floor((z.debuffs[2] - y0) / step)
   if rows < 1 then return nil end
-  return 2 + math.floor((n - 1) / rows) * step, y0 + ((n - 1) % rows) * step
+  local column, y = math.floor((n - 1) / rows), y0 + ((n - 1) % rows) * step
+  if column > 0 then y = underTexts(z, y) end
+  if y + RA.IND_SIZE > z.debuffs[2] then return nil end
+  return 2 + column * step, y
 end
 
 -- Slot n's container spec on tile b, or nil when the slot is off or doesn't fit.

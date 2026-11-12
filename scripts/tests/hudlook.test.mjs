@@ -116,6 +116,45 @@ it("H45-D-G3A4 a HUD look picked in a fight is dropped when the profile changes 
   expect(addon.eval("return ns.Theme.Settings().hudLook"), "the new profile keeps its own look").toBe("shield");
 });
 
+// A theme reset in a fight (H46-4-1): the frames keep the look in use until the fight ends, then change in one step.
+const LOOK_STATE = `local T = ns.Theme
+  local out = { T.HudLook() }
+  for _, key in ipairs({ "player", "target" }) do
+    local f = _G["Vanguard_" .. key]
+    local p, _, rel = f.healthText:GetPoint(1)
+    out[#out + 1] = key .. " " .. tostring(T.CornerLook(f, "TOPRIGHT")) .. " reverse=" .. tostring(f.health:GetReverseFill() == true) .. " text=" .. p .. ">" .. rel
+  end
+  return out`;
+
+it("H46-4-1 Reset theme in a fight keeps the look in use until the fight ends, then lands it in one step", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline", accent = { 0.1, 0.9, 0.1, 1 } } } } }' });
+  const before = addon.eval(LOOK_STATE);
+  setCombat(addon, true);
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval(LOOK_STATE), "plates and bars stay together in the fight").toEqual(before);
+  expect(addon.eval("return ns.Theme.Settings().accent[1]"), "the rest of the theme is reset at once").not.toBe(0.1);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook")).toBe("shield");
+  expect(addon.eval(LOOK_STATE)[0]).toBe("shield");
+});
+
+it("H46-4-1 a look picked earlier in the fight gives way to the reset's, and a reset out of a fight only drops a stale pick", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline" } } } }' });
+  addon.slash("");
+  setCombat(addon, true);
+  addon.eval('__click("HUD look")');
+  addon.eval("ns.Options.ResetTheme()");
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "the reset's look, not the old pick").toBe("shield");
+  addon.eval('ns.Theme.Settings().hudLook = "plain"');
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval("return ns.Theme.HudLook()"), "out of a fight it applies at once").toBe("shield");
+  setCombat(addon, true);
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval("return ns.Theme.HudLook()"), "already the default in a fight: nothing to hold back").toBe("shield");
+  setCombat(addon, false);
+});
+
 it("the point's line is the one baked nearest its depth, cropped to that depth and flipped to its corner", () => {
   const addon = loggedIn();
   expect(addon.eval("return ns.Theme.POINT_DEPTHS")).toEqual([12, 14, 16, 18, 20, 22, 24, 30, 36]);
@@ -240,7 +279,7 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   expect([addon.eval("return ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT')"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), rows(addon, "player").outlined], "the cast bar is square, no plinth, shadowed text").toEqual([null, false, false]);
   // The cast bars' default y, less the block's rise on this canvas (Core/Layout.lua HudLift).
   const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
-  expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift()")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
+  expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift(Vanguard_target)")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
   addon.eval('Vanguard_target.name:SetText("TEST-ONLY A very long name that no tab holds") ns.GetModule("UnitFrames").FitTab(Vanguard_target)');
   expect(addon.eval("return Vanguard_target.tab:GetWidth() <= 120 + ns.Theme.Pixel(Vanguard_target)"), "a long name's tab stops at half the frame (whole pixels)").toBe(true);
   addon.eval("__wfgStub.setScreen(1229, 768)");
@@ -253,6 +292,26 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
   addon.eval('ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
   expect([tab(addon, "player").shown, tab(addon, "player").home, tab(addon, "player").crown, castY()], "Shield: the tabs go, the name back on the bar, the crown on the frame, the cast bars back down").toEqual([false, "health", "frame", [262, 324]]);
+});
+
+// H46-13-3: the target's and focus's cast bars' default y on a 1920x1080 canvas, less the block's rise there (Core/Layout.lua HudLift).
+const CAST_Y_LUA = "local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }";
+
+it("H46-13-3: under Tabs a cast bar rises only over a frame that wears its tab: the Versus deck's target drops it, and the bar comes down with it", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("tabs"));
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  expect(addon.eval(CAST_Y_LUA), "deck on: the target's bar at its Plain spot, the focus's (tabbed) 18 up").toEqual([262, 324 + 18]);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
+  expect(addon.eval(CAST_Y_LUA), "deck off: both 18 up again").toEqual([262 + 18, 324 + 18]);
+});
+
+it("H46-13-3: under Tabs the focus's cast bar keeps its Plain spot under The keep and Standards, whose focus wears no tab", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("tabs"));
+  // The focus's cast bar's default y now.
+  const focusY = () => addon.eval(CAST_Y_LUA)[1];
+  const centered = focusY();
+  const laidOut = ["fort", "standards"].map((layout) => { addon.eval(`ns.SetHudLayout("${layout}")`); return [addon.eval("return Vanguard_focus.tab ~= nil and Vanguard_focus.tab:IsShown()"), focusY()]; });
+  expect([centered, laidOut], "Centered: 18 up; the keep and Standards: no focus tab, no lift").toEqual([324 + 18, [[false, 324], [false, 324]]]);
 });
 
 // The keystone as drawn (TEST-ONLY reads): shown, its anchors, the rail, the ring and the swords.
@@ -280,6 +339,64 @@ it("Tabs: the party and boss stacks spread by the tab's height so each tab stand
   setCombat(addon, false);
   const back = addon.eval(STACK_LUA);
   expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot back to its Plain place").toEqual([true, Math.round(plainFoot)]);
+});
+
+// H46-3-1: the raid grid on the default profile (the raid frames show the party) under a look, on a 1920x1080 canvas.
+const raidLogin = (look, extra = "") => loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV,
+  { savedVariables: `VanguardDB = { profiles = { Default = { theme = { hudLook = "${look}" }${extra} } } }` });
+// The focus cast bar's and the raid holder's rects (left, right, bottom, top) and the raid spot's y, with the grid
+// arranged for n players (TEST-ONLY reads).
+const raidRects = (addon, n) => addon.eval(`local RF = ns.GetModule("RaidFrames") RF.Arrange(${n})
+  local c, r = Vanguard_CastBar_focus, Vanguard_RaidHolder
+  return { { c:GetLeft(), c:GetRight(), c:GetBottom(), c:GetTop() }, { r:GetLeft(), r:GetRight(), r:GetBottom(), r:GetTop() }, select(4, ns.MoverPoint("raid")) }`);
+// Whether two rects (left, right, bottom, top) overlap by more than a rounding hair.
+const covers = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01;
+
+it("H46-3-1: under the Tabs look the raid grid's spot for a party and a raid of ten rises 12 units, so the focus's lifted cast bar stays clear of its foot; a big raid keeps its spot", () => {
+  const addon = raidLogin("tabs");
+  const tabs = [5, 10, 25, 40].map((n) => raidRects(addon, n));
+  expect(addon.eval("return Vanguard_party1 == nil"), "the raid frames show the party: no party column").toBe(true);
+  expect(tabs.map(([bar, grid]) => covers(bar, grid)), "the focus's cast bar covers no tile in a party or a raid of ten; a big raid keeps the overlap (its top would meet the main tanks at 1365 x 768)").toEqual([false, false, true, true]);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  const plain = [5, 10, 25, 40].map((n) => raidRects(addon, n));
+  expect(tabs.map((t, i) => t[2] - plain[i][2]), "back to Plain, the party and ten-player spot comes down the 12 units").toEqual([12, 12, 0, 0]);
+  expect(plain.map(([bar, grid]) => covers(bar, grid)), "and the Plain bar stays clear").toEqual([false, false, false, false]);
+});
+
+it("H46-3-1: the raid grid's raised spot is one table per spot and lift, so a roster change sets the mover default only when the spot changes", () => {
+  const addon = raidLogin("tabs");
+  addon.eval("local RF = ns.GetModule('RaidFrames') RF.Arrange(5) __sets = 0 local set = ns.SetMoverDefault ns.SetMoverDefault = function(...) __sets = __sets + 1 return set(...) end RF.Arrange(5) RF.Arrange(10) RF.Arrange(40) RF.Arrange(25)");
+  expect(addon.eval("return __sets"), "none for a party again or a raid of ten, one for the big raid's spot, none for 25 after 40").toBe(1);
+});
+
+it("H46-3-1: a look change in a fight moves the raid grid when it ends (its secure header hangs on the holder), and a saved spot still wins", () => {
+  const addon = raidLogin("plain");
+  // The raid holder's foot now.
+  const y = () => addon.eval("return Vanguard_RaidHolder:GetBottom()");
+  const plain = y();
+  setCombat(addon, true);
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(y(), "in a fight the holder waits").toBe(plain);
+  setCombat(addon, false);
+  expect(y() - plain, "after it, 12 units higher").toBe(12);
+  const moved = raidLogin("plain", ', positions = { raid = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 500 } }');
+  const savedY = moved.eval("return Vanguard_RaidHolder:GetBottom()");
+  moved.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(moved.eval("return Vanguard_RaidHolder:GetBottom()"), "a dragged grid stays put under Tabs").toBe(savedY);
+});
+
+it("H46-A-G2: a HUD layout change places the raid grid and the Party pets column again, since the grid rises only while the focus wears its tab", () => {
+  const addon = raidLogin("tabs", ', hudLayout = "fort", PartyExtras = { show = true }');
+  // The raid spot's y and the Party pets column's y, read without arranging the grid again.
+  const spot = () => addon.eval('return select(4, ns.MoverPoint("raid"))');
+  const column = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
+  addon.eval('ns.GetModule("RaidFrames").Arrange(5)');
+  const [keepSpot, keepColumn] = [spot(), column()];
+  addon.eval("ns.SetHudLayout(nil)");
+  expect(spot() - keepSpot, "Centered: the focus wears its tab, the grid's spot rises 12").toBe(12);
+  expect(column(), "and the Party pets column moves with it").not.toBe(keepColumn);
+  addon.eval('ns.SetHudLayout("fort")');
+  expect([spot(), column()], "back under the keep: both come down again").toEqual([keepSpot, keepColumn]);
 });
 
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {
@@ -341,6 +458,17 @@ it("the keystone hides while the Cooldown Manager's essential row sits across it
   expect(keystone(addon).shown, "the row back out of the way: it shows").toBe(true);
   addon.eval("local h = EssentialCooldownViewer.GetTop EssentialCooldownViewer.GetTop = function() return { __secret = true } end ns.GetModule('UnitFrames').Keystone.Apply() EssentialCooldownViewer.GetTop = h");
   expect([keystone(addon).shown, addon.eval("return #ns.errors")], "a hidden rectangle counts as no overlap, without an error").toEqual([true, 0]);
+});
+
+// GameTools shrinks the row to fit its spot, so its own edges are in its scaled units: the keystone compares screen
+// units (edge times GetEffectiveScale; Blizzard_SharedXMLBase/FrameUtil.lua GetScaledCenter, both clients).
+it("the keystone hides under an essential row wider than its spot, which Vanguard shrinks to fit", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + "EssentialCooldownViewer:SetSize(1200, 32)", NO_RAID);
+  addon.eval('ns.SetMoverPoint("cdm_essential", "BOTTOM", "BOTTOM", 0, 310)');
+  expect(addon.eval("return EssentialCooldownViewer:GetScale() < 1"), "the row runs shrunk").toBe(true);
+  expect(keystone(addon).shown, "the shrunk row across the gap: the keystone waits").toBe(false);
+  addon.eval('__wfgWorld.holdSecret(EssentialCooldownViewer, "Scale") ns.GetModule("UnitFrames").Keystone.Apply()');
+  expect([keystone(addon).shown, addon.eval("return #ns.errors")], "a hidden scale counts as no overlap, without an error").toEqual([true, 0]);
 });
 
 it("the keystone waits for the fight to end before it changes, and is left unmade with the unit frames off", () => {

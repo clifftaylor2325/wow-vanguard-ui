@@ -241,6 +241,160 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
 });
+// The keep puts your target's side of the wall 500 units right of centre (12 past its cast bar, with 38-unit buttons);
+// the bag and menu bar's default spot is the bottom right corner, 412 wide and 16 in here, so the keep holds only where
+// the two clear (ns.KeepNeed: 1856 wide). The target's aura
+// rows wrap at its frame's width (Modules/FrameAuras.lua lineWidth: 200 under the keep once built there), so they are
+// checked at that width, not ATTACHED's Centered 240.
+const KEEP_RIGHT = ["uf_target", "uf_targettarget", "cast_target", "targetDebuffs", "targetBuffs"];
+it("setup layouts: under The keep the bag and menu bar stays clear of your target's side of the wall on every canvas", () => {
+  const addon = wholeHud();
+  addon.eval('ns.Setup.ApplyLayout("fort")');
+  for (const [sw, sh] of [[1365, 768], [1536, 864], [1600, 900], [1707, 960], [1855, 1043], [1856, 1044], [1920, 1080]]) {
+    canvasAt(addon, sw, sh);
+    const rects = layoutRects(addon, 0, sw, sh);
+    for (const row of ["targetDebuffs", "targetBuffs"]) if (rects[row]) rects[row].r = rects[row].l + (rects.uf_target.r - rects.uf_target.l);
+    const wall = addon.eval("local w = Vanguard_Keep return w and w:IsShown() and { l = w:GetLeft(), b = w:GetBottom(), r = w:GetRight(), t = w:GetTop() } or false");
+    const parts = KEEP_RIGHT.filter((k) => rects[k] && overlaps(rects[k], rects.menustrip));
+    expect([addon.eval("return ns.LayoutHolds()"), wall && overlaps(wall, rects.menustrip), parts], `${sw}x${sh}: the keep holds from 1856 wide, and the wall and your target's side clear the bag and menu bar`).toEqual([sw >= 1856, false, []]);
+  }
+});
+// The HUD layouts measure themselves (H46-13-100 to 104): on each canvas a screen gives at the game's UI scale (768
+// tall: 1024 for 4:3, 1365 for 16:9, 1834 for 3440 x 1440) or with Pixel-perfect (1600 x 900 to 3440 x 1440), at the
+// button sizes setup's presets write (38; 43 on 1080p and 50 on 1440p with Pixel-perfect), a layout either gives way
+// to Centered (whose own tests above cover it) or what it places stays clear of everything else, solo to 40-man.
+const MEASURED_CANVASES = [[1024, 768], [1365, 768], [1834, 768], [1600, 900], [1920, 1080], [2560, 1440], [3440, 1440]];
+const MEASURED_SIZES = [38, 43, 50];
+// The movers each layout places, and the rows that ride them (read from the addon, not ATTACHED: the rows wrap at the
+// layout's line and hang from a banner's name line), with the keep's wall itself.
+const PLACED = {
+  fort: ["uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "chat", "combo", "targetBuffs", "targetDebuffs", "focusDebuffs", "keep"],
+  standards: ["uf_player", "uf_target", "uf_focus", "uf_pet", "uf_focustarget", "uf_targettarget", "cast_target", "combo", "targetBuffs", "targetDebuffs", "focusDebuffs"],
+};
+// What the wall holds or stands behind on purpose: the frames on it, the bars and the vehicle exit beside bar 1, your
+// cast bar (in the gatehouse) and the rows that ride the frames on it.
+const ON_THE_WALL = new Set(["uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "bar1", "bar2", "bar3", "vehicleexit", "cast_player", "combo", "targetBuffs", "targetDebuffs", "focusDebuffs"]);
+// The rows' real reach (TEST-ONLY reads), in UIParent's units: each aura container's every icon it can show (the
+// first maxFrameCount of a group's buttons: the client makes them ten at a time whatever the cap, and the cap is all
+// that shows, Blizzard_CustomAuraContainer.lua:286-304) flowed from its anchor corner at the line it was built with
+// (Blizzard_SharedXMLBase/AnchorUtil.lua AnchorUtil.ApplyFlowLayout: a new line when the next icon passes the line
+// size), down for debuffs, up for buffs;
+// the combo points' row (Modules/ComboPoints.lua: 5 pips of 14 + 3, 2 over the frame's crown); the keep's wall.
+const RIDERS_LUA = `local UF, CP = ns.GetModule("UnitFrames"), ns.GetModule("ComboPoints")
+  local function scale(f) return f:GetEffectiveScale() / UIParent:GetEffectiveScale() end
+  local function extent(c)
+    local line, x, w, h, lineH = c.__flowLine or math.huge, 0, 0, 0, 0
+    for _, g in ipairs(c.__groups or {}) do
+      local gap, cap = g.opts.layout.elementSpacing or 0, g.opts.maxFrameCount or math.huge
+      for i, b in ipairs(g.buttons) do if i <= cap then
+        if x > 0 and x + b:GetWidth() > line then h, x, lineH = h + lineH + gap, 0, 0 end
+        x, lineH = x + b:GetWidth() + gap, math.max(lineH, b:GetHeight())
+        w = math.max(w, x - gap)
+      end end
+    end
+    return w, h + lineH
+  end
+  local function row(f, kind)
+    local c = f and f[kind] and f[kind].frame
+    if not (c and c.__groups and c:GetLeft()) then return nil end
+    local s, w, h = scale(c), extent(c)
+    if kind == "buffs" then return { l = c:GetLeft() * s, b = c:GetBottom() * s, r = (c:GetLeft() + w) * s, t = (c:GetBottom() + h) * s } end
+    return { l = c:GetLeft() * s, b = (c:GetTop() - h) * s, r = (c:GetLeft() + w) * s, t = c:GetTop() * s }
+  end
+  local crown, s = UF.Crown(Vanguard_player), scale(Vanguard_player)
+  local combo = CP and CP.bar and CP.bar:GetLeft() and { l = CP.bar:GetLeft() * s, b = CP.bar:GetBottom() * s, r = CP.bar:GetRight() * s, t = CP.bar:GetTop() * s }
+    or { l = crown:GetLeft() * s, b = crown:GetTop() * s + 2, r = crown:GetLeft() * s + 85, t = crown:GetTop() * s + 16 }
+  local k = Vanguard_Keep
+  return { targetBuffs = row(Vanguard_target, "buffs"), targetDebuffs = row(Vanguard_target, "debuffs"), focusDebuffs = row(Vanguard_focus, "debuffs"), combo = combo,
+    keep = k and k:IsShown() and { l = k:GetLeft(), b = k:GetBottom(), r = k:GetRight(), t = k:GetTop() } or nil }`;
+// Every part's rect under a HUD layout: the movers as layoutRects reads them, the riders as the addon has them.
+function measuredRects(addon, n, sw, sh) {
+  const rects = layoutRects(addon, n, sw, sh);
+  for (const key of Object.keys(ATTACHED)) delete rects[key];
+  for (const [key, r] of Object.entries(addon.eval(RIDERS_LUA))) if (r) rects[key] = r;
+  return rects;
+}
+// Whether a pair is the keep's wall over something it holds or stands behind on purpose.
+const wallHolds = (a, c) => (a === "keep" && ON_THE_WALL.has(c)) || (c === "keep" && ON_THE_WALL.has(a));
+// The overlapping pairs on one screen with one of a layout's parts in them (the wall against what it doesn't hold),
+// and its parts off screen.
+function screenProblems(rects, layout, sw, sh) {
+  const mine = new Set(PLACED[layout]), keys = Object.keys(rects), bad = [];
+  keys.forEach((a, i) => keys.slice(i + 1).forEach((c) => {
+    if ((mine.has(a) || mine.has(c)) && overlaps(rects[a], rects[c]) && !dialogMayCover(a, c) && !wallHolds(a, c)) bad.push(`${a} / ${c}`);
+  }));
+  for (const k of PLACED[layout]) { const r = rects[k]; if (r && (r.l < 0 || r.b < 0 || r.r > sw || r.t > sh)) bad.push(`${k} off screen`); }
+  return bad;
+}
+// Problems with what a layout places on one screen, solo to 40-man, each once.
+function placedProblems(addon, layout, sw, sh, label) {
+  const bad = new Set();
+  for (const grow of ["columns", "rows"]) {
+    addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
+    for (const n of [0, 5, 25, 40]) for (const p of screenProblems(measuredRects(addon, n, sw, sh), layout, sw, sh)) bad.add(`${label}: ${p}`);
+  }
+  return [...bad];
+}
+// The keep's frames and bars that are not wholly inside its wall, in UIParent's units (a frame scaled by your role
+// counts at its size on screen).
+const OUTSIDE_WALL_LUA = `local w, out = Vanguard_Keep, {}
+  for _, k in ipairs({ "uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "bar1", "bar2", "bar3" }) do
+    local f = ns.MoverFrame(k)
+    local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    if f:GetLeft() * s < w:GetLeft() or f:GetRight() * s > w:GetRight() or f:GetBottom() * s < w:GetBottom() or f:GetTop() * s > w:GetTop() then out[#out + 1] = k end
+  end
+  return out`;
+// The keep's frames and bars outside its wall on one screen, labelled (none under another layout).
+function outsideWall(addon, layout, label) {
+  if (layout !== "fort") return [];
+  return Object.values(addon.eval(OUTSIDE_WALL_LUA) ?? {}).map((k) => `${label}: ${k} outside the wall`);
+}
+// One measured canvas and button size under a layout: whether it holds, and its problems where it does (where it
+// doesn't, the frames stand at their Centered spots).
+function measuredCase(addon, layout, sw, sh, size) {
+  addon.eval(`local AB = ns.GetModule("ActionBars") AB.settings.size = ${size} for n in pairs(AB.bars) do AB.SettingChanged(n, "size") end`);
+  canvasAt(addon, sw, sh);
+  // The aura rows are made again at the layout's line once the sizes settle (Modules/FrameAuras.lua FA.SETTLE).
+  addon.eval("__wfgStub.advance(0.5)");
+  const holds = addon.eval("return ns.LayoutHolds()"), label = `${layout} ${sw}x${sh} size ${size}`;
+  return { sw, sh, size, holds, bad: holds ? placedProblems(addon, layout, sw, sh, label).concat(outsideWall(addon, layout, label)) : [] };
+}
+// Each measured canvas and button size under a layout.
+function measuredRun(layout) {
+  const out = [];
+  for (const [sw, sh] of MEASURED_CANVASES) {
+    const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `);
+    addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
+    for (const size of MEASURED_SIZES) out.push(measuredCase(addon, layout, sw, sh, size));
+  }
+  return out;
+}
+// Under the keep the chat window still lands on the focus target, the pet's and focus's cast bars, the pet bar, the
+// Cooldown Manager's rows, the quest dialog and the raid grid's foot (H46-13-R3, left for Cliff: its picked fix put
+// the Centered chat under the wall's left end); the pairs with it are set aside here, not counted as clear.
+const keepChat = (p) => /: chat \/ |\/ chat$/.test(p);
+it("H46-13-100 H46-13-101 setup layouts: The keep measures itself: where it holds, its frames clear the bars and everything else and stand inside the wall, at every canvas and button size; elsewhere it gives way", () => {
+  const runs = measuredRun("fort");
+  expect(runs.filter((r) => r.holds).map((r) => `${r.sw}x${r.sh} ${r.size}`), "it holds where its frames, out with the bars, clear the bag and menu bar").toEqual(["1920x1080 38", "1920x1080 43", "2560x1440 38", "2560x1440 43", "2560x1440 50", "3440x1440 38", "3440x1440 43", "3440x1440 50"]);
+  expect(runs.flatMap((r) => r.bad.filter((p) => !keepChat(p)))).toEqual([]);
+});
+// What Standards still meets, set aside here and not counted as clear: the raid grid's foot and the quest dialog over
+// the big banners' tops, their name lines and what rides them (H46-13-R4, left for Cliff: lowering the banners runs
+// their debuff rows into the Cooldown Manager's row); in the same band, with seven or more debuffs on your target (six
+// on the focus), the rows' second line meets the Cooldown Manager's main row on a canvas 1080 tall or taller, and with
+// buttons over 38 on a shorter one bar 1; the vehicle exit button (in a vehicle only) touches the target's rows by a unit.
+const STANDARDS_TOP = /(raid|questdialog) \/ (uf_player|uf_target|combo|targetBuffs)|(uf_player|uf_target|combo|targetBuffs) \/ (raid|questdialog)/;
+// Whether a pair on a run is one of those Standards still has.
+const standardsLeft = (p, r) => STANDARDS_TOP.test(p) || (r.sh >= 1080 && /cdm_essential \/ (focus|target)Debuffs/.test(p))
+  || (r.size > 38 && r.sh < 1080 && /bar1 \/ (focus|target)Debuffs/.test(p)) || /vehicleexit \/ targetDebuffs/.test(p);
+// The test's model, not an overlap: the pet's cast bar ends where the focus target's banner starts (x 710 at 1920 wide),
+// and pixel rounding puts the two edges a fraction of a unit into each other.
+const standardsModel = (p) => /cast_pet \/ uf_focustarget/.test(p);
+it("H46-13-103 H46-13-104 setup layouts: Standards measures itself: where it holds, its banners and their rows clear the bars and everything else, at every canvas and button size; elsewhere it gives way", () => {
+  const runs = measuredRun("standards");
+  expect(runs.filter((r) => !r.holds).map((r) => `${r.sw}x${r.sh} ${r.size}`), "it gives way only on a canvas under 1180 wide").toEqual(["1024x768 38", "1024x768 43", "1024x768 50"]);
+  expect(runs.flatMap((r) => r.bad.filter((p) => !standardsLeft(p, r) && !standardsModel(p)))).toEqual([]);
+});
 // The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
 // narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
 const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras", "chat"];
