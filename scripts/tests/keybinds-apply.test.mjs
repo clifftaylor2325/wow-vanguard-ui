@@ -864,3 +864,9 @@ it("H45-6-103 the note stays quiet for the account's keys and for a character ke
   ka(own, "return KA.PutBackAll()");
   expect(chatHas(own, OWN_KEYS_NOTE), "the player's own key set").toBe(false);
 });
+
+it("H46-20-1 a damaged key row in the saved record is dropped, so putting back raises no error", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { version = 2, profiles = {}, setupDone = true, keyRestore = { set = 1, keys = { F = true } } }\nVanguardCharDB = {}\n" });
+  expect(addon.eval('return ns.KeybindsApply.PutBackAll() ~= nil or true')).toBe(true);
+  expect(ka(addon, 'return KA.Changed("F")'), "a key that holds no record reads as unchanged").toBe(false);
+});
