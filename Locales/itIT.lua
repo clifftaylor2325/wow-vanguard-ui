@@ -2836,6 +2836,7 @@ L["ui scale resolution crisp blurry"] = "scala interfaccia risoluzione nitido sf
 L["under the vendor price"] = "sotto il prezzo del mercante"
 L["unit frames"] = "riquadri delle unità"
 L["unknown"] = "sconosciuto"
+L["unknown (this client has no channel list)"] = "sconosciuto (questo client non ha un elenco dei canali)"
 L["unknown action"] = "azione sconosciuta"
 L["use a profile whenever you're in this specialization"] = "usa un profilo ogni volta che sei in questa specializzazione"
 L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] = "versione, profilo, moduli, skin, lavoro in attesa della fine del combattimento, cosa offre il client, restrizioni del gioco"
