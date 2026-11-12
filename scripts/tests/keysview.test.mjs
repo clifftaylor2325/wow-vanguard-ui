@@ -176,6 +176,7 @@ it("your keys: a modifier let go while the card was closed does not stick", () =
   addon.keys({ alt: false });
   addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
   expect(showing(addon)).toBe("none");
+  expect(cap(addon, "Q").chord, "the keys are repainted for no modifier, not left on Alt").toBe("Q");
 });
 
 it("your keys: a changed binding or slot repaints the open card, and a closed one is left alone", () => {

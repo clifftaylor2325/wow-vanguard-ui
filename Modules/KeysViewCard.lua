@@ -185,9 +185,18 @@ local function cardShown()
   return view.keyboard ~= nil and view.keyboard:IsVisible()
 end
 
--- The card was opened: shows the tab for the modifier held now (one let go while it was closed).
+-- Repaints the card's three rows (not the whole page).
+local function refreshCard()
+  for _, r in ipairs({ view.tabs, view.keyboard, view.list }) do r:Refresh() end
+end
+
+-- The card was opened: shows the tab for the modifier held now (one let go while it was closed), and repaints the
+-- rows when that tab differs, since the page was painted for the old one before the card showed.
 local function syncTab()
-  KV.tab = wantedTab()
+  local tab = wantedTab()
+  if tab == KV.tab then return end
+  KV.tab = tab
+  refreshCard()
 end
 
 -- The keyboard row kind: the card's keyboard, painted with what every key does now.
@@ -196,11 +205,6 @@ local function keyboardBuilder(parent, _, width)
   r:HookScript("OnShow", ns.Guard("show keys card", syncTab))
   view.keyboard = r
   return r
-end
-
--- Repaints the card's three rows (not the whole page).
-local function refreshCard()
-  for _, r in ipairs({ view.tabs, view.keyboard, view.list }) do r:Refresh() end
 end
 
 -- Picks a tab, which stays the one shown after a modifier is let go.
