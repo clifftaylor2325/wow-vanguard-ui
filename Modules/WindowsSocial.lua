@@ -508,8 +508,8 @@ local function dressGuildPages(frame)
   dressCommunitiesList(frame.CommunitiesList)
   dressBenefits(frame.GuildBenefitsFrame)
   dressGuildDetails(frame.GuildDetailsFrame)
-  GW.HookAfter(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
-  GW.HookAfter(_G, "CommunitiesGuildInfoFrame_HideChallenges", resectionHeader)
+  GW.HookGlobalOnce("CommunitiesGuildInfoFrame_UpdateText", "guild info text", noteGuildInfo)
+  GW.HookGlobalOnce("CommunitiesGuildInfoFrame_HideChallenges", "guild info header", resectionHeader)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end
 
