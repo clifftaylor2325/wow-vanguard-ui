@@ -27,9 +27,13 @@ function LY.Stacked(f)
 end
 
 -- The movers the keep is pinned to, by the edge each holds up. A spot you dragged one to answers per edge: your
--- frame, your target's or the focus moved hides the wall and gatehouse; bar 1 moved puts the wall's top on your
--- frame (and hides the gatehouse, which stands on the bar); your cast bar moved hides the gatehouse.
-LY.KEEP_PINS = { uf_player = "wall", uf_target = "wall", uf_focus = "wall", bar1 = "parapet", cast_player = "gate" }
+-- frame, your target's, the focus, the target of target or the target's cast bar moved hides the wall and gatehouse;
+-- bar 1 moved puts the wall's top on your frame (and hides the gatehouse, which stands on the bar); your cast bar
+-- moved hides the gatehouse.
+LY.KEEP_PINS = {
+  uf_player = "wall", uf_target = "wall", uf_focus = "wall", uf_targettarget = "wall", cast_target = "wall",
+  bar1 = "parapet", cast_player = "gate",
+}
 
 -- Whether a frame the wall's sides or foot are pinned to has a spot you dragged it to.
 local function wallMoved()
@@ -57,19 +61,16 @@ local function parapetFrame()
   return parapetBar() or UF.frames.player
 end
 
--- The frame the wall's foot follows: the focus frame under yours, else your frame.
-local function footFrame()
-  return UF.frames.focus or UF.frames.player
-end
-
--- Pins the wall ns.KEEP.pad past your frame's left edge, your target's right edge, the bars' top and the focus's bottom.
+-- Pins the wall ns.KEEP.pad past the outermost and lowest frames it holds: the focus's left edge (your frame's, scaled
+-- by your role, stands inside it), the target's cast bar's right edge (else your target's), the bars' top and the
+-- target of target's bottom (else the focus's), each the frame itself while it is built, else the one it stands for.
 local function anchorWall(w)
-  local pad = ns.KEEP.pad
+  local pad, f = ns.KEEP.pad, UF.frames
   w:ClearAllPoints()
-  w:SetPoint("LEFT", UF.frames.player, "LEFT", -pad, 0)
-  w:SetPoint("RIGHT", UF.frames.target, "RIGHT", pad, 0)
+  w:SetPoint("LEFT", f.focus or f.player, "LEFT", -pad, 0)
+  w:SetPoint("RIGHT", ns.MoverFrame("cast_target") or f.target, "RIGHT", pad, 0)
   w:SetPoint("TOP", parapetFrame(), "TOP", 0, pad)
-  w:SetPoint("BOTTOM", footFrame(), "BOTTOM", 0, -pad)
+  w:SetPoint("BOTTOM", f.targettarget or f.focus or f.player, "BOTTOM", 0, -pad)
 end
 
 -- Your cast bar while the gatehouse can hold it: in its own spot over the first bar the wall's top follows; else nil.

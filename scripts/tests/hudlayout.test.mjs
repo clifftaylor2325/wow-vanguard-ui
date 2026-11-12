@@ -50,11 +50,11 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   canvas(addon, 1024, 768);
   expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }"), addon.eval("return ns.LayoutSize('uf_player') == nil")], "on a canvas too narrow for the keep it doesn't hold: the modules' spots and sizes").toEqual([false, ["BOTTOM", "BOTTOM", -240, 196], true]);
   addon.eval(MENU_LUA);
-  canvas(addon, 1835, 768);
-  expect([addon.eval("return ns.KeepNeed(1835)"), addon.eval("return ns.LayoutHolds()")], "the wall's right end (490 out) must clear the bag and menu bar's 428 in the corner: 1836 wide, so 1835 doesn't hold").toEqual([1836, false]);
-  expect(addon.eval("local s = ns.MoverFrame('menustrip') s.GetLeft = function() return __wfgWorld.secret(1427) end local need = ns.KeepNeed(1835) s.GetLeft = nil return need"), "a bag and menu bar whose edge the client hides takes no room").toBe(1100);
-  canvas(addon, 1836, 768);
-  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1836 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
+  canvas(addon, 1855, 768);
+  expect([addon.eval("return ns.KeepNeed(1855)"), addon.eval("return ns.LayoutHolds()")], "the wall's right end (500 out) must clear the bag and menu bar's 428 in the corner: 1856 wide, so 1855 doesn't hold").toEqual([1856, false]);
+  expect(addon.eval("local s = ns.MoverFrame('menustrip') s.GetLeft = function() return __wfgWorld.secret(1427) end local need = ns.KeepNeed(1855) s.GetLeft = nil return need"), "a bag and menu bar whose edge the client hides takes no room").toBe(1100);
+  canvas(addon, 1856, 768);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1856 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
   addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -200)");
   canvas(addon, 1365, 768);
   expect([addon.eval("return ns.KeepNeed(1365)"), addon.eval("return ns.LayoutHolds()")], "the bag and menu bar dragged out of the corner: the keep holds on a 16:9 screen at the game's UI scale again").toEqual([1100, true]);
@@ -73,7 +73,7 @@ it("HUD layouts: picking one forgets where a placed frame stood and what it was 
   addon.eval("ns.SetHudLayout('fort')");
   expect(addon.eval(`local p = VanguardDB.profiles.Default.positions.cast_target
     return { ns.MoverSaved('cast_target'), p.rel == nil, p.match.width, p.scale, p.alpha, { ns.MoverPoint('cast_target') } }`),
-  "the keep: its spot and its anchor link forgotten (the keep's spot applies), its scale, opacity and matched width kept").toEqual([false, true, "uf_target", 1.2, 0.6, ["BOTTOM", "BOTTOM", 368, 36 + RISE.under]]);
+  "the keep: its spot and its anchor link forgotten (the keep's spot applies), its scale, opacity and matched width kept").toEqual([false, true, "uf_target", 1.2, 0.6, ["BOTTOM", "BOTTOM", 368, 37 + RISE.under]]);
   expect(addon.eval("return { ns.MoverLook('cast_target') }"), "still drawn at its scale and opacity").toEqual([1.2, 0.6]);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.uf_player == nil"), "a frame that had only a spot keeps no entry").toBe(true);
 });
@@ -88,10 +88,10 @@ const bottoms = (addon, name) => addon.eval(`local f, T, n = ${name}, ns.Theme, 
   for _, t in ipairs({ f:GetRegions() }) do if t:IsShown() and t:GetHeight() == T.Pixel(f) and t.__points.BOTTOMLEFT and t.__points.BOTTOMRIGHT then n = n + 1 end end
   return n`);
 
-it("the keep: one wall on the background strata from your frame to your target's, the bars' top to the focus's foot, the brass parapet along its top, the gatehouse round your cast bar open where it meets the wall; the deck and keystone step aside; it goes on a narrow canvas and under Centered", () => {
+it("the keep: one wall on the background strata from the focus to your target's cast bar, the bars' top to the target of target's foot, the brass parapet along its top, the gatehouse round your cast bar open where it meets the wall; the deck and keystone step aside; it goes on a narrow canvas and under Centered", () => {
   const addon = loggedIn(WIDE + UNITS_ENV + CLICK_LUA, onLayout("fort"));
   expect(addon.eval("return { Vanguard_Keep:IsShown(), Vanguard_Keep.__strata, Vanguard_Keep.gate:IsShown() }"), "the wall and gatehouse show").toEqual([true, "BACKGROUND", true]);
-  expect([pin(addon, "Vanguard_Keep", "LEFT"), pin(addon, "Vanguard_Keep", "RIGHT"), pin(addon, "Vanguard_Keep", "TOP"), pin(addon, "Vanguard_Keep", "BOTTOM")], "the wall reaches 12 past your frame's left, your target's right, the first bar's top and the focus's bottom").toEqual(["Vanguard_player LEFT -12 0", "Vanguard_target RIGHT 12 0", "Vanguard_Bar1 TOP 0 12", "Vanguard_focus BOTTOM 0 -12"]);
+  expect([pin(addon, "Vanguard_Keep", "LEFT"), pin(addon, "Vanguard_Keep", "RIGHT"), pin(addon, "Vanguard_Keep", "TOP"), pin(addon, "Vanguard_Keep", "BOTTOM")], "the wall reaches 12 past the outermost and lowest frames it holds: the focus's left, the target's cast bar's right, the first bar's top and the target of target's bottom").toEqual(["Vanguard_focus LEFT -12 0", "Vanguard_CastBar_target RIGHT 12 0", "Vanguard_Bar1 TOP 0 12", "Vanguard_targettarget BOTTOM 0 -12"]);
   const px = addon.eval("return math.floor(ns.Theme.Pixel(Vanguard_Keep) * 100 + 0.5) / 100");
   expect([pin(addon, "Vanguard_Keep.gate", "LEFT"), pin(addon, "Vanguard_Keep.gate", "RIGHT"), pin(addon, "Vanguard_Keep.gate", "TOP"), pin(addon, "Vanguard_Keep.gate", "BOTTOM")], "the gatehouse reaches 12 past your cast bar's sides and top, its foot a pixel down over the wall's top border").toEqual(["Vanguard_CastBar_player LEFT -12 0", "Vanguard_CastBar_player RIGHT 12 0", "Vanguard_CastBar_player TOP 0 12", `Vanguard_Keep TOP 0 ${-px}`]);
   expect([thin(addon, "Vanguard_Keep"), bottoms(addon, "Vanguard_Keep"), thin(addon, "Vanguard_Keep.gate"), bottoms(addon, "Vanguard_Keep.gate")], "the wall draws four edges and one hairline (the parapet along the top); the gatehouse three edges and its parapet, nothing along its open foot").toEqual([5, 1, 4, 0]);
@@ -136,7 +136,7 @@ it("H46-13-101 the keep's frames move out with the bars' width, after the fight 
   addon.eval(MENU_LUA);
   canvas(addon, 1920, 1080);
   const drawn = addon.eval(KEEP_EDGES_LUA), need = addon.eval("return ns.KeepNeed(1920)");
-  expect([addon.eval("return ns.KeepSpread()"), drawn], "38-unit buttons: the spots as drawn (focus 960 - 478, your frame 960 - 478, the pet 960 - 374, the target of target 960 + 278, your target's 960 + 278, its cast bar 960 + 248), the wall 12 past your frame and your target's").toEqual([0, [482, 482, 586, 1238, 1238, 1208, 470, 1450]]);
+  expect([addon.eval("return ns.KeepSpread()"), drawn], "38-unit buttons: the spots as drawn (focus 960 - 478, your frame 960 - 478, the pet 960 - 374, the target of target 960 + 278, your target's 960 + 278, its cast bar 960 + 248), the wall 12 past the focus and the cast bar").toEqual([0, [482, 482, 586, 1238, 1238, 1208, 470, 1460]]);
   setCombat(addon, true);
   addon.eval(SIZE_LUA(43));
   addon.advance(1);
@@ -146,10 +146,29 @@ it("H46-13-101 the keep's frames move out with the bars' width, after the fight 
   const spread = addon.eval("return ns.KeepSpread()");
   expect([spread, addon.eval("return ns.GetModule('ActionBars').Bar1HalfWidth()") - 239], "43 after the fight: the spread is half the bar less the drawn 239").toEqual([spread, spread]);
   expect(addon.eval(KEEP_EDGES_LUA), "every frame out by the spread on its side, the wall with them").toEqual(drawn.map((x, i) => Math.round(x + ([0, 1, 2, 6].includes(i) ? -spread : spread))));
-  expect([need, addon.eval("return ns.KeepNeed(1920)") - need], "and the canvas the keep needs (1836 at 38: 490 out, clear of the bag and menu bar's 428) grows by twice the spread").toEqual([1836, 2 * spread]);
+  expect([need, addon.eval("return ns.KeepNeed(1920)") - need], "and the canvas the keep needs (1856 at 38: 500 out, clear of the bag and menu bar's 428) grows by twice the spread").toEqual([1856, 2 * spread]);
 });
 
-it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's top on your frame, your cast bar moved hides the gatehouse, your frame, your target's or the focus moved hides the wall; a reset brings each back", () => {
+// H46-13-100: the wall grows to hold what stands on it, at the game's UI scale and with your role's scale on your
+// frame and your target's (setup's Centered: healing gives both 0.9, so they stand inside the focus and the cast bar).
+it("H46-13-100 the keep's wall holds every frame on it and the bars, at the game's UI scale and with your frames scaled down", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UNITS_ENV, onLayout("fort"));
+  // The keep's frames and bars not wholly inside the wall (TEST-ONLY reads, in UIParent's units).
+  const outside = () => addon.eval(`local w, out = Vanguard_Keep, {}
+    for _, k in ipairs({ "uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "bar1", "bar2", "bar3" }) do
+      local f = ns.MoverFrame(k) local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+      if f:GetLeft() * s < w:GetLeft() or f:GetRight() * s > w:GetRight() or f:GetBottom() * s < w:GetBottom() or f:GetTop() * s > w:GetTop() then out[#out + 1] = k end
+    end
+    return { w:IsShown(), #out, math.floor(w:GetBottom() + 0.5) }`);
+  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -200)");
+  addon.advance(1);
+  expect(outside(), "1365 x 768 with the bag and menu bar dragged out of the corner: the wall holds them all, its foot on the screen's edge under the target of target").toEqual([true, 0, 0]);
+  addon.eval("ns.SetMoverScale('uf_player', 0.9) ns.SetMoverScale('uf_target', 0.9)");
+  addon.advance(1);
+  expect(outside(), "your frame and your target's at 0.9: still all inside").toEqual([true, 0, 0]);
+});
+
+it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's top on your frame, your cast bar moved hides the gatehouse, your frame, your target's, the focus, the target of target or the target's cast bar moved hides the wall; a reset brings each back", () => {
   const addon = loggedIn(WIDE + UNITS_ENV, onLayout("fort"));
   // The wall's shown state, what its top is pinned to, and the gatehouse's shown state.
   const keep = () => [addon.eval("return Vanguard_Keep:IsShown()"), pin(addon, "Vanguard_Keep", "TOP"), addon.eval("return Vanguard_Keep.gate:IsShown()")];
@@ -162,7 +181,7 @@ it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's t
   expect(keep(), "your cast bar dragged up the middle: the gatehouse hides, the wall stays").toEqual([true, "Vanguard_Bar1 TOP 0 12", false]);
   addon.eval('ns.ResetMovers("cast_player")');
   expect(keep()[2], "your cast bar reset: the gatehouse is back").toBe(true);
-  for (const [key, point] of [["uf_focus", '"TOPLEFT", "TOPLEFT", 300, -200'], ["uf_target", '"TOPRIGHT", "TOPRIGHT", -40, -300'], ["uf_player", '"BOTTOMLEFT", "BOTTOMLEFT", 300, 20']]) {
+  for (const [key, point] of [["uf_focus", '"TOPLEFT", "TOPLEFT", 300, -200'], ["uf_target", '"TOPRIGHT", "TOPRIGHT", -40, -300'], ["uf_player", '"BOTTOMLEFT", "BOTTOMLEFT", 300, 20'], ["uf_targettarget", '"TOPLEFT", "TOPLEFT", 600, -300'], ["cast_target", '"TOP", "TOP", 0, -300']]) {
     addon.eval(`ns.SetMoverPoint("${key}", ${point})`);
     expect(addon.eval("return { Vanguard_Keep:IsShown(), Vanguard_Keep.gate:IsVisible() }"), `${key} dragged: the wall and gatehouse hide`).toEqual([false, false]);
     addon.eval(`ns.ResetMovers("${key}")`);

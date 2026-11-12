@@ -29,9 +29,9 @@ end
 
 -- The keep's measures, in units: how far the wall reaches past the frames it holds (pad), the brass parapet's token,
 -- half the bar stack's width the spots were drawn round (bars: 12 buttons of 38, 2 apart), how far the wall's ends
--- reach from the centre at that width (reach: your target's right end, 478, and the pad), the least canvas
+-- reach from the centre at that width (reach: the target's cast bar's right end, 488, and the pad), the least canvas
 -- the keep holds on whatever the corners hold, and the mover in the bottom right corner the wall's end must clear.
-ns.KEEP = { pad = 12, parapet = "accentDim", bars = 239, reach = 490, least = 1100, corner = "menustrip" }
+ns.KEEP = { pad = 12, parapet = "accentDim", bars = 239, reach = 500, least = 1100, corner = "menustrip" }
 
 -- How far the keep's frames stand out past their drawn spots, on each side: by however much the bar stack's first
 -- bar is wider than the bars the spots were drawn round (0 while it is narrower, off, or the action bars are).
@@ -53,8 +53,8 @@ ns.LayoutSpots("fort", {
   uf_target = { "BOTTOM", "BOTTOM", outward(378), 86, underFrames = true },
   uf_focus = { "BOTTOM", "BOTTOM", outward(-430), 52, underFrames = true },
   uf_pet = { "BOTTOM", "BOTTOM", outward(-326), 52, underFrames = true },
-  uf_targettarget = { "BOTTOM", "BOTTOM", outward(326), 10, underFrames = true },
-  cast_target = { "BOTTOM", "BOTTOM", outward(368), 36, underFrames = true },
+  uf_targettarget = { "BOTTOM", "BOTTOM", outward(326), 12, underFrames = true },
+  cast_target = { "BOTTOM", "BOTTOM", outward(368), 37, underFrames = true },
   chat = { "BOTTOM", "BOTTOM", -392, 150 },
 })
 

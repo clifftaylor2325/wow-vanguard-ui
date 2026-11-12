@@ -241,22 +241,22 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
 });
-// The keep puts your target's side of the wall 490 units right of centre (with 38-unit buttons); the bag and menu
-// bar's default spot is the bottom right corner, 412 wide and 16 in here, so the keep holds only where the two clear
-// (ns.KeepNeed: 1836 wide). The target's aura
+// The keep puts your target's side of the wall 500 units right of centre (12 past its cast bar, with 38-unit buttons);
+// the bag and menu bar's default spot is the bottom right corner, 412 wide and 16 in here, so the keep holds only where
+// the two clear (ns.KeepNeed: 1856 wide). The target's aura
 // rows wrap at its frame's width (Modules/FrameAuras.lua lineWidth: 200 under the keep once built there), so they are
 // checked at that width, not ATTACHED's Centered 240.
 const KEEP_RIGHT = ["uf_target", "uf_targettarget", "cast_target", "targetDebuffs", "targetBuffs"];
 it("setup layouts: under The keep the bag and menu bar stays clear of your target's side of the wall on every canvas", () => {
   const addon = wholeHud();
   addon.eval('ns.Setup.ApplyLayout("fort")');
-  for (const [sw, sh] of [[1365, 768], [1536, 864], [1600, 900], [1707, 960], [1835, 1032], [1836, 1033], [1920, 1080]]) {
+  for (const [sw, sh] of [[1365, 768], [1536, 864], [1600, 900], [1707, 960], [1855, 1043], [1856, 1044], [1920, 1080]]) {
     canvasAt(addon, sw, sh);
     const rects = layoutRects(addon, 0, sw, sh);
     for (const row of ["targetDebuffs", "targetBuffs"]) if (rects[row]) rects[row].r = rects[row].l + (rects.uf_target.r - rects.uf_target.l);
     const wall = addon.eval("local w = Vanguard_Keep return w and w:IsShown() and { l = w:GetLeft(), b = w:GetBottom(), r = w:GetRight(), t = w:GetTop() } or false");
     const parts = KEEP_RIGHT.filter((k) => rects[k] && overlaps(rects[k], rects.menustrip));
-    expect([addon.eval("return ns.LayoutHolds()"), wall && overlaps(wall, rects.menustrip), parts], `${sw}x${sh}: the keep holds from 1836 wide, and the wall and your target's side clear the bag and menu bar`).toEqual([sw >= 1836, false, []]);
+    expect([addon.eval("return ns.LayoutHolds()"), wall && overlaps(wall, rects.menustrip), parts], `${sw}x${sh}: the keep holds from 1856 wide, and the wall and your target's side clear the bag and menu bar`).toEqual([sw >= 1856, false, []]);
   }
 });
 // The HUD layouts measure themselves (H46-13-100 to 104): on each canvas a screen gives at the game's UI scale (768
@@ -333,13 +333,27 @@ function placedProblems(addon, layout, sw, sh, label) {
   }
   return [...bad];
 }
+// The keep's frames and bars that are not wholly inside its wall, in UIParent's units (a frame scaled by your role
+// counts at its size on screen).
+const OUTSIDE_WALL_LUA = `local w, out = Vanguard_Keep, {}
+  for _, k in ipairs({ "uf_player", "uf_target", "uf_focus", "uf_pet", "uf_targettarget", "cast_target", "bar1", "bar2", "bar3" }) do
+    local f = ns.MoverFrame(k)
+    local s = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    if f:GetLeft() * s < w:GetLeft() or f:GetRight() * s > w:GetRight() or f:GetBottom() * s < w:GetBottom() or f:GetTop() * s > w:GetTop() then out[#out + 1] = k end
+  end
+  return out`;
+// The keep's frames and bars outside its wall on one screen, labelled (none under another layout).
+function outsideWall(addon, layout, label) {
+  if (layout !== "fort") return [];
+  return Object.values(addon.eval(OUTSIDE_WALL_LUA) ?? {}).map((k) => `${label}: ${k} outside the wall`);
+}
 // One measured canvas and button size under a layout: whether it holds, and its problems where it does (where it
 // doesn't, the frames stand at their Centered spots).
 function measuredCase(addon, layout, sw, sh, size) {
   addon.eval(`local AB = ns.GetModule("ActionBars") AB.settings.size = ${size} for n in pairs(AB.bars) do AB.SettingChanged(n, "size") end`);
   canvasAt(addon, sw, sh);
   const holds = addon.eval("return ns.LayoutHolds()"), label = `${layout} ${sw}x${sh} size ${size}`;
-  return { sw, sh, size, holds, bad: holds ? placedProblems(addon, layout, sw, sh, label) : [] };
+  return { sw, sh, size, holds, bad: holds ? placedProblems(addon, layout, sw, sh, label).concat(outsideWall(addon, layout, label)) : [] };
 }
 // Each measured canvas and button size under a layout.
 function measuredRun(layout) {
@@ -355,7 +369,7 @@ function measuredRun(layout) {
 // Cooldown Manager's rows, the quest dialog and the raid grid's foot (H46-13-R3, left for Cliff: its picked fix put
 // the Centered chat under the wall's left end); the pairs with it are set aside here, not counted as clear.
 const keepChat = (p) => /: chat \/ |\/ chat$/.test(p);
-it("H46-13-101 setup layouts: The keep measures itself: where it holds, its frames clear the bars and everything else, at every canvas and button size; elsewhere it gives way", () => {
+it("H46-13-100 H46-13-101 setup layouts: The keep measures itself: where it holds, its frames clear the bars and everything else and stand inside the wall, at every canvas and button size; elsewhere it gives way", () => {
   const runs = measuredRun("fort");
   expect(runs.filter((r) => r.holds).map((r) => `${r.sw}x${r.sh} ${r.size}`), "it holds where its frames, out with the bars, clear the bag and menu bar").toEqual(["1920x1080 38", "1920x1080 43", "2560x1440 38", "2560x1440 43", "2560x1440 50", "3440x1440 38", "3440x1440 43", "3440x1440 50"]);
   expect(runs.flatMap((r) => r.bad.filter((p) => !keepChat(p)))).toEqual([]);
