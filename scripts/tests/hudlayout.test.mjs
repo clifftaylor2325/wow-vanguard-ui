@@ -209,6 +209,17 @@ it("H46-B-G3-7 the keep's spread follows the widest bar of the stack standing in
   expect(addon.eval(SPREAD_LUA), "bar 1 at 38 and bar 2 at 50: the frames clear bar 2").toEqual(["out", 482]);
 });
 
+// H46-B-G3-4: the action bars remember the stack's width from the login build, so a bar change that leaves it as it
+// is (bar 3's buttons) places no HUD layout frame again; one that changes it (bar 1's button size) does.
+it("H46-B-G3-4 a bar change that keeps the stack's width refits no HUD layout, from the first one in a session", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + ACTIONS_ENV, onLayout("fort"));
+  addon.eval("__refits = 0 local refit = ns.RefitHudLayout ns.RefitHudLayout = function() __refits = __refits + 1 return refit() end");
+  addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].buttons = 10 AB.SettingChanged(3, "buttons")');
+  expect(addon.eval("return __refits"), "bar 3 down to 10 buttons: bar 1 still the widest, nothing to refit").toBe(0);
+  addon.eval(BAR_SIZE_LUA(1, 50));
+  expect(addon.eval("return __refits"), "bar 1 at 50: the keep refits once").toBe(1);
+});
+
 // H46-13-100: the wall grows to hold what stands on it, at the game's UI scale and with your role's scale on your
 // frame and your target's (setup's Centered: healing gives both 0.9, so they stand inside the focus and the cast bar).
 it("H46-13-100 the keep's wall holds every frame on it and the bars, at the game's UI scale and with your frames scaled down", () => {

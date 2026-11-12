@@ -913,10 +913,13 @@ end
 -- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
 -- only when the stack's top did. Placing a frame (ns.SetMoverDefault) rounds every pixel-sized frame
 -- again (T.Rescale), which runs T.OnScale's listeners, so a re-stack that placed something every time
--- would run this without end. Nothing to do while the module is off (no settings, no bars).
+-- would run this without end. The stack's width is remembered for the HUD layout's refit (AB.Restack): this runs at
+-- the build and after the movers' own re-anchor (Core/Movers.lua), which put the layout's frames at spots worked out
+-- for it. Nothing to do while the module is off (no settings, no bars).
 function AB.RestackMoved()
   if not AB.settings then return end
   for n in pairs(AB.bars) do restackBar(n) end
+  AB.stackedHalf = AB.StackHalfWidth()
   fitVehicleExit()
   local top = AB.StackTop(AB.settings)
   if top == AB.stackedTop then return end
