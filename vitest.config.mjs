@@ -53,6 +53,9 @@ export default defineConfig({
     environment: "node",
     ...shuffle,
     setupFiles: ["scripts/tests/setup.mjs"],
+    // A stray it.only would run one case, skip the rest and exit 0; no pull request runs the tests anywhere
+    // else (H44-25-R1). Vitest's default allows it outside CI.
+    allowOnly: false,
     reporters: [...configDefaults.reporters, ...ciReporters, ...progress, luaSummaryReporter()],
     // Each worker (a forked process) gets this much heap. The suite needs far
     // less; a runaway that allocates then dies in a minute or two instead of
