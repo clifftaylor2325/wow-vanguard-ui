@@ -226,10 +226,12 @@ local function bindTyped(key, action, text)
   changed()
 end
 
--- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
+-- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key. A Bind that CC.ForThisList
+-- refuses (the list changed) puts the dialog away, as the other questions do; the typed text is lost with it.
 local function askText(key, action)
   local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
-  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), CC.ForThisList(function(text) bindTyped(key, action, text) end), L["Bind"])
+  local bind = CC.ForThisList(function(text) bindTyped(key, action, text) return true end)
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text) if not bind(text) then ns.HideText() end end, L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.
