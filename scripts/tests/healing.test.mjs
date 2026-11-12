@@ -249,6 +249,16 @@ it("H46-B-G3-1 buff watch: a version of a watched buff that is not on the list s
   expect(markWith(addon, "{ ['Blessing of Kings'] = true }"), "and from the aura list too").toBe(false);
 });
 
+it("H46-B-G3-5 buff watch: Amplify Magic and Dampen Magic replace each other, so a player with one is not missing the other", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + FOREVER_ENV + AURA_LIST + `
+    __names = { [1008] = "Amplify Magic", [604] = "Dampen Magic" } __known = { ["Amplify Magic"] = true, ["Dampen Magic"] = true }`);
+  addon.eval(`__spawn(1, "raid1") ns.Settings("RaidHealing").buffs = "Amplify Magic, Dampen Magic"
+    ns.GetModule("RaidHealing").Forget() ns.GetModule("RaidFrames").UpdateAll()`);
+  expect(markWith(addon, "{ ['Dampen Magic'] = true }"), "Dampen Magic only: no mark for Amplify Magic").toBe(false);
+  expect(markWith(addon, "{ ['Amplify Magic'] = true }"), "Amplify Magic only: no mark for Dampen Magic").toBe(false);
+  expect(markWith(addon, "{}"), "neither: marked with the first").toBe("TEST-ONLY-ICON-Amplify Magic");
+});
+
 // A1-6 (M1): the raid add-ons' unit events are each tile's own, not every unit's.
 it("A1-6: heal prediction, shields, threat and auras are heard per tile, so another unit's events run nothing here", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);

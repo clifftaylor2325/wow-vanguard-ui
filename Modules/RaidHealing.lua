@@ -52,9 +52,10 @@ RH.CLASS_BUFFS = ns.ClientData({
 })
 
 -- More ids that count as one buff, beyond each RH.CLASS_BUFFS entry (a buff's single and group versions): a player
--- with either has it.
+-- with either has it. Amplify Magic and Dampen Magic are one: they replace each other on a target (no Blizzard source
+-- in the client files to cite, so this is the safe side: a player with either is never marked for the other).
 RH.BUFF_GROUPS = ns.ClientData({
-  forever = { { 14752, 27681 }, { 976, 27683 } },
+  forever = { { 14752, 27681 }, { 976, 27683 }, { 1008, 604 } },
   retail = {},
 })
 

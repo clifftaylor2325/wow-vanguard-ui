@@ -6705,6 +6705,8 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 - Do: As a mage in a group, tick Arcane Intellect and Dampen Magic under Buffs to watch on the Healing page, and give a party member Arcane Intellect only. [Client: Forever.]
 - Expect: that member's tile shows the Dampen Magic mark; once they have both, the mark goes.
+- Do (also): as a priest tick only Power Word: Fortitude and have a party member buffed with Prayer of Fortitude only; as a mage tick Amplify Magic and Dampen Magic and cast one of them on a party member (H46-B-G3-1 and G3-5). [Client: Forever.]
+- Expect (also): the Prayer of Fortitude member shows no mark; the member with one Magic spell shows no mark for the other, and one with neither shows the Amplify Magic mark.
 - If it fails, paste: a screenshot of the tile and the ticked rows.
 
 ### 33.781 An action button's lit look after a click (H46-18-1; WoW Forever and Retail)
