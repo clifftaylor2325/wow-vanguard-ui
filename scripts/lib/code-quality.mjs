@@ -13,8 +13,8 @@
 //      exception is ns.Soon's timer in Core/Combat.lua, which runs each job
 //      under ns.Try.
 //   5. Addon Lua (Core/, Modules/) uses no syntax newer than Lua 5.1: no goto or
-//      ::label::, no // , << , >> , & , | or ~ operator. The test harness parses
-//      Lua 5.3 and accepts them; the game does not, and the addon would not load.
+//      ::label::, no // , << , >> , & , | or ~ operator. The harness's optional fengari
+//      engine parses Lua 5.3 and accepts them; the game does not, and the addon would not load.
 //      Quoted strings use no \x, \z or \u{...} escape: luac5.1 accepts them, but the
 //      game reads them as plain letters while the harness decodes them.
 //   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals of the main chunk alive at
@@ -30,9 +30,10 @@
 //      compared, not in a negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
 //      branch of an enclosing if) of the same function, or a call inside `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
-// More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
-// cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
-// for truth and long lines. They fail the scan only when a count rises above
+// More rules are report-only (reportSource below; REPORT_RULES names all eight): OnUpdate handlers
+// neither throttled nor cleared, unguarded script handlers, unwrapped text, secret truth tests,
+// pcall results tested for truth, long lines, English joined, chosen or formatted in a text sink,
+// and table-field functions with no comment. They fail the scan when a count is above or below
 // scripts/code-quality-baseline.json.
 
 import fs from "node:fs";
@@ -772,7 +773,7 @@ export function checkSource(file, src) {
 
 // Report-only rules (#263) -------------------------------------------------------------
 // Heuristics for the game rules that cause the subtlest bugs. They count, they don't
-// block: scripts/check-code-quality.mjs fails only when a count rises above its baseline in
+// block: scripts/check-code-quality.mjs fails when a count is above or below its baseline in
 // scripts/code-quality-baseline.json (a ratchet, like scripts/lua-coverage-floor.json). A
 // rule becomes blocking once it is quiet on main, as the first did. All have false positives
 // by design.
