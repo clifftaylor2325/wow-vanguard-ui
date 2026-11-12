@@ -102,3 +102,17 @@ it("/vg report names the modules turned off and the skinned addons, with any tha
   expect(inner.find((l) => l.startsWith("Modules off:")), "the module turned off").toBe("Modules off: RaidFrames");
   expect(inner.find((l) => l.startsWith("Skins:")), "every skin, marked where it is off or failed").toBe("Skins: Good, Broken (failed), Muted (off)");
 });
+
+it("H46-4-101: /vg report carries the paused sites and the blocked calls that /vg errors lists, before the errors", () => {
+  expectErrors("TEST-ONLY report site: boom");
+  const addon = loggedIn();
+  addon.eval('ns.Report("TEST-ONLY report site", "boom")');
+  addon.eval('ns.blocked[#ns.blocked + 1] = { text = "action blocked: TEST-ONLY CastSpellByName()", count = 3 }');
+  addon.eval('ns.paused[#ns.paused + 1] = { where = "TEST-ONLY event UNIT_AURA" }');
+  const inner = body(report(addon));
+  // The index of the first report line matching the pattern.
+  const at = (pattern) => inner.findIndex((l) => pattern.test(l));
+  expect(inner[at(/^Paused after/) + 1], "the paused site is indented under its heading").toBe("    TEST-ONLY event UNIT_AURA");
+  expect(inner[at(/^Calls the game blocked/) + 1], "the blocked call and its count").toBe("    action blocked: TEST-ONLY CastSpellByName()  (x3)");
+  expect([at(/^Errors:/) < at(/^Paused after/), at(/^Calls the game blocked/) < at(/^\[1\]/)], "after the Errors line, before the first error").toEqual([true, true]);
+});

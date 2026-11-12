@@ -831,9 +831,12 @@ local function errorLines(i, e, depth)
   return out
 end
 
--- The report with the caught errors from `first` on (newest last), each with `depth` stack lines.
+-- The report with the paused sites and blocked calls (as /vg errors lists them), then the caught errors from `first` on
+-- (newest last), each with `depth` stack lines.
 local function reportText(first, depth)
   local lines = reportHead()
+  for _, line in ipairs(pausedLines()) do lines[#lines + 1] = line end
+  for _, line in ipairs(blockedLines()) do lines[#lines + 1] = line end
   for i = first, #ns.errors do
     for _, line in ipairs(errorLines(i, ns.errors[i], depth)) do lines[#lines + 1] = line end
   end
