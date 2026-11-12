@@ -450,13 +450,23 @@ local function sectionRows(key)
   return out
 end
 
+-- Enum entries { key, value } in order: numbers first by value, other values by their text, ties by key.
+local function enumBefore(a, b)
+  local aNumber, bNumber = type(a[2]) == "number", type(b[2]) == "number"
+  if aNumber ~= bNumber then return aNumber end
+  if a[2] ~= b[2] and aNumber then return a[2] < b[2] end
+  local aText, bText = tostring(a[2]), tostring(b[2])
+  if aText ~= bText then return aText < bText end
+  return tostring(a[1]) < tostring(b[1])
+end
+
 -- The keys of a global enum table, as "Name=value" sorted by value, or nil when the client lacks it.
 local function enumText(name)
   local enum = type(_G.Enum) == "table" and _G.Enum[name]
   if type(enum) ~= "table" then return nil end
   local list = {}
   for key, value in pairs(enum) do list[#list + 1] = { key, value } end
-  table.sort(list, function(a, b) return tostring(a[2]) < tostring(b[2]) end)
+  table.sort(list, enumBefore)
   for i, pair in ipairs(list) do list[i] = pair[1] .. "=" .. tostring(pair[2]) end
   return table.concat(list, ", ")
 end
@@ -605,13 +615,22 @@ local function secretLines()
   return out
 end
 
+-- One line per restriction type, by name so two pasted reports compare line by line.
+local function restrictionTypeLines()
+  local types = type(_G.Enum) == "table" and _G.Enum.AddOnRestrictionType
+  local names, out = {}, {}
+  for key in pairs(type(types) == "table" and types or {}) do names[#names + 1] = key end
+  table.sort(names)
+  for _, key in ipairs(names) do
+    out[#out + 1] = "type " .. key .. ": " .. P.Row("C_RestrictedActions.GetAddOnRestrictionState", types[key])
+  end
+  return out
+end
+
 -- The restriction states the client reports and the chat lockdown reads.
 local function restrictionLines()
   local out = { enumLine("AddOnRestrictionType"), enumLine("AddOnRestrictionState") }
-  local types = type(_G.Enum) == "table" and _G.Enum.AddOnRestrictionType
-  for key, value in pairs(type(types) == "table" and types or {}) do
-    out[#out + 1] = "type " .. key .. ": " .. P.Row("C_RestrictedActions.GetAddOnRestrictionState", value)
-  end
+  for _, line in ipairs(restrictionTypeLines()) do out[#out + 1] = line end
   out[#out + 1] = P.Row("C_ChatInfo.InChatMessagingLockdown")
   out[#out + 1] = P.Row("C_ChatInfo.AreOutgoingAddonChatMessagesRestricted")
   out[#out + 1] = P.Row("C_RestrictedActions.InCombatLockdown")

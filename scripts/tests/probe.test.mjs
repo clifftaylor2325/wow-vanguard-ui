@@ -187,6 +187,14 @@ it("H45-34-102 /vg probe fight: a fight under 3 s gets no 3 s block, and a secon
   addon.advance(1);
   expect(blocks(), "its own timer at 3 s").toBe(1);
 });
+it("H45-34-103 the probe's Enum lines go in value order (10 after 5) and the restriction types by name", () => {
+  const addon = loggedIn(PROBE_ENV + "Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5, Ten = 10 }");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "Enum.AddOnRestrictionType").trim(), "value order").toBe("Enum.AddOnRestrictionType: Combat=0, Encounter=1, ChallengeMode=2, PvPMatch=3, Map=4, Chat=5, Ten=10");
+  const names = text.split("\n").map((l) => /^\s*type (\w+):/.exec(l)?.[1]).filter(Boolean);
+  expect(names, "by name").toEqual(["ChallengeMode", "Chat", "Combat", "Encounter", "Map", "PvPMatch", "Ten"]);
+});
 it("/vg probe fight: an unarmed fight records nothing", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.fire("PLAYER_REGEN_DISABLED");
