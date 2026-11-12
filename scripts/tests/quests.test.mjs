@@ -2898,3 +2898,22 @@ it("H46-27-54: a gossip quest that becomes complete mid-talk lights its line; a 
   addon.update(0);
   expect(addon.eval("return __redraws"), "a quest detail page is left alone").toBe(0);
 });
+// H46-27-51: QuestFrameProgressItems_Update (forever and live Blizzard_UIPanels_Game/Mainline/QuestFrame.lua) draws GetNumQuestCurrencies()
+// required currencies from C_QuestOffer.GetQuestRequiredCurrencyInfo(i) (a QuestRequiredCurrencyInfo: texture, name, currencyID, quality,
+// requiredAmount) under the "Required Items" text; their tooltip is GameTooltip:SetQuestCurrency("required", i).
+it("H46-27-51: a quest that asks for a currency shows it on the progress page, with its amount, tooltip and caption", () => {
+  const addon = loggedIn(CAPTIONS_ENV + `
+    C_QuestOffer = C_QuestOffer or {}
+    GetNumQuestCurrencies = function() return 1 end
+    C_QuestOffer.GetQuestRequiredCurrencyInfo = function(i) return { name = "TEST-ONLY Marks", texture = 1, currencyID = 3000, quality = 1, requiredAmount = 10 } end
+    __wfgWorld.npc = { quest = { title = "TEST-ONLY Pay", questID = 91901, progress = "x", complete = false, required = { { name = "TEST-ONLY Bar" } } } }`);
+  addon.fire("QUEST_PROGRESS");
+  // The names drawn on the cards.
+  const names = () => Object.values(addon.eval("local f, out = Vanguard_QuestDialog, {} for i = 1, f.cards.used do out[i] = f.cards[i].name:GetText() end return out"));
+  expect(names(), "the item card, then the currency").toEqual(["TEST-ONLY Bar", "TEST-ONLY Marks"]);
+  expect(addon.eval("local c = Vanguard_QuestDialog.cards[2] return { c.item.count, c.item.currency, c.item.kind, c.item.index }"), "the amount asked for is the count").toEqual([10, true, "required", 1]);
+  expect(addon.eval("return Vanguard_QuestDialog.captions[1]:GetText()"), "one Required items caption").toBe("TEST-ONLY Required items:");
+  addon.eval("__wfgWorld.npc.quest.required = nil");
+  addon.fire("QUEST_PROGRESS");
+  expect([names(), addon.eval("return Vanguard_QuestDialog.captions.used")], "a page whose only required card is a currency keeps the caption").toEqual([["TEST-ONLY Marks"], 1]);
+});

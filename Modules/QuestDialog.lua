@@ -261,10 +261,25 @@ function QD.CostLine()
   return cost > 0 and ns.Format(L["Costs {money}"], { money = ns.GetModule("InfoStrip").Money(cost) }) or ""
 end
 
+-- One required currency's card as the game's progress page draws it (what it asks for as the count); nil when the
+-- client gave none. Its tooltip is the currency's, by its place among the required currencies.
+local function requiredCurrency(i)
+  local info = ns.CallIf(C_QuestOffer, "GetQuestRequiredCurrencyInfo", i)
+  if type(info) ~= "table" then return nil end
+  return { kind = "required", index = i, currency = true, name = info.name, texture = info.texture, quality = info.quality, count = ns.PlainNumber(info.requiredAmount) }
+end
+
+-- What the progress page asks you to hand in: the items, then the currencies (the game's "Required items").
+function QD.Required()
+  local out = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems"))
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestCurrencies")) or 0 do out[#out + 1] = requiredCurrency(i) end
+  return out
+end
+
 -- A quest you're turning in: what it still needs (items, and the money it costs), and Continue once you have it.
 function QD.ProgressPage()
   return {
-    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems")), money = QD.CostLine(),
+    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Required(), money = QD.CostLine(),
     primary = { L["Continue"], function() ns.CallIf(_G, "CompleteQuest") end, ns.CallIf(_G, "IsQuestCompletable") == true }, escape = GOODBYE,
   }
 end
