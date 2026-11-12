@@ -162,6 +162,15 @@ local function watchDocking(scope)
   scope:Gate("dock frame", letDocked, function(gate) hooksecurefunc("FCF_DockFrame", ns.Guard("hook FCF_DockFrame", gate)) end)
 end
 
+-- The game opens a chat window (a tab's Create New Window): the Chat page offers it in its Tab choice and size rows.
+-- Hooks FCF_OpenNewWindow through a gate, and rebuilds the page once the game has named and docked the window (not set
+-- as the tab being edited: the player may be editing another one).
+local function watchNewWindows(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_OpenNewWindow) ~= "function" then return end
+  scope:Gate("new window", function() ns.Soon("chat page", function() ns.Options.RebuildPage("chat") end) end,
+    function(gate) hooksecurefunc("FCF_OpenNewWindow", ns.Guard("hook FCF_OpenNewWindow", gate)) end)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -395,6 +404,7 @@ end
 function CW.Enable(settings, scope)
   CW.settings = settings
   CW.ApplyFind()
+  watchNewWindows(scope)
   if not settings.movers then return end
   watchDocking(scope)
   for _, window in ipairs(CW.Shown()) do
