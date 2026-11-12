@@ -3,7 +3,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
-import { CC, CS, applies, bindings, cell, priestly, widget } from "./clickcast-helpers.mjs";
+import { CC, CS, applies, bindings, cell, enterBinds, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
 const priest = (extra = "", opts = {}) => priestly(loggedIn(CLICK_LUA + extra, opts));
@@ -856,7 +856,7 @@ it("H44-9-R1 import: a hover key with a brace or the word function is skipped, a
     expect([JSON.stringify(key), addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)], "only the good key is imported").toEqual([JSON.stringify(key), 1]);
     expect(refusedSnippet(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)), "the snippet holds nothing the client refuses").toBe(false);
   }
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+  expect(enterBinds(addon, `${CC}.frames[1]`)).toEqual(["SHIFT-Q>vg1"]);
 });
 
 it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row", () => {
@@ -864,7 +864,7 @@ it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the s
     // TEST-ONLY saved bindings imported before the fix: one hover key the client can't take.
     savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [0] = { { key = "SHIFT-{", action = "spell", value = "Renew" }, { key = "SHIFT-Q", action = "spell", value = "Renew" } } } }',
   });
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg2")');
+  expect(enterBinds(addon, `${CC}.frames[1]`)).toEqual(["SHIFT-Q>vg2"]);
   addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
   expect(addon.frames('w.keyText ~= nil and w.remove ~= nil and w:IsShown()').length, "both keys keep a row with Remove").toBe(2);
 });
@@ -872,13 +872,13 @@ it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the s
 it("H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys", () => {
   const addon = priest("", { savedVariables: WITH_FRAMES });
   addon.eval(`${CC}.Add("F1", "target")`);
-  const before = addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`);
+  const before = enterBinds(addon, `${CC}.frames[1]`);
   addon.world.combat(true);
   const text = encoded(addon, '{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = "SHIFT-{", action = "spell", value = "Renew" } }');
   expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)).toBe(1);
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "in a fight the frames keep the old snippet").toBe(before);
+  expect(enterBinds(addon, `${CC}.frames[1]`), "in a fight the frames keep the old keys").toEqual(before);
   addon.world.combat(false);
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "the fight ends: the new one, without the brace").toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+  expect(enterBinds(addon, `${CC}.frames[1]`), "the fight ends: the new keys, without the brace").toEqual(["SHIFT-Q>vg1"]);
 });
 
 it("H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set", () => {

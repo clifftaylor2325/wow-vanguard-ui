@@ -50,3 +50,15 @@ export function applies(addon, fn) {
 // The menu-click notice's text, and the shape of the old starter layouts (Flash Heal on Right, the menu on Middle).
 export const MENU_NOTICE = "Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click?";
 export const OLD_SHAPE = `${CC}.Add("BUTTON2", "spell", "Flash Heal", 2061) ${CC}.Add("BUTTON3", "menu")`;
+
+// TEST-ONLY: runs a frame's recorded enter snippet against a stand-in for the restricted frame handle (GetAttribute
+// reads the frame, ClearBindings and SetBindingClick record: Blizzard_RestrictedAddOnEnvironment/RestrictedFrames.lua
+// HANDLE:GetAttribute, HANDLE:ClearBindings, HANDLE:SetBindingClick), with no globals, and returns the keys it binds as
+// "key>virtual button".
+export const enterBinds = (addon, frame) => addon.eval(`local f, out = ${frame}, { "" }
+  local h = { GetAttribute = function(_, name) return f:GetAttribute(name) end, ClearBindings = function() out = { "" } end,
+    SetBindingClick = function(_, _, key, _, button) out[#out + 1] = key .. ">" .. button end }
+  local env = { self = h }
+  local fn = setfenv and setfenv(assert(loadstring(f.__wraps.OnEnter, "=enter")), env) or assert(load(f.__wraps.OnEnter, "=enter", "t", env))
+  fn()
+  return out`).slice(1);

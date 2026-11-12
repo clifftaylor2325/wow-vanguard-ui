@@ -137,6 +137,7 @@
       "without specializations the page speaks of this character"
     ],
     "scripts/tests/clicks.test.mjs": [
+      "H45-19-R1 a unit frame is wrapped once: with Calm HUD's hover hook added after the wrap, a new hover key list binds only the new keys",
       "click-casting validation, labels and unit frames"
     ],
     "scripts/tests/clientprobe.test.mjs": [
