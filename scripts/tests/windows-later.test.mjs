@@ -1014,7 +1014,7 @@ it("R3.5 the auction house panels: the money lines take the theme font back afte
   addon.eval("AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject() AuctionHouseFrame.BuyDialog.PriceFrame:SetFontAndIconDisabled(true)");
   expect(themed(), "the game's font object and its disabled look both followed").toEqual([true, true]);
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:SetFontObject()");
-  expect(themed(), "showing again hooks nothing twice").toEqual([true, true]);
+  expect(themed(), "still themed after showing again").toEqual([true, true]);
 });
 // The lit look of a row (the selected fill and rail), or null when T.Row never dressed it.
 const rowLit = (addon, row) => addon.eval(`local p = ns.Theme.RowParts(${row}) return p and { p.fill:IsShown(), p.rail:IsShown() } or false`);
@@ -1060,7 +1060,37 @@ it("R3.5 the auction house panels: category rows are theme rows, lit with the ga
   addon.eval("__cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(nil)");
   expect(addon.eval("return __ahLit(__cat.Text)"), "the gold the game puts back when the mouse leaves is made light again").toBe(true);
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() __cat.Text:SetTextColor(1, 0.82, 0) __wfgStub.hover(__cat) __wfgStub.hover(nil)");
-  expect(addon.eval("return { __ahLit(__cat.Text), #ns.errors }"), "showing again hooks nothing twice").toEqual([true, 0]);
+  expect(addon.eval("return { __ahLit(__cat.Text), #ns.errors }"), "still light after showing again, with no error").toEqual([true, 0]);
+});
+it("R3.5 the auction house panels: a category row's leave hook is added once however often the window shows and the game sets the row up", () => {
+  const addon = loggedIn(AH_WINDOW + `
+    __cat = __ahCategory(AuctionHouseFrame.CategoriesList.ScrollBox)
+    __leaves = 0
+    local hook = __cat.HookScript
+    -- TEST-ONLY spy: how many OnLeave hooks the row gets.
+    __cat.HookScript = function(self, script, fn) if script == "OnLeave" then __leaves = __leaves + 1 end return hook(self, script, fn) end`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  const first = addon.eval("return __leaves");
+  addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show() AuctionHouseFilterButton_SetUp(__cat, { selected = true }) AuctionHouseFilterButton_SetUp(__cat, { selected = false })");
+  expect(first, "the row got its leave hooks").toBeGreaterThan(0);
+  expect(addon.eval("return __leaves"), "and a second show or two set-ups add none").toBe(first);
+});
+it("the skin's once-only hook helpers run a hook once however often they are asked for it", () => {
+  const addon = loggedIn(`${WINDOWS_ENV}
+    __GW = ns.GetModule("Windows")
+    __runs = { after = 0, global = 0, script = 0 }
+    -- TEST-ONLY frame and global.
+    __frame = CreateFrame("Frame", nil, UIParent) function __frame:Method() end
+    TEST_ONLY_GLOBAL = function() end`);
+  addon.eval(`
+    for _ = 1, 2 do
+      __GW.HookAfter(__frame, "Method", function() __runs.after = __runs.after + 1 end)
+      __GW.HookGlobalOnce("TEST_ONLY_GLOBAL", "test global", function() __runs.global = __runs.global + 1 end)
+      __GW.HookScriptOnce(__frame, "OnShow", "test script", function() __runs.script = __runs.script + 1 end)
+    end
+    __frame:Method() TEST_ONLY_GLOBAL() __frame:Hide() __frame:Show()`);
+  expect(addon.eval("return { __runs.after, __runs.global, __runs.script, #ns.errors }"), "each hook ran once").toEqual([1, 1, 1, 0]);
 });
 it("R3.5 the auction house panels: with Vanguard's own page on or off the game's panels are dressed and the page is the same", () => {
   const dress = "__ah(AuctionHouseFrame) AuctionHouseFrame:Hide() AuctionHouseFrame:Show()";
