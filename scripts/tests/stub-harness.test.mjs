@@ -519,3 +519,12 @@ it("the world's GetTrainerServiceInfo answers name, kind, icon, level, rank and 
     return { GetTrainerServiceInfo(1) }`);
   expect(out).toEqual(["TEST-ONLY Bolt", "available", 135808, 4, "TEST-ONLY Rank 2", "TEST-ONLY Cat"]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:1257-1267:
+// UnitGetDetailedHealPrediction(unit, healerUnit, healPredictionCalculator) has no Returns.
+it("UnitGetDetailedHealPrediction fills the calculator and returns nothing", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local calc = CreateUnitHealPredictionCalculator()
+    return { select("#", UnitGetDetailedHealPrediction("player", "player", calc)), calc.unit }`);
+  expect(out).toEqual([0, "player"]);
+});

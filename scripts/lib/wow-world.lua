@@ -1003,11 +1003,10 @@ end
 -- Heal prediction, absorbs and heal calculators.
 function UnitGetIncomingHeals(unit) return uf(unit, "incomingHeals") or 0 end
 function UnitGetTotalAbsorbs(unit) return uf(unit, "absorbs") or 0 end
--- Fills a calculator with a unit (as the client does) and returns the unit's incoming heals.
+-- Fills a calculator with a unit, as the client does, and returns nothing (UnitDocumentation.lua's
+-- UnitGetDetailedHealPrediction lists no Returns; the calculator is the answer).
 function UnitGetDetailedHealPrediction(unit, _, calc)
   if calc then calc.unit = unit end
-  local u = resolveUnit(unit)
-  return u and (u.incomingHeals or 0) or 0, 0, 0
 end
 -- The client's heal prediction calculator, reading the unit's world fields.
 function CreateUnitHealPredictionCalculator()
