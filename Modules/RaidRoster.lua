@@ -88,15 +88,17 @@ function RT.RosterLines()
   return out
 end
 
--- How many lines fit under the panel's top on this screen (at least the heading and one more).
-function RT.MaxLines()
-  local room = (UIParent:GetHeight() or 0) - RT.RTOP - 2 * RT.RPAD
+-- How many lines fit under the panel's top on this screen (at least the heading and one more). The top is
+-- where the panel f sits now, so a moved panel gets its room; without f, the default spot.
+function RT.MaxLines(f)
+  local top = f and ns.PlainNumber(f:GetTop()) or (UIParent:GetHeight() or 0) - RT.RTOP
+  local room = top - 2 * RT.RPAD
   return math.max(2, math.floor(room / RT.RLINE))
 end
 
 -- The lines cut to the room on this screen: past it, the last line says how many members are not listed.
-function RT.Fit(lines)
-  local max = RT.MaxLines()
+function RT.Fit(lines, f)
+  local max = RT.MaxLines(f)
   if #lines <= max then return lines end
   local out = {}
   for i = 1, max - 1 do out[i] = lines[i] end
@@ -166,7 +168,7 @@ function RT.PaintRoster()
   local show = RT.rosterOpen == true
   f:SetShown(show)
   if not show then return end
-  local lines = RT.Fit(RT.RosterLines())
+  local lines = RT.Fit(RT.RosterLines(), f)
   f:SetHeight(#lines * RT.RLINE + 2 * RT.RPAD)
   RT.DrawRows(f, lines)
 end
@@ -185,6 +187,11 @@ end
 function RT.SoonPaintMember(_, unit)
   if type(unit) ~= "string" then return end
   if unit == "player" or unit:find("^raid%d") or unit:find("^party%d") then RT.SoonPaint() end
+end
+
+-- A moved roster is cut to its new room on the next frame.
+function RT.OnPlaced(key)
+  if key == "officerroster" then RT.SoonPaint() end
 end
 
 -- Starts or stops listening to the group: the roster hears events only while it is open.
@@ -217,4 +224,5 @@ ns.Options.AddRows("raid", RT.RosterRows)
 function RT.EnableRoster(scope)
   if RT.rframe then scope:Mover(RT.rframe, "officerroster", L["Raid roster"], RT.ROSTER_SPOT) end
   scope:Gate("roster theme", RT.PaintRoster, T.OnChanged)
+  scope:Gate("roster placed", RT.OnPlaced, ns.OnMoverPlaced)
 end
