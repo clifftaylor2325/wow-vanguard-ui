@@ -377,12 +377,14 @@ end
 
 -- One of a plate's aura rows on the backend in use, noting its signature (what of it is fixed once made,
 -- Core/Auras.lua) and whether that was the client's engine (a plate first drawn in combat gets the
--- fallback: a row put away after an earlier fight when there is one, else a new one).
+-- fallback: a row put away after an earlier fight when there is one, else a new one). The row is followed
+-- (Core/Auras.lua A.Follow), so icons the client held back at a scale change are refit once it lets them go.
 local function addRow(f, key, spec)
   local sig = ns.Auras.Signature(spec)
   local spare = ns.Auras.Backend() ~= ns.AuraEngine and takeSpare(key, sig)
   f[key] = spare and reuseRow(spare, f, spec) or ns.Auras.Container(f, spec, rowUnit(key, f.unit))
   f[key].sig, f[key .. "OnEngine"] = sig, ns.Auras.Backend() == ns.AuraEngine
+  ns.Auras.Follow(f[key].frame)
 end
 
 -- A plate's texts, tag mark, soft-target icon, click area and mouseover wash.
@@ -911,13 +913,14 @@ local function textSize(role, percent)
   return math.floor(T.RoleSize(role) * percent / 100 + 0.5)
 end
 
--- The sizes the plates are built at, read from the settings: each number kept to its slider's range, the
+-- The sizes the plates are built at, read from the settings: each number kept to its slider's range as a whole
+-- number (the aura counts go to the client's aura container, which takes only whole ones), the
 -- timers and the cast bar, the name's and the health numbers' text sizes (shares of the theme's, which
 -- follow its Text size), and how far the debuff row sits above the bar: clear of the name. Plates read
 -- this, not the settings, so they change only out of combat.
 local function readLayout(s)
   local l = { timers = s.timers == true, castBar = s.castBar == true }
-  for key, range in pairs(NP.RANGES) do l[key] = math.max(range.min, math.min(range.max, s[key])) end
+  for key, range in pairs(NP.RANGES) do l[key] = math.floor(math.max(range.min, math.min(range.max, s[key])) + 0.5) end
   l.nameText, l.healthText = textSize("world", l.nameSize), textSize("barSmall", l.healthSize)
   l.rise = NP.NAME_GAP + l.nameText + NP.ROW_GAP
   return l
@@ -1178,9 +1181,11 @@ local EVENTS = {
 
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
+-- A name-only plate's name is painted with T.ColorRGB, which T.RefreshText skips, so it is repainted here too.
 local function repaintLook(f, unit)
   paintTarget(f, targetShown(unit, isUnit(unit, "target")), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
+  if f.vgNameOnly then T.ColorRGB(f.name, UF.UnitColor(unit)) end
 end
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and

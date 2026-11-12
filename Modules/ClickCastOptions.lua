@@ -141,19 +141,25 @@ local function moreShown()
   return usesMoreMods()
 end
 
--- What the page's built rows depend on, as a short text that changes when they would: the notice, the modifier
--- columns, and the starter layout's rows (CP.Signature).
+-- What the page's built rows depend on, as a short text that changes when they would: the list shown (a talent group
+-- or spec switch), the notice, the modifier columns, and the starter layout's rows (CP.Signature).
 local function pageSignature()
-  return table.concat({ noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
+  return table.concat({ tostring(CC.CurrentKey()), noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
+end
+
+-- Whether the options window is up; a closed one re-reads every row as it opens (O.Show), so it needs no re-read.
+local function windowShown()
+  local window = O.Frame()
+  return window ~= nil and window:IsShown() == true
 end
 
 -- Re-reads every row on the page after a binding changed; a page built with another signature than the one that
 -- applies now (a notice begun or ended, the columns, the starter layout's rows) is built again first; a page not built
 -- yet has nothing to rebuild (and the event can come before the saved variables load). The other pages' rows are
--- re-read either way.
+-- re-read too, while the window is up: a fight's end or a talent group or spec switch with it closed costs no walk.
 local function changed()
   if state.built ~= nil and state.built ~= pageSignature() then O.RebuildPage(PAGE) end
-  O.Refresh()
+  if windowShown() then O.Refresh() end
 end
 
 -- A hover wash over a button.
@@ -226,10 +232,12 @@ local function bindTyped(key, action, text)
   changed()
 end
 
--- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
+-- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key. A Bind that CC.ForThisList
+-- refuses (the list changed) puts the dialog away, as the other questions do; the typed text is lost with it.
 local function askText(key, action)
   local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
-  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), CC.ForThisList(function(text) bindTyped(key, action, text) end), L["Bind"])
+  local bind = CC.ForThisList(function(text) bindTyped(key, action, text) return true end)
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text) if not bind(text) then ns.HideText() end end, L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.
@@ -729,11 +737,38 @@ local function playerName()
   return type(name) == "string" and name or L["you"]
 end
 
--- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", or that nothing is bound.
-local function describe(key)
+-- What a frame's own plain Left and Right click do where the list binds neither: Vanguard's tiles set *type1 target and
+-- *type2 togglemenu (Modules/RaidFrames.lua RF.INIT), which the game falls back to with no type1 or type2
+-- (Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifiedAttribute).
+local FRAME_CLICKS = { BUTTON1 = "target", BUTTON2 = "menu" }
+
+-- The binding a key or click would run on a frame: the list's, else the frame's own click (the tiles' *type1 and
+-- *type2 apply under every modifier, so it is looked up by the button part of the key), else nil.
+local function tileBinding(key)
   local b = CC.Binding(key)
-  if not b then return ns.Format(L["{key} -> nothing bound"], { key = CC.KeyName(key) }) end
-  return ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
+  local own = FRAME_CLICKS[key:match("[^%-]+$")]
+  if b or not own then return b end
+  return { key = key, action = own }
+end
+
+-- The note after a line whose binding Vanguard knows does nothing (as /vg binds says it), else "".
+local function wontRunNote(b)
+  local why = CC.WontRun(b)
+  return why and ("  " .. T.Paint(ns.Format(L["(does nothing: {why})"], { why = why }), "warn")) or ""
+end
+
+-- The line for a key or click with nothing bound on it, under its name for people.
+local function nothingBound(name)
+  return ns.Format(L["{key} -> nothing bound"], { key = name })
+end
+
+-- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
+-- nothing, or that nothing is bound.
+local function describe(key)
+  local b = tileBinding(key)
+  if not b then return nothingBound(CC.KeyName(key)) end
+  local line = ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
+  return line .. wontRunNote(b)
 end
 
 -- A key on the tile (W.HoverKeys keeps it from the game, so testing 1 casts nothing), as the binding it would be.
@@ -741,9 +776,18 @@ local function tileKey(tile, chord)
   tile.result:SetText(describe(chord))
 end
 
--- A click on the tile, as the mouse binding it would be.
+-- A mouse button the bindings don't take (Button6 and up: W.MOUSE_BUTTONS stops at 5), named for people: "Button 9",
+-- or the client's own name when it has no number.
+local function otherButtonName(button)
+  local n = button:match("^Button(%d+)$")
+  return n and ns.Format(L["Button {n}"], { n = n }) or button
+end
+
+-- A click on the tile, as the mouse binding it would be; a button no binding can take has nothing bound.
 local function tileClick(tile, button)
-  tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. (W.MOUSE_BUTTONS[button] or 1)))
+  local n = W.MOUSE_BUTTONS[button]
+  if not n then return tile.result:SetText(nothingBound(CC.KeyName(W.Modifiers() .. otherButtonName(button)))) end
+  tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. n))
 end
 
 -- The pointer is over the tile: it asks for a press (W.HoverKeys reads keys until the pointer leaves).
@@ -1178,8 +1222,7 @@ end
 -- A fight's start re-reads the open options window for the combat notice (only Vanguard's own widgets, so
 -- nothing protected runs); a closed window re-reads as it opens, so a pull costs it nothing.
 local function fightStarts()
-  local window = O.Frame()
-  if window and window:IsShown() then O.Refresh() end
+  if windowShown() then O.Refresh() end
 end
 
 -- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too. So does

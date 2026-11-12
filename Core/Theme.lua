@@ -947,6 +947,20 @@ local function wholePixels(frame, length)
   return math.max(1, math.floor(length / px + 0.5)) * px
 end
 
+-- A ring texture's look and piece (weak), so a repaint can place it again at the scale of that moment (a sliced ring has no piece).
+corner.ringOf = setmetatable({}, { __mode = "k" })
+
+-- Places one ring texture out past frame by its look's pad and size, in whole pixels at frame's scale now.
+function corner.placeRing(frame, t)
+  local look, piece = corner.ringOf[t].look, corner.ringOf[t].piece
+  if not piece then return corner.placeSlicedRing(frame, t, look) end
+  local out, size = T.PixelRound(frame, look.pad or 0), wholePixels(frame, look.size)
+  t:ClearAllPoints()
+  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], out)) end
+  if not piece.w then t:SetHeight(size) end
+  if not piece.h then t:SetWidth(size) end
+end
+
 -- One piece of a nine-slice ring around frame: look = { texture, size, layer, sublevel }.
 -- Pixel-snapped and a whole number of pixels thick, so every side meets the
 -- frame's edge exactly at any UI scale.
@@ -954,10 +968,8 @@ local function ringPiece(frame, piece, look)
   local t = T.Snap(frame:CreateTexture(nil, look.layer, nil, look.sublevel))
   t:SetTexture(T.Texture(look.texture))
   t:SetTexCoord(unpack(piece.tc))
-  for _, a in ipairs(piece.at) do t:SetPoint(a[1], frame, a[2], outward(a[2], T.PixelRound(frame, look.pad or 0))) end
-  local size = wholePixels(frame, look.size)
-  if not piece.w then t:SetHeight(size) end
-  if not piece.h then t:SetWidth(size) end
+  corner.ringOf[t] = { look = look, piece = piece }
+  corner.placeRing(frame, t)
   return t
 end
 
@@ -984,8 +996,14 @@ local function sliced(frame, look, t)
   t:SetTexture(T.Texture(look.texture))
   t:SetTextureSliceMargins(T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN, T.SLICE_MARGIN)
   placeSliced(t, frame, look.size, look.pad)
+  corner.ringOf[t] = { look = look }
   slicedRing[t] = true
   return { t }
+end
+
+-- Places a sliced ring texture again from its look.
+function corner.placeSlicedRing(frame, t, look)
+  placeSliced(t, frame, look.size, look.pad)
 end
 
 -- A soft ring (shadow or glow) around frame: one sliced texture with the setting on and a
@@ -1256,11 +1274,20 @@ function corner.art(set, frame, geo, kind)
   end
 end
 
+-- Pins a never-shaped frame's background `pad` units out past the frame again, rounded to whole pixels at the scale
+-- now (placeSides needs the shaped parts a square frame never makes).
+function corner.pinBg(p, frame, pad)
+  if not p.bg then return end
+  p.bg:ClearAllPoints()
+  pin(p.bg, frame, "TOPLEFT", pad)
+  pin(p.bg, frame, "BOTTOMRIGHT", pad)
+end
+
 -- Shows and places a frame's rounded, cut or pointed parts for a geometry, or hides them (geo nil) and
 -- gives the background its corners back. Nothing is made for a frame that was never shaped.
 local function paintRound(frame, entry, geo)
   local p, out = entry.parts, T.PixelRound(frame, entry.opts.pad or 0)
-  if not geo and not p.hasRounded then return end
+  if not geo and not p.hasRounded then return corner.pinBg(p, frame, entry.opts.pad) end
   if not p.hasRounded then roundParts(frame, p) p.hasRounded = true end
   if p.bg then placeSides(p, frame, out, geo) end
   placeCorners(p.roundLine, frame, out, geo)
@@ -1309,7 +1336,7 @@ local function paintEdges(frame, entry, geo)
   local p = entry.parts
   colorEdges(p.edges, borderColor(entry))
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
-  if geo or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, geo) end
+  placeEdges(p.edges, frame, entry.opts.pad, geo)
   corner.showEdges(p.edges, geo)
   corner.hideOpen(p.edges, entry)
 end
@@ -1583,9 +1610,11 @@ function corner.bare(entry)
   return entry.opts.role ~= nil and not entry.opts.round and T.HudBare ~= nil and T.HudBare(entry)
 end
 
--- The sheen and bevel lines of a painted frame, clear of its corners' largest size.
+-- The sheen and bevel lines of a painted frame, clear of its corners' largest size, and its shadow ring placed again at
+-- the scale now.
 local function paintTrim(frame, entry)
   local p, r = entry.parts, entry.radius
+  for _, t in pairs(p.shadow or NO_PARTS) do corner.placeRing(frame, t) end
   if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
 end

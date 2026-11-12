@@ -367,8 +367,10 @@ local function sizeCenter(b, big)
 end
 
 -- The tiles took a new width or height (RF.sizeHooks, out of combat): every marked tile's center marks take the
--- size the zones ask for now, as setup gives a new tile. Our own textures only, no secure call.
+-- size the zones ask for now, as setup gives a new tile. Our own textures only, no secure call. Nothing before
+-- the grid is built (a login in a fight builds it after the fight, and the zones need its size).
 local function resized()
+  if not RF.header then return end
   local big = RF.TileZones().icon + 4
   for _, b in ipairs(RF.buttons) do
     if b.raidIcon then sizeCenter(b, big) end
@@ -380,17 +382,19 @@ local function attach(b)
   if not b.raidIcon then setup(b) end
 end
 
+-- The raid frames' tile hook lists this module is on while it runs, each with its function.
+RS.HOOKS = { { RF.setupHooks, attach }, { RF.updateHooks, update }, { RF.sizeHooks, resized } }
+
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen. The hooks stay on
 -- the parent's lists only while the module runs (RS.Disable), so a tile update pays nothing for the lifecycle.
 function RS.Enable(settings, scope)
   RS.settings, RS.scope = settings, scope
   for _, b in ipairs(RF.buttons) do attach(b) end
-  RA.AddHook(RF.setupHooks, attach)
-  RA.AddHook(RF.updateHooks, update)
-  RA.AddHook(RF.sizeHooks, resized)
+  for _, hook in ipairs(RS.HOOKS) do RA.AddHook(hook[1], hook[2]) end
   for event, fn in pairs(EVENTS) do scope:On(event, fn) end
   scope:Gate("scale", RS.PlaceShadows, T.OnScale)
   RS.PlaceShadows()
+  resized()
   followHeader()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end
@@ -406,10 +410,8 @@ end
 -- Switched off: the hooks leave the parent's lists and every tile that has marks loses them (the range fade
 -- included); the marks stay for the next start. The range job and the events go with the scope.
 function RS.Disable()
-  RA.RemoveHook(RF.setupHooks, attach)
-  RA.RemoveHook(RF.updateHooks, update)
-  RA.RemoveHook(RF.sizeHooks, resized)
-  RS.following, RS.readyRunning = false, false
+  for _, hook in ipairs(RS.HOOKS) do RA.RemoveHook(hook[1], hook[2]) end
+  RS.following, RS.readyRunning, RS.readyFinished, RS.readyAnswers = false, false, false, {}
   for _, b in ipairs(RF.buttons) do
     if b.raidIcon then clearTile(b) end
   end

@@ -59,6 +59,11 @@ it("a saved size outside a slider's range is kept inside it", () => {
   expect(addon.eval('return __row("nameplate1", "debuffs")'), "and the smallest icons, eight at most").toMatchObject({ size: 12, max: 8 });
 });
 
+it("H45-15-4 a saved aura count that is not a whole number is rounded, as the client's aura container takes only whole ones", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL, saved("debuffs = 2.5, buffs = 1.4"));
+  expect(addon.eval('return { __row("nameplate1", "debuffs").max, __row("nameplate2", "buffs").max }'), "three debuffs, one buff").toEqual([3, 1]);
+});
+
 it("debuff and buff counts and the icon size make a plate's rows again once the setting holds still, without a reload", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
   expect(addon.eval('return { __row("nameplate1", "debuffs"), __row("nameplate2", "buffs") }'), "the defaults: four 18 debuffs wrapping at the bar, three 16 buffs").toMatchObject([{ max: 4, size: 18, line: 130, y: 16, unit: "nameplate1" }, { max: 3, size: 16, unit: "nameplate2" }]);
@@ -258,6 +263,21 @@ it("Names only on friendly plates: a unit you can't attack shows its name alone,
   expect([look("nameplate1").alpha, look("nameplate2").alpha], "a client without the call: every plate whole").toEqual([1, 1]);
   addon.eval("UnitCanAttack = function() return false end ns.GetModule('Nameplates').RefreshAll() __click('Names only on friendly plates')");
   expect([look("nameplate1").alpha, look("nameplate2").alpha, addon.eval("return #ns.errors")], "switched off: whole plates again").toEqual([1, 1, 0]);
+});
+
+it("Names only on friendly plates: a friendly NPC's name takes a new colour variant at once, as its bar does", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  // The friendly NPC's name colour.
+  const name = () => addon.eval("local r, g, b = __plateOf('nameplate2').name:GetTextColor() return { r, g, b }");
+  // The friendly reaction token now.
+  const friendly = () => addon.eval('return { ns.Theme.RGB("friendly") }').slice(0, 3);
+  expect(name(), "name-only: the name is in the friendly colour").toEqual(friendly());
+  const before = friendly();
+  addon.slash("variant contrast");
+  expect(friendly(), "the friendly colour moved").not.toEqual(before);
+  expect(name(), "the name took the new friendly colour").toEqual(friendly());
+  expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
 it("a plate's aura row the client has closed is never pointed at a unit: a removed plate is let go, a refresh paints the rest", () => {

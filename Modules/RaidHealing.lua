@@ -228,6 +228,9 @@ function RH.Forget()
   RH.names, RH.watch = nil, nil
 end
 
+-- A profile switch, copy or import replaced the buff list: the cached names go too.
+ns.OnProfileChanged(RH.Forget)
+
 -- Whether a unit has an aura by name (HELPFUL).
 local function hasBuff(unit, name)
   if C_UnitAuras and type(C_UnitAuras.GetAuraDataBySpellName) == "function" then

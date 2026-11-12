@@ -26,9 +26,9 @@
 //      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
 //      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
 //      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
-//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`) whose branch ends in
-//      return and comes before the call in the same blocks of the same function, or a call inside
-//      `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
+//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`, not compared, not in a
+//      negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
+//      branch of an enclosing if) of the same function, or a call inside `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
 // cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
@@ -389,8 +389,8 @@ const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorT
 // A table of three or four numbers (checked below to be 0-1: a color).
 const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
 const COLOR_TABLE = new RegExp(String.raw`\{${NUM},${NUM},${NUM}(?:,${NUM})?\}`, "g");
-// A color table written with r, g and b number fields ({ r = 1, g = 0.82, b = 0 }), checked to be 0-1 as well.
-const RGB_FIELDS = new RegExp(String.raw`\br\s*=${NUM},\s*g\s*=${NUM},\s*b\s*=${NUM}`, "g");
+// The fields that make a table a color when each is one written number from 0 to 1 (rgbFieldTables).
+const RGB_NAMES = ["r", "g", "b"];
 const COLOR_MESSAGE = "color numbers outside Core/Theme.lua: use a theme color (T.RGB, T.Color, T.Tint, T.BarColor, T.Paint)";
 
 // Lua source with comments and strings blanked out (newlines kept), so rules see only code.
@@ -405,12 +405,42 @@ function luaCodeOnly(src) {
   return out + src.slice(last);
 }
 
-// Offsets of color tables: three or four numbers, or r, g and b fields, all between 0 and 1.
+// Offsets of color tables: three or four numbers, all between 0 and 1.
 function colorTables(code) {
   const hits = [];
-  for (const m of [...code.matchAll(COLOR_TABLE), ...code.matchAll(RGB_FIELDS)]) {
+  for (const m of code.matchAll(COLOR_TABLE)) {
     if (m.slice(1).filter(Boolean).every((v) => Number(v) <= 1)) hits.push(m.index);
   }
+  return hits;
+}
+
+// The value of the table field named by tokens[k] (`r = 0.82` after a "{", "," or ";") when it is one written
+// number, else NaN.
+function fieldNumber(tokens, k) {
+  if (![",", ";", "{"].includes(tokens[k - 1]?.text) || tokens[k + 1]?.text !== "=" || tokens[k + 2]?.text === "=") return NaN;
+  let end = k + 2;
+  while (/^[\d.]$/.test(tokens[end]?.text ?? "")) end++;
+  const text = tokens.slice(k + 2, end).map((t) => t.text).join("");
+  return [",", ";", "}"].includes(tokens[end]?.text) && /\d/.test(text) ? Number(text) : NaN;
+}
+
+// Adds to hits the offset of a closed table's first r, g or b field when all three are written numbers from 0 to 1.
+function rgbHit(fields, hits) {
+  const found = RGB_NAMES.map((name) => fields?.[name]);
+  if (found.every((f) => f && f.value >= 0 && f.value <= 1)) hits.push(Math.min(...found.map((f) => f.at)));
+}
+
+// Offsets of tables whose r, g and b fields, in any order and with any other fields among them, are each one
+// written number from 0 to 1 ({ b = 0, g = 0.82, r = 1 }): a color written out. Only a table's own fields count.
+function rgbFieldTables(tokens) {
+  const hits = [];
+  const open = [];
+  tokens.forEach((t, k) => {
+    const table = open.at(-1);
+    if (t.kind === "punct" && "{([".includes(t.text)) open.push(t.text === "{" ? {} : null);
+    else if (t.kind === "punct" && "})]".includes(t.text)) rgbHit(open.pop(), hits);
+    else if (t.kind === "word" && table && RGB_NAMES.includes(t.text)) table[t.text] ??= { at: t.start, value: fieldNumber(tokens, k) };
+  });
   return hits;
 }
 
@@ -428,23 +458,29 @@ function colorProblems(file, src) {
   if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
   const code = luaCodeOnly(src);
   const line = lineIndex(src);
-  const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code));
+  const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code), rgbFieldTables(codeTokens(src)));
   hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index), ...hexStringColors(src));
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
 
-// A font sized with T.SetFont(...) or fs:SetTextHeight(14); :SetFont(path, 12) is read by writtenFontSize.
-const FONT_SIZE = /\bT\.SetFont\s*\(|:SetTextHeight\s*\(\s*\d/g;
+// A font sized with T.SetFont(...); fs:SetFont(path, 12) and fs:SetTextHeight(14) are read by writtenFontSize.
+const FONT_SIZE = /\bT\.SetFont\s*\(/g;
 const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
+// The argument that holds the size, by font method: fs:SetFont(path, size, flags), fs:SetTextHeight(size).
+const FONT_SIZE_ARG = new Map([["SetFont", 1], ["SetTextHeight", 0]]);
 
-// True when the token at tokens[i] is the method :SetFont whose second argument is a written size: a number, or
-// `x or 12`. A number inside brackets (was[2]) or a computed size is not, and a dotted call is a module's own.
+// True when the token at tokens[i] is the method :SetFont or :SetTextHeight whose size argument is a written size:
+// one that starts with a number (12, 12 * scale), or `x or 12`. A number inside brackets (was[2]), a size worked out
+// from a name (size + 2) or a vararg (...) is not, and a dotted call is a module's own.
 function writtenFontSize(tokens, i) {
-  if (tokens[i].text !== "SetFont" || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
-  const size = callArgs(tokens, i + 1)[1] ?? [];
+  const arg = FONT_SIZE_ARG.get(tokens[i].text);
+  if (arg === undefined || tokens[i - 1]?.text !== ":" || tokens[i + 1]?.text !== "(") return false;
+  const size = callArgs(tokens, i + 1)[arg] ?? [];
+  if (/^\d$/.test(size[0]?.text ?? "")) return true;
   let head = size.length;
   while (head > 0 && /^[\d.]$/.test(size[head - 1].text)) head--;
-  return head < size.length && (head === 0 || size[head - 1].text === "or");
+  const number = size.slice(head).some((t) => /^\d$/.test(t.text));
+  return number && (head === 0 || size[head - 1].text === "or");
 }
 
 // Fonts sized outside the theme's text roles: [{ line, message }].
@@ -614,7 +650,7 @@ export const FILE_SCOPE_ALLOWED = {
   "Modules/AuctionCrafting.lua": { calls: 3, reason: "the crafting cost panel follows the game's profession window; each handler checks the auction helper is built (A4-3 moves them into its Enable)" },
   "Modules/ClickCastOptions.lua": { calls: 4, reason: "the click-casting page re-reads itself at a fight's start and end and on talent changes, only while the options window is shown (L16; A4-3 moves them behind ClickCast)" },
   "Modules/ClickCastPresets.lua": { calls: 2, reason: "the starter layouts' blocker cache, cleared when an addon loads, and the better-spell offer on new spells (A4-3 moves them behind ClickCast)" },
-  "Modules/ClickCastSpells.lua": { calls: 3, reason: "the spellbook catalog's cache, cleared when spells change; read by the click-casting page whether or not ClickCast runs" },
+  "Modules/ClickCastSpells.lua": { calls: 1, reason: "the spellbook catalog's cache, cleared when spells change; read by the click-casting page whether or not ClickCast runs" },
   "Modules/KeybindsApply.lua": { calls: 5, reason: "key setup belongs to no module: blocked-action watch, refused updates retried, the key backup at logout and its restore at login (the backup only while key setup has a record)" },
   "Modules/KeybindsLearn.lua": { calls: 3, reason: "key setup's new spells belong to no module; the handlers do nothing unless keys were set up from a preset or the one question is still to ask" },
   "Modules/KeybindsWizard.lua": { calls: 2, reason: "key setup's wizard belongs to no module: it steps aside at combat start and offers itself once after login" },
@@ -887,25 +923,59 @@ function firstBranch(tokens, t) {
   return { end: tokens.length, returns };
 }
 
+// The index of the ")" that closes the call of the combat check at words[at] (at itself when it is not called).
+function checkClose(words, at) {
+  if (words[at + 1] !== "(") return at;
+  let depth = 0;
+  for (let k = at + 1; k < words.length; k++) {
+    depth += words[k] === "(" ? 1 : words[k] === ")" ? -1 : 0;
+    if (depth === 0) return k;
+  }
+  return words.length;
+}
+
+// True when a bracket still open at words[head] has `not` in front of it, as in `not (InCombatLockdown())` or
+// `not (a or ns.InCombat())`, though the word right before the check is not `not`.
+function insideNot(words, head) {
+  let open = 0;
+  for (let k = head - 1; k >= 0; k--) {
+    if (words[k] === ")") open++;
+    else if (words[k] === "(" && open > 0) open--;
+    else if (words[k] === "(" && words[k - 1] === "not") return true;
+  }
+  return false;
+}
+
+// True when the word before the check does not give the condition's sense: the check's answer is compared
+// (`InCombatLockdown() == false`; the tokenizer gives `==` and `~=` as single characters) or it stands in a negated
+// bracket (H45-2-51).
+function senseUnclear(words, head, at) {
+  return ["=", "~"].includes(words[checkClose(words, at) + 1]) || insideNot(words, head);
+}
+
 // How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
 // joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
-// `or`), else null.
+// `or`), else null (also when its sense is unclear: compared, or in a negated bracket).
 function combatSense(tokens, a, b) {
   const words = tokens.slice(a, b).map((t) => t.text);
   const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
   if (at < 0) return null;
   const head = words[at - 1] === "." ? at - 2 : at;
+  if (senseUnclear(words, head, at)) return null;
   if (words[head - 1] === "not") return words.includes("or") ? null : "out";
   return words.includes("and") ? null : "in";
 }
 
-// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first.
+// The block openers still open at tokens[i], counted from tokens[from]: their indexes, outermost first. An else or
+// elseif ends one branch and opens the next, so it takes the place of its `if` (a guard in one branch does not count
+// for a call in another).
 function openersAt(tokens, from, i) {
   const open = [];
   for (let k = from; k < i; k++) {
     if (tokens[k].kind !== "word") continue;
     if (LUA_BLOCK_OPEN.has(tokens[k].text)) open.push(k);
     else if (LUA_BLOCK_CLOSE.has(tokens[k].text)) open.pop();
+    else if (tokens[k].text === "else" || tokens[k].text === "elseif") open.splice(-1, 1, k);
   }
   return open;
 }

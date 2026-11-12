@@ -458,3 +458,63 @@ it("H44-9-51 a layout's record saved in the format before ranks counted still re
   addon.eval(`${CP}.Record().made = ${JSON.stringify(old)}`);
   expect(addon.eval(`return ${CP}.HasOwnClicks()`)).toBe(false);
 });
+
+// Switches the talent group the way the client does.
+const switchGroup = (addon, to, from) => { addon.eval(`__wfgWorld.specGroup = ${to}`); addon.fire("ACTIVE_TALENT_GROUP_CHANGED", to, from); };
+
+it("H45-19-50 after a talent group switch the Undo row names the layout of the list shown", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 2, 1);
+  addon.eval(`${CP}.Apply("other") ns.Options.Show("clickcast")`);
+  switchGroup(addon, 1, 2);
+  expect(textsWith(addon, "These bindings came from")).toEqual(["These bindings came from the starter layout “Healer: click to select”."]);
+});
+
+it("H45-19-50 after a talent group switch an offer row says what the list shown would replace", () => {
+  const addon = loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 2");
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.eval(`${CP}.Apply("select")`);
+  switchGroup(addon, 1, 2);
+  addon.world.learn(2050, { name: "Lesser Heal", rank: 1, helpful: true });
+  addon.update(0.1);
+  addon.eval(`${CP}.Apply("select")`);
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  addon.eval('ns.Options.Show("clickcast")');
+  switchGroup(addon, 2, 1);
+  addon.update(0.1); addon.update(0.1);
+  expect(textsWith(addon, "could cast")).toEqual(["Middle click could cast Heal."]);
+});
+
+it("H45-19-52 an offer the page shows after Use is not told in chat at the next SPELLS_CHANGED", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.eval(`${CP}.Apply("select")`);
+  addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('__click("Use Flash Heal")');
+  const page = textsWith(addon, "Shift + Left click could cast Heal.");
+  addon.clearChat();
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([page.length, chatHas(addon, /you can put/)]).toEqual([1, false]);
+});
+
+it("H45-19-52 an offer the page shows after Keep as it is is not told in chat at the next SPELLS_CHANGED", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2050, { name: "Lesser Heal", rank: 1, helpful: true });
+  addon.eval(`${CP}.Apply("select")`);
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.update(0.1); addon.update(0.1);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('__click("Keep as it is")');
+  const page = textsWith(addon, "Shift + Left click could cast Heal.");
+  addon.clearChat();
+  addon.fire("SPELLS_CHANGED");
+  addon.update(0.1); addon.update(0.1);
+  expect([page.length, chatHas(addon, /you can put/)]).toEqual([1, false]);
+});

@@ -134,7 +134,7 @@ it("secure snippets: a client that compiles them keeps hover keys and says so in
   expect(addon.eval('return Vanguard_SnippetProbe:GetAttribute("vgprobe")'), "the probe frame got the attribute the snippet wrote").toBe("ok");
   expect(snippetLines(addon), "nothing is said at login").toBe(0);
   addon.eval('ns.GetModule("ClickCast").Add("SHIFT-1", "spell", "TEST-ONLY Flash Heal") __spawn(1, "raid1")');
-  expect(addon.eval("return Vanguard_RaidUnitButton1.__wraps.OnEnter"), "hover keys are wrapped").toMatch(/SetBindingClick\(true, "SHIFT-1", self, "vg1"\)/);
+  expect(addon.eval('local b = Vanguard_RaidUnitButton1 return { b.__wraps.OnEnter == ns.GetModule("ClickCast").ENTER_SNIPPET, b:GetAttribute("vg-key1") }'), "hover keys are wrapped").toEqual([true, "SHIFT-1"]);
   addon.slash("status");
   expect(chatHas(addon, /secure snippets: yes/), "/vg status says yes").toBe(true);
 });

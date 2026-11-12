@@ -1,6 +1,7 @@
 // healing: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn, unitEvents } from "./helpers.mjs";
 
 it("the power bar sits above the incoming-heal and shield bars and under the tile's texts, so a prediction never covers the mana strip", () => {
@@ -232,4 +233,22 @@ it("A1-12: a health event sets no overlay width again; a resized tile's overlays
   addon.eval("local b = Vanguard_RaidUnitButton1 b:SetWidth(b:GetWidth() + 20) __units.raid1.hp = 400");
   addon.fire("UNIT_HEALTH", "raid1");
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { __widths, b.heal:GetWidth() == b:GetWidth() - 2 }"), "a wider tile: each overlay set once, to the health bar's width").toEqual([2, true]);
+});
+
+// Raid frames and the other reload-only modules are off on both profiles, so the switch applies at once (Core/ProfileSwitch.lua blocks a live switch otherwise).
+const SWITCH_SAVED = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {}, RaidHealing = { buffs = "Thorns" } }, Raid = { modules = {}, RaidHealing = { buffs = "Gift of the Wild" } } } }\nVanguardCharDB = { profile = "Default" }';
+const OFF_RELOAD_ONLY = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`;
+
+it("H45-17-50 healing: a profile switch drops the cached buff names, so the next click saves onto the new profile's list", () => {
+  const addon = createAddon({ savedVariables: SWITCH_SAVED });
+  addon.eval(CLICK_LUA + OFF_RELOAD_ONLY);
+  addon.login();
+  addon.eval("ns.Options.Show('healing')");
+  addon.eval("return ns.PickProfile('Raid')");
+  expect(addon.eval("return ns.GetModule('RaidHealing').BuffNames()[1]")).toBe("Gift of the Wild");
+  addon.eval("ns.Options.Show('healing')");
+  addon.eval('__click("Mark of the Wild")');
+  expect(addon.eval("return { VanguardDB.profiles.Raid.RaidHealing.buffs, VanguardDB.profiles.Default.RaidHealing.buffs }")).toEqual(["Gift of the Wild, Mark of the Wild", "Thorns"]);
 });

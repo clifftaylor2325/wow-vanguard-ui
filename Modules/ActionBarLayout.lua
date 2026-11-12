@@ -132,14 +132,17 @@ function AB.BarDriver(n)
   return (ns.IsForever() and "" or AB.PET_BATTLE_CLAUSE) .. AB.Driver(n)
 end
 
--- Registers bar n's secure visibility driver, its state and mouse watching right now.
+-- Registers bar n's secure visibility driver, its state and mouse watching right now. A fading bar feels the
+-- mouse move (to fade in) but takes no clicks, so clicks over its gaps and empty slots reach the world.
 local function visibilityNow(n)
   local bar = AB.bars[n]
   if not bar then return end
   RegisterStateDriver(bar, "visibility", AB.BarDriver(n))
   V.ApplyNow(bar, AB.Visibility(n), AB.settings.bars[n].showWhen)
   bar:EnableMouse(V.Fades(bar))
+  bar:SetMouseClickEnabled(false)
   AB.UpdateAlpha(n)
+  AB.UpdateBackings()
 end
 
 -- Re-registers the visibility driver of every bar shown on conditions right now (out of combat only).
@@ -285,9 +288,12 @@ local function barBelow(n)
   end
 end
 
--- Whether bar n stands at its spot in the stack, always shown: built, stacked and never dragged away.
+-- Whether bar n stands at its spot in the stack, always shown: built, stacked, never dragged away, and not faded on
+-- its own (the Calm HUD's Hide fades each bar under its own mouse, so each needs its own plate).
 local function standsInStack(n)
-  return AB.bars[n] ~= nil and AB.InStack(n) and not ns.MoverSaved("bar" .. n) and AB.Visibility(n) == "always"
+  local bar = AB.bars[n]
+  local placed = bar ~= nil and AB.InStack(n) and not ns.MoverSaved("bar" .. n)
+  return placed and AB.Visibility(n) == "always" and not V.Fades(bar)
 end
 
 -- Bar n's width on the screen's units, or nil while the client hides it.

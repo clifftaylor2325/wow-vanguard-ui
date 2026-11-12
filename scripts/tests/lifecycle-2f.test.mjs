@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
-import { SETUP_DONE } from "./helpers.mjs";
+import { SETUP_DONE, chatHas } from "./helpers.mjs";
 import { lifecycleCases, moduleOff } from "./lifecycle-helpers.mjs";
 
 // The addon logged in with the heavy modules off, and `saved` Lua run after the saved variables.
@@ -73,7 +73,9 @@ it("lifecycle: with QuestDialog off, the hand-back switch never takes the game's
 
 it("lifecycle: QuestLog switched off clears its override binding and goes quiet", () => {
   const addon = login();
+  addon.eval('__cleared = {} local old = ClearOverrideBindings ClearOverrideBindings = function(owner) __cleared[#__cleared + 1] = owner return old(owner) end');
   addon.eval('ns.SetModuleEnabled("QuestLog", false)');
+  expect(addon.eval('for _, o in ipairs(__cleared) do if o == ns.GetModule("QuestLog").toggle then return true end end return false'), "the toggle's key handed back").toBe(true);
   expect(addon.eval('return ns.ModuleLive("QuestLog")')).toBe(false);
   expect(addon.eval("return Vanguard_QuestLog:IsShown()")).toBe(false);
   expect(addon.eval("return #ns.errors")).toBe(0);
@@ -81,6 +83,8 @@ it("lifecycle: QuestLog switched off clears its override binding and goes quiet"
 
 it("lifecycle: BrokerStrip switched off hides the strip", () => {
   const addon = login();
+  addon.eval("Vanguard_BrokerStrip:Show()");
+  expect(addon.eval("return Vanguard_BrokerStrip:IsShown()"), "shown first").toBe(true);
   addon.eval('ns.SetModuleEnabled("BrokerStrip", false)');
   expect(addon.eval("return Vanguard_BrokerStrip:IsShown()")).toBe(false);
   expect(addon.eval("return #ns.errors")).toBe(0);
@@ -89,6 +93,7 @@ it("lifecycle: BrokerStrip switched off hides the strip", () => {
 it("lifecycle: Quiet and HudText say what stays until a reload when they stop", () => {
   const addon = login();
   addon.eval('ns.SetModuleEnabled("Quiet", false) ns.SetModuleEnabled("HudText", false)');
+  expect([chatHas(addon, /stay hidden until you reload/), chatHas(addon, /keep Vanguard's font until you reload/)]).toEqual([true, true]);
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
@@ -108,8 +113,14 @@ it("lifecycle: DataBars switched off gives the game's XP bar its Edit Mode handl
 
 it("lifecycle: DataBars stopped, a late visibility repaint does not show its bars again", () => {
   const addon = login();
-  addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") if DB.xpBar then DB.UpdateXP() DB.UpdateReputation() end');
-  expect(addon.eval('local DB = ns.GetModule("DataBars") return { DB.xpBar == nil or not DB.xpBar:IsShown(), DB.repBar == nil or not DB.repBar:IsShown() }')).toEqual([true, true]);
+  addon.eval(`local DB = ns.GetModule("DataBars")
+    DB.Line = function() return { cur = 50, max = 100, rested = 0 } end
+    DB.Reputation = function() return { name = "Faction", standing = 5, cur = 10, max = 100 } end
+    DB.UpdateXP() DB.UpdateReputation()`);
+  const shown = 'local DB = ns.GetModule("DataBars") return { DB.xpBar:IsShown(), DB.repBar:IsShown() }';
+  expect(addon.eval(shown), "both bars shown with a line each").toEqual([true, true]);
+  addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") DB.UpdateXP() DB.UpdateReputation()');
+  expect(addon.eval(shown)).toEqual([false, false]);
 });
 
 it("lifecycle: QuestLog stopped with the tracker off, a zone-in no longer opens the game's folded quest zones", () => {

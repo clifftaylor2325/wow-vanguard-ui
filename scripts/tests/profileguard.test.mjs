@@ -503,6 +503,44 @@ it("H44-12-50: a hand pick that stays staged renews both stamps at logout", () =
   expect(stamp).toBeLessThan(9000);
 });
 
+// The saved stamp and whether the backup survived a logout after `steps` ran on the unanswered character; the next login's loss.
+function afterPicks(extra, saved, run) {
+  const { lost, backup, stamp } = unanswered(extra, saved);
+  run(lost);
+  lost.eval("time = function() return 9000 end");
+  lost.fire("PLAYER_LOGOUT");
+  const after = lost.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(after.account)}\nVanguardCharDB = ${luaValue(after.char)}\n` });
+  next.eval(CLICK_LUA + extra);
+  next.login();
+  return { stamp, charStamp: after.char.guard.stamp, kept: after.char.guard.backup === backup, lostNext: next.eval("return ns.SettingsGuard.Lost() or 'none'") };
+}
+
+it("H45-7-51: picking the profile already in use leaves the stamps, the backup and the offer alone", () => {
+  const out = afterPicks("", TWO, (lost) => lost.slash("profile Main"));
+  expect([out.charStamp === out.stamp, out.kept, out.lostNext], "nothing was picked").toEqual([true, true, "account"]);
+});
+
+it("H45-7-51: a staged pick taken back leaves the stamps, the backup and the offer alone", () => {
+  const out = afterPicks("", TWO, (lost) => { lost.slash("profile Raid"); lost.slash("profile Main"); });
+  expect([out.charStamp === out.stamp, out.kept, out.lostNext]).toEqual([true, true, "account"]);
+});
+
+it("H45-7-51: a live pick away and straight back leaves the stamps, the backup and the offer alone", () => {
+  const out = afterPicks(LIVE_OFF, TWO, (lost) => { lost.eval("ns.PickProfile('Raid') ns.PickProfile('Main')"); });
+  expect([out.charStamp === out.stamp, out.kept, out.lostNext]).toEqual([true, true, "account"]);
+});
+
+it("H45-7-51: the same pick, then a spec change that stages another profile, still keeps the backup", () => {
+  const saved = 'VanguardDB = { version = 2, setupDone = true, profiles = { Main = { theme = { accent = { 0.5, 0.5, 0.5, 1 } } }, Heal = { modules = { Minimap = false } } } }\nVanguardCharDB = { profile = "Main", setupDone = true }\n';
+  const out = afterPicks(SPEC, saved, (lost) => {
+    lost.slash("profile Main");
+    lost.eval("VanguardCharDB.specProfiles = { [2] = 'Heal' } __spec = 2");
+    lost.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  });
+  expect([out.kept, out.lostNext]).toEqual([true, "account"]);
+});
+
 it("H44-12-R2: a pick that applies at once also answers the loss at logout", () => {
   const { lost } = unanswered(LIVE_OFF, TWO);
   expect(lost.eval("return ns.PickProfile('Raid')"), "applied at once").toBe(true);

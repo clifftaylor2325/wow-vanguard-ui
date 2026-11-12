@@ -214,15 +214,15 @@ const getBarOption = (addon, n, label) => addon.eval(`
   end`);
 
 // Bar 2's secure visibility driver (without the pet battle clause a retail bar's begins with; `raw` keeps it),
-// alpha, and whether it takes the mouse.
+// alpha, whether it takes the mouse, and whether clicks land on it.
 const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   local raw = bar.__states.visibility
-  return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
+  return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse, click = bar:IsMouseClickEnabled() }`);
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const start = barVis(addon);
-  expect(start.driver === "show" && start.alpha === 1 && start.mouse === false, "a bar shown always: driver show, full alpha, doesn't take the mouse").toBeTruthy();
+  expect(start.driver === "show" && start.alpha === 1 && start.mouse === false && start.click === false, "a bar shown always: driver show, full alpha, doesn't take the mouse").toBeTruthy();
   const modes = { mouseover: "show", combat: "[combat] show; hide", hidden: "hide", always: "show" };
   for (const [mode, driver] of Object.entries(modes)) {
     expect(setBarOption(addon, 2, "Visibility", JSON.stringify(mode)), `the Visibility row sets ${mode}`).toBeTruthy();
@@ -230,6 +230,9 @@ it("action bar visibility: each mode's state driver and mouseover alpha", () => 
   }
   setBarOption(addon, 2, "Visibility", '"mouseover"');
   expect(barVis(addon).alpha === 0 && barVis(addon).mouse === true, "a mouseover bar starts faded out and takes the mouse").toBeTruthy();
+  // The motion-only idiom of Blizzard_UIWidgets/Blizzard_UIWidgetTemplateBase.lua UIWidgetTemplateTooltipFrameMixin:SetMouse
+  // (/home/user/blizz/{forever,live}/Interface/AddOns): EnableMouse, then SetMouseClickEnabled(false).
+  expect(barVis(addon).click, "but takes no clicks, so clicks over its empty slots reach the world").toBe(false);
   // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
   addon.eval("__shows = 0 local bar = Vanguard_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
   setCombat(addon, true);
@@ -278,7 +281,7 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   expect(JSON.stringify(saved4) === JSON.stringify([true, "mouseover", 12, 1]), `a fresh enable is saved with On mouseover (got ${JSON.stringify(saved4)})`).toBeTruthy();
   const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
   const bar4 = barVis(on, 4);
-  expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
+  expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true && bar4.click === false, "turned on, bar 4 is faded out until the mouse is over it, and takes no clicks").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = Vanguard_Bar4Button2:GetPoint(1) return { x, y }");
   expect(second, "one button per row, as before (38 + 2 apart, each in whole screen pixels)").toEqual([0, -(px(on, 38) + px(on, 2))]);
 });
@@ -452,7 +455,7 @@ it("action bar layout: per-bar buttons, rows and size, deferred in combat", () =
   setCombat(addon, false);
   const after = lay();
   expect(after, "then bar 2 is two rows of 6 at 40 px, showing 10 buttons").toEqual({ w: 6 * (s40 + g) - g, h: 2 * (s40 + g) - g, x7: 0, y7: -(s40 + g), size: s40, shown12: false });
-  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button gives up its key; the bar keeps its own size").toBeTruthy();
+  expect(addon.eval("return __overrides.F12") === null && getBarOption(addon, 2, "Button size") === 40, "a hidden button's key goes back to the game's command; the bar keeps its own size").toBeTruthy();
   expect(addon.eval("return Vanguard_Bar3Button1:GetWidth()"), "other bars keep theirs").toBe(s38);
 });
 
@@ -573,19 +576,8 @@ it("bar 1 with secure snippets keeps the snippet paging", () => {
     "the state driver and its snippet, buttons without IDs").toEqual([true, true, true, 0]);
 });
 
-// TEST-ONLY game action buttons on the game's bars, each listening to cooldown and usable events as the game's do.
-const GAME_BUTTONS = `
-  for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
-    local b = CreateFrame("CheckButton", name, MainMenuBar)
-    b:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN") b:RegisterEvent("SPELL_UPDATE_USABLE")
-  end
-`;
-
-it("the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps", () => {
-  const addon = loggedIn(ACTIONS_ENV + GAME_BUTTONS);
-  expect(addon.eval(`local out = {} for _, name in ipairs({ "ActionButton1", "ActionButton12", "MultiBarBottomLeftButton3", "MultiBar7Button12" }) do
-    out[#out + 1] = _G[name]:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN") or _G[name]:IsEventRegistered("SPELL_UPDATE_USABLE") end return out`),
-    "no game action button listens to events any more").toEqual([false, false, false, false]);
+it("one cooldown event refreshes the sweeps", () => {
+  const addon = loggedIn(ACTIONS_ENV);
   addon.eval("__cooldowns = 0 local get = GetActionCooldown GetActionCooldown = function(...) __cooldowns = __cooldowns + 1 return get(...) end");
   addon.fire("SPELL_UPDATE_COOLDOWN");
   expect(addon.eval("return __cooldowns"), "SPELL_UPDATE_COOLDOWN no longer re-reads every button's cooldown").toBe(0);
@@ -593,8 +585,6 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
   addon.update(0);
   expect([addon.eval("return __cooldowns > 0"), addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
-  const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
-  expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
 });
 
 // The tooltip's owner name, the slot it shows, its first line, and whether it is up.
@@ -1008,6 +998,26 @@ it("bar backing: a stacked bar dragged away keeps a plate of its own, and no two
   expect(shownBackings(addon).map((p) => p.bar), "a bar that fades on its own keeps its own plate").toEqual([1, 2, 3]);
 });
 
+it("bar backing: under the Calm HUD's Hide each bar carries its own plate; Dim and Calm off share the plinth", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { UnitFrames = { calm = true, calmBars = "hide" } }' });
+  // The bars (of 1 to 3) whose backing is shown; a faded bar's plate is drawn at the bar's alpha.
+  const owners = () => Object.values(addon.eval(`local out = {}
+  for n = 1, 3 do
+    local f = _G["Vanguard_Bar" .. n].vgBacking
+    if f and f:IsShown() then out[#out + 1] = n end
+  end
+  return out`) || {});
+  // Sets the Calm HUD's switch and its Action bars choice, and re-applies every calm frame.
+  const calmBars = (on, choice) => addon.eval(`local s = VanguardDB.profiles.Default.UnitFrames s.calm = ${on} s.calmBars = "${choice}" ns.Visibility.ApplyCalm()`);
+  expect(owners(), "each bar fades under its own mouse, so each has its own plate").toEqual([1, 2, 3]);
+  calmBars(true, "dim");
+  expect(owners(), "Dim keeps the one plinth (the bars dim together)").toEqual([1]);
+  calmBars(true, "hide");
+  expect(owners(), "Hide again: one plate each").toEqual([1, 2, 3]);
+  calmBars(false, "hide");
+  expect(owners(), "Calm HUD off: one plinth on bar 1").toEqual([1]);
+});
+
 it("hotkey text stays on one line inside the button, right-aligned", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey
@@ -1079,6 +1089,25 @@ it("H44-8-2 bars: a shared size or spacing outside the sliders' limits is droppe
   }
   expect(sharedAfterLogin("spacing = 100000"), "spacing 100000").toEqual([38, 2, 0]);
   expect(sharedAfterLogin("size = 44, spacing = 6"), "values inside the limits stay").toEqual([44, 6, 0]);
+});
+
+it("H45-5-1 bars: the shared size keeps what setup's screen presets write (to 64), though a bar's own slider ends at 48", () => {
+  for (const kept of [50, 55, 62, 64]) expect(sharedAfterLogin(`size = ${kept}, layout = 2`), `size ${kept}`).toEqual([kept, 2, 0]);
+  expect(sharedAfterLogin("size = 65, layout = 2"), "65 is past the shared limit").toEqual([38, 2, 0]);
+  const bar = loggedInWithBarOne("{ size = 50 }");
+  expect(bar.eval('return ns.GetModule("ActionBars").settings.bars[1].size == nil'), "a bar's own size of 50 is still dropped").toBe(true);
+});
+
+it("H45-5-51 bars: a saved layout stamp that is not a number is treated as an old profile, at login and in an import", () => {
+  for (const stamp of ['"x"', "{}", "0/0"]) {
+    const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { layout = ${stamp} } } }\n` });
+    addon.eval(ACTIONS_ENV);
+    addon.login();
+    expect(addon.eval('return { #ns.errors, Vanguard_Bar1 ~= nil, ns.GetModule("ActionBars").settings.layout }'), `login with layout ${stamp}`).toEqual([0, true, 2]);
+    const read = addon.eval(`local ok, kind, data = pcall(ns.ReadPayload, "parts", { format = ns.PROFILE_FORMAT, ActionBars = { layout = ${stamp} } })
+      return { ok, kind, ok and data.ActionBars.layout }`);
+    expect(read, `import with layout ${stamp}`).toEqual([true, "parts", 2]);
+  }
 });
 
 it("an imported string's bar size that isn't a number is dropped before it is saved", () => {

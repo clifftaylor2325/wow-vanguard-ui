@@ -53,6 +53,10 @@ end
 -- The world's own handle on that check, so its reads still work in a test that removes the global.
 local worldIsSecret = issecretvalue
 
+-- Whether a value is secret by the test's own check when it has one (some tests replace issecretvalue to call a
+-- stand-in secret), else by the world's, so a test that removes the global still gets answers.
+local function seenSecret(v) return (issecretvalue or worldIsSecret)(v) end
+
 -- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
 -- type() "table", so the test's own issecretvalue, if it has one, still knows it).
 local function madeSecret(v)
@@ -93,7 +97,7 @@ C_Secrets = {
   -- Whether one aura's values are hidden: every aura's while auras are, else this one's when its times are secrets.
   ShouldUnitAuraInstanceBeSecret = function(unit, id)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    return world.aurasSecret or (aura ~= nil and (issecretvalue(aura.duration) or issecretvalue(aura.expirationTime)))
+    return world.aurasSecret or (aura ~= nil and (seenSecret(aura.duration) or seenSecret(aura.expirationTime)))
   end,
   -- Whether unit's threat values against mobUnit are hidden; both units are required, as in the client.
   ShouldUnitThreatValuesBeSecret = function(unit, mobUnit)
@@ -143,7 +147,15 @@ function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end
 -- CVars live in world.cvars as strings, as the client keeps them.
 function GetCVar(name) return world.cvars[name] end
-function SetCVar(name, value) world.cvars[name] = tostring(value) end
+-- Stores a CVar's value as a string (C_CVar.SetCVar's value is a cstring, CVarDocumentation.lua:131-148).
+local function storeCVar(name, value) world.cvars[name] = tostring(value) end
+-- The client's SetCVar (Blizzard_SharedXMLBase/CvarUtil.lua:9-15, both clients): a boolean becomes "1" or "0".
+function SetCVar(name, value)
+  if type(value) == "boolean" then return storeCVar(name, value and "1" or "0") end
+  return storeCVar(name, value and tostring(value) or nil)
+end
+local worldSetCVar = SetCVar
+-- Whether a CVar is on.
 function GetCVarBool(name) local v = world.cvars[name] return v == "1" or v == true end
 -- A C_ namespace function that calls the global of the same name at call
 -- time, so a test that replaces (or removes) the global changes both.
@@ -155,7 +167,14 @@ local function viaGlobal(name)
 end
 world.viaGlobal = viaGlobal
 
-C_CVar = { GetCVar = viaGlobal("GetCVar"), SetCVar = viaGlobal("SetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+local globalSetCVar = viaGlobal("SetCVar")
+C_CVar = { GetCVar = viaGlobal("GetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+-- Stores the value as it comes (a boolean handed to C_CVar.SetCVar is not modelled: what the client does with it is
+-- game-only), or calls the global SetCVar when a test has replaced it.
+function C_CVar.SetCVar(name, value)
+  if _G.SetCVar == worldSetCVar then return storeCVar(name, value) end
+  return globalSetCVar(name, value)
+end
 -- Bitfield CVars (CVarDocumentation.lua): world.cvarBits[name][index] by lua index, as the
 -- client keeps them packed in the CVar's string. nil for a CVar the client lacks.
 world.cvarBits = { nameplateInfoDisplay = {} }
@@ -285,11 +304,11 @@ function hooksecurefunc(t, name, fn)
   if type(t) == "string" then t, name, fn = _G, t, name end
   local orig = t[name]
   if type(orig) ~= "function" then return end
-  -- The original, then the hook, with the original's results.
+  -- The original, then the hook, with every one of the original's results (nils too).
   local function hooked(...)
-    local results = { orig(...) }
+    local results = stub.pack(orig(...))
     fn(...)
-    return unpack(results)
+    return stub.unpack(results, 1, results.n)
   end
   stub.transparent[hooked], stub.hooks = true, (stub.hooks or 0) + 1
   t[name] = hooked
@@ -314,6 +333,27 @@ function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
+-- The game's alternate top-level frame, which a "full" panel (the housing editor, the barber shop) sets while it hides
+-- UIParent; GetAppropriateTopLevelParent answers it while it is shown, else UIParent, and setting or clearing it
+-- triggers UI.AlternateTopLevelParentChanged (Blizzard_SharedXMLBase/FrameUtil.lua, both clients).
+world.topLevel = nil
+-- Makes a frame the alternate top-level frame.
+function SetAlternateTopLevelParent(parent)
+  world.topLevel = parent
+  EventRegistry:TriggerEvent("UI.AlternateTopLevelParentChanged", parent)
+end
+-- Clears the alternate top-level frame.
+function ClearAlternateTopLevelParent()
+  world.topLevel = nil
+  EventRegistry:TriggerEvent("UI.AlternateTopLevelParentChanged")
+end
+-- The frame a top-level frame goes on now: the alternate one while it is shown (and not the one excluded), else UIParent.
+function GetAppropriateTopLevelParent(excluded)
+  local top = world.topLevel
+  if top and top:IsShown() and (not excluded or top ~= excluded) then return top end
+  return UIParent
+end
+
 -- EventRegistry: callbacks by event name, kept as Blizzard_SharedXMLBase/CallbackRegistry.lua's
 -- CallbackRegistryMixin keeps them (both clients): one callback per owner per event, a generated number owner for
 -- nil, a number owner refused, extra arguments kept for the call, and the owner returned.
@@ -337,23 +377,35 @@ local function runCallback(cb, ...)
   return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
 end
 
+-- The client's check on an event name: text, else it raises with the method's own message (the client writes
+-- RegisterCallback's with a double colon). Blizzard_SharedXMLBase/CallbackRegistry.lua:112-113, 187-188, 225-226.
+local function needEventName(method, event)
+  if type(event) ~= "string" then error(method .. " 'event' requires string type.", 3) end
+end
+
 EventRegistry = {
-  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner.
+  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner. The event name and
+  -- the function are checked first, then the owner, in the client's order (CallbackRegistry.lua:112-121).
   RegisterCallback = function(self, event, fn, owner, ...)
+    needEventName("CallbackRegistryMixin::RegisterCallback", event)
+    if type(fn) ~= "function" then error("CallbackRegistryMixin::RegisterCallback 'func' requires function type.", 2) end
     owner = callbackOwner(owner)
     self:UnregisterCallback(event, owner)
     world.callbacks[event] = world.callbacks[event] or {}
     table.insert(world.callbacks[event], { fn = fn, owner = owner, args = stub.pack(...) })
     return owner
   end,
-  -- Drops the owner's callback for an event; the owner is required.
+  -- Drops the owner's callback for an event; the event name must be text and the owner is required.
   UnregisterCallback = function(_, event, owner)
+    needEventName("CallbackRegistryMixin:UnregisterCallback", event)
     if owner == nil then error("CallbackRegistryMixin:UnregisterCallback 'owner' is required.", 2) end
     local list = world.callbacks[event] or {}
     for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
   end,
-  -- Runs the callbacks for an event: those kept with extra arguments (the client's closures) first, then the rest.
+  -- Runs the callbacks for an event (its name must be text): those kept with extra arguments (the client's closures)
+  -- first, then the rest.
   TriggerEvent = function(_, event, ...)
+    needEventName("CallbackRegistryMixin:TriggerEvent", event)
     local list = { stub.unpack(world.callbacks[event] or {}) }
     for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
     for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
@@ -582,20 +634,39 @@ for name, value in pairs(Enum.PowerType) do
   if PowerBarColor[key] then PowerBarColor[value] = PowerBarColor[key] end
 end
 
--- The difficulty color of a creature level against the player's.
+-- The client's level colours and their highlight colours (Blizzard_FrameXMLBase/Constants.lua:195-213; r, g, b only).
+QuestDifficultyColors = {
+  impossible = { r = 1, g = 0.1, b = 0.1 }, verydifficult = { r = 1, g = 0.5, b = 0.25 }, difficult = { r = 1, g = 0.82, b = 0 },
+  standard = { r = 0.25, g = 0.75, b = 0.25 }, trivial = { r = 0.5, g = 0.5, b = 0.5 },
+}
+QuestDifficultyHighlightColors = {
+  impossible = { r = 1, g = 0.4, b = 0.4 }, verydifficult = { r = 1, g = 0.75, b = 0.44 }, difficult = { r = 1, g = 1, b = 0.1 },
+  standard = { r = 0.43, g = 0.93, b = 0.43 }, trivial = { r = 0.7, g = 0.7, b = 0.7 },
+}
+-- How many levels below yours still count as standard. TEST-ONLY guess: the client's number at each level is game-only.
+world.trivialLevelRange = 7
+-- That range (UnitQuestTrivialLevelRange, read by DifficultyUtil.lua).
+function UnitQuestTrivialLevelRange() return world.trivialLevelRange end
+-- The world scales no levels: a unit's effective level is its level.
+function UnitEffectiveLevel(unit) return UnitLevel(unit) end
+-- The colour and highlight colour of challengeLevel against unitLevel, by DifficultyUtil.lua's bands (both clients).
+function GetRelativeDifficultyColor(unitLevel, challengeLevel)
+  local diff = challengeLevel - unitLevel
+  local band = -diff <= UnitQuestTrivialLevelRange("player") and "standard" or "trivial"
+  for _, step in ipairs({ { 5, "impossible" }, { 3, "verydifficult" }, { -4, "difficult" } }) do
+    if diff >= step[1] then band = step[2] break end
+  end
+  return QuestDifficultyColors[band], QuestDifficultyHighlightColors[band]
+end
+-- A creature's (or a quest's) level colour against your effective level (UnitLevel when a test removed it).
 function GetCreatureDifficultyColor(level)
-  local diff = level - UnitLevel("player")
-  if diff >= 5 then return { r = 1, g = 0.1, b = 0.1 } end
-  if diff >= 3 then return { r = 1, g = 0.5, b = 0.25 } end
-  if diff >= -2 then return { r = 1, g = 1, b = 0 } end
-  if diff >= -7 then return { r = 0.25, g = 0.75, b = 0.25 } end
-  return { r = 0.5, g = 0.5, b = 0.5 }
+  return GetRelativeDifficultyColor((UnitEffectiveLevel or UnitLevel)("player"), level)
 end
 GetQuestDifficultyColor = GetCreatureDifficultyColor
 
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
-  if issecretvalue(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
+  if seenSecret(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
   if type(v) ~= "number" then return tostring(v) end
   if v >= 1e6 then return string.format("%.1fM", v / 1e6) end
   if v >= 1e3 then return string.format("%.1fK", v / 1e3) end
@@ -624,7 +695,7 @@ C_CurveUtil = {
   end,
   -- One of two colors by a boolean the client may hide (a hidden one is read through the harness's rawget, as a hidden number is).
   EvaluateColorFromBoolean = function(flag, ifTrue, ifFalse)
-    if issecretvalue(flag) then flag = rawget(flag, "n") end
+    if seenSecret(flag) then flag = rawget(flag, "n") end
     return flag and ifTrue or ifFalse
   end,
 }
@@ -661,13 +732,13 @@ C_StringUtil = {
   CreateNumericRuleFormatter = function() return newNumericRuleFormatter() end,
   -- A number as whole-number text (rounded down), "" for zero; a secret stays secret.
   TruncateWhenZero = function(n)
-    if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
+    if seenSecret(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
     local whole = math.floor(n)
     return whole == 0 and "" or tostring(whole)
   end,
   -- prefix .. infix .. suffix, or "" when infix is ""; a secret infix gives a secret.
   WrapString = function(infix, prefix, suffix)
-    if issecretvalue(infix) then local v = rawget(infix, "n") return world.secret(v and C_StringUtil.WrapString(v, prefix, suffix)) end
+    if seenSecret(infix) then local v = rawget(infix, "n") return world.secret(v and C_StringUtil.WrapString(v, prefix, suffix)) end
     if infix == "" then return "" end
     return (prefix or "") .. infix .. (suffix or "")
   end,
@@ -737,6 +808,13 @@ function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
 local function inside(v) return worldIsSecret(v) and rawget(v, "n") or v end
+-- The client's dispel type IDs by name. TEST-ONLY: neither Blizzard checkout lists them, so these copy the addon's own
+-- DISPEL_INDEXES (Core/Auras.lua): a test through them proves the plumbing, not the numbers (H44 guess 25).
+world.dispelTypeIds = { None = 0, Magic = 1, Curse = 2, Disease = 3, Poison = 4, Enrage = 9, Bleed = 11 }
+-- A copy of a colour with every component hidden, as the client answers for an aura it hides.
+local function hiddenColor(c)
+  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+end
 -- Max health minus health, secret when either is (SecretReturns in Forever's docs).
 function UnitHealthMissing(unit)
   local hp, max = UnitHealth(unit), UnitHealthMax(unit)
@@ -745,15 +823,16 @@ function UnitHealthMissing(unit)
   return world.secret(type(h) == "number" and type(m) == "number" and m - h or nil)
 end
 
--- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
--- evaluates it. With hidden health the answer is hidden: a secret number (the percent, or a number curve's result),
--- or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
+-- A unit's health as a percentage, 0 to 1; with a curve, what the curve gives at that percentage, as the client
+-- evaluates it (Blizzard_SharedXMLBase/CurveConstants.lua, both clients: ScaleTo100 "re-scales any percentage value
+-- from [0, 1] to [0, 100]", so the plain percentage is the 0 to 1 one). With hidden health the answer is hidden: a
+-- secret number (the percentage, or a number curve's result), or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
 -- (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 function UnitHealthPercent(unit, _, curve)
   local u = resolveUnit(unit)
   local hp, max = u and inside(u.hp), u and inside(u.maxhp)
   local fraction = max and max > 0 and hp / max or 0
-  local result = fraction * 100
+  local result = fraction
   if type(curve) == "table" and curve.Evaluate then result = curve:Evaluate(fraction) end
   if not (u and (worldIsSecret(u.hp) or worldIsSecret(u.maxhp))) then return result end
   if type(result) == "number" then return world.secret(result) end
@@ -1143,7 +1222,7 @@ world.auras = filtered
 -- The time inside a value for the object's sums: 0 for a secret that hides nothing (a test's bare stand-in).
 local function timeInside(v)
   local n = inside(v)
-  if issecretvalue(n) then return 0 end
+  if seenSecret(n) then return 0 end
   return n or 0
 end
 
@@ -1163,7 +1242,7 @@ local function durationObject(start, duration)
   function d:GetEndTime() return durationAnswer(self, timeInside(self.start) + timeInside(self.duration)) end
   function d:GetRemainingDuration() return durationAnswer(self, math.max(0, timeInside(self.start) + timeInside(self.duration) - stub.now)) end
   function d:IsZero() return inside(self.duration) == 0 end
-  function d:HasSecretValues() return issecretvalue(self.start) or issecretvalue(self.duration) end
+  function d:HasSecretValues() return seenSecret(self.start) or seenSecret(self.duration) end
   return __wfgUserdata(d)
 end
 world.durationObject = durationObject
@@ -1184,16 +1263,19 @@ C_UnitAuras = {
   GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
     local n = aura and aura.applications or 0
-    if issecretvalue(n) then return n end
+    if seenSecret(n) then return n end
     if n < (minCount or 2) then return "" end
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
   end,
-  -- The dispel type color through a curve (nil when the client has none).
+  -- The dispel type color through a curve read at the type's ID (UnitAuraDocumentation.lua GetAuraDispelTypeColor:
+  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted).
   GetAuraDispelTypeColor = function(unit, id, curve)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local kind = aura and aura.dispelName or "None"
-    return curve and curve:Evaluate(kind) or world.dispelColors[kind]
+    local kind = aura and aura.dispelName
+    local color = curve:Evaluate(world.dispelTypeIds[inside(kind)] or 0)
+    if color and worldIsSecret(kind) then return hiddenColor(color) end
+    return color
   end,
   -- The duration object of an aura.
   -- An aura with hidden times gives an object that holds them hidden (UnitAuraDocumentation.lua: the call itself
@@ -1203,11 +1285,10 @@ C_UnitAuras = {
     if not aura then return nil end
     local expires, duration = aura.expirationTime or stub.now, aura.duration or 0
     local start = timeInside(expires) - timeInside(duration)
-    if issecretvalue(expires) or issecretvalue(duration) then return durationObject(world.secret(start), duration) end
+    if seenSecret(expires) or seenSecret(duration) then return durationObject(world.secret(start), duration) end
     return durationObject(start, duration)
   end,
 }
-world.dispelColors = { Magic = CreateColor(0.2, 0.6, 1), Curse = CreateColor(0.6, 0, 1), Disease = CreateColor(0.6, 0.4, 0), Poison = CreateColor(0, 0.6, 0), None = CreateColor(0.8, 0, 0) }
 
 -- AuraUtil.FindAuraByName, as FrameXML has it: the aura's fields unpacked.
 AuraUtil = {
@@ -1733,7 +1814,7 @@ world.questTimers = {}
 
 -- Seconds left on one timed quest: as the clock stands, or the secret as it is.
 local function timerLeft(t)
-  if issecretvalue(t.endsAt) then return t.endsAt end
+  if seenSecret(t.endsAt) then return t.endsAt end
   return math.max(0, t.endsAt - stub.now)
 end
 
@@ -1750,7 +1831,7 @@ end
 function world.setQuestTimer(questID, seconds)
   local kept = {}
   for _, t in ipairs(world.questTimers) do if t.questID ~= questID then kept[#kept + 1] = t end end
-  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = issecretvalue(seconds) and seconds or stub.now + seconds } end
+  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = seenSecret(seconds) and seconds or stub.now + seconds } end
   world.questTimers = kept
   stub.fire("QUEST_LOG_UPDATE")
 end
@@ -1920,11 +2001,15 @@ world.ah = emptyAuctionHouse()
 -- Clicks are hardware events: stub.hardware counts the clicks running now.
 stub.hardware = 0
 local rawClick = stub.runClick
--- A click, counted while it runs.
+-- The click itself, called by name so a restricted call's logged path still runs through rawClick.
+local function clickThrough(...) rawClick(...) end
+-- A click, counted while it runs; a handler that raises still ends the count before its error goes on (pcall is a C
+-- function, so wow-taint.lua's callerOf looks through it).
 function stub.runClick(...)
   stub.hardware = stub.hardware + 1
-  rawClick(...)
+  local ok, err = pcall(clickThrough, ...)
   stub.hardware = stub.hardware - 1
+  if not ok then error(err, 0) end
 end
 
 -- A query the addon may send at any time: recorded as { fn, args }.
@@ -2513,28 +2598,26 @@ local function chatTab(i)
   return tab
 end
 
--- Makes window i and its tab the first time its number is used.
-local function makeChatWindow(i)
-  if _G["ChatFrame" .. i] then return end
-  _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
-  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
-  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
-end
+-- The last chat window number, Constants.ChatFrameConstants.MaxChatWindows (ChatConstantsDocumentation.lua:214, both
+-- clients).
+world.maxChatWindows = 10
 
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
--- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
--- used, and shown each time; returns the window. Two approximations: "shown" is frame:IsShown() where the game reads
--- the saved shown flag, and the harness never docks a window it opens (the game does, FloatingChatFrame.lua:752).
+-- so a closed window's number goes to the next one made. All ten windows exist from login (chatFrames), so it shows
+-- the one it takes and its tab; returns the window and its number. Past the last window number there is none to take,
+-- and it returns nothing (FCF_GetNextOpenChatWindowIndex stops at Constants.ChatFrameConstants.MaxChatWindows;
+-- Mainline/FloatingChatFrame.lua FCF_OpenNewWindow, forever :707-710 and :755, live :522-525 and :570). Two
+-- approximations: "shown" is frame:IsShown() where the game reads the saved shown flag, and the harness never docks a
+-- window it opens (the game does, FloatingChatFrame.lua:752).
 function FCF_OpenNewWindow(name)
   local i = 3
-  while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
+  while i <= world.maxChatWindows and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
+  if i > world.maxChatWindows then return end
   world.chatWindows[i] = name
-  NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  makeChatWindow(i)
   _G["ChatFrame" .. i]:Show()
   _G["ChatFrame" .. i .. "Tab"]:Show()
-  return _G["ChatFrame" .. i]
+  return _G["ChatFrame" .. i], i
 end
 
 -- The next temporary window's number: 12.x starts at Constants.ChatFrameConstants.MaxChatWindows + 1, 11
@@ -2599,15 +2682,20 @@ function world.addChatBubble(text, opts)
   return #world.bubbles
 end
 
--- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
+-- The game's chat windows: ChatFrame1 to ChatFrame10 with tabs and edit boxes, all declared in
+-- Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml (forever :709-762, live :698-751) and so there from login,
+-- each listed in CHAT_FRAMES by its OnLoad. NUM_CHAT_WINDOWS is Constants.ChatFrameConstants.MaxChatWindows, 10
+-- (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:18). Windows 3 to 10 start hidden, as on a fresh character
+-- whose only windows are General and Combat Log.
 local function chatFrames()
   local new = stub.newWidget
-  NUM_CHAT_WINDOWS, CHAT_FRAMES = 2, { "ChatFrame1", "ChatFrame2" }
+  NUM_CHAT_WINDOWS, CHAT_FRAMES = world.maxChatWindows, {}
   for i = 1, NUM_CHAT_WINDOWS do
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")
-    chatTab(i)
-    new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    local tab, box = chatTab(i), new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    if i > 2 then f:Hide() tab:Hide() box:Hide() end
+    CHAT_FRAMES[i] = "ChatFrame" .. i
   end
   SELECTED_CHAT_FRAME = ChatFrame1
 end

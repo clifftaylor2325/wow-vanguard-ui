@@ -17,11 +17,13 @@ local function barDefault(n, key)
   return AB and AB.defaults.bars[n][key]
 end
 
--- get/set/default for whether action bar n is shown (applies on reload).
+-- get/set/default for whether action bar n is shown (applies on reload; the reload notice names Action bars
+-- until the bar is switched back).
 local function barSetting(n)
-  return O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars"),
-    function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end,
-    barDefault(n, "enabled")
+  local get = O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars")
+  -- Writes whether bar n is shown.
+  local save = function(v) moduleSettings("ActionBars").bars[n].enabled = v end
+  return get, O.ReloadSetter("ActionBars", "bars." .. n .. ".enabled", get, save), barDefault(n, "enabled")
 end
 
 -- Tells the action bars that bar n's `key` changed, if they are running.

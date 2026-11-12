@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_CLICKS_LUA, GAME_ENGINE_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { enterBinds } from "./clickcast-helpers.mjs";
 
 const CC = 'ns.GetModule("ClickCast")';
 
@@ -16,16 +17,15 @@ it("click casting", () => {
     __spawn(1, "raid1")`);
   const b = addon.eval(`local b = Vanguard_RaidUnitButton1 return { t = b:GetAttribute("ctrl-type2"), s = b:GetAttribute("ctrl-spell2"),
     ht = b:GetAttribute("*type-vg2"), hs = b:GetAttribute("*spell-vg2"), mt = b:GetAttribute("*type-vg3"), mx = b:GetAttribute("*macrotext-vg3"),
-    enter = b.__wraps.OnEnter, leave = b.__wraps.OnLeave, hide = b.__wraps.OnHide }`);
+    leave = b.__wraps.OnLeave, hide = b.__wraps.OnHide }`);
   expect(b.t === "spell" && b.s === "TEST-ONLY Renew", "Ctrl + Right click on a raid frame casts the spell (ctrl-type2 / ctrl-spell2)").toBeTruthy();
   expect(b.ht === "spell" && b.hs === "TEST-ONLY Flash Heal" && b.mt === "macro" && /@mouseover/.test(b.mx), "hover keys click virtual buttons that cast the spell or run the macro").toBeTruthy();
-  expect(/SetBindingClick\(true, "SHIFT-1", self, "vg2"\)/.test(b.enter) && /"MOUSEWHEELUP", self, "vg3"/.test(b.enter), "entering a frame binds the hover keys to it").toBeTruthy();
+  expect(enterBinds(addon, "Vanguard_RaidUnitButton1"), "entering a frame binds the hover keys to it, and no mouse binding").toEqual(["SHIFT-1>vg2", "MOUSEWHEELUP>vg3"]);
   // The game's lookup for <prefix>type<suffix>: the prefixed name, then "*", then the bare name (the order SecureButton_GetModifiedAttribute uses).
   const lookup = (prefix, name, suffix) => addon.eval(`local b = Vanguard_RaidUnitButton1
     return b:GetAttribute(${JSON.stringify(prefix + name + suffix)}) or b:GetAttribute(${JSON.stringify("*" + name + suffix)}) or b:GetAttribute(${JSON.stringify(name)})`);
   expect(["", "shift-", "ctrl-shift-"].map((held) => lookup(held, "spell", "-vg2")), "a hover key finds its spell whatever modifiers are held").toEqual(Array(3).fill("TEST-ONLY Flash Heal"));
   expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("type-vg2")'), "no unprefixed hover attribute is left behind").toBe(null);
-  expect(!/BUTTON2/.test(b.enter), "mouse bindings aren't key bindings").toBeTruthy();
   expect(b.leave === "self:ClearBindings()" && b.hide === "self:ClearBindings()", "leaving or hiding the frame releases the keys").toBeTruthy();
   addon.eval(`${CC}.Remove("ctrl-BUTTON2")`);
   expect(addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-type2")') === null, "removing a binding clears it from the frames").toBeTruthy();
@@ -78,7 +78,8 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
   expect([addon.eval(`return ${CC}.UsesGame()`), state()[0]], "switched on in combat: it waits for the fight to end").toEqual([true, "spell"]);
   addon.eval("__wfgStub.inCombat = false");
   addon.fire("PLAYER_REGEN_ENABLED");
-  expect(state(), "then Vanguard's attributes and hover snippets go; the target and menu clicks the game's bindings use stay").toEqual(["none", "none", false, "target", "togglemenu"]);
+  expect(state(), "then Vanguard's attributes go, the wrap stays; the target and menu clicks the game's bindings use stay").toEqual(["none", "none", true, "target", "togglemenu"]);
+  expect(enterBinds(addon, "Vanguard_RaidUnitButton1"), "and the enter snippet binds no hover key").toEqual([]);
   addon.eval('ns.Options.ShowTab("Click casting")');
   expect(addon.texts("The game's click bindings are in use: these are kept for when you switch back.").length, "the page says Vanguard's bindings rest").toBe(1);
   addon.slash("binds");
@@ -415,4 +416,22 @@ it("a test click reaches OnClick only for a registered button and phase", () => 
   expect(clicks("__wfgStub.click(__b, 'LeftButton', false)"), "a left release is the default").toEqual(["mouse LeftButton", "LeftButtonUp"]);
   expect(clicks("__b:RegisterForClicks('AnyDown') __wfgStub.click(__b, 'RightButton', true) __wfgStub.click(__b, 'LeftButton', false)"), "a registration replaces the default").toEqual(["mouse RightButton", "RightButtonDown", "mouse LeftButton"]);
   expect(clicks("__b:Click('MiddleButton', false)"), ":Click() is not filtered").toEqual(["mouse MiddleButton", "MiddleButtonUp"]);
+});
+
+it("H45-19-R1 a unit frame is wrapped once: with Calm HUD's hover hook added after the wrap, a new hover key list binds only the new keys", () => {
+  // The client's RemoveWrapper (Blizzard_RestrictedAddOnEnvironment/SecureHandlers.lua) restores the old handler only
+  // while GetScript still returns the wrapper; what GetScript returns after HookScript is game-only, so click casting
+  // never unwraps or wraps a frame twice, and the enter snippet reads the keys from the frame's attributes.
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + `__wrapCount, __unwrapCount = 0, 0
+    local wrap, unwrap = SecureHandlerWrapScript, SecureHandlerUnwrapScript
+    SecureHandlerWrapScript = function(f, ...) if f == Vanguard_player then __wrapCount = __wrapCount + 1 end return wrap(f, ...) end
+    SecureHandlerUnwrapScript = function(...) __unwrapCount = __unwrapCount + 1 return unwrap(...) end`,
+  { savedVariables: "VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }" });
+  addon.eval(`${CC}.Add("SHIFT-Q", "spell", "TEST-ONLY Renew")`);
+  addon.eval('local UF = ns.GetModule("UnitFrames") ns.Settings("UnitFrames", UF.defaults).calm = true UF.ApplyCalm()');
+  addon.eval(`${CC}.Remove("SHIFT-Q") ${CC}.Add("F", "spell", "TEST-ONLY Flash Heal")`);
+  const bound = enterBinds(addon, "Vanguard_player");
+  const button = bound.length === 1 ? bound[0].split(">")[1] : "";
+  expect({ hooked: addon.eval("return Vanguard_player.vgHoverRoot ~= nil"), wraps: addon.eval("return __wrapCount"), unwraps: addon.eval("return __unwrapCount") }).toEqual({ hooked: true, wraps: 3, unwraps: 0 });
+  expect([bound.map((b) => b.split(">")[0]), addon.eval(`return Vanguard_player:GetAttribute("*spell-${button}")`)]).toEqual([["F"], "TEST-ONLY Flash Heal"]);
 });

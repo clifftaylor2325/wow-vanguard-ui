@@ -59,12 +59,22 @@ function PX.PlaceBars()
   for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").PlaceBar(b, px) end
 end
 
+-- Moves the column's default spot up with the party column under the Tabs look (its top rises by the tab's height
+-- and the gaps, Modules/UnitFrames.lua UF.PartyRise), so tall party frames never reach it; a dragged spot still wins.
+-- The holder is secure, so only out of combat.
+function PX.FitLook()
+  local UF = ns.GetModule("UnitFrames")
+  local rise = UF and UF.PartyRise and UF.PartyRise() or 0
+  ns.SetMoverDefault("partyextras", ns.RaisedDefault(PX.SPOT, rise))
+end
+
 -- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too): its
 -- mover and driver go to the scope on each start, and the tiles made so far are read again.
 local function show(scope)
   if not scope:Running() then return end
   if not PX.holder then build(scope) end
   scope:Mover(PX.holder, "partyextras", L["Party pets and targets"], PX.SPOT)
+  PX.FitLook()
   PX.PlaceBars()
   ns.GetModule("MainTanks").Drive(PX.holder, "[group:raid] hide; [group:party] show; hide")
   for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").Poll(b, scope) end
@@ -74,4 +84,5 @@ end
 function PX.Enable(settings, scope)
   if settings.show then ns.OutOfCombat(function() show(scope) end) end
   scope:Gate("scale", PX.PlaceBars, ns.Theme.OnScale)
+  scope:Gate("look", function() ns.OutOfCombat(PX.FitLook, "party extras look") end, ns.Theme.OnChanged)
 end

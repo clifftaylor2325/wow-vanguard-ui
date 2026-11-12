@@ -3,7 +3,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
-import { CC, CS, applies, bindings, cell, priestly, widget } from "./clickcast-helpers.mjs";
+import { CC, CS, applies, bindings, cell, enterBinds, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
 const priest = (extra = "", opts = {}) => priestly(loggedIn(CLICK_LUA + extra, opts));
@@ -333,20 +333,20 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   addon.key(tile, "LSHIFT");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "a lone modifier waits").toBe("Press a key or click...");
   addon.key(tile, "F1");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F1 -> Target on Tester");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`).replace(/\|c[0-9a-f]{8}|\|r/g, ""), "H45-19-R2: a Target hover key says the game won't run it").toBe("F1 -> Target on Tester  (does nothing: the game won't run it from a key)");
   addon.click(tile, "MiddleButton");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Middle click -> Flash Heal on Tester");
   addon.click(tile, "RightButton");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "the layout's right click is the unit menu").toBe("Right click -> Unit menu on Tester");
   addon.click(tile, "Button9");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "an unknown mouse button reads as the left one").toBe("Left click -> Target on Tester");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "H45-19-1: a button no binding takes has nothing bound").toBe("Button 9 -> nothing bound");
   addon.wheel(tile, 1);
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Wheel up -> nothing bound");
   addon.hover(null);
   addon.eval("UnitName = nil ns.Options.Refresh()");
   addon.hover(tile);
   addon.key(tile, "F2");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F2 -> Target on you");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`).replace(/\|c[0-9a-f]{8}|\|r/g, "")).toBe("F2 -> Target on you  (does nothing: the game won't run it from a key)");
   addon.hover(null);
   // How many bindings this spec has.
   const count = () => addon.eval(`return #${CC}.Bindings()`);
@@ -551,6 +551,57 @@ it("with the game's own click bindings, the page marks a Target or Unit menu bin
   addon.eval("GameTooltip = nil");
   addon.hover(cell(addon, "BUTTON3"));
   addon.hover(null);
+});
+
+// What the Try it tile says for a click, over a page already showing.
+const tileSays = (addon, button) => {
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.hover(tile);
+  addon.click(tile, button);
+  const text = addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`);
+  addon.hover(null);
+  return text;
+};
+
+it("H45-19-1 the test tile names a mouse button no binding takes, modifiers too, and says nothing is bound", () => {
+  const addon = priest();
+  addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
+  const plain = tileSays(addon, "Button9");
+  addon.keys({ shift: true });
+  const shifted = tileSays(addon, "Button12");
+  const unnumbered = tileSays(addon, "OddButton");
+  addon.keys({ shift: false });
+  expect({ plain, shifted, unnumbered }).toEqual({ plain: "Button 9 -> nothing bound", shifted: "Shift + Button 12 -> nothing bound", unnumbered: "Shift + OddButton -> nothing bound" });
+});
+
+it("H45-19-R2 the test tile says a binding the game won't run does nothing, as /vg binds does; one it runs has no note", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON3", "menu") ${CC}.Add("BUTTON1", "target") ns.Options.Show("clickcast")`);
+  const note = addon.eval(`return ns.Theme.Paint(ns.Format(ns.L["(does nothing: {why})"], { why = ${CC}.WontRun(${CC}.Binding("BUTTON3")) }), "warn")`);
+  expect([tileSays(addon, "MiddleButton"), tileSays(addon, "LeftButton")]).toEqual([`Middle click -> Unit menu on Tester  ${note}`, "Left click -> Target on Tester"]);
+  expect(note).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
+});
+
+it("H45-19-R3 with nothing bound on plain Left or Right click, the test tile says what the frame does by itself", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const plain = [tileSays(addon, "LeftButton"), tileSays(addon, "RightButton"), tileSays(addon, "MiddleButton")];
+  addon.keys({ shift: true });
+  const shifted = tileSays(addon, "LeftButton");
+  const shiftedRight = tileSays(addon, "RightButton");
+  addon.keys({ shift: false });
+  expect([shifted.split("  ")[0], shiftedRight.split("  ")[0]], "the frame's own *type1 and *type2 apply under every modifier (SecureButton_GetModifiedAttribute)").toEqual(["Shift + Left click -> Target on Tester", "Shift + Right click -> Unit menu on Tester"]);
+  expect({ plain }).toEqual({
+    plain: ["Left click -> Target on Tester", "Right click -> Unit menu on Tester", "Middle click -> nothing bound"],
+  });
+});
+
+it("H45-19-R3 the frame's own click carries the does-nothing note where the game's click bindings leave it out", () => {
+  const addon = priest(GAME_CLICKS_LUA + "__gameClicks = { { type = 3, actionID = 2, button = \"RightButton\", modifiers = 0 } }");
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(tileSays(addon, "LeftButton")).toContain("Left click -> Target on Tester  ");
+  expect(tileSays(addon, "LeftButton")).toContain("(does nothing: the game runs it only on a click its own Click Casting window binds)");
+  expect(tileSays(addon, "RightButton")).toBe("Right click -> Unit menu on Tester");
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
@@ -806,7 +857,7 @@ it("H44-9-R1 import: a hover key with a brace or the word function is skipped, a
     expect([JSON.stringify(key), addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)], "only the good key is imported").toEqual([JSON.stringify(key), 1]);
     expect(refusedSnippet(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)), "the snippet holds nothing the client refuses").toBe(false);
   }
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+  expect(enterBinds(addon, `${CC}.frames[1]`)).toEqual(["SHIFT-Q>vg1"]);
 });
 
 it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row", () => {
@@ -814,7 +865,7 @@ it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the s
     // TEST-ONLY saved bindings imported before the fix: one hover key the client can't take.
     savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [0] = { { key = "SHIFT-{", action = "spell", value = "Renew" }, { key = "SHIFT-Q", action = "spell", value = "Renew" } } } }',
   });
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg2")');
+  expect(enterBinds(addon, `${CC}.frames[1]`)).toEqual(["SHIFT-Q>vg2"]);
   addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
   expect(addon.frames('w.keyText ~= nil and w.remove ~= nil and w:IsShown()').length, "both keys keep a row with Remove").toBe(2);
 });
@@ -822,13 +873,13 @@ it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the s
 it("H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys", () => {
   const addon = priest("", { savedVariables: WITH_FRAMES });
   addon.eval(`${CC}.Add("F1", "target")`);
-  const before = addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`);
+  const before = enterBinds(addon, `${CC}.frames[1]`);
   addon.world.combat(true);
   const text = encoded(addon, '{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = "SHIFT-{", action = "spell", value = "Renew" } }');
   expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)).toBe(1);
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "in a fight the frames keep the old snippet").toBe(before);
+  expect(enterBinds(addon, `${CC}.frames[1]`), "in a fight the frames keep the old keys").toEqual(before);
   addon.world.combat(false);
-  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "the fight ends: the new one, without the brace").toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+  expect(enterBinds(addon, `${CC}.frames[1]`), "the fight ends: the new keys, without the brace").toEqual(["SHIFT-Q>vg1"]);
 });
 
 it("H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set", () => {
@@ -915,4 +966,27 @@ it("H44-9-100 an exported rank binding imports back unchanged", () => {
   addon.eval(`${CC}.Clear()`);
   addon.eval(`${CC}.Import(${JSON.stringify(text)})`);
   expect(JSON.stringify(bindings(addon))).toBe(before);
+});
+
+it("H45-19-51 a fight's end re-reads no options row while the window is closed, and the window re-reads as it opens", () => {
+  const addon = priest();
+  addon.eval('for _, p in ipairs(ns.Options.PAGES or {}) do ns.Options.Show(p.key) end ns.Options.Show("clickcast") ns.Options.Hide()');
+  addon.eval(`__refreshes = 0 local try = ns.Try ns.Try = function(what, ...) if what == "refresh options row" then __refreshes = __refreshes + 1 end return try(what, ...) end`);
+  addon.world.combat(true);
+  addon.world.combat(false);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  const closed = addon.eval("return __refreshes");
+  addon.eval('ns.Options.Show("clickcast")');
+  expect([closed, addon.eval("return __refreshes") > 0]).toEqual([0, true]);
+});
+
+// A spell's rank text can load after the catalog was built (forever Blizzard_APIDocumentationGenerated/
+// SpellDocumentation.lua:1144 SPELL_TEXT_UPDATE, payload spellID; SpellBookDocumentation.lua:1020 subName may be empty).
+it("H45-6-R2 the catalog is rebuilt when a spell's text loads", () => {
+  const addon = priest();
+  const before = addon.eval(`return #${CS}.Catalog().spells`);
+  addon.eval("C_SpellBook.GetNumSpellBookSkillLines = function() return 0 end");
+  expect(addon.eval(`return #${CS}.Catalog().spells`), "the cached catalog is kept until an event").toBe(before);
+  addon.fire("SPELL_TEXT_UPDATE", 9472);
+  expect(addon.eval(`return #${CS}.Catalog().spells`)).toBe(0);
 });

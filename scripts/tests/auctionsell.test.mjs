@@ -852,3 +852,14 @@ it("H45-31-101 a commodity price row shared with another seller counts: it is th
   dropAndAnswer(hidden, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   expect(card(hidden)[0][0], "a hidden count of yours keeps the row out").toBe("1s 50c");
 });
+
+it("H45-10-2: a price check the house never answers says so on the cheapest-now and up-now lines, not '...' and 'searching...'", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 1 }`);
+  addon.click(`${CARD}.slot`);
+  // The sell card's cheapest-now text and the Up now status line.
+  const lines = () => addon.eval(`return { ${CARD}.lines[1].value:GetText(), ${HELPER}.upCard.table.status:GetText() }`);
+  expect(lines(), "while the check runs").toEqual(["...", "searching..."]);
+  addon.advance(2.5);
+  expect(lines(), "given up: the house did not answer").toEqual(["no answer", "no answer"]);
+});

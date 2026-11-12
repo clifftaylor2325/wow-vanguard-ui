@@ -12,7 +12,8 @@
 // runs them. A check costs a type test when the operand is not a table, and nothing in Lua
 // instructions, so the bench's counts do not move. Only the addon's own functions (chunks named
 // @Core/, @Modules/ or @Libs/) are refused: the harness's files stand for the client's C side and the
-// tests' Lua for the game's own untainted code, both of which may test and compare secrets.
+// tests' Lua for the game's own untainted code, both of which may test and compare secrets without an error;
+// they see the stand-in table (any secret tests true, == is identity), not the value it hides.
 // Only secrets world.secret made are checked: a test's plain { __secret = true } stand-in has no metatable.
 
 import fs from "node:fs";

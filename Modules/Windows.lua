@@ -144,6 +144,17 @@ do
   local vgBackdrop = ns.FrameState("vgBackdrop")
   local vgBackdropWhen = ns.FrameState("vgBackdropWhen")
 
+  -- Keeps a backdrop where it shows: on UIParent, or on the game's alternate top-level frame while its frame sits there
+  -- (a "full" panel such as the housing editor or the barber shop hides UIParent and makes itself that frame, and
+  -- StaticPopup_Show parents a popup to it: Blizzard_SharedXMLBase/FrameUtil.lua GetAppropriateTopLevelParent). A
+  -- frame under any other parent keeps its backdrop off the game's frames, UIParent hidden or not. The backdrop is
+  -- Vanguard's own frame, so this is safe in combat. SetParent resets strata and level; the caller sets both.
+  local function followParent(frame, back)
+    local top = GetAppropriateTopLevelParent and GetAppropriateTopLevelParent()
+    local parent = top and top ~= UIParent and frame:GetParent() == top and top or UIParent
+    if back:GetParent() ~= parent then back:SetParent(parent) end
+  end
+
   -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another
   -- parent and level as it shows one), shown while the frame is visible and has what the backdrop waits for.
   -- The game's frame may answer IsVisible with a secret (a widget container the client drives): it counts as
@@ -154,6 +165,7 @@ do
   function GW.FitBackdrop(frame)
     local back, when = vgBackdrop[frame], vgBackdropWhen[frame]
     if not back then return end
+    followParent(frame, back)
     local strata, level = ns.PlainText(frame:GetFrameStrata()), ns.PlainNumber(frame:GetFrameLevel())
     if strata then back:SetFrameStrata(strata) end
     if level then back:SetFrameLevel(math.max(0, level - 1)) end
@@ -167,8 +179,9 @@ do
 
   -- Vanguard's backdrop for one of the game's layout frames (it sizes itself from every child frame and region,
   -- reading their ignoreInLayout, so nothing of Vanguard's may be among them): a frame of Vanguard's own on
-  -- UIParent, never a child or region of the game's frame, filling it and laid just under it, shown and hidden
-  -- with it (GW.FitBackdrop, hooked as it is made). The frame is never protected, so this is safe in combat.
+  -- UIParent (the frame's own parent while UIParent is hidden), never a child or region of the game's frame,
+  -- filling it and laid just under it, shown and hidden with it (GW.FitBackdrop, hooked as it is made). The frame is
+  -- never protected, so this is safe in combat.
   -- when(frame), optional: what else the backdrop waits for before it shows. Made once per frame.
   ---@param frame table
   ---@param when? fun(frame: table): boolean

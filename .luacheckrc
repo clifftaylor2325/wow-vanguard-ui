@@ -34,6 +34,8 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "WOW_PROJECT_ID", "WOW_PROJECT_CAMELOT",
+  -- Modules/KeybindsApply.lua: the game's label for the character key set box.
+  "CHARACTER_SPECIFIC_KEYBINDINGS",
   -- Retail data tables (Modules/DataBars.lua): honor at the level cap and a major faction's renown.
   "UnitHonor", "UnitHonorMax", "UnitHonorLevel", "IsWatchingHonorAsXP", "IsInActiveWorldPVP", "C_MajorFactions",
   "C_DeathRecap", "COMPLETE", "DECIMAL_SEPERATOR", "LARGE_NUMBER_SEPERATOR",
@@ -85,7 +87,7 @@ read_globals = {
   -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).
   "GameTime_GetTime", "GameTime_GetGameTime", "GameTime_GetLocalTime",
   -- Info strip: the realm's date beside the realm time, and whether the game's clock shows local time.
-  "C_DateAndTime", "GetCVarBool",
+  "C_DateAndTime", "GetCVarBool", "GetAppropriateTopLevelParent",
   -- Reputation bar: the game's standing words in your character's form (its click uses ToggleCharacter, above).
   "GetText", "UnitSex",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.

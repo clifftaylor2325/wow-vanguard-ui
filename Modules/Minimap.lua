@@ -276,6 +276,15 @@ end
 
 -- The zone tooltip's closing hints: what a click and the wheel do on the zone name.
 MM.ZONE_HINTS = { L["Click: world map"], L["Wheel: zoom"] }
+-- The hints where the realm's rules switch the world map off: the click does nothing there, so only the wheel's.
+MM.WHEEL_HINTS = { MM.ZONE_HINTS[2] }
+
+-- The hints the zone tooltip ends with: the click's is left off while the world map is off, as the game's own zone
+-- button shows no tooltip then (forever Blizzard_Minimap/Mainline/Minimap.lua:96-101, live :126-128; the map's
+-- ToggleWorldMap returns at once under the rule, Blizzard_WorldMap.lua:1405-1408 forever, :576-579 live).
+local function zoneHints()
+  return ns.GameRuleOn("WorldMapDisabled") and MM.WHEEL_HINTS or MM.ZONE_HINTS
+end
 
 -- Fills the tooltip for the zone band: the zone, its subzone when it has
 -- one, and whose territory it is, in the zone text's color; then what a click and the wheel do.
@@ -287,7 +296,7 @@ local function zoneTooltip(button)
   GameTooltip:SetText(zone, rgb("text"))
   if sub ~= "" and sub ~= zone then GameTooltip:AddLine(sub, rgb("text2")) end
   if PVP_WORDS[pvp] then GameTooltip:AddLine(PVP_WORDS[pvp], rgb(ZONE_COLORS[pvp])) end
-  for _, hint in ipairs(MM.ZONE_HINTS) do GameTooltip:AddLine(hint, rgb("text2")) end
+  for _, hint in ipairs(zoneHints()) do GameTooltip:AddLine(hint, rgb("text2")) end
   GameTooltip:Show()
 end
 

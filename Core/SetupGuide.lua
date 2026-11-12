@@ -381,12 +381,13 @@ local function joined(a, b)
 end
 
 -- Re-reads every guided page given (by key): the switches and marks, and the All set list (own: setup's own
--- change lines, ahead of the rows'). Undo setup shows while setup holds a backup or a row changed; frames moved
--- alone name a change that has nothing to put back.
+-- change lines, ahead of the rows'). Undo setup shows while the list has a line and setup holds a backup or a row changed; frames moved
+-- alone name a change that has nothing to put back, and a list with no line has no Undo.
 function G.Refresh(pages, own, backed)
   for key, page in pairs(pages) do
     local rows = key == "done" and G.Changes() or {}
-    if key == "done" then refreshDone(page, joined(own or {}, rows), backed or #rows > 0)
+    local list = joined(own or {}, rows)
+    if key == "done" then refreshDone(page, list, #list > 0 and (backed or #rows > 0))
     elseif G.ROWS[key] and page.rows then refreshRows(page) end
   end
 end

@@ -656,18 +656,28 @@ local function refused(configID)
   ns.Chat(L["Talent planner: the game refused to apply talents just now; try again in a moment."])
 end
 
--- Applies the staged ranks: the class talents' commit (nil: the talents in use, as the game's window
--- commits), else the trait commit for the config. A true answer only starts the apply (a cast the game can still cut
--- short, see TP.ApplyFailed), so the config is noted for COMMIT_WAIT seconds; any other answer (refused, as the game
--- throttles commits, or a call that threw) is a refusal, see refused.
-function TP.Commit(configID)
-  local done
+-- Notes the apply, then starts it: the class talents' commit (nil: the talents in use, as the game's window
+-- commits), else the trait commit for the config. The note comes first because the game raises its outcome events
+-- inside the call (CONFIG_COMMIT_FAILED and TRAIT_CONFIG_UPDATED are SynchronousEvent: forever Blizzard_API
+-- DocumentationGenerated/SharedTraitsDocumentation.lua:827, 873), and the handlers below only act on a noted config.
+local function startCommit(configID)
+  TP.committing, TP.commitUntil = configID, GetTime() + TP.COMMIT_WAIT
   if type(_G.C_ClassTalents) == "table" and type(_G.C_ClassTalents.CommitConfig) == "function" then
-    done = ask("C_ClassTalents", "CommitConfig", nil)
-  else
-    done = ask("C_Traits", "CommitConfig", configID)
+    return ask("C_ClassTalents", "CommitConfig", nil)
   end
-  if done == true then TP.committing, TP.commitUntil = configID, GetTime() + TP.COMMIT_WAIT else refused(configID) end
+  return ask("C_Traits", "CommitConfig", configID)
+end
+
+-- Applies the staged ranks. A true answer only starts the apply (a cast the game can still cut short, see
+-- TP.ApplyFailed), so the config stays noted for COMMIT_WAIT seconds; any other answer (refused, as the game
+-- throttles commits, or a call that threw) is a refusal, see refused, unless a failure handler already ran inside
+-- the call and cleared the note (it did the rollback and said so).
+function TP.Commit(configID)
+  local done = startCommit(configID)
+  if done ~= true and TP.committing == configID then
+    TP.committing = nil
+    refused(configID)
+  end
   TP.Schedule()
 end
 

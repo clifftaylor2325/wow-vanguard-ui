@@ -531,10 +531,6 @@ export const UP = (point) => (/BOTTOM/.test(point) ? 0 : /TOP/.test(point) ? 1 :
 // TEST-ONLY game tools: Cooldown Manager rows (one item each), a damage meter
 // with one window and one line, and the Edit Mode window.
 export const TOOLS_ENV = `
-  hooksecurefunc = hooksecurefunc or function(a, b, c)
-    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
-    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
-  end
   function __item(viewer, bar)
     local item = CreateFrame("Frame", nil, viewer) item:SetSize(32, 32)
     if bar then
@@ -627,12 +623,8 @@ export const SWING_ENV = `
 `;
 
 // TEST-ONLY client frames Vanguard tidies away: the game's XP bar, durability figure, clock and calendar
-// button, minimap buttons, micro menu, bag bar and quest tracker. hooksecurefunc hooks methods too, as in game.
+// button, minimap buttons, micro menu, bag bar and quest tracker (the world's hooksecurefunc hooks their methods).
 export const TIDY_ENV = `
-  hooksecurefunc = function(a, b, c)
-    if type(a) == "table" then local orig = a[b] a[b] = function(...) local r = orig(...) c(...) return r end
-    else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
-  end
   for _, name in ipairs({ "StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame",
     "AddonCompartmentFrame", "MicroMenuContainer", "BagsBar", "ObjectiveTrackerFrame" }) do CreateFrame("Frame", name, UIParent) end
   BagsBar.bagPadding = 2

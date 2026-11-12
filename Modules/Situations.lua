@@ -482,7 +482,7 @@ SI.UNKNOWN = ns.ClientData({
 -- Starts recording from a command or the options, and says how it went.
 local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
-  if not SI.StartRecording(name) then return ns.Chat(L["Recording waits until combat ends."]) end
+  if not SI.StartRecording(name) then return ns.Chat(L["Recording can't start in a fight. Try again after it."]) end
   ns.Chat(ns.Format(L["Recording for {situation}: move frames (/vg unlock) and change settings, then /vg situation stop."], { situation = SI.LABELS[name] }))
   ns.Options.RebuildPage("situations")
 end

@@ -323,6 +323,20 @@ it("hunt H44-14-20: a screen preset applied by Next stays on All set after Back 
   expect(allSet(addon), "a second run that changes nothing says so").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
 });
 
+it("H45-7-52: a guided switch applied and switched back leaves All set with no change line and no Undo setup", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("setup");
+  nexts(addon, 3);
+  flip(addon, "comfort", 3);
+  setupClick(addon, "next");
+  expect(addon.eval("return ns.Setup.Calm()"), "the switch applied").toBe(true);
+  setupClick(addon, "back");
+  flip(addon, "comfort", 3);
+  setupClick(addon, "next");
+  nexts(addon, 4);
+  expect([addon.eval("return ns.Setup.Calm()"), allSet(addon)], "back where it was: changed nothing, nothing to undo").toEqual([false, [["All set. This run changed nothing: Done closes setup."], false]]);
+});
+
 // A second run to the Move things step (step 8), one frame moved there, then Next to All set.
 const movedOnAllSet = (setup, steps = 7) => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);

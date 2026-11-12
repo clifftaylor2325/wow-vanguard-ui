@@ -36,7 +36,8 @@ WZ.onApply = {}
 -- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live and full
 -- (the plans of the ticked entries and of every entry), off ({ [entry id] = true } for an unticked change, by
 -- entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit (the chord pressed last), placeNew
--- (step 3's tick box for new spells).
+-- (step 3's tick box for new spells), shown (the signature of the plan the list was last drawn from), shared (whether
+-- the game shared the account's keys when step 3 was drawn, so the scope choice was or was not offered).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -80,6 +81,12 @@ end
 local function unticked(i)
   local entry = i and state.entries[i]
   return entry ~= nil and state.off[entryId(entry)] == true
+end
+
+-- Whether the entry at position i changes its key with the ticks as they are (an unticked change keeps its row, for
+-- step 3's empty box).
+local function changesKey(i)
+  return KA.WRITES[state.rows[i].kind] and not unticked(i)
 end
 
 -- The entries the player kept ticked, in order: what Apply applies.
@@ -242,7 +249,7 @@ end
 -- What a key will do, for the line under the keyboard: its change, or that it stays as it is.
 local function keyText(chord)
   local i = indexFor(state.entries, chord)
-  local text = i and rowText(state.rows[i], state.entries[i])
+  local text = i and not unticked(i) and rowText(state.rows[i], state.entries[i])
   return text or ns.Format(L["{key}: stays as it is"], { key = KV.KeyText(chord) })
 end
 
@@ -349,8 +356,7 @@ end
 local function paintPreview(cap)
   cap.chord = KV.Chord(KV.TabById(state.tab), cap.key)
   local i = indexFor(state.entries, cap.chord)
-  local row = i and state.rows[i]
-  if row and KA.WRITES[row.kind] then return paintAs(cap, rowIcon(row), false, "accentText", 1) end
+  if i and changesKey(i) then return paintAs(cap, rowIcon(state.rows[i]), false, "accentText", 1) end
   local later = not i and indexFor(state.laterEntries, cap.chord)
   if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "muted", FADED) end
   local now = KV.Lookup(cap.chord)
@@ -373,7 +379,7 @@ local function shownChanges()
   local out = {}
   for i, row in ipairs(state.rows) do
     local entry = state.entries[i]
-    if KA.WRITES[row.kind] and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = changeText(row, entry) end
+    if changesKey(i) and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = changeText(row, entry) end
   end
   return out
 end
@@ -546,17 +552,24 @@ local function listRow(s, i, text, y)
   return W.GrowRow(r)
 end
 
--- Lists every change and every key that stays, and hides the parts left over from a longer list.
+-- Hides the parts left over from a longer list.
+local function hideLeftovers(s)
+  for _, pool in pairs(s.pools) do
+    for n = pool.used + 1, #pool do pool[n]:Hide() end
+  end
+end
+
+-- Lists every change and every key that stays, and takes the signature of what the list shows (the keys as they are
+-- now), so Apply stops when a key or a bar changed after the list was drawn.
 function fillReady(s)
   for _, pool in pairs(s.pools) do pool.used = 0 end
   local y = 0
+  state.shown = KA.Signature(state.live)
   for i, row in ipairs(state.rows) do
     local text = rowText(row, state.entries[i])
     if text then y = y + listRow(s, i, text, y) end
   end
-  for _, pool in pairs(s.pools) do
-    for n = pool.used + 1, #pool do pool[n]:Hide() end
-  end
+  hideLeftovers(s)
   s.view:Fit(math.max(y, SIZE.line))
 end
 
@@ -614,6 +627,7 @@ end
 -- keys (the list takes its room when it is hidden).
 local function showReady(s)
   local shared = KA.SharesKeys()
+  state.shared = shared
   s.shared:SetShown(shared)
   s.shared:SetText(SCOPE_TEXT[state.scope])
   s.scope:SetShown(shared)
@@ -647,12 +661,14 @@ function WZ.Show(n)
 end
 
 -- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
--- no tick box, so it is always kept), the changes the player unticked, and the keys those would have rebound (they
--- stay the player's, on every bar page).
+-- no tick box, so it is always kept), the changes the player unticked that still are changes (one that stopped
+-- being a change has no box left), and the keys those would have rebound (they stay
+-- the player's, on every bar page).
 local function kept()
   local changes, declined, keys = 0, {}, {}
   for i, entry in ipairs(state.entries) do
-    if unticked(i) then
+    local off = unticked(i) and KA.WRITES[state.full[i].kind]
+    if off then
       declined[#declined + 1] = entry
       if rebinds(i) then keys[#keys + 1] = state.full[i].key end
     elseif KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
@@ -667,15 +683,23 @@ local function relist()
   WZ.Show(state.step)
 end
 
+-- Says the key set changed since step 3 was drawn, changes nothing and draws the list again.
+local function stale()
+  ns.Chat(L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."])
+  return relist()
+end
+
 -- Applies the kept changes in the scope picked, as the list shows them (KA.Apply changes nothing when its plan is
 -- not the list's); on success the window closes, placing new spells is told of the preset and its tick box, and the
 -- listeners hear of it. With every change unticked it says so and stays; with nothing to change it closes and keeps
 -- the tick box.
 local function apply()
-  local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
+  if WZ.Blocked() then return WZ.Show(1) end
+  if KA.SharesKeys() ~= state.shared then return stale() end
+  local set = state.shared and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined, keys = kept()
   if changes == 0 and #declined > 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
-  if not KA.Apply(entries, set, KA.Signature(state.live)) then return relist() end
+  if not KA.Apply(entries, set, state.shown) then return relist() end
   WZ.frame:Hide()
   ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined, keys)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end

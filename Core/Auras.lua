@@ -399,9 +399,10 @@ function A.Retire(c)
   return true
 end
 
--- "engine" or "fallback", for /vg status.
+-- "engine" or "fallback", for /vg status: the session's backend, the engine while the client's aura container is in
+-- use, in a fight too (where A.Backend gives a container made now the fallback).
 function A.BackendName()
-  return A.Backend() == ns.AuraEngine and "engine" or "fallback"
+  return ns.AuraEngine.Available() and "engine" or "fallback"
 end
 
 -- Builds a container from a spec (see the top of this file) on the backend in

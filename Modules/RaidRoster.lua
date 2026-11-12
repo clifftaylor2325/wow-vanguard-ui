@@ -88,15 +88,32 @@ function RT.RosterLines()
   return out
 end
 
--- How many lines fit under the panel's top on this screen (at least the heading and one more).
-function RT.MaxLines()
-  local room = (UIParent:GetHeight() or 0) - RT.RTOP - 2 * RT.RPAD
+-- The room the panel f has to grow into: from its bottom edge up to the screen's top when it is anchored
+-- by a bottom point (a panel dropped low is saved on a bottom corner and grows up), down from its top when it is
+-- anchored by a top point, and the smaller of the two for a middle point (LEFT, RIGHT, CENTER), which grows both ways.
+-- The screen's height is taken in the panel's own units, as its edges are.
+local function roomFor(f)
+  local point = f:GetPoint() or ""
+  local top = ns.PlainNumber(f:GetTop())
+  if point:find("TOP", 1, true) then return top end
+  local bottom = ns.PlainNumber(f:GetBottom())
+  local screen = (UIParent:GetHeight() or 0) * UIParent:GetEffectiveScale() / f:GetEffectiveScale()
+  local up = bottom and screen - bottom
+  if point:find("BOTTOM", 1, true) or not (top and up) then return up end
+  return math.min(top, up)
+end
+
+-- How many lines fit in the panel's room on this screen (at least the heading and one more). The room
+-- counts from the edge the panel is anchored by, so a moved panel gets its room; without f, the default spot.
+function RT.MaxLines(f)
+  local top = f and roomFor(f) or (UIParent:GetHeight() or 0) - RT.RTOP
+  local room = top - 2 * RT.RPAD
   return math.max(2, math.floor(room / RT.RLINE))
 end
 
 -- The lines cut to the room on this screen: past it, the last line says how many members are not listed.
-function RT.Fit(lines)
-  local max = RT.MaxLines()
+function RT.Fit(lines, f)
+  local max = RT.MaxLines(f)
   if #lines <= max then return lines end
   local out = {}
   for i = 1, max - 1 do out[i] = lines[i] end
@@ -166,7 +183,7 @@ function RT.PaintRoster()
   local show = RT.rosterOpen == true
   f:SetShown(show)
   if not show then return end
-  local lines = RT.Fit(RT.RosterLines())
+  local lines = RT.Fit(RT.RosterLines(), f)
   f:SetHeight(#lines * RT.RLINE + 2 * RT.RPAD)
   RT.DrawRows(f, lines)
 end
@@ -185,6 +202,11 @@ end
 function RT.SoonPaintMember(_, unit)
   if type(unit) ~= "string" then return end
   if unit == "player" or unit:find("^raid%d") or unit:find("^party%d") then RT.SoonPaint() end
+end
+
+-- A moved roster is cut to its new room on the next frame.
+function RT.OnPlaced(key)
+  if key == "officerroster" then RT.SoonPaint() end
 end
 
 -- Starts or stops listening to the group: the roster hears events only while it is open.
@@ -217,4 +239,5 @@ ns.Options.AddRows("raid", RT.RosterRows)
 function RT.EnableRoster(scope)
   if RT.rframe then scope:Mover(RT.rframe, "officerroster", L["Raid roster"], RT.ROSTER_SPOT) end
   scope:Gate("roster theme", RT.PaintRoster, T.OnChanged)
+  scope:Gate("roster placed", RT.OnPlaced, ns.OnMoverPlaced)
 end

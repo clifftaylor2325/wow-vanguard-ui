@@ -108,15 +108,24 @@ end
 
 -- Drawing ---------------------------------------------------------------------------------------
 
+-- A row's name text: from the left edge, ending before the percent so a long name never draws over it.
+local function nameText(r)
+  local name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  name:SetPoint("LEFT", 0, 0)
+  name:SetPoint("RIGHT", r.value, "LEFT", -T.SPACE.tight, 0)
+  name:SetJustifyH("LEFT")
+  name:SetWordWrap(false)
+  return name
+end
+
 -- Row i of the panel: the name at the left, the percent at the right.
 local function rowFrame(i)
   local r = CreateFrame("Frame", nil, GT.panel)
   r:SetSize(GT.WIDTH - 2 * GT.PAD, GT.ROW)
   r:SetPoint("TOPLEFT", GT.PAD, -GT.PAD - (i - 1) * GT.ROW)
-  r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.name:SetPoint("LEFT", 0, 0)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number")
   r.value:SetPoint("RIGHT", 0, 0)
+  r.name = nameText(r)
   return r
 end
 
