@@ -1272,3 +1272,30 @@ it("H45-22-80 bars: a DataBars layout stamp that is not a number is migrated, no
     expect(addon.eval("return { ns.GetModule('DataBars').enabled, ns.GetModule('DataBars').settings.layout, ns.GetModule('DataBars').settings.width }"), `layout ${layout}`).toEqual([true, 2, 478]);
   }
 });
+
+// TEST-ONLY: one click edge on bar 1 button 2, with the client's flip of a CheckButton's check stood in first
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_Transmog/Blizzard_Transmog.lua:1961-1967 reads the flipped state
+// in OnClick, and Blizzard_ActionBar/Shared/StanceBar.lua:119-125 undoes it with SetChecked(not GetChecked())). The
+// cases read the check after PostClick, which is the truth whether or not the stub flips it as well. Returns it.
+const clickEdge = (addon, down) => addon.eval(`local b = Vanguard_Bar1Button2 b.__checked = not b.__checked b:Click("LeftButton", ${down}) return b:GetChecked()`);
+
+// The game's action buttons put the check right after every click (/home/user/blizz/forever/Interface/AddOns/
+// Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml:178 PostClick ->
+// Shared/ActionButton.lua:1567-1569 -> UpdateState :715-719); Vanguard's do the same.
+it("H46-18-1 bars: a key held through the start of a cast keeps the button lit after the release", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  clickEdge(addon, "true");
+  addon.eval("__actions[2].current = true");
+  addon.fire("ACTIONBAR_UPDATE_STATE");
+  addon.update(0);
+  expect(clickEdge(addon, "false"), "the release leaves the current action lit").toBe(true);
+  addon.update(1);
+  expect(addon.eval("return Vanguard_Bar1Button2:GetChecked()"), "and it stays lit while it is current").toBe(true);
+});
+
+it("H46-18-1 bars: a press slid off the button leaves a not-current action unlit", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  expect(clickEdge(addon, "true"), "the press does not light it").toBe(false);
+  addon.update(1);
+  expect(addon.eval("return Vanguard_Bar1Button2:GetChecked()"), "nor does anything later").toBe(false);
+});

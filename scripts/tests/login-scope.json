@@ -52,6 +52,8 @@
       "A3-2 bars: auto-attack flashes its button on and off every 0.4 s, and the flash stops with it",
       "A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking",
       "Forever's bars carry no pet battle clause (its vanilla content has none)",
+      "H46-18-1 bars: a key held through the start of a cast keeps the button lit after the release",
+      "H46-18-1 bars: a press slid off the button leaves a not-current action unlit",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
       "Y2-4 bars: a usable event repaints only the buttons whose state changed",
