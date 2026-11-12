@@ -426,9 +426,9 @@ function AH.OnShow()
 end
 
 -- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
--- window), and the modes it was in are forgotten.
+-- window), the sale and the game's last answer to it go, and the modes it was in are forgotten.
 function AH.OnClosed()
-  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
+  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell, AH.sellAnswer = false, nil, nil, {}, nil, nil, nil
   AH.mode, AH.lastMode, AH.lateScan, AH.checkedItems = nil, nil, nil, nil
   AH.walker:Hide()
   ns.Every("auction scan countdown", nil)

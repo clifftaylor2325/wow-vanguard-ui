@@ -831,3 +831,13 @@ it("H44-21-151: a refusal of the last stack stays on the finished card until the
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(addon.eval(`return ${CARD}.guide:GetText()`), "a new sale starts clean").toBe("Click Post to list stack 1 of 1.");
 });
+it("H44-G3-6: the game's answer to the last stack goes when the house closes", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  addon.world.closeAuctionHouse();
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "back at the house: the old refusal is gone, the finished line as before").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
+});
