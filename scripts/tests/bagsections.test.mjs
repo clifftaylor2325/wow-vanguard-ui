@@ -1000,3 +1000,21 @@ it("search words and group names ignore the case of Russian letters, so a small-
   expect(lit(addon, "cat:оружие"), "a group named with a capital, searched in small letters").toEqual([90001]);
   expect(addon.eval(`return { ns.GetModule("Bags").CategoryOf(90001) }`), "the group key is in small letters").toEqual(["cat:оружие"]);
 });
+
+// TEST-ONLY client that holds the search box's and the money line's anchoring secret once the game has set them: every
+// GetPoint value is then a secret, relativeTo too (live Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// SimpleScriptRegionResizingAPIDocumentation.lua GetPoint, SecretWhenAnchoringSecret).
+const HIDDEN_ANCHORS = `
+  local f = ContainerFrameCombinedBags
+  local search, currency = f.UpdateSearchBox, f.UpdateCurrencyFrames
+  function f:UpdateSearchBox() search(self) __wfgWorld.holdSecret(BagItemSearchBox, "Anchoring") end
+  function f:UpdateCurrencyFrames() currency(self) if __holdMoney then __wfgWorld.holdSecret(self.MoneyFrame, "Anchoring") end end
+`;
+
+it("H44-30-50 a search box and money line whose anchoring the client hides are read through ns.PlainPoint, with no error", () => {
+  const addon = loggedIn(BAG_ENV + HIDDEN_ANCHORS + "__holdMoney = true __token = CreateFrame('Frame', nil, ContainerFrameCombinedBags) __token:SetHeight(17)");
+  addon.eval("__openBag()");
+  expect(addon.eval("return { BagItemSearchBox.__points.TOPLEFT.x, #ns.errors }"), "the search box left where the game set it, nothing raised").toEqual([62, 0]);
+  addon.eval("__holdMoney = false ContainerFrameCombinedBags:UpdateCurrencyFrames() __holdMoney = true ContainerFrameCombinedBags:UpdateCurrencyFrames()");
+  expect(addon.eval("return #ns.errors"), "the money line on the currency tracker, hidden again: nothing raised").toBe(0);
+});

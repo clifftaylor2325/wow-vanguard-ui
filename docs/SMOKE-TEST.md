@@ -5792,6 +5792,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the failed module raises nothing further during the fight; /vg errors gains no new lines from it.
 - If it fails, paste: /vg errors.
 
+### 33.664 Windows, bags, chat and the talking head are dressed even where the game hides their anchoring (H44-30-50)
+
+- Do: open the mail, the social window (friends cards with a presence dot), the guild window and your bags (with a currency tracked under the money line), wait for a talking head, and with `/vg` > Chat > Movers for floating windows (reload) on and reloaded pull a chat tab out of the dock; keep `/vg errors` in mind throughout. [Client: Forever and Retail.]
+- Expect: each window's close button sits in its corner, the friends cards' dots sit beside the names, the bag's search box and Sort fit the search row and the money line sits the padding inside the bag, the toasts stack clear of the talking head, the pulled-out chat window gets a handle under `/vg unlock`; `/vg errors` has no `attempt to compare a secret value` or `attempt to use a secret value` line from `Windows.lua`, `WindowsSocial.lua`, `GameAlerts.lua`, `Bags.lua`, `BagSections.lua` or `ChatWindows.lua`.
+- If it fails, paste: a screenshot of the window that looks wrong, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

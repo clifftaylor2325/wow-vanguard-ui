@@ -1115,11 +1115,12 @@ local function dressCardRow(card)
 end
 
 -- How the game placed a card's presence dot and its name block (the dot's centre from the card's top-left
--- corner, the block's top-left from the dot's bottom-right), or nil once they are placed otherwise (centred already).
+-- corner, the block's top-left from the dot's bottom-right), or nil once they are placed otherwise (centred already)
+-- or while the client hides either's anchoring or offsets.
 local function gamePresenceAnchors(card, dot, text)
-  local _, dotRel, _, dx, dy = dot:GetPointByName("CENTER")
-  local _, textRel, _, _, ty = text:GetPointByName("TOPLEFT")
-  if dotRel ~= card or textRel ~= dot then return nil end
+  local _, dotRel, _, dx, dy = ns.PlainPoint(dot, "CENTER")
+  local _, textRel, _, _, ty = ns.PlainPoint(text, "TOPLEFT")
+  if dotRel ~= card or textRel ~= dot or not (dx and dy and ty) then return nil end
   return dx, dy, ty
 end
 

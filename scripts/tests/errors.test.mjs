@@ -258,6 +258,23 @@ it("secret checks: the client's check is chosen once and called bare, with no pc
     return { calls, __asked, answers }`);
   expect(out, "three values asked: three calls to the client's check, none through pcall").toEqual([0, 3, [true, false, 7]]);
 });
+// A region whose anchoring the client holds secret answers every GetPoint and GetPointByName value as a secret, relativeTo
+// too (live Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPoint,
+// GetPointByName: SecretWhenAnchoringSecret): ns.PlainPoint then answers nothing, so its callers may compare what it gives.
+it("plain checks: PlainPoint gives a plain anchor by index or name, and nothing while the client hides the anchoring", () => {
+  const addon = loggedIn("");
+  expect(addon.eval(`local f = CreateFrame("Frame", nil, UIParent) f:SetSize(10, 10) f:SetPoint("TOPLEFT", UIParent, "CENTER", 3, -4)
+    local p, r, rp, x, y = ns.PlainPoint(f, 1)
+    local np, nr, _, nx = ns.PlainPoint(f, "TOPLEFT")
+    local plain = { p, r == UIParent, rp, x, y, np, nr == UIParent, nx, ns.PlainPoint(f, "CENTER") == nil }
+    __wfgWorld.holdSecret(f, "Anchoring")
+    return { plain, select("#", ns.PlainPoint(f, 1)), select("#", ns.PlainPoint(f, "TOPLEFT")), #ns.errors }`), "plain by index and name, no anchor by an unset name, nothing at all while hidden")
+    .toEqual([["TOPLEFT", true, "CENTER", 3, -4, "TOPLEFT", true, 3, true], 0, 0, 0]);
+  expect(addon.eval(`local f = CreateFrame("Frame", nil, UIParent) f:SetPoint("CENTER", UIParent, "CENTER", 1, 2)
+    local S = __wfgWorld.secret f.GetPoint = function() return "CENTER", UIParent, "CENTER", S(1), 2 end
+    local p, r, _, x, y = ns.PlainPoint(f, 1)
+    return { p, r == UIParent, x == nil, y }`), "an offset the client hides alone comes back as nil, the rest plain").toEqual(["CENTER", true, true, 2]);
+});
 it("plain checks: IsTrue passes only a plain true, and CallIf calls only a function the client has", () => {
   const addon = loggedIn(`issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
     __probeGlobal = function(a) return a * 2 end

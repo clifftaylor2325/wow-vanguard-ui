@@ -124,11 +124,11 @@ end
 -- The floating windows made handles while the module runs: the game's chat frame -> its mover key.
 CW.floating = {}
 
--- Makes a floating window a /vg unlock handle, kept where it is put.
+-- Makes a floating window a /vg unlock handle, kept where it is put; none while the client hides where it stands.
 local function floatingMover(window)
   local frame, key = window.frame, "chat" .. window.index
-  local point, _, relPoint, x, y = frame:GetPoint(1)
-  if not point then return end
+  local point, _, relPoint, x, y = ns.PlainPoint(frame, 1)
+  if not (point and x and y) then return end
   local m = ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
   m.insets = ns.GetModule("Chat").ClampInsets(frame)
   pinTo(frame, key)

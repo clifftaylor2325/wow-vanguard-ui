@@ -1240,6 +1240,23 @@ it("placing a layout window's close button reads the panel's padding without mak
   expect([afterwards, Math.round(padded - bare)], "once the panel is painted, the button sits its 12 padding closer to the window").toEqual([true, 12]);
 });
 
+// A close button whose anchoring the client holds secret answers every GetPoint value as a secret, relativeTo too (live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPoint,
+// SecretWhenAnchoringSecret): atCorner reads it through ns.PlainPoint, leaves the button where the game put it and
+// decides again once the anchoring is plain.
+it("H44-30-50 placing a close button whose anchoring the client hides leaves it as the game set it, with no error", () => {
+  const addon = loggedIn(SYSTEM_ENV);
+  expect(addon.eval(`local window = CreateFrame("Frame", nil, UIParent) window:SetSize(300, 300) window:SetPoint("CENTER")
+    ns.Theme.Panel(window, { pad = 12 })
+    local close = CreateFrame("Button", nil, window) close:SetSize(20, 20) close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -4, -4)
+    __wfgWorld.holdSecret(close, "Anchoring")
+    local GW = ns.GetModule("Windows") GW.PlaceControls(window, close)
+    local held = close.__points.TOPRIGHT.x
+    close:ClearAllPoints() close:SetPoint("TOPRIGHT", window, "TOPRIGHT", -4, -4) GW.PlaceControls(window, close)
+    local p = close.__points.TOPRIGHT
+    return { held, p == nil or p.x ~= -4, #ns.errors }`), "left at -4 while hidden, placed once plain, nothing raised").toEqual([-4, true, 0]);
+});
+
 // The client keeps a secret "aspect" on a game widget fed a secret, and the matching getter answers with a secret from then on
 // (FOREVER-API-FACTS 3): Modules/Windows.lua's shared helpers read the game's state, text and sizes through the plain helpers.
 it("Windows.lua helpers: a hidden shown state, text, height or colour from a game widget is not tested, copied or measured", () => {

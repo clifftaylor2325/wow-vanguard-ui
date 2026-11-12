@@ -54,6 +54,14 @@ it("chat windows: the floating window becomes a mover and stays where it was put
   expect(addon.eval("return #ns.errors") + docked.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// A floating window whose anchoring the client holds secret answers every GetPoint value as a secret (live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua GetPoint,
+// SecretWhenAnchoringSecret): floatingMover reads it through ns.PlainPoint and makes no handle from hidden numbers.
+it("H44-30-50 chat windows: a floating window whose anchoring the client hides gets no handle, with no error", () => {
+  const addon = loggedIn(ENV + `__wfgWorld.holdSecret(ChatFrame2, "Anchoring")`, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  expect(addon.eval("return { ns.MoverPoint('chat2') == nil, ChatFrame2.__points.TOPLEFT.x, #ns.errors }"), "no handle, the window where the game put it, nothing raised").toEqual([true, 50, 0]);
+});
+
 // TEST-ONLY model of the game's docking (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua: FCF_DockFrame returns
 // when already docked, else FCFDock_AddChatFrame does chatFrame:ClearAllPoints() then SetAllPoints(dock.primary)).
 const DOCKING = `

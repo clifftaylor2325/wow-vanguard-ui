@@ -162,11 +162,10 @@ local function outside(point, relPoint, near, far, out, offset)
 end
 
 -- One anchor of a tab (as GetPoint gives it) moved out when it is set against an outer edge of its window, as the
--- arguments SetPoint takes; nothing when the anchor is not on the window, or the client hides its offsets or its
--- anchoring (then relativeTo is a secret too, and is never compared).
+-- arguments SetPoint takes (read through ns.PlainPoint); nothing when the anchor is not on the window, or the client
+-- hides its offsets or its anchoring.
 local function movedOut(window, pad, point, rel, relPoint, x, y)
-  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
-  if not (x and y) or ns.IsSecret(rel) or rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
+  if not (x and y) or rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
   x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))
   y = outside(point, relPoint, "BOTTOM", "TOP", pad, outside(point, relPoint, "TOP", "BOTTOM", -pad, y))
   return point, rel, relPoint, x, y
@@ -185,7 +184,7 @@ function GW.ClearPadding(tab, window, pad)
   pad = pad or GW.TabPad(window)
   if vgTabPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
   vgTabPadded[tab] = true
-  for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
+  for i = 1, count do moved[i] = { movedOut(window, pad, ns.PlainPoint(tab, i)) } end
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 

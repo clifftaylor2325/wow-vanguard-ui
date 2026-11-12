@@ -277,10 +277,11 @@ local function placeSort(frame)
 end
 
 -- Starts the game's search box the padding inside the window's left edge (the game left room there
--- for the bag's portrait, which the skin fades), when the game set it by its left side on the window's.
+-- for the bag's portrait, which the skin fades), when the game set it by its left side on the window's (and the
+-- client shows where).
 local function alignSearch(frame, box)
-  local point, rel, relPoint, _, y = box:GetPoint(1)
-  if rel ~= frame or type(point) ~= "string" or not point:find("LEFT") or not relPoint:find("LEFT") then return end
+  local point, rel, relPoint, _, y = ns.PlainPoint(box, 1)
+  if rel ~= frame or not y or type(point) ~= "string" or not point:find("LEFT") or not relPoint:find("LEFT") then return end
   box:SetPoint(point, rel, relPoint, BG.PAD, y)
 end
 
@@ -332,12 +333,14 @@ local function rightRoom(frame)
 end
 
 -- Starts the game's search box at the left padding and narrows it so Sort, right of it, ends the padding
--- inside the window's right edge (left of the game's backpack button, when that shows in the corner).
+-- inside the window's right edge (left of the game's backpack button, when that shows in the corner). Not while the
+-- client hides the box's anchoring: Sort, set beside it, cannot be measured then either.
 function BG.FitSearch(frame)
   local box = _G.BagItemSearchBox
   if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
   alignSearch(frame, box)
-  local _, _, _, left = box:GetPoint(1)
+  local _, _, _, left = ns.PlainPoint(box, 1)
+  if box:GetNumPoints() > 0 and not left then return end
   box:SetWidth(frame:GetWidth() - rightRoom(frame) - BG.sort:GetWidth() - SORT_GAP - BG.ToolsWidth() - (left or 0))
 end
 

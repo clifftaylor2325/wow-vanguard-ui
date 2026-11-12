@@ -206,9 +206,9 @@ function BG.HideHeaders()
 end
 
 -- The bag's bottom row: the currency tracker when the game shows one under
--- the money line (the money line sits on it), else the money line.
+-- the money line (the money line sits on it), else the money line (also while the client hides its anchoring).
 local function bottomRow(frame)
-  local _, rel = frame.MoneyFrame:GetPoint(1)
+  local _, rel = ns.PlainPoint(frame.MoneyFrame, 1)
   if rel and rel ~= frame then return rel end
   return frame.MoneyFrame
 end
@@ -224,12 +224,12 @@ function BG.PadMoney(frame)
 end
 
 -- The height of the bag's bottom rows: the money line, and when the currency
--- tracker shows under it, the tracker and the game's space between them.
+-- tracker shows under it, the tracker and the game's space between them (none while the client hides it).
 local function bottomHeight(frame)
   local money, row = frame.MoneyFrame, bottomRow(frame)
   if row == money then return money:GetHeight() end
-  local _, _, _, _, y = money:GetPoint(1)
-  return money:GetHeight() + y + row:GetHeight()
+  local _, _, _, _, y = ns.PlainPoint(money, 1)
+  return money:GetHeight() + (y or 0) + row:GetHeight()
 end
 
 -- The window fitted to the sections: the grid's width with the padding each

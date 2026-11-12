@@ -269,10 +269,10 @@ function GW.DressMaxMin(frame)
 end
 
 -- Whether the game set a part by its top-right corner on the window's (a corner close button);
--- read once, before Vanguard moves it, and not decided while it has no anchor yet.
+-- read once, before Vanguard moves it, and not decided while it has no anchor yet or the client hides its anchoring.
 local function atCorner(part, frame)
   if vgCorner[part] ~= nil then return vgCorner[part] end
-  local point, rel, relPoint = part:GetPoint(1)
+  local point, rel, relPoint = ns.PlainPoint(part, 1)
   if point == nil then return false end
   vgCorner[part] = rel == frame and point == "TOPRIGHT" and relPoint == "TOPRIGHT"
   return vgCorner[part]

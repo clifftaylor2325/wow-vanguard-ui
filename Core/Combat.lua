@@ -92,6 +92,24 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- One anchor of a region as SetPoint takes it, by index (GetPoint) or by point name (GetPointByName), with plain
+-- offsets (nil where hidden). Nothing at all when the client holds the region's anchoring secret: every GetPoint
+-- value is then a secret, relativeTo too (SimpleScriptRegionResizingAPIDocumentation.lua GetPoint, GetPointByName,
+-- SecretWhenAnchoringSecret), so a caller may compare what comes back.
+---@param region table
+---@param which number|string
+---@return string|nil point
+---@return table|nil relativeTo
+---@return string|nil relativePoint
+---@return number|nil x
+---@return number|nil y
+function ns.PlainPoint(region, which)
+  local read = type(which) == "string" and region.GetPointByName or region.GetPoint
+  local point, rel, relPoint, x, y = read(region, which)
+  if ns.IsSecret(point) or ns.IsSecret(rel) or ns.IsSecret(relPoint) then return end
+  return point, rel, relPoint, ns.PlainNumber(x), ns.PlainNumber(y)
+end
+
 -- A threat level (1 to 3) from UnitThreatSituation with these arguments, or nil when there is no
 -- aggro, the client hides threat (the raw result may be secret, so it is never truth-tested) or the
 -- client lacks the call.
