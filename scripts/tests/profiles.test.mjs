@@ -1316,3 +1316,42 @@ it("hunt H44-12-70: a nothing-to-export line in the open panel is cleared when t
   addon.eval("ns.ResetProfile()");
   expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText() }"), "after a reset the stale reason is gone").toEqual([true, ""]);
 });
+// TEST-ONLY saved variables: spec 2 has Heal as its own profile and Heal is in use; Mine is a hand pick.
+const HEAL_SPEC = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {}, Mine = {} } }\nVanguardCharDB = { profile = "Heal", setupDone = true, ownProfile = "Default", specProfiles = { [2] = "Heal" } }';
+const SPEC_GETTER = "GetSpecialization = function() return __spec end __spec = 2";
+it("H46-4-100: /vg profile <name> on a spec with a profile of its own does not promise the pick after the reload", () => {
+  const addon = createAddon({ savedVariables: HEAL_SPEC });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  addon.slash("profile Mine");
+  expect(addon.eval("return { ns.ProfileName(), ns.PendingProfileName(), tostring(ns.ProfileAfterReload()), Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() }"), "the pick is staged, the spec's profile loads, no reload is offered").toEqual(["Heal", "Mine", "nil", false]);
+  expect(chatHas(addon, /will use profile Mine/), "no promise").toBe(false);
+  expect(chatHas(addon, /It switches back at the reload/), "the spec's takeover is said").toBe(true);
+  addon.clearChat();
+  addon.slash("profile Heal");
+  expect(chatHas(addon, /already uses profile Heal/), "the profile in use says so").toBe(true);
+});
+it("H46-4-100: a pick staged in a fight on a spec with no profile of its own still offers the reload", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  setCombat(addon, true);
+  addon.slash("profile Raid");
+  expect(addon.eval("return { ns.ProfileAfterReload(), Vanguard_Reload:IsShown() }"), "staged and offered").toEqual(["Raid", true]);
+});
+it("H46-4-R2: /vg profile with no name names the profile the reload loads, not the staged pick the spec overrides", () => {
+  const addon = createAddon({ savedVariables: HEAL_SPEC });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.slash("profile Mine");
+  addon.clearChat();
+  addon.slash("profile");
+  expect(chatHas(addon, /Profile: Heal {3}\(all: Default, Heal, Mine\)/), "nothing comes after the reload but Heal again").toBe(true);
+  const mapped = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true }' });
+  mapped.eval(SPEC_GETTER);
+  mapped.login();
+  mapped.slash("spec Heal");
+  mapped.clearChat();
+  mapped.slash("profile");
+  expect(chatHas(mapped, /Profile: Default; Heal after a reload/), "a spec mapped to Heal loads it").toBe(true);
+});

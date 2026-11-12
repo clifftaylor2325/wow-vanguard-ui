@@ -432,10 +432,12 @@ local function skinsCommand(rest)
 end
 
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
--- applies it offered (naming what differs, when that alone waits).
+-- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
+-- (ns.WarnSpecWins has said so).
 local function switchTo(name)
   if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
-  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
   ns.OfferReload(wait and why .. " " .. wait or why)
 end
@@ -502,8 +504,9 @@ local PROFILE_ACTIONS = {
 -- /vg profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
-    local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
-    return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
+    local later = ns.ProfileAfterReload()
+    local text = later and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
+    return chat(ns.Format(text, { profile = ns.ProfileName(), next = later, all = table.concat(ns.ProfileNames(), ", ") }))
   end
   -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
   if VanguardDB.profiles[rest] then return switchTo(rest) end
