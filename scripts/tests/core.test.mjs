@@ -832,3 +832,10 @@ it("A1-13: every registered settings upgrade leaves an upgraded table as it is w
     table.sort(out) return { out, next(ns.migrations) ~= nil }`);
   expect(changed, "no settings table changes on its second upgrade (an empty one, and the profile's own)").toEqual([{}, true]);
 });
+
+it("a question asked over the reload offer comes to the front (H45-21-51)", () => {
+  const addon = loggedIn();
+  const levels = addon.eval(`ns.Ask("A?", "Yes", function() end) ns.OfferReload("Why.") ns.Ask("B?", "Yes", function() end)
+    return { Vanguard_Question:GetFrameLevel(), Vanguard_Reload:GetFrameLevel() }`);
+  expect(levels[0], "the newest question is above the offer").toBeGreaterThan(levels[1]);
+});

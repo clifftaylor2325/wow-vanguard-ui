@@ -440,6 +440,7 @@ function ns.Ask(text, yes, onYes, onNo, kind)
   f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
   f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))
   f:Show()
+  raiseLast(f)
 end
 
 -- Puts away the question whose No handler is onNo without answering it (the game ended what it asked about, as
