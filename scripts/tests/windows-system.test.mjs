@@ -1324,3 +1324,14 @@ it("H45-A-G1 backdrops: with UIParent hidden, a frame in a game layout frame kee
   addon.eval("UIWidgetBelowMinimapContainerFrame:SetParent(__managed) UIParent:Hide() UIWidgetBelowMinimapContainerFrame:UpdateWidgetLayout()");
   expect(where(), "on UIParent, not the game's layout frame").toEqual([true, false]);
 });
+
+// H45-40-1: the Trading Post is a parentless "full" panel (PerksProgramFrame has no parent in Blizzard_PerksProgram.xml,
+// area "full" in UIPanelWindows.lua) that calls StaticPopup_SetFullScreenFrame(self) in Blizzard_PerksProgram.lua; the
+// popup is parented to it (StaticPopup.lua GetFullScreenFrame), so its backdrop follows it while UIParent is hidden.
+it("H45-40-1 backdrops: a popup on a parentless full panel has its backdrop shown with UIParent hidden", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    __perks = CreateFrame("Frame", "PerksProgramFrame") __perks:SetAllPoints()`);
+  addon.eval("StaticPopup1:Show() StaticPopup1:Hide()");
+  addon.eval("UIParent:Hide() __perks:Show() StaticPopup1:SetParent(__perks) StaticPopup1:Show()");
+  expect(addon.eval(`local back = ns.GetModule("Windows").MadeBackdrop(StaticPopup1) return { StaticPopup1:IsVisible(), back:IsVisible() }`)).toEqual([true, true]);
+});
