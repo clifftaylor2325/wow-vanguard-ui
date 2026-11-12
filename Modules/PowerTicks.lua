@@ -61,7 +61,8 @@ function PT.Tick()
   local at = PT.Fraction(GetTime())
   PT.spark:SetShown(at ~= nil)
   if not at then PT.driver:SetScript("OnUpdate", nil) return end
-  local across, along = PT.PLACE[PT.bar:GetOrientation()](PT.bar, at)
+  local place = PT.PLACE[PT.bar:GetOrientation()] or PT.PLACE.HORIZONTAL
+  local across, along = place(PT.bar, at)
   PT.spark:SetPoint("CENTER", PT.bar, "BOTTOMLEFT", across, along)
 end
 

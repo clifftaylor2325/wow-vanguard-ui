@@ -465,6 +465,18 @@ it("power ticks: the spark moves on one anchor, as tall as the bar, with no anch
   expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, along(addon, 0.5), true]);
 });
 
+it("H46-B-G5 power ticks: a bar answering nil or an unknown orientation still sweeps along a lying bar", () => {
+  for (const answer of ["nil", '"horizontal"']) {
+    // The spark needs the unit frames, which this file's scoped login switches off: on again for this case.
+    const addon = loggedIn(UNITS_ENV + TICKS_ENV + "VanguardDB.profiles.Default.modules.UnitFrames = nil");
+    addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+    addon.eval(`ns.GetModule('PowerTicks').bar.GetOrientation = function() return ${answer} end`);
+    addon.eval("__wfgStub.advance(2.5)");
+    expect(addon.eval("return #ns.errors"), `no error for ${answer}`).toBe(0);
+    expect(spark(addon), `${answer}: halfway along`).toEqual([true, along(addon, 0.5), true]);
+  }
+});
+
 it("power ticks: energy every two seconds, and forms switch", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
