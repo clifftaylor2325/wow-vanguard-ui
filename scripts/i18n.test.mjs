@@ -154,6 +154,13 @@ it("i18n: the hint after an unknown /vg recap or meter report channel keeps ever
   }
 });
 
+it("i18n: no locale labels the auction sell form's Stack and Stacks boxes with one word (the first is units per auction, the second how many auctions)", () => {
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    expect(entries.get("Stacks"), `${locale}: "Stack" and "Stacks" share a label`).not.toBe(entries.get("Stack"));
+  }
+});
+
 it("a translation holding a carriage return is a problem", () => {
   const keys = new Map([["Bags", "x"]]);
   expect(localeProblems(new Map([["Bags", "Ta\rschen"]]), keys)).toEqual(["control character in translation: Bags"]);
