@@ -953,6 +953,13 @@ function UF.TabLift()
   return 0
 end
 
+-- How far the party column's top rises under the Tabs look: party1's default lifted for the gaps below it, plus its own
+-- tab. What stands over the column (Modules/PartyExtras.lua) rises by as much.
+---@return number
+function UF.PartyRise()
+  return PARTY_SIZE * UF.TabLift()
+end
+
 -- The target of target's default spot for the look: on a narrow canvas it sits over the target's cast bar, so its
 -- narrow spot rises with that bar's under Tabs (Modules/CastBars.lua CB.FitLook).
 local function targetOfTargetDefault()
