@@ -1038,19 +1038,26 @@ function methods:SetFlowLayoutAnchorPoint(point) self.__flowAnchor = point end
 function methods:SetFlowLayoutGrowthDirection(h, v) self.__flowGrow = { h, v } end
 function methods:SetFlowLayoutMaximumLineSize(size) self.__flowLine = size end
 
--- A group: its buttons are made now and dressed by initializeFrame, as the client does.
+-- Makes count more buttons for a group, each dressed by initializeFrame as it is made, as the client's frame provider
+-- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame).
+local function addAuraButtons(c, g, count)
+  for _ = 1, count do
+    local b = newWidget("AuraButton", nil, c)
+    b.__dispel, b.__pandemic = {}, {}
+    -- The client keeps its aura buttons' tooltip handlers (in game 2026-11-04, a HookScript on one raised
+    -- "cannot replace a forbidden script handler" though the button isn't forbidden).
+    b.__forbiddenScripts = { OnEnter = true, OnLeave = true }
+    g.buttons[#g.buttons + 1] = b
+    if g.opts.initializeFrame then g.opts.initializeFrame(b) end
+  end
+end
+
+-- A group: its first buttons are made now and dressed by initializeFrame, as the client does.
 function methods:AddAuraGroup(key, filter, opts)
   local g = { key = key, filter = filter, opts = opts, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
-  for i = 1, math.min(opts.maxFrameCount or 10, 10) do
-    g.buttons[i] = newWidget("AuraButton", nil, self)
-    g.buttons[i].__dispel, g.buttons[i].__pandemic = {}, {}
-    -- The client keeps its aura buttons' tooltip handlers (in game 2026-11-04, a HookScript on one raised
-    -- "cannot replace a forbidden script handler" though the button isn't forbidden).
-    g.buttons[i].__forbiddenScripts = { OnEnter = true, OnLeave = true }
-    if opts.initializeFrame then opts.initializeFrame(g.buttons[i]) end
-  end
+  addAuraButtons(self, g, math.min(opts.maxFrameCount or 10, 10))
   self:UpdateAllAuras()
 end
 
@@ -1126,12 +1133,29 @@ local function editModeSample()
   return { icon = "TEST-ONLY-EDIT-MODE-SAMPLE", auraInstanceID = 9999 }
 end
 
--- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows).
+-- How many auras a group shows: one per aura its filter gives, up to its maxFrameCount (math.huge when none is given,
+-- Blizzard_AuraContainerGroups.lua:239-254 and :381).
+local function aurasShown(c, g, get)
+  if not (c.__enabled and c.__unit and get) then return 0 end
+  local cap, n = g.opts.maxFrameCount or math.huge, 0
+  while n < cap and get(c.__unit, n + 1, g.filter) do n = n + 1 end
+  return n
+end
+
+-- Makes whole batches of ten buttons until the group has one for each aura it shows: the client's AcquireFrame makes a
+-- batch when none is free (Blizzard_AuraContainerShared.lua:100-106 FrameCreationBatchSize = 10).
+local function growGroup(c, g, wanted)
+  while #g.buttons < wanted do addAuraButtons(c, g, 10) end
+end
+
+-- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows), up to
+-- its maxFrameCount.
 local function fillGroup(c, g)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
-  local samples = stub.editMode and c.__editModePreview ~= false
+  local samples, cap = stub.editMode and c.__editModePreview ~= false, g.opts.maxFrameCount or math.huge
+  if not samples then growGroup(c, g, aurasShown(c, g, get)) end
   for i, b in ipairs(g.buttons) do
-    local aura = samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter) or nil
+    local aura = i <= cap and (samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter)) or nil
     fillButton(b, aura, g.filter:find("HARMFUL") ~= nil)
   end
 end

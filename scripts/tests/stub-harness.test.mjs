@@ -332,3 +332,24 @@ it("the global SetCVar stores a boolean as 1 or 0, and C_CVar.SetCVar reaches a 
     return { plain, heard }`);
   expect(out).toEqual([["1", true, "0", "2"], "TEST_ONLY_HEARD"]);
 });
+
+// Blizzard_AuraContainer (forever and live identical): Blizzard_AuraContainerFrameProviders.lua AcquireFrame makes a
+// batch when no frame is free and CreateFrame runs initializeFrame on each new one; Blizzard_AuraContainerShared.lua:
+// 100-106 FrameCreationBatchSize = 10; Blizzard_AuraContainerGroups.lua:239-254 shows up to maxFrameCount.
+it("an aura group makes another batch of ten buttons when its auras outnumber them, dressing each, in a fight too", () => {
+  const addon = createAddon();
+  const out = addon.eval(`for i = 1, 15 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 600 + i }) end
+    local inits, fought = 0, 0
+    local init = function(b) inits = inits + 1 if InCombatLockdown() then fought = fought + 1 end b:SetSize(20, 20) end
+    local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    c:AddAuraGroup("a", "HELPFUL", { maxFrameCount = 32, layout = {}, initializeFrame = init })
+    c:AddAuraGroup("b", "HELPFUL", { maxFrameCount = 12, layout = {}, initializeFrame = init })
+    c:SetUnit("player") c:SetEnabled(true)
+    local function shown(g) local n = 0 for _, b in ipairs(c.__groups[g].buttons) do if b.__shown then n = n + 1 end end return n end
+    local before = { #c.__groups[1].buttons, shown(1), #c.__groups[2].buttons, shown(2), inits }
+    __wfgWorld.combat(true)
+    for i = 16, 21 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 600 + i }) end
+    c:UpdateAllAuras()
+    return { before, { #c.__groups[1].buttons, shown(1), inits, fought } }`);
+  expect(out).toEqual([[20, 15, 20, 12, 40], [30, 21, 50, 10]]);
+});
