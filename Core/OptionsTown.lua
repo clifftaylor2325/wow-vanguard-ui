@@ -144,7 +144,9 @@ local function styleRows()
   for _, s in ipairs(styles) do choices[#choices + 1] = { s, UP.Word(s) } end
   -- Read on each call: a profile switch that applies at once leaves this row built, and the table is the new profile's.
   local function savedStyles() return O.ModuleSettings("Upgrades").styles end
-  return { { "cycle", L["Damage style"], choices, function() return W.Style(class, savedStyles()[class]) end, function(v) savedStyles()[class] = v UP.Changed() end } }
+  local function get() return W.Style(class, savedStyles()[class]) end
+  local function set(v) savedStyles()[class] = v UP.Changed() end
+  return { { "cycle", L["Damage style"], choices, get, set } }
 end
 
 -- Gear upgrades: the role (and damage style) the weights are for, and where upgrades show.

@@ -1239,7 +1239,8 @@ local function watchEditMode()
   local frame = _G.ChatFrame1
   if type(hooksecurefunc) ~= "function" or type(frame) ~= "table" or type(frame.UpdateSystem) ~= "function" then return end
   hooksecurefunc(frame, "UpdateSystem", ns.Guard("hook chat edit mode", CH.RestoreSize))
-  if type(frame.EditMode_OnResized) == "function" then hooksecurefunc(frame, "EditMode_OnResized", ns.Guard("hook chat edit mode resize", keepGripSize)) end
+  if type(frame.EditMode_OnResized) ~= "function" then return end
+  hooksecurefunc(frame, "EditMode_OnResized", ns.Guard("hook chat edit mode resize", keepGripSize))
 end
 
 -- Re-stacks the side buttons after the game's chat alert container re-anchors Quick Join and text
