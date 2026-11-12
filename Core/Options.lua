@@ -368,6 +368,9 @@ do
     if pick then ns.SetHudLayout(pick) end
   end
 
+  -- A pick made for one profile is not carried to another that takes over (or is reset) before the fight ends.
+  ns.OnProfileChanged(function() queued = nil end)
+
   -- The row's getter and setter: the queued pick (if any) or the layout in use.
   function hudLayoutSetting()
     return function() return queued or ns.HudLayout() end, function(v) queued = v; ns.OutOfCombat(applyQueuedLayout, "HUD layout") end

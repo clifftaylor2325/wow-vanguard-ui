@@ -643,6 +643,16 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("H46-4-2 a HUD layout picked in a fight is dropped when Reset profile replaces the profile before the fight ends", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("HUD layout")');
+  addon.world.combat(true);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.caption == "Where the frames stand" and ns.Options.RevealRow(w) then w:GetScript("OnClick")(w, "LeftButton") end end`);
+  addon.eval("ns.ResetProfile()");
+  addon.world.combat(false);
+  expect(addon.eval("return { tostring(ns.Profile().hudLayout), ns.HudLayout() }"), "the reset profile keeps its own layout").toEqual(["nil", "centered"]);
+});
+
 it("options: a HUD look picked in a fight shows on its row, waits for the fight's end and keeps its default (H45-40-501)", () => {
   const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
   addon.eval('ns.Options.Show("general")');
