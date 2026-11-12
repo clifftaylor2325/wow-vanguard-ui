@@ -184,7 +184,7 @@ Set up the world, act as the player, inspect what was drawn. See `.claude/skills
 
 ## Things the rules do not say but the code assumes
 
-- `pairs` order is undefined; anything the player sees sorted is sorted explicitly. The harness iterates like Lua 5.3, the game like 5.1, so a test can pass by luck.
+- `pairs` order is undefined; anything the player sees sorted is sorted explicitly. The default harness engine is the game's Lua 5.1.5, but table addresses and insertion history still differ from a live client, so a test can pass by luck.
 - No allocation in `OnUpdate`, `UNIT_AURA` or `UNIT_HEALTH` handlers: reuse tables, format text only when the value changed. `npm run bench` measures a 40-player raid.
 - `select("#", ...)` to count varargs, never `#{...}`.
 - `error(msg, 2)` so the stack points at the caller; a bare `pcall` that swallows an error is only right when the error is the answer (an API probe).

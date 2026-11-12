@@ -156,6 +156,8 @@ The harness uses fengari (Lua 5.3) with shims for number printing and `string.fo
 
 Recommendation: nothing before launch. Post-launch, run a handful of pure-Lua modules (`Core/Serialize.lua`, `Core/DB.lua`, the auction price math) under real `lua5.1` in CI, since CI already installs it. These have no frame dependencies.
 
+Update, 2026-11-12 (H45-38-204): the suite now runs on a real Lua 5.1.5 engine by default (wasm, PR #869); `VG_LUA_ENGINE=fengari` picks the Lua 5.3 engine described here.
+
 ### F9. Coverage is line-only
 
 Where: `scripts/coverage-lua.mjs`, `scripts/lua-coverage-floor.json`.
