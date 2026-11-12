@@ -7,7 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local O = ns.Options
-local setting, liveMethod, check, append = O.Setting, O.LiveMethod, O.Check, O.Append
+local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
@@ -15,7 +15,7 @@ local function auctionScanRows()
     check(L["Scan button (one scan every 15 minutes)"], setting("AuctionHelper", "scanButton")),
     check(L["Recheck undercuts after posting"], setting("AuctionHelper", "recheck")),
     check(L["Disenchant values in tooltips"], ns.AuctionPrices.DisenchantSetting()),
-    check(L["Crafting costs and profit"], setting("AuctionHelper", "crafting")),
+    check(L["Crafting costs and profit"], liveMethod("AuctionHelper", "crafting", "PaintCrafting")),
     check(L["Deals list"], liveMethod("AuctionHelper", "deals", "PaintDeals")),
     check(L["Upgrades list"], liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
   }
@@ -25,7 +25,7 @@ end
 local function auctionRows()
   return append({
     { "header", L["Auction house"] },
-    check(L["Lists and Posting tabs"], setting("AuctionHelper", "panel")),
+    O.ReloadRow(check(L["Lists and Posting tabs"], reloadSetting("AuctionHelper", "panel"))),
     check(L["Auction prices in tooltips"], setting("AuctionHelper", "tooltip")),
     { "cycle", L["Undercut by"], { { "copper", L["1 copper"] }, { "silver", L["1 silver"] }, { "percent", "1 %" }, { "match", L["Match"] } }, setting("AuctionHelper", "undercut") },
     { "cycle", L["Auction length"], ns.GetModule("AuctionHelper").DurationSettingChoices(), setting("AuctionHelper", "duration") },

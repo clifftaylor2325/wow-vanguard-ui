@@ -423,18 +423,27 @@ local function affordable(row, f)
   return row ~= nil and not (f and f.maxPrice and row.price > f.maxPrice)
 end
 
+-- The first result the entry takes on one pass, and whether a result's name wasn't in yet.
+local function passRow(term, f, results, pass)
+  local unnamed = false
+  for _, r in ipairs(results) do
+    local m, row = matches(term, f, r, pass), resultRow(r)
+    if m == nil then unnamed = true elseif m and affordable(row, f) then return row, unnamed end
+  end
+  return nil, unnamed
+end
+
 -- An entry's row: the cheapest result that is its item (the same name first, then one containing it),
--- readable and within its max price; false when there's none, nil while a result's name isn't in yet.
+-- readable and within its max price; false when there's none, nil while a result's name isn't in yet
+-- (a name only containing the text waits for every name, as an unnamed result may be the exact one).
 function AH.BestResult(entry, results)
   local term, f = AH.Term(entry)
-  local unnamed = false
   for pass = 1, 2 do
-    for _, r in ipairs(results) do
-      local m, row = matches(term, f, r, pass), resultRow(r)
-      if m == nil then unnamed = true elseif m and affordable(row, f) then return row end
-    end
+    local row, unnamed = passRow(term, f, results, pass)
+    if row then return row end
+    if unnamed then return nil end
   end
-  if not unnamed then return false end
+  return false
 end
 
 -- An entry's browse results: its row, or (while a result's name isn't in yet) kept to match again;
@@ -548,11 +557,12 @@ local function itemListing(r)
   return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = AH.BandText(band) }
 end
 
--- A commodity listing as a row: its unit price, quantity and seconds left; nil for a hidden number.
+-- A commodity listing as a row: its unit price, quantity and seconds left (read as Up now reads them,
+-- AH.TimeLeft); nil for a hidden number.
 local function commodityListing(r)
   local unit, qty, secs = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeftSeconds)
   if not (unit and qty) then return nil end
-  return { price = unit, qty = qty, time = secs or 0, timeText = secs and AH.SecondsText(secs) or "" }
+  return { price = unit, qty = qty, time = secs or 0, timeText = AH.TimeLeft(r) }
 end
 
 -- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).

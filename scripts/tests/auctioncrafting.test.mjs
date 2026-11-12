@@ -3,7 +3,7 @@
 // reagents, at the TEST-ONLY profession window of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, items, and recipes. 100 makes a TEST-ONLY bag from 3 Linen Cloth and a
 // thread (plus slots left out: an optional reagent, a currency, a hidden count); 101 is an enchant
@@ -184,4 +184,35 @@ it("the panel goes left of the profession window when the screen has no room at 
   back.eval(`ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 450, -116) ${CR}.Paint() ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) ${CR}.Paint()`);
   const [p, w] = [back.frame("Vanguard_CraftingPanel").rect, back.frame("ProfessionsFrame").rect];
   expect(p.left - w.right, "the window moved back: the panel returns to the right").toBe(52);
+});
+
+it("H46-31-202 the Crafting costs switch in the options hides and shows the panel at once", () => {
+  const addon = crafter(CLICK_LUA);
+  addon.world.openProfession(100);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Crafting costs and profit")');
+  expect(addon.eval("return Vanguard_CraftingPanel:IsVisible()"), "switched off: the panel hides").toBe(false);
+  addon.eval('__click("Crafting costs and profit")');
+  expect(addon.eval("return Vanguard_CraftingPanel:IsVisible()"), "switched on: it shows again for the recipe open").toBe(true);
+});
+
+it("H46-31-203 a reagent the client names after the panel was painted gets its name and icon", () => {
+  const addon = crafter("__wfgWorld.recipes[100].reagentSlotSchematics[2] = { reagents = { { itemID = 7777 } }, quantityRequired = 2, reagentType = 1 }");
+  addon.world.openProfession(100);
+  // The second reagent row: [name, icon].
+  const look = () => addon.eval("return { Vanguard_CraftingPanel.rows[2].name:GetText(), Vanguard_CraftingPanel.rows[2].icon:GetTexture() }");
+  // How many times the panel was painted since it was counted.
+  const paints = () => addon.eval("return __paints");
+  addon.update(0.5);
+  expect(look()[0], "not known yet").toBe("item 7777");
+  addon.eval(`__paints, __paint = 0, ${CR}.Paint ${CR}.Paint = function() __paints = __paints + 1 return __paint() end`);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 5555, true);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 7777, false);
+  addon.update(0.5);
+  expect(paints(), "an item the recipe does not use, or a failed lookup, repaints nothing").toBe(0);
+  addon.eval('__wfgWorld.items[7777] = { name = "TEST-ONLY Late Reagent", icon = "TEST-ONLY-LATE" }');
+  addon.fire("GET_ITEM_INFO_RECEIVED", 7777, true);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 4238, true);
+  addon.update(0.5);
+  expect([paints(), look()], "the reagent and the product: one paint, the reagent named").toEqual([1, ["TEST-ONLY Late Reagent", "TEST-ONLY-LATE"]]);
 });

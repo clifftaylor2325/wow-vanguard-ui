@@ -534,6 +534,14 @@ function AH.HideGamePostWarning()
   end))
 end
 
+-- The card keeps a post's answer only while the house is open and the sale is still the one posted (AH.postSale),
+-- or the card is empty (the last stack was sent): another item's guide, or a closed house's next visit, never
+-- shows it. Chat has already said it.
+local function keepAnswer(text)
+  if not AH.open then return end
+  if not AH.sell then AH.sellAnswer = text elseif AH.sell == AH.postSale then AH.sell.answer = text end
+end
+
 -- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
 -- chat says it ("Post: the game said ..."); a secret value shows as "?". The sale's guide shows it, or
 -- the finished card's (AH.sellAnswer) when the last stack was the one sent.
@@ -545,7 +553,7 @@ function AH.OnPostAnswer(e, ...)
   if ns.IsSecret(v) then v = "?" end
   local text = ns.Format(a[1], { value = a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v) })
   ns.Chat(ns.Format(L["Post: {answer}."], { answer = text }))
-  if AH.sell then AH.sell.answer = text else AH.sellAnswer = text end
+  keepAnswer(text)
   AH.PaintSell()
   if e == "AUCTION_HOUSE_POST_WARNING" then AH.HideGamePostWarning() end
 end
@@ -555,7 +563,7 @@ end
 local function sending(s, n, price, d)
   local values = { stack = s.passed + 1, stacks = AH.StackCount(s), count = n, money = AP.Money(price), length = AH.DurationName(d) }
   ns.Chat(ns.Format(L["Post: sending stack {stack} of {stacks} ({count} at {money} each, {length})."], values))
-  AH.postAt, s.answer = GetTime(), nil
+  AH.postAt, AH.postSale, s.answer = GetTime(), s, nil
 end
 
 -- The restricted call for the sale's next stack, without its "Post" or "ConfirmPost": Commodity
@@ -595,7 +603,7 @@ end
 -- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next. The
 -- game's earlier answer goes, and a refusal of the confirm within AH.POST_ANSWER_TIME is reported.
 local function confirmPost(s, p)
-  AH.postAt, s.answer = GetTime(), nil
+  AH.postAt, AH.postSale, s.answer = GetTime(), s, nil
   C_AuctionHouse["ConfirmPost" .. p.kind](unpack(p.args, 1, p.args.n))
   posted(s, p.args[3])
 end
