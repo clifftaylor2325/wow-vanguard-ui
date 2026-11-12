@@ -2399,3 +2399,16 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
     __s.track:GetScript("OnMouseDown")() __wfgStub.update(0.05) __wfgStub.update(0.05) __wfgStub.update(0.05)`);
   expect(addon.eval("return __sets"), "a locked slider is set once").toBe(1);
 });
+
+// H45-40-2: Pixel-perfect can save a shared bar size (24 to 64) past a single bar's Button size slider (24 to 48); a caption
+// click on a value past the slider's end steps it to the end, then wraps as usual.
+it("H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
+  addon.eval('ns.Options.Show("actionbars")');
+  // The shared size and bar 1's own size.
+  const sizes = () => addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.bars[1].size or false }');
+  addon.eval('__click("Button size")');
+  expect(sizes(), "the bar steps to the slider's end, the others keep theirs").toEqual([62, 48]);
+  addon.eval('__click("Button size")');
+  expect(sizes()[1], "the next click is the normal wrap").toBe(24);
+});

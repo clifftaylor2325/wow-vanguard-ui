@@ -332,6 +332,7 @@
     "scripts/tests/motion.test.mjs": [],
     "scripts/tests/officerloot.test.mjs": [],
     "scripts/tests/options.test.mjs": [
+      "H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum",
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],

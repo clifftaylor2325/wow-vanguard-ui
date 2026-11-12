@@ -676,9 +676,11 @@ local function addTrack(r)
 end
 
 -- Clicking the caption steps up, wrapping to the minimum after the maximum: the slider's, or the setting's
--- own where it keeps to a narrower range (a frame's size), so a step up there changes nothing.
+-- own where it keeps to a narrower range (a frame's size), so a step up there changes nothing. A value past the
+-- slider's end steps to the end.
 local function stepOrWrap(r)
   local before = r.get()
+  if before > r.max then r.set(r.max) r:Refresh() return end
   if before < r.max then stepBy(r, 1) end
   if r.get() ~= before then return end
   r.set(r.min)
