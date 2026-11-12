@@ -1282,7 +1282,6 @@ L["Not enough gold for any: the cheapest is {money}."] = "Не хватает з
 L["Not enough gold to repair ({money})."] = "Не хватает золота на ремонт ({money})."
 L["Not filtering \"{word}\"."] = "«{word}» не фильтруется."
 L["Not in a fight: try again after it."] = "Не в бою: повторите после боя."
-L["Not in combat."] = "Не в бою."
 L["Not in combat: the game's damage meter is hidden until the fight is over."] = "Вне боя: измеритель урона игры скрыт, пока бой не закончится."
 L["Not in your plan ({bought} of {max} bought)"] = "Не в вашем плане (взято {bought} из {max})"
 L["Not now"] = "Не сейчас"

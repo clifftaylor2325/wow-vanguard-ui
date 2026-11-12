@@ -1282,7 +1282,6 @@ L["Not enough gold for any: the cheapest is {money}."] = "Pas assez d’or pour 
 L["Not enough gold to repair ({money})."] = "Pas assez d’or pour réparer ({money})."
 L["Not filtering \"{word}\"."] = "« {word} » n’est pas filtré."
 L["Not in a fight: try again after it."] = "Pas en combat : réessayez après."
-L["Not in combat."] = "Pas en combat."
 L["Not in combat: the game's damage meter is hidden until the fight is over."] = "Hors combat : le compteur de dégâts du jeu est masqué jusqu’à la fin du combat."
 L["Not in your plan ({bought} of {max} bought)"] = "Pas dans votre plan ({bought} sur {max} achetés)"
 L["Not now"] = "Pas maintenant"

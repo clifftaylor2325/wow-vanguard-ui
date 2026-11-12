@@ -1282,7 +1282,6 @@ L["Not enough gold for any: the cheapest is {money}."] = "살 골드가 부족�
 L["Not enough gold to repair ({money})."] = "수리할 골드가 부족합니다 ({money})."
 L["Not filtering \"{word}\"."] = "\"{word}\"(을)를 거르고 있지 않습니다."
 L["Not in a fight: try again after it."] = "전투 중이 아닐 때만: 전투 후 다시 시도하세요."
-L["Not in combat."] = "전투 중이 아닙니다."
 L["Not in combat: the game's damage meter is hidden until the fight is over."] = "비전투 중: 게임 피해 미터기는 전투가 끝날 때까지 숨겨집니다."
 L["Not in your plan ({bought} of {max} bought)"] = "계획에 없음 ({max}개 중 {bought}개 배움)"
 L["Not now"] = "나중에"

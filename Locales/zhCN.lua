@@ -1282,7 +1282,6 @@ L["Not enough gold for any: the cheapest is {money}."] = "金币不足以购买�
 L["Not enough gold to repair ({money})."] = "金币不足以修理（{money}）。"
 L["Not filtering \"{word}\"."] = "未在过滤“{word}”。"
 L["Not in a fight: try again after it."] = "不在战斗中：战斗后再试。"
-L["Not in combat."] = "不在战斗中。"
 L["Not in combat: the game's damage meter is hidden until the fight is over."] = "非战斗中：游戏的伤害统计在战斗结束前隐藏。"
 L["Not in your plan ({bought} of {max} bought)"] = "不在你的规划中（已学{bought}/{max}）"
 L["Not now"] = "以后再说"
