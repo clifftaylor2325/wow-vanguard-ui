@@ -267,7 +267,7 @@ Enum = {
   CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
   -- DurationTextBindingSharedDocumentation.lua (both clients).
   DurationTextBindingProperty = { RemainingDuration = 0, RemainingPercent = 1, ElapsedDuration = 2, ElapsedPercent = 3, TotalDuration = 4, StartTime = 5, EndTime = 6 },
-  LuaCurveType = { Linear = 0, Step = 1 },
+  LuaCurveType = { Linear = 0, Step = 1, Cosine = 2, Cubic = 3 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
   -- NumericRuleFormatterSharedDocumentation.lua (both clients).
   NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 },
@@ -693,24 +693,57 @@ end
 
 AnchorUtil = { FlowDirection = { LeftToRight = 1, RightToLeft = 2, TopToBottom = 3, BottomToTop = 4 } }
 
--- Color curves: the color at a value, by the nearest step below it.
+-- Curves (CurveUtilDocumentation.lua, both clients): CreateCurve makes a number curve and CreateColorCurve a colour
+-- curve, each with SetType and the points calls. Evaluate interpolates between the two points around x, clamped to
+-- the end points, unless the type is Step (LuaCurveObjectConstantsDocumentation.lua: Linear "Linearly interpolates
+-- between points", Step "snapping to values exactly"; Cosine and Cubic are taken as Linear, a guess). An unset type
+-- interpolates: Blizzard_SharedXMLBase/CurveConstants.lua:3-6 builds ZeroToOne with no SetType as "the identity
+-- function" (for a colour curve this is inferred from the number curve).
+local curveMethods = {}
+curveMethods.__index = curveMethods
+
+-- SetType picks the curve's kind (Enum.LuaCurveType).
+function curveMethods:SetType(t) self.kind = t end
+-- AddPoint keeps a value (a number, or a colour on a colour curve) at x.
+function curveMethods:AddPoint(x, value) self.points[#self.points + 1] = { x = x, value = value } end
+-- ClearPoints drops every point, so the curve can be filled again.
+function curveMethods:ClearPoints() self.points = {} end
+
+-- The points nearest x at or below it and at or above it (nil past that end).
+local function curveNeighbours(points, x)
+  local below, above
+  for _, p in ipairs(points) do
+    if p.x <= x and (not below or p.x > below.x) then below = p end
+    if p.x >= x and (not above or p.x < above.x) then above = p end
+  end
+  return below, above
+end
+
+-- A value t of the way from a to b: a number, or a colour component by component.
+local function blendCurveValues(a, b, t)
+  if type(a) == "number" then return a + (b - a) * t end
+  -- One component, a missing one (alpha) counting as 1.
+  local function mix(k) return (a[k] or 1) + ((b[k] or 1) - (a[k] or 1)) * t end
+  return CreateColor(mix("r"), mix("g"), mix("b"), mix("a"))
+end
+
+-- The value at x: the nearest point at or below on a Step curve (the lowest point below them all), else blended.
+function curveMethods:Evaluate(x)
+  local below, above = curveNeighbours(self.points, x)
+  local edge = below or above
+  if not edge then return nil end
+  if self.kind == Enum.LuaCurveType.Step or not (below and above) or below.x == above.x then return edge.value end
+  return blendCurveValues(below.value, above.value, (x - below.x) / (above.x - below.x))
+end
+
+-- A new curve with no points and no type.
+local function newCurve()
+  return setmetatable({ points = {} }, curveMethods)
+end
+
 C_CurveUtil = {
-  -- A curve object: AddPoint(x, color), Evaluate(x).
-  CreateColorCurve = function(kind)
-    local curve = { kind = kind, points = {} }
-    -- SetType picks the curve kind; AddPoint keeps a color at a value; Evaluate gives the color of the nearest point at or below.
-    function curve:SetType(t) self.kind = t end
-    function curve:AddPoint(x, color) self.points[#self.points + 1] = { x = x, color = color } end
-    -- ClearPoints drops every point, so the curve can be filled again.
-    function curve:ClearPoints() self.points = {} end
-    -- The color of the nearest point at or below x.
-    function curve:Evaluate(x)
-      local best
-      for _, p in ipairs(self.points) do if p.x <= x and (not best or p.x > best.x) then best = p end end
-      return best and best.color or self.points[1] and self.points[1].color
-    end
-    return curve
-  end,
+  CreateCurve = newCurve,
+  CreateColorCurve = newCurve,
   -- One of two colors by a boolean the client may hide (a hidden one is read through the harness's rawget, as a hidden number is).
   EvaluateColorFromBoolean = function(flag, ifTrue, ifFalse)
     if seenSecret(flag) then flag = rawget(flag, "n") end

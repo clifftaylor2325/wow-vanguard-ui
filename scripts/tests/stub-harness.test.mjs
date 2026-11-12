@@ -552,3 +552,20 @@ it("a world power or combo change fires UNIT_POWER_UPDATE with its power type, o
     return seen`);
   expect(out).toEqual(["player COMBO_POINTS", "player MANA"]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/LuaCurveObjectConstantsDocumentation.lua:
+// Linear "Linearly interpolates between points", Step "snapping to values exactly"; CurveUtilDocumentation.lua:21-29
+// CreateCurve. An unset type interpolates: Blizzard_SharedXMLBase/CurveConstants.lua:3-6 calls the untyped ZeroToOne
+// curve "the identity function".
+it("a linear or untyped curve blends between its points and clamps at the ends, a step curve snaps", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local function curve(kind) local c = C_CurveUtil.CreateCurve() if kind then c:SetType(kind) end
+      c:AddPoint(1, 100) c:AddPoint(0, 0) return c end
+    local linear, step, untyped = curve(Enum.LuaCurveType.Linear), curve(Enum.LuaCurveType.Step), curve()
+    local col = C_CurveUtil.CreateColorCurve() col:SetType(Enum.LuaCurveType.Linear)
+    col:AddPoint(0, CreateColor(0, 0, 0, 0)) col:AddPoint(1, CreateColor(1, 0.5, 1, 1))
+    local mid = col:Evaluate(0.5)
+    return { linear:Evaluate(0.25), step:Evaluate(0.25), untyped:Evaluate(0.5), linear:Evaluate(-1), linear:Evaluate(2),
+      step:Evaluate(-1), mid.r, mid.g, mid.a, C_CurveUtil.CreateCurve():Evaluate(0) == nil }`);
+  expect(out).toEqual([25, 0, 50, 0, 100, 0, 0.5, 0.25, 0.5, true]);
+});
