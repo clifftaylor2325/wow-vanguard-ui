@@ -621,6 +621,14 @@ it("H46-19-52 while the game's click bindings are in use, the test tile says so 
   expect({ middle, key, wheel }).toEqual({ middle: resting, key: resting, wheel: resting });
 });
 
+it("H46-19-54 a cell bound to a spell by name shows the top rank's tooltip, a picked rank its own", () => {
+  const addon = priest();
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("BUTTON4", "spell", "Flash Heal", 2061, 1) ${CC}.Add("BUTTON5", "spell", "TEST-ONLY Unknown", 139) ns.Options.Show("clickcast")`);
+  // The spell id the tooltip shows over a cell.
+  const tip = (key) => { addon.hover(cell(addon, key)); const id = addon.eval("return GameTooltip.__spellId"); addon.hover(null); return id; };
+  expect({ byName: tip("BUTTON3"), rank: tip("BUTTON4"), unknown: tip("BUTTON5") }, "the name casts its highest rank (9472); a name the catalog doesn't hold keeps its id").toEqual({ byName: 9472, rank: 2061, unknown: 139 });
+});
+
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
 const encoded = (addon, list) => addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = ${list} })`);
 

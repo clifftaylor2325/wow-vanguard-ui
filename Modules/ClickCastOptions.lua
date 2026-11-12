@@ -490,12 +490,20 @@ local function wontRunTooltip(f, b, why)
   GameTooltip:Show()
 end
 
+-- The spell id a binding's tooltip shows: the saved one for a picked rank; else, for a spell bound by name (it casts
+-- the highest rank, ClickCast.lua spellValue), the catalog's top rank, which moves on as ranks are learned; a name the
+-- catalog doesn't hold (another client language, a spell not learned) keeps the saved id.
+local function tooltipSpellID(b)
+  local spell = b.action == "spell" and not b.rank and CS.Spell(b.value)
+  return spell and spell.spellID or b.spellID
+end
+
 -- A cell's tooltip: why its binding does nothing when the game won't run it, else its spell's.
 local function cellTooltip(c)
   local b = CC.Binding(c.key)
   local why = b and CC.WontRun(b)
   if why then return wontRunTooltip(c, b, why) end
-  spellTooltip(c, b and b.spellID)
+  spellTooltip(c, b and tooltipSpellID(b))
 end
 
 -- A cell's scripts: clicks, drops and the tooltip.
