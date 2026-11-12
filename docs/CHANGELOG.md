@@ -1,6 +1,6 @@
 # Changelog
 
-What changed for players in each release, newest first. In game, the same notes are the What's new window (`/vg whatsnew`), written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
+What changed for players in each release, newest first. In game, the What's new window (`/vg whatsnew`) shows a short form of the newest section, written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
