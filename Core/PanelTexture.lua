@@ -87,6 +87,7 @@ function T.PaintPanelSurface(frame, entry)
   local opts, path, alpha = entry.opts, T.PanelSurface()
   if opts.noSurface or not (opts.shadow or opts.gradient) or not (path or surfaceOf[frame]) then return end
   local t = surface(frame)
+  entry.parts.surface = t
   t:SetShown(path ~= nil)
   if not path then return end
   t:SetTexture(path, "REPEAT", "REPEAT")
