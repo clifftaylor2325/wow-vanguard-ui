@@ -1089,5 +1089,5 @@ it("H45-3-R1: the column's spot follows a change of HUD look at once", () => {
 it("H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise", () => {
   const [shield, tabs, built] = spotByLook("", ["shield", "tabs"]);
   expect(built, "the unit frames are built, the party column is not").toEqual([true, false]);
-  expect(tabs - shield, "no tabbed party column under it: no 84-unit rise").toBe(0);
+  expect(tabs - shield, "no tabbed party column under it: no 84-unit rise, only half the raid grid's 12 (H46-3-1), touching neither the grid nor the raid tools at 1365 x 768").toBe(6);
 });

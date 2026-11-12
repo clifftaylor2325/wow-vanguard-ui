@@ -341,6 +341,50 @@ it("Tabs: the party and boss stacks spread by the tab's height so each tab stand
   expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot back to its Plain place").toEqual([true, Math.round(plainFoot)]);
 });
 
+// H46-3-1: the raid grid on the default profile (the raid frames show the party) under a look, on a 1920x1080 canvas.
+const raidLogin = (look, extra = "") => loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV,
+  { savedVariables: `VanguardDB = { profiles = { Default = { theme = { hudLook = "${look}" }${extra} } } }` });
+// The focus cast bar's and the raid holder's rects (left, right, bottom, top) and the raid spot's y, with the grid
+// arranged for n players (TEST-ONLY reads).
+const raidRects = (addon, n) => addon.eval(`local RF = ns.GetModule("RaidFrames") RF.Arrange(${n})
+  local c, r = Vanguard_CastBar_focus, Vanguard_RaidHolder
+  return { { c:GetLeft(), c:GetRight(), c:GetBottom(), c:GetTop() }, { r:GetLeft(), r:GetRight(), r:GetBottom(), r:GetTop() }, select(4, ns.MoverPoint("raid")) }`);
+// Whether two rects (left, right, bottom, top) overlap by more than a rounding hair.
+const covers = (a, b) => a[0] < b[1] - 0.01 && b[0] < a[1] - 0.01 && a[2] < b[3] - 0.01 && b[2] < a[3] - 0.01;
+
+it("H46-3-1: under the Tabs look the raid grid's spot for a party and a raid of ten rises 12 units, so the focus's lifted cast bar stays clear of its foot; a big raid keeps its spot", () => {
+  const addon = raidLogin("tabs");
+  const tabs = [5, 10, 25, 40].map((n) => raidRects(addon, n));
+  expect(addon.eval("return Vanguard_party1 == nil"), "the raid frames show the party: no party column").toBe(true);
+  expect(tabs.map(([bar, grid]) => covers(bar, grid)), "the focus's cast bar covers no tile in a party or a raid of ten; a big raid keeps the overlap (its top would meet the main tanks at 1365 x 768)").toEqual([false, false, true, true]);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  const plain = [5, 10, 25, 40].map((n) => raidRects(addon, n));
+  expect(tabs.map((t, i) => t[2] - plain[i][2]), "back to Plain, the party and ten-player spot comes down the 12 units").toEqual([12, 12, 0, 0]);
+  expect(plain.map(([bar, grid]) => covers(bar, grid)), "and the Plain bar stays clear").toEqual([false, false, false, false]);
+});
+
+it("H46-3-1: the raid grid's raised spot is one table per spot and lift, so a roster change sets the mover default only when the spot changes", () => {
+  const addon = raidLogin("tabs");
+  addon.eval("local RF = ns.GetModule('RaidFrames') RF.Arrange(5) __sets = 0 local set = ns.SetMoverDefault ns.SetMoverDefault = function(...) __sets = __sets + 1 return set(...) end RF.Arrange(5) RF.Arrange(10) RF.Arrange(40) RF.Arrange(25)");
+  expect(addon.eval("return __sets"), "none for a party again or a raid of ten, one for the big raid's spot, none for 25 after 40").toBe(1);
+});
+
+it("H46-3-1: a look change in a fight moves the raid grid when it ends (its secure header hangs on the holder), and a saved spot still wins", () => {
+  const addon = raidLogin("plain");
+  // The raid holder's foot now.
+  const y = () => addon.eval("return Vanguard_RaidHolder:GetBottom()");
+  const plain = y();
+  setCombat(addon, true);
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(y(), "in a fight the holder waits").toBe(plain);
+  setCombat(addon, false);
+  expect(y() - plain, "after it, 12 units higher").toBe(12);
+  const moved = raidLogin("plain", ', positions = { raid = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 500 } }');
+  const savedY = moved.eval("return Vanguard_RaidHolder:GetBottom()");
+  moved.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(moved.eval("return Vanguard_RaidHolder:GetBottom()"), "a dragged grid stays put under Tabs").toBe(savedY);
+});
+
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + GCD_ENV, NO_RAID);
   expect(keystone(addon), "shown by default with the Shield look").toEqual({ made: true, shown: true, left: true, right: true, top: true, strata: "BACKGROUND", mouse: false, rails: 2, crest: 36, ring: false, swords: false, sweep: "none" });
