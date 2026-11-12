@@ -7,9 +7,10 @@
 -- (its target beside it) and pet beside yours, the target of target beside its, the target's cast bar to the right.
 -- A layout is its default spots (Core/Movers.lua ns.LayoutSpots: BOTTOM-anchored, so they rise with the block on a
 -- tall canvas; a layout's spot wins over a module's default, a saved position over both) and its frame sizes
--- (ns.LayoutSize). The keep measures itself: its frames stand out past their drawn spots by however much the bar
--- stack is wider than drawn (ns.KeepSpread), and it holds only on a canvas wide enough for that and the bag and menu
--- bar (ns.LayoutHolds, which Core/Movers.lua asks too): narrower ones take the modules' own spots.
+-- (ns.LayoutSize). Each holds only on a canvas wide enough for it (ns.LayoutHolds, which Core/Movers.lua asks too):
+-- narrower ones take the modules' own spots. The keep measures itself: its frames stand out past their drawn spots by
+-- however much the bar stack is wider than drawn (ns.KeepSpread), and the canvas it needs grows with that and with the
+-- bag and menu bar in the corner; Standards needs ns.STANDARDS.least.
 -- The keep's frames are marked underFrames, so they rise with the bars as one block and the wall stays behind them.
 
 local ADDON, ns = ...
@@ -97,11 +98,22 @@ function ns.KeepNeed(width)
   return math.max(ns.KEEP.least, 2 * half)
 end
 
--- The canvas width each layout needs, by key, as a function of the canvas's width; a layout with none always holds.
-local NEEDS = { fort = ns.KeepNeed }
+-- Standards' measures, in units: the least canvas its small banners hold on. The focus target's outer edge stands 250
+-- left of centre and the pet bar's default spot ends 328 in from the left edge, so the two clear from 1156 wide; least
+-- keeps 12 more on each side (narrower, a 4:3 or 5:4 screen at the game's UI scale, takes the Centered spots).
+ns.STANDARDS = { least = 1180 }
 
--- Whether the HUD layout in force holds on this canvas: the keep needs ns.KeepNeed's width (a canvas the client
--- hides counts as wide enough); Centered always holds. Core/Movers.lua asks this before a layout's spot applies.
+-- The canvas width Standards needs.
+---@return number
+function ns.StandardsNeed()
+  return ns.STANDARDS.least
+end
+
+-- The canvas width each layout needs, by key, as a function of the canvas's width; a layout with none always holds.
+local NEEDS = { fort = ns.KeepNeed, standards = ns.StandardsNeed }
+
+-- Whether the HUD layout in force holds on this canvas: the keep needs ns.KeepNeed's width, Standards
+-- ns.StandardsNeed's (a canvas the client hides counts as wide enough); Centered always holds. Core/Movers.lua asks this before a layout's spot applies.
 ---@return boolean
 function ns.LayoutHolds()
   local need = NEEDS[ns.HudLayout()]

@@ -61,7 +61,11 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   canvas(addon, 1099, 768);
   expect(addon.eval("return ns.LayoutHolds()"), "but never under 1100 wide").toBe(false);
   addon.eval("__wfgStub.setScreen(1920, 1080) ns.SetHudLayout('standards')");
-  expect(addon.eval("UIParent.GetWidth = function() return __wfgWorld.secret(1920) end local holds, w = ns.LayoutHolds(), ns.LayoutSize('uf_player') UIParent.GetWidth = nil return { holds, w }"), "Standards holds on any canvas, a hidden one too").toEqual([true, 40]);
+  expect(addon.eval("UIParent.GetWidth = function() return __wfgWorld.secret(1920) end local holds, w = ns.LayoutHolds(), ns.LayoutSize('uf_player') UIParent.GetWidth = nil return { holds, w }"), "Standards on a canvas the client hides: wide enough").toEqual([true, 40]);
+  canvas(addon, 1179, 768);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return ns.LayoutSize('uf_player') == nil"), addon.eval("return { ns.MoverPoint('uf_focus') }")], "Standards under 1180 wide (a 4:3 or 5:4 screen at the game's UI scale): the Centered spots and sizes").toEqual([false, true, ["BOTTOM", "BOTTOM", -270, 290]]);
+  canvas(addon, 1180, 768);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_focus') }")], "1180 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -208, 196]]);
 });
 
 it("HUD layouts: picking one forgets where a placed frame stood and what it was anchored to, and keeps its scale, opacity and matched size", () => {
