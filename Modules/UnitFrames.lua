@@ -1586,13 +1586,6 @@ local function deckNow()
   UF.ApplyLook()
 end
 
--- Gives a frame's name and health text the deck's larger role (on), or the roles the look gives them (UF.TextRoles).
-function UF.DeckText(f, on)
-  if not on then return UF.TextRoles(f) end
-  T.Text(f.name, UF.DECK.text)
-  T.Text(f.healthText, UF.DECK.text, T.ColorToken(f.healthText))
-end
-
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller
 -- target for damage dealers and tanks, and its slider sets it), else its layout's height. It grows up from its bottom edge.
 function UF.TargetHeight()

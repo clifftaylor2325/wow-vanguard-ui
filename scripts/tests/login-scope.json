@@ -435,6 +435,7 @@
       "H27-3-1: a difficulty-coloured level keeps its colour through a look, accent and text-size change",
       "H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles, and keep it when the Versus deck restyles the text",
       "H45-13-3: a short Hairline frame keeps its health line at least as tall as its power line; Plain and tall frames keep the setting",
+      "H27-3-3: the Versus deck's restyle of the target's text keeps the Dead and Offline colours",
       "H27-4-3: a combo point's fill is drawn in the bar texture, like the other class-resource pips",
       "H37-5-1: the Versus deck grows to wrap a druid's mana bar and combo points, so neither lies on its border",
       "H37-5-1: the deck wraps a shaman's totem row, and a row built after the deck moves the live panel",

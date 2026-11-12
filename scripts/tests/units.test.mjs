@@ -1130,11 +1130,20 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
   addon.eval("UnitIsConnected = function() return true end __units.party1.dead = true");
   addon.fire("UNIT_HEALTH", "party1");
   expect(token(), "dead: the bad state colour").toBe("bad");
-  addon.eval("ns.GetModule('UnitFrames').DeckText(Vanguard_party1, true)");
-  expect(token(), "a restyle for the deck keeps it").toBe("bad");
   addon.eval("__units.party1.dead = nil");
   addon.fire("UNIT_HEALTH", "party1");
   expect(token(), "alive again: the plain text colour").toBe("text");
+});
+
+it("H27-3-3: the Versus deck's restyle of the target's text keeps the Dead and Offline colours", () => {
+  const addon = loggedIn(UNITS_ENV + "__units.target.dead = true", NO_RAID);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  const text = () => addon.eval("local f = Vanguard_target return { ns.Theme.ColorToken(f.healthText), f.healthText.__textRole }");
+  expect(addon.eval("return ns.GetModule('UnitFrames').Decked(Vanguard_target)"), "the deck holds the target").toBe(true);
+  expect(text()[0], "dead under the deck: the bad state colour").toBe("bad");
+  addon.eval("__units.target.dead = nil __units.target.player = true UnitIsConnected = function() return false end");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(text()[0], "offline under the deck: the secondary text colour").toBe("text2");
 });
 
 it("H45-13-3: a short Hairline frame keeps its health line at least as tall as its power line; Plain and tall frames keep the setting", () => {
