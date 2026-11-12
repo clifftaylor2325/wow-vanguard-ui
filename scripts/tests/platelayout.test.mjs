@@ -59,6 +59,11 @@ it("a saved size outside a slider's range is kept inside it", () => {
   expect(addon.eval('return __row("nameplate1", "debuffs")'), "and the smallest icons, eight at most").toMatchObject({ size: 12, max: 8 });
 });
 
+it("H45-15-4 a saved aura count that is not a whole number is rounded, as the client's aura container takes only whole ones", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL, saved("debuffs = 2.5, buffs = 1.4"));
+  expect(addon.eval('return { __row("nameplate1", "debuffs").max, __row("nameplate2", "buffs").max }'), "three debuffs, one buff").toEqual([3, 1]);
+});
+
 it("debuff and buff counts and the icon size make a plate's rows again once the setting holds still, without a reload", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
   expect(addon.eval('return { __row("nameplate1", "debuffs"), __row("nameplate2", "buffs") }'), "the defaults: four 18 debuffs wrapping at the bar, three 16 buffs").toMatchObject([{ max: 4, size: 18, line: 130, y: 16, unit: "nameplate1" }, { max: 3, size: 16, unit: "nameplate2" }]);

@@ -913,13 +913,14 @@ local function textSize(role, percent)
   return math.floor(T.RoleSize(role) * percent / 100 + 0.5)
 end
 
--- The sizes the plates are built at, read from the settings: each number kept to its slider's range, the
+-- The sizes the plates are built at, read from the settings: each number kept to its slider's range as a whole
+-- number (the aura counts go to the client's aura container, which takes only whole ones), the
 -- timers and the cast bar, the name's and the health numbers' text sizes (shares of the theme's, which
 -- follow its Text size), and how far the debuff row sits above the bar: clear of the name. Plates read
 -- this, not the settings, so they change only out of combat.
 local function readLayout(s)
   local l = { timers = s.timers == true, castBar = s.castBar == true }
-  for key, range in pairs(NP.RANGES) do l[key] = math.max(range.min, math.min(range.max, s[key])) end
+  for key, range in pairs(NP.RANGES) do l[key] = math.floor(math.max(range.min, math.min(range.max, s[key])) + 0.5) end
   l.nameText, l.healthText = textSize("world", l.nameSize), textSize("barSmall", l.healthSize)
   l.rise = NP.NAME_GAP + l.nameText + NP.ROW_GAP
   return l

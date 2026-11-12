@@ -204,6 +204,17 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
   expect([heard.plain, /raid1/.test(heard.subs) && /raid2/.test(heard.subs)], "A1-6: on the fallback too nothing takes every unit's UNIT_AURA; each tile hears its own unit's").toEqual([0, true]);
 });
 
+it("H45-15-4 a target or raid aura count that is not a whole number is rounded, as the client's aura container takes only whole ones", () => {
+  const sv = "VanguardDB.profiles = { Default = { FrameAuras = { debuffs = 2.5 }, RaidAuras = { debuffs = 2.4, maxHots = 1.5 }, modules = { RaidHealing = false } } }";
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, { savedVariables: sv });
+  addon.eval('__spawn(1, "raid1")');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // Each group's count in an aura row, in order.
+  const counts = (row) => addon.eval(`local out = {} for i, g in ipairs(${row}.frame.__groups) do out[i] = g.opts.maxFrameCount end return out`);
+  expect(counts("Vanguard_target.debuffs"), "the target's crowd control, then three of yours (the client asserts a whole count)").toEqual([1, 3]);
+  expect([counts("Vanguard_RaidUnitButton1.debuffRow"), counts("Vanguard_RaidUnitButton1.hotRow")], "a tile's dispellable one and one other, two HoTs").toEqual([[1, 1], [2]]);
+});
+
 it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with its icons, in an aura event too", () => {
   expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");

@@ -30,6 +30,7 @@
       "H44-5-50 your buffs: an enchant that runs out and is put on again in one fight leaves the buffs one cell over",
       "H45-15-2 your buffs: entering the world refreshes the enchant cells",
       "H45-15-3 your buffs: numbers out of range in a crafted profile are kept inside, as whole numbers",
+      "H45-15-4 a target or raid aura count that is not a whole number is rounded, as the client's aura container takes only whole ones",
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",

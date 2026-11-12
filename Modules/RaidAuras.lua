@@ -124,9 +124,10 @@ end
 
 -- Containers -------------------------------------------------------------------------------
 
--- The debuff groups: first one you can dispel (carrying the highlight), then the others.
+-- The debuff groups: first one you can dispel (carrying the highlight), then the others. The count is rounded, as
+-- the client's aura container takes only whole ones (a crafted profile can hold any number).
 local function debuffGroups(b, z, s)
-  local count = math.min(s.debuffs, z.per)
+  local count = math.min(math.floor(s.debuffs + 0.5), z.per)
   local first = (count > 0 or s.dispel) and 1 or 0
   return {
     { filter = RA.DISPELLABLE, max = first, size = z.icon, debuff = true, register = s.dispel and engineDispel(b) or nil },
@@ -141,10 +142,10 @@ function RA.DebuffSpec(b, z, s)
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = debuffGroups(b, z, s) }
 end
 
--- Your HoTs from the bottom-right corner of the icon strip, growing left.
+-- Your HoTs from the bottom-right corner of the icon strip, growing left (a whole count, as for the debuffs).
 function RA.HotSpec(b, z, s)
   local right, bottom = z.hots[1] + z.hots[3], z.hots[2] + z.icon
-  local count = s.hots and math.min(s.maxHots, z.per) or 0
+  local count = s.hots and math.min(math.floor(s.maxHots + 0.5), z.per) or 0
   return { point = { "BOTTOMRIGHT", b, "BOTTOMRIGHT", right - z.width, z.height - bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10,
     groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
