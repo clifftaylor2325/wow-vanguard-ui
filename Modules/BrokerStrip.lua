@@ -234,8 +234,8 @@ function BS.Restyle()
   BS.Layout()
 end
 
--- A feed was created: the strip lays out again, and the Map page, which lists the feeds, is built again (kept under one
--- key, so a burst of feeds at an addon's load is one rebuild).
+-- A feed was created: the strip lays out again, and the Map page, which lists the feeds, is built again (in a fight a
+-- burst of feeds shares one key and is one rebuild after it; out of combat each feed builds at once).
 function BS.OnCreated()
   BS.Layout()
   ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map feeds")
