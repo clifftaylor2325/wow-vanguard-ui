@@ -110,9 +110,12 @@ it("lifecycle: class bars switched off hides the totem row and gives the totem c
 });
 
 it("lifecycle: class bars switched off hides a druid's mana bar", () => {
-  const addon = loginWith("", 'UnitClass = function() return "Druid", "DRUID" end')();
+  // In cat form (energy, power type 3), so the mana bar shows first.
+  const addon = loginWith("", 'UnitClass = function() return "Druid", "DRUID" end UnitPowerType = function() return 3, "ENERGY" end')();
+  const shown = 'return ns.GetModule("ClassBars").manaHolder:IsShown()';
+  expect(addon.eval(shown), "shown in a form").toBe(true);
   addon.eval('ns.SetModuleEnabled("ClassBars", false)');
-  expect(addon.eval('return ns.GetModule("ClassBars").manaHolder:IsShown()')).toBe(false);
+  expect(addon.eval(shown)).toBe(false);
 });
 
 // PowerTicks ----------------------------------------------------------------------------------------------------
@@ -146,13 +149,15 @@ it("lifecycle: unit extras switched off clears the readouts and hides the chip, 
 
 it("lifecycle: a status chip draw still waiting when unit extras switches off does not show the chip", () => {
   const addon = CHIP_LOGIN();
-  addon.eval('ns.GetModule("UnitExtras").SoonChip() ns.SetModuleEnabled("UnitExtras", false)');
+  addon.eval('local UX = ns.GetModule("UnitExtras") UX.Status = function() return "status text", "warn" end UX.SoonChip() ns.SetModuleEnabled("UnitExtras", false)');
   addon.advance(0.1);
   expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()')).toBe(false);
 });
 
 it("lifecycle: the chip's row switched off through its setting rebuilds the module without it", () => {
   const addon = CHIP_LOGIN();
+  addon.eval("ns.GetModule('UnitExtras').chip:Show()");
+  expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()'), "shown before the row is switched off").toBe(true);
   addon.eval("local _, set = ns.Options.RestartSetting('UnitExtras', 'chip') set(false)");
   expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()')).toBe(false);
 });

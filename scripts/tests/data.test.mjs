@@ -58,7 +58,7 @@ it("data bar texts: long texts at a large text size stay centred on one line, he
   expect([xp.left - xpBar.left, xpBar.right - xp.right], "the XP text spans its bar less a cell gap at each end").toEqual([4, 4]);
   expect(addon.eval("return Vanguard_xpbar.text:GetStringHeight() == Vanguard_xpbar.text:GetHeight()"), "and stays on one line").toBe(true);
   addon.eval("ns.SetMoverSize('xpbar', 'height', 20) Vanguard_xpbar.text:SetText('Level 59  123.4K / 209.8K (58%)  rested 104.9K')");
-  expect(addon.eval("return Vanguard_xpbar.text:GetWidth() == 0"), "a text centred on a taller bar is not held to the bar").toBe(true);
+  expect(addon.eval("return Vanguard_xpbar.text:GetWidth() == Vanguard_xpbar.text:GetUnboundedStringWidth()"), "a text centred on a taller bar is not held to the bar: as wide as its text").toBe(true);
 });
 
 // The game's standing words (GlobalStrings), and a female form for one, as GetText gives them.

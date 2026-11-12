@@ -218,6 +218,18 @@ it("step 3: a stance key whose button already has two keys is listed as staying"
   expect(ready(addon).filter((r) => r.startsWith("`:"))).toEqual(["`: unchanged, its button already has two keys"]);
 });
 
+it("H45-20-50 step 3: a spell key left alone because its button has two keys says so, not that a rank swap is kept", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Ilsa", class = "MAGE", className = "Mage", level = 26 })');
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank, icon: `TEST-ONLY-${id}` });
+  addon.world.learn(133, { name: "Fireball" });
+  addon.world.setAction(2, { type: "spell", id: 116 });
+  addon.eval('SetBinding("2") SetBinding("NUMPAD2", "ACTIONBUTTON2") SetBinding("F9", "ACTIONBUTTON2") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon).filter((r) => r.startsWith("2:"))).toEqual(["2: unchanged, its button already has two keys"]);
+});
+
 it("step 3: Place new spells as I learn them starts unticked at level 12, and a ticked one turns placing new spells on", () => {
   const addon = warrior();
   open(addon);

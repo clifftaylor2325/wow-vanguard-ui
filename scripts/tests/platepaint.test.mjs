@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, PLATE_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, plate, tok } from "./helpers.mjs";
+import { CLICK_LUA, PLATE_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, plate, setCombat, tok } from "./helpers.mjs";
 
 it("nameplates repaint only what an event changed, and the border only when the target or the scale does", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + `__borders = 0
@@ -383,4 +383,28 @@ it("one plate that fails to paint leaves the other plates painted, and the scale
   const plates = addon.eval('local n = 0 for _ in pairs(ns.GetModule("Nameplates").plates) do n = n + 1 end return n');
   expect([plates, addon.eval("return __painted")], "12 polls past the error budget, each asking both plates").toEqual([2, 24]);
   expectErrors("nameplate: eval:4: TEST-ONLY paint");
+});
+
+// The client holds every aura button a provider makes back from addons while aura information is secret
+// (forever Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua ApplyAccessRestrictions,
+// Blizzard_AuraContainerShared.lua AccessRestrictionFlags = DenyTaintedAccessWhenAurasAreSecret); the harness
+// models it with __wfgWorld.holdAccess (scripts/lib/wow-taint.lua), where a held widget refuses addon calls.
+it("a target change in a fight with the aura buttons held: the icons are left alone, and refit at the new size once they are let go (H45-16-R1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + " ns.GetModule('Nameplates').POOL = 0",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { targetScale = 115 } } }" });
+  addon.eval(`function __button() return ns.FrameState('vgPlate')[__plates.nameplate1].debuffs.frame.__groups[1].buttons[1] end
+    function __inset() local b = __button() return math.floor(b.__icon.__points.TOPLEFT.x / ns.Theme.Pixel(b) * 1000 + 0.5) / 1000 end`);
+  expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1]:GetScale(), __inset() }"), "the boar is your target, drawn at 115%, its icon inset one pixel").toEqual([1.15, 1]);
+  addon.eval("__wfgWorld.holdAccess(__button())");
+  setCombat(addon, true);
+  addon.eval("__units.target = __units.party1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED");
+  addon.advance(1, 0.1);
+  expect(addon.eval("return #ns.errors"), "nothing touched the held button: the target change, the restriction event and the scale poll all left it").toBe(0);
+  addon.eval("__wfgWorld.releaseAccess(__button())");
+  setCombat(addon, false);
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED");
+  addon.advance(0.1, 0.1);
+  expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1]:GetScale(), __inset(), #ns.errors }"), "let go: the old target's icon is one pixel at 100% again").toEqual([1, 1, 0]);
 });

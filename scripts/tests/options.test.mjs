@@ -1487,13 +1487,13 @@ it("the search box shows a clear glyph only while it has text; clicking it empti
   const addon = loggedIn();
   addon.eval(`__seen = {} __s = ns.Widgets.Search(UIParent, 200, "Find", function(t) __seen[#__seen + 1] = t end)`);
   expect(addon.eval("return __s.clear:IsShown()"), "empty: no glyph").toBe(false);
-  addon.eval(`__s:SetText("abc") __s.__scripts.OnTextChanged(__s)`);
+  addon.eval(`__s:SetText("abc")`);
   expect(addon.eval("return { __s.clear:IsShown(), __s.hint:IsShown() }"), "with text: the glyph shows and the hint is gone").toEqual([true, false]);
   addon.eval("__s.clear.__scripts.OnEnter(__s.clear)");
   expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text"), "the glyph lights under the mouse").toBe(true);
   addon.eval("__s.clear.__scripts.OnLeave(__s.clear)");
   expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text2"), "and rests in text2").toBe(true);
-  addon.eval(`__s.clear.__scripts.OnClick(__s.clear) __s.__scripts.OnTextChanged(__s)`);
+  addon.eval(`__s.clear.__scripts.OnClick(__s.clear)`);
   expect(addon.eval("return { __s:GetText(), __s.clear:IsShown(), __seen[#__seen] }"), "a click empties it and tells onChange").toEqual(["", false, ""]);
 });
 

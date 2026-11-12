@@ -147,7 +147,15 @@ function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end
 -- CVars live in world.cvars as strings, as the client keeps them.
 function GetCVar(name) return world.cvars[name] end
-function SetCVar(name, value) world.cvars[name] = tostring(value) end
+-- Stores a CVar's value as a string (C_CVar.SetCVar's value is a cstring, CVarDocumentation.lua:131-148).
+local function storeCVar(name, value) world.cvars[name] = tostring(value) end
+-- The client's SetCVar (Blizzard_SharedXMLBase/CvarUtil.lua:9-15, both clients): a boolean becomes "1" or "0".
+function SetCVar(name, value)
+  if type(value) == "boolean" then return storeCVar(name, value and "1" or "0") end
+  return storeCVar(name, value and tostring(value) or nil)
+end
+local worldSetCVar = SetCVar
+-- Whether a CVar is on.
 function GetCVarBool(name) local v = world.cvars[name] return v == "1" or v == true end
 -- A C_ namespace function that calls the global of the same name at call
 -- time, so a test that replaces (or removes) the global changes both.
@@ -159,7 +167,14 @@ local function viaGlobal(name)
 end
 world.viaGlobal = viaGlobal
 
-C_CVar = { GetCVar = viaGlobal("GetCVar"), SetCVar = viaGlobal("SetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+local globalSetCVar = viaGlobal("SetCVar")
+C_CVar = { GetCVar = viaGlobal("GetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+-- Stores the value as it comes (a boolean handed to C_CVar.SetCVar is not modelled: what the client does with it is
+-- game-only), or calls the global SetCVar when a test has replaced it.
+function C_CVar.SetCVar(name, value)
+  if _G.SetCVar == worldSetCVar then return storeCVar(name, value) end
+  return globalSetCVar(name, value)
+end
 -- Bitfield CVars (CVarDocumentation.lua): world.cvarBits[name][index] by lua index, as the
 -- client keeps them packed in the CVar's string. nil for a CVar the client lacks.
 world.cvarBits = { nameplateInfoDisplay = {} }
@@ -287,11 +302,11 @@ function hooksecurefunc(t, name, fn)
   if type(t) == "string" then t, name, fn = _G, t, name end
   local orig = t[name]
   if type(orig) ~= "function" then return end
-  -- The original, then the hook, with the original's results.
+  -- The original, then the hook, with every one of the original's results (nils too).
   local function hooked(...)
-    local results = { orig(...) }
+    local results = stub.pack(orig(...))
     fn(...)
-    return unpack(results)
+    return stub.unpack(results, 1, results.n)
   end
   stub.transparent[hooked], stub.hooks = true, (stub.hooks or 0) + 1
   t[name] = hooked
@@ -617,14 +632,33 @@ for name, value in pairs(Enum.PowerType) do
   if PowerBarColor[key] then PowerBarColor[value] = PowerBarColor[key] end
 end
 
--- The difficulty color of a creature level against the player's.
+-- The client's level colours and their highlight colours (Blizzard_FrameXMLBase/Constants.lua:195-213; r, g, b only).
+QuestDifficultyColors = {
+  impossible = { r = 1, g = 0.1, b = 0.1 }, verydifficult = { r = 1, g = 0.5, b = 0.25 }, difficult = { r = 1, g = 0.82, b = 0 },
+  standard = { r = 0.25, g = 0.75, b = 0.25 }, trivial = { r = 0.5, g = 0.5, b = 0.5 },
+}
+QuestDifficultyHighlightColors = {
+  impossible = { r = 1, g = 0.4, b = 0.4 }, verydifficult = { r = 1, g = 0.75, b = 0.44 }, difficult = { r = 1, g = 1, b = 0.1 },
+  standard = { r = 0.43, g = 0.93, b = 0.43 }, trivial = { r = 0.7, g = 0.7, b = 0.7 },
+}
+-- How many levels below yours still count as standard. TEST-ONLY guess: the client's number at each level is game-only.
+world.trivialLevelRange = 7
+-- That range (UnitQuestTrivialLevelRange, read by DifficultyUtil.lua).
+function UnitQuestTrivialLevelRange() return world.trivialLevelRange end
+-- The world scales no levels: a unit's effective level is its level.
+function UnitEffectiveLevel(unit) return UnitLevel(unit) end
+-- The colour and highlight colour of challengeLevel against unitLevel, by DifficultyUtil.lua's bands (both clients).
+function GetRelativeDifficultyColor(unitLevel, challengeLevel)
+  local diff = challengeLevel - unitLevel
+  local band = -diff <= UnitQuestTrivialLevelRange("player") and "standard" or "trivial"
+  for _, step in ipairs({ { 5, "impossible" }, { 3, "verydifficult" }, { -4, "difficult" } }) do
+    if diff >= step[1] then band = step[2] break end
+  end
+  return QuestDifficultyColors[band], QuestDifficultyHighlightColors[band]
+end
+-- A creature's (or a quest's) level colour against your effective level (UnitLevel when a test removed it).
 function GetCreatureDifficultyColor(level)
-  local diff = level - UnitLevel("player")
-  if diff >= 5 then return { r = 1, g = 0.1, b = 0.1 } end
-  if diff >= 3 then return { r = 1, g = 0.5, b = 0.25 } end
-  if diff >= -2 then return { r = 1, g = 1, b = 0 } end
-  if diff >= -7 then return { r = 0.25, g = 0.75, b = 0.25 } end
-  return { r = 0.5, g = 0.5, b = 0.5 }
+  return GetRelativeDifficultyColor((UnitEffectiveLevel or UnitLevel)("player"), level)
 end
 GetQuestDifficultyColor = GetCreatureDifficultyColor
 
@@ -772,6 +806,13 @@ function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
 local function inside(v) return worldIsSecret(v) and rawget(v, "n") or v end
+-- The client's dispel type IDs by name. TEST-ONLY: neither Blizzard checkout lists them, so these copy the addon's own
+-- DISPEL_INDEXES (Core/Auras.lua): a test through them proves the plumbing, not the numbers (H44 guess 25).
+world.dispelTypeIds = { None = 0, Magic = 1, Curse = 2, Disease = 3, Poison = 4, Enrage = 9, Bleed = 11 }
+-- A copy of a colour with every component hidden, as the client answers for an aura it hides.
+local function hiddenColor(c)
+  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+end
 -- Max health minus health, secret when either is (SecretReturns in Forever's docs).
 function UnitHealthMissing(unit)
   local hp, max = UnitHealth(unit), UnitHealthMax(unit)
@@ -1225,11 +1266,14 @@ C_UnitAuras = {
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
   end,
-  -- The dispel type color through a curve (nil when the client has none).
+  -- The dispel type color through a curve read at the type's ID (UnitAuraDocumentation.lua GetAuraDispelTypeColor:
+  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted).
   GetAuraDispelTypeColor = function(unit, id, curve)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local kind = aura and aura.dispelName or "None"
-    return curve and curve:Evaluate(kind) or world.dispelColors[kind]
+    local kind = aura and aura.dispelName
+    local color = curve:Evaluate(world.dispelTypeIds[inside(kind)] or 0)
+    if color and worldIsSecret(kind) then return hiddenColor(color) end
+    return color
   end,
   -- The duration object of an aura.
   -- An aura with hidden times gives an object that holds them hidden (UnitAuraDocumentation.lua: the call itself
@@ -1243,7 +1287,6 @@ C_UnitAuras = {
     return durationObject(start, duration)
   end,
 }
-world.dispelColors = { Magic = CreateColor(0.2, 0.6, 1), Curse = CreateColor(0.6, 0, 1), Disease = CreateColor(0.6, 0.4, 0), Poison = CreateColor(0, 0.6, 0), None = CreateColor(0.8, 0, 0) }
 
 -- AuraUtil.FindAuraByName, as FrameXML has it: the aura's fields unpacked.
 AuraUtil = {
@@ -1956,11 +1999,15 @@ world.ah = emptyAuctionHouse()
 -- Clicks are hardware events: stub.hardware counts the clicks running now.
 stub.hardware = 0
 local rawClick = stub.runClick
--- A click, counted while it runs.
+-- The click itself, called by name so a restricted call's logged path still runs through rawClick.
+local function clickThrough(...) rawClick(...) end
+-- A click, counted while it runs; a handler that raises still ends the count before its error goes on (pcall is a C
+-- function, so wow-taint.lua's callerOf looks through it).
 function stub.runClick(...)
   stub.hardware = stub.hardware + 1
-  rawClick(...)
+  local ok, err = pcall(clickThrough, ...)
   stub.hardware = stub.hardware - 1
+  if not ok then error(err, 0) end
 end
 
 -- A query the addon may send at any time: recorded as { fn, args }.
@@ -2549,33 +2596,23 @@ local function chatTab(i)
   return tab
 end
 
--- Makes window i and its tab the first time its number is used.
-local function makeChatWindow(i)
-  if _G["ChatFrame" .. i] then return end
-  _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
-  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
-  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
-end
-
 -- The last chat window number, Constants.ChatFrameConstants.MaxChatWindows (ChatConstantsDocumentation.lua:214, both
 -- clients).
 world.maxChatWindows = 10
 
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
--- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
--- used, and shown each time; returns the window and its number. Past the last window number there is none to take,
+-- so a closed window's number goes to the next one made. All ten windows exist from login (chatFrames), so it shows
+-- the one it takes and its tab; returns the window and its number. Past the last window number there is none to take,
 -- and it returns nothing (FCF_GetNextOpenChatWindowIndex stops at Constants.ChatFrameConstants.MaxChatWindows;
 -- Mainline/FloatingChatFrame.lua FCF_OpenNewWindow, forever :707-710 and :755, live :522-525 and :570). Two
 -- approximations: "shown" is frame:IsShown() where the game reads the saved shown flag, and the harness never docks a
 -- window it opens (the game does, FloatingChatFrame.lua:752).
 function FCF_OpenNewWindow(name)
   local i = 3
-  while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
+  while i <= world.maxChatWindows and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
   if i > world.maxChatWindows then return end
   world.chatWindows[i] = name
-  NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  makeChatWindow(i)
   _G["ChatFrame" .. i]:Show()
   _G["ChatFrame" .. i .. "Tab"]:Show()
   return _G["ChatFrame" .. i], i
@@ -2643,15 +2680,20 @@ function world.addChatBubble(text, opts)
   return #world.bubbles
 end
 
--- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
+-- The game's chat windows: ChatFrame1 to ChatFrame10 with tabs and edit boxes, all declared in
+-- Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml (forever :709-762, live :698-751) and so there from login,
+-- each listed in CHAT_FRAMES by its OnLoad. NUM_CHAT_WINDOWS is Constants.ChatFrameConstants.MaxChatWindows, 10
+-- (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:18). Windows 3 to 10 start hidden, as on a fresh character
+-- whose only windows are General and Combat Log.
 local function chatFrames()
   local new = stub.newWidget
-  NUM_CHAT_WINDOWS, CHAT_FRAMES = 2, { "ChatFrame1", "ChatFrame2" }
+  NUM_CHAT_WINDOWS, CHAT_FRAMES = world.maxChatWindows, {}
   for i = 1, NUM_CHAT_WINDOWS do
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")
-    chatTab(i)
-    new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    local tab, box = chatTab(i), new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+    if i > 2 then f:Hide() tab:Hide() box:Hide() end
+    CHAT_FRAMES[i] = "ChatFrame" .. i
   end
   SELECTED_CHAT_FRAME = ChatFrame1
 end

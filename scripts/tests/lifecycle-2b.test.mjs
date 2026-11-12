@@ -23,6 +23,8 @@ lifecycleCases("GroupThreat", GROUP_THREAT);
 
 it("lifecycle: group threat switched off hides its panel, and a draw still waiting does not show it again", () => {
   const addon = GROUP_THREAT();
+  addon.eval('local GT = ns.GetModule("GroupThreat") GT.CanShow = function() return true end GT.Rows = function() return { { name = "Tank", percent = 80, status = 3 } } end GT.Update()');
+  expect(addon.eval("return ns.GetModule('GroupThreat').panel:IsShown()"), "shown with a row to draw").toBe(true);
   addon.eval('ns.SetModuleEnabled("GroupThreat", false) ns.GetModule("GroupThreat").Soon()');
   addon.advance(0.3);
   expect(addon.eval("return ns.GetModule('GroupThreat').panel:IsShown()")).toBe(false);

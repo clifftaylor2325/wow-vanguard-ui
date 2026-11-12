@@ -101,15 +101,24 @@ end
 
 -- Ownership and field writes ----------------------------------------------------------------
 
+-- Records a field write on a game widget when addon code (at) made it.
+local function blameWrite(at, w, key)
+  if byAddon(at) then violate(string.format("field write: %s stored the field %s on the game's frame %s", where(at), tostring(key), label(w))) end
+end
+
 -- A field write on a game widget, new or an overwrite: kept (stub.gameFields); recorded when addon code wrote it.
--- The stub's own fields (__name) stay raw, and anything game or test code writes is fine.
+-- The stub's own fields (__name) stay raw, recorded too when addon code wrote one (a metamethod's caller is the
+-- function holding the assignment, so the stub's own self.__alpha is not the addon's). A stub field already raw on
+-- the widget (__shown after the first Show) never reaches here, so an addon overwrite of one still passes.
 local function guardWrite(w, key, value)
-  if stub.isStubKey(key) then return rawset(w, key, value) end
+  if stub.isStubKey(key) then
+    blameWrite(callerOf(1), w, key)
+    return rawset(w, key, value)
+  end
   local fields = stub.gameFields[w] or {}
   stub.gameFields[w] = fields
   fields[key] = value
-  local at = callerOf(1)
-  if byAddon(at) then violate(string.format("field write: %s stored the field %s on the game's frame %s", where(at), tostring(key), label(w))) end
+  blameWrite(callerOf(1), w, key)
 end
 
 -- Game widgets resolve methods as every widget does (stub.metaFor) and watch their new fields.

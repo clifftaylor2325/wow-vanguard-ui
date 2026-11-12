@@ -231,14 +231,11 @@ end
 -- class bars (default) or bright ones, both with light names; or dark bars with
 -- class-colored names. The dead and offline (b.down) get a dark bar.
 function RF.PaintColors(b, r, g, bl)
-  if b.down then return T.BarColor(b.health, "darkBar") end
-  if RF.settings.look == "dark" then
-    T.BarColor(b.health, "darkBar")
-    return T.ColorRGB(b.name, r, g, bl)
-  end
+  local dark = RF.settings.look == "dark"
+  if dark then T.ColorRGB(b.name, r, g, bl) else T.Color(b.name, "text") end
+  if b.down or dark then return T.BarColor(b.health, "darkBar") end
   if RF.settings.look == "soft" then r, g, bl = RF.Soften(r, g, bl) end
   b.health:SetStatusBarColor(r, g, bl)
-  T.Color(b.name, "text")
 end
 
 -- The health bar and name in the unit's colors.

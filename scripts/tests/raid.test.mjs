@@ -742,6 +742,17 @@ it("H27-3-1: a class-coloured name in the Dark look keeps its colour through a l
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "the class colour, not the look's text colour").toEqual(before);
 });
 
+it("H45-17-1 raid frames: in the Dark look a reused tile takes the class colour of an offline player, and a look change recolours it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { look = "dark" } } } }' });
+  addon.eval('__spawn(1, "raid1")');
+  const warrior = addon.eval("return Vanguard_RaidUnitButton1.name.__textColor");
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid3")');
+  const mage = addon.eval("return { Vanguard_RaidUnitButton1.name:GetText(), Vanguard_RaidUnitButton1.name.__textColor }");
+  expect([mage[0], mage[1]], "the offline mage's name is not left in the warrior's colour").not.toEqual(["TEST-ONLY Gone", warrior]);
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.look = "soft" RF.UpdateAll()');
+  expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "a light look gives a down tile the light name").not.toEqual(mage[1]);
+});
+
 it("H44-7-1 raid frames: a tile that fails on a roster change leaves the later tiles refreshed, and its error is still reported", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 3 GetNumGroupMembers = function() return __members end");
   addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');

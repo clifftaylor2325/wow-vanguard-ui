@@ -416,11 +416,11 @@ function methods:SetTexCoord(...) self.__texCoord = { ... } end
 function methods:SetScale(s) self.__scale = s end
 function methods:GetScale() return self.__scale or 1 end
 -- The coordinates SetTexCoord gave, as the client answers them: the four corners ulX, ulY, llX, llY, urX, urY, lrX,
--- lrY (SimpleTextureBaseAPIDocumentation.lua, both clients), from a left, right, top, bottom set too. Nothing before
--- a set: what the client answers for an unset texture is not settled by its source.
+-- lrY (SimpleTextureBaseAPIDocumentation.lua, both clients), from a left, right, top, bottom set too. Never nothing:
+-- Blizzard passes an untouched texture's coordinates straight to SetTexCoord (forever FrameCloneManager.lua:119,
+-- AnchorUtil.lua:374-380, TextureUtil.lua:67); the whole texture before a set is the stub's guess for the numbers.
 function methods:GetTexCoord()
-  local c = self.__texCoord
-  if not c then return end
+  local c = self.__texCoord or { 0, 1, 0, 1 }
   if c[5] == nil then return c[1], c[3], c[1], c[4], c[2], c[3], c[2], c[4] end
   return stub.unpack(c, 1, 8)
 end
@@ -878,10 +878,14 @@ end
 function methods:IsEventRegistered(event) return self.__events[event] == true end
 -- Text: a font string made with CreateFontString takes none until it has a font (SetFont, a font
 -- object, or a template it inherits one from), as the client refuses it; the stub's own game font
--- strings have theirs from the game's XML.
+-- strings have theirs from the game's XML. An edit box whose text code changes runs OnTextChanged(self, false)
+-- (forever Blizzard_AutoComplete/AutoComplete.lua:401, Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:530; at once
+-- and only on a change is the stub's guess); stub.type runs it itself, as typed.
 function methods:SetText(text)
   if self.__needsFont and not (self.__font or self.__template or self.__fontObject) then error("FontString:SetText(): Font not set", 2) end
+  local changed = tostring(self.__text or "") ~= tostring(text or "")
   self.__text = text
+  if changed and self.__kind == "EditBox" and not self.__typing then stub.runScript(self, "OnTextChanged", false) end
 end
 -- An edit box's letter limit (0: none). The stub's SetText doesn't cut to it; a test that needs the cut models it.
 function methods:SetMaxLetters(n) self.__maxLetters = n end
@@ -895,10 +899,18 @@ function methods:GetText()
   if self.__kind == "EditBox" then return self.__text or "" end
   return self.__text
 end
+-- Gives an edit box the keyboard focus or takes it off, running its script when the focus changes
+-- (Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.lua:180-207 leans on OnEditFocusLost after ClearFocus; at once
+-- and only on a change is the stub's guess).
+local function moveFocus(box, focused, script)
+  if (box.__focus == true) == focused then return end
+  box.__focus = focused
+  stub.runScript(box, script)
+end
 -- An edit box's keyboard focus (the client's name suggestions under a box hide when it loses it).
-function methods:SetFocus() self.__focus = true end
+function methods:SetFocus() moveFocus(self, true, "OnEditFocusGained") end
 -- Takes the keyboard focus off the edit box.
-function methods:ClearFocus() self.__focus = false end
+function methods:ClearFocus() moveFocus(self, false, "OnEditFocusLost") end
 -- Whether the edit box has the keyboard focus.
 function methods:HasFocus() return self.__focus == true end
 -- The rotation field.
@@ -1038,19 +1050,95 @@ function methods:SetFlowLayoutAnchorPoint(point) self.__flowAnchor = point end
 function methods:SetFlowLayoutGrowthDirection(h, v) self.__flowGrow = { h, v } end
 function methods:SetFlowLayoutMaximumLineSize(size) self.__flowLine = size end
 
--- A group: its buttons are made now and dressed by initializeFrame, as the client does.
+-- Makes count more buttons for a group, each dressed by initializeFrame as it is made, as the client's frame provider
+-- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame).
+local function addAuraButtons(c, g, count)
+  for _ = 1, count do
+    local b = newWidget("AuraButton", nil, c)
+    b.__dispel, b.__pandemic = {}, {}
+    -- The client keeps its aura buttons' tooltip handlers (in game 2026-11-04, a HookScript on one raised
+    -- "cannot replace a forbidden script handler" though the button isn't forbidden).
+    b.__forbiddenScripts = { OnEnter = true, OnLeave = true }
+    g.buttons[#g.buttons + 1] = b
+    if g.opts.initializeFrame then g.opts.initializeFrame(b) end
+  end
+end
+
+-- The client's aura filter words (forever Blizzard_FrameXMLUtil/AuraUtil.lua:270-288, AuraUtil.AuraFilters).
+local AURA_FILTER_WORDS = {}
+for _, word in ipairs({ "HELPFUL", "HARMFUL", "PLAYER", "RAID", "CANCELABLE", "INCLUDE_NAME_PLATE_ONLY", "MAW", "EXTERNAL_DEFENSIVE",
+  "CROWD_CONTROL", "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE", "IMPORTANT", "DISPELLABLE" }) do
+  AURA_FILTER_WORDS[word] = true
+end
+
+-- Why the client refuses a filter string, nil when it takes it (AuraUtil.lua:298-320 IsValidFilterString: words split on
+-- "|" and spaces, each a known word, a "!" in front allowed but not alone).
+local function filterRefusal(filter)
+  for word in tostring(filter):gmatch("[^| ]+") do
+    local bare = word:gsub("^!", "")
+    if bare == "" then return "A negation prefix ('!') must be followed by a filter component." end
+    if not AURA_FILTER_WORDS[bare] then return string.format("Unknown aura filter component: '%s'", bare) end
+  end
+end
+
+-- The layout fields the client checks and what each must be (Blizzard_CustomAuraContainer.lua:143-181).
+local LAYOUT_KINDS = {
+  elementSpacing = "number", lineSpacing = "number", groupSpacing = "number", groupLineSpacing = "number", layoutIndex = "number",
+  forceNewLine = "boolean", elementWidth = "size", elementHeight = "size",
+}
+local LAYOUT_WORDS = { number = "a number", boolean = "a boolean", size = "a non-negative number" }
+
+-- Why the client refuses a group's layout, nil when it takes it.
+local function layoutRefusal(layout)
+  if layout == nil then return end
+  if type(layout) ~= "table" then return "layout must be a table or nil." end
+  for field, kind in pairs(LAYOUT_KINDS) do
+    local v = layout[field]
+    local ok = v == nil or type(v) == (kind == "size" and "number" or kind) and (kind ~= "size" or v >= 0)
+    if not ok then return field .. " must be " .. LAYOUT_WORDS[kind] .. "." end
+  end
+end
+
+-- Whether a value is one of an enum table's values (nil when the world lacks the enum).
+local function enumHas(enum, v)
+  for _, x in pairs(enum or {}) do if x == v then return true end end
+  return false
+end
+
+-- Whether a frame count is a non-negative whole number or infinity (Blizzard_CustomAuraContainer.lua:1-3).
+local function frameCountOk(n)
+  return n == math.huge or (type(n) == "number" and n >= 0 and n == math.floor(n))
+end
+
+-- Why the client refuses a group's options, nil when it takes them (Blizzard_CustomAuraContainer.lua:23-36, :185-194;
+-- a nil field takes the client's default).
+local function optionsRefusal(opts)
+  if opts.maxFrameCount ~= nil and not frameCountOk(opts.maxFrameCount) then return "maxFrameCount must be a non-negative integer or infinity." end
+  if opts.initializeFrame ~= nil and type(opts.initializeFrame) ~= "function" then return "initializeFrame must be a function or nil." end
+  if opts.sortMethod ~= nil and not enumHas(AuraContainerSortMethod, opts.sortMethod) then return "sortMethod must be a valid AuraContainerSortMethod." end
+  if opts.sortDirection ~= nil and not enumHas(AuraContainerSortDirection, opts.sortDirection) then return "sortDirection must be a valid AuraContainerSortDirection." end
+  return layoutRefusal(opts.layout)
+end
+
+-- Why the client refuses a group, nil when it takes it: the key, the filter, a key already used, then the options, in
+-- the client's order (Blizzard_CustomAuraContainer.lua:286-291).
+local function groupRefusal(c, key, filter, opts)
+  if type(key) ~= "string" or key == "" then return "groupKey must be a non-empty string." end
+  local refused = filterRefusal(filter)
+  if refused then return refused end
+  for _, g in ipairs(c.__groups or {}) do if g.key == key then return string.format("aura group '%s' already exists with this key.", key) end end
+  return optionsRefusal(opts)
+end
+
+-- A group: refused as the client refuses it (its asserts raise the message alone), else its first buttons are made
+-- now and dressed by initializeFrame, as the client does.
 function methods:AddAuraGroup(key, filter, opts)
+  local refused = groupRefusal(self, key, filter, opts)
+  if refused then error(refused, 0) end
   local g = { key = key, filter = filter, opts = opts, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
-  for i = 1, math.min(opts.maxFrameCount or 10, 10) do
-    g.buttons[i] = newWidget("AuraButton", nil, self)
-    g.buttons[i].__dispel, g.buttons[i].__pandemic = {}, {}
-    -- The client keeps its aura buttons' tooltip handlers (in game 2026-11-04, a HookScript on one raised
-    -- "cannot replace a forbidden script handler" though the button isn't forbidden).
-    g.buttons[i].__forbiddenScripts = { OnEnter = true, OnLeave = true }
-    if opts.initializeFrame then opts.initializeFrame(g.buttons[i]) end
-  end
+  addAuraButtons(self, g, math.min(opts.maxFrameCount or 10, 10))
   self:UpdateAllAuras()
 end
 
@@ -1126,16 +1214,32 @@ local function editModeSample()
   return { icon = "TEST-ONLY-EDIT-MODE-SAMPLE", auraInstanceID = 9999 }
 end
 
--- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows). A
--- switched-off container shows nothing, samples included: ParseAllAuras returns while not IsEnabled(), before any
--- aura source (Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525, both clients). Not modelled: the
--- client moves a container to Edit Mode's source only on AURA_DATA_PROVIDER_SWITCH, so one made after Edit Mode
--- opened keeps the unit's auras there; stub.editMode covers every container at once.
+-- How many auras a group shows: one per aura its filter gives, up to its maxFrameCount (math.huge when none is given,
+-- Blizzard_AuraContainerGroups.lua:239-254 and :381).
+local function aurasShown(c, g, get)
+  if not (c.__enabled and c.__unit and get) then return 0 end
+  local cap, n = g.opts.maxFrameCount or math.huge, 0
+  while n < cap and get(c.__unit, n + 1, g.filter) do n = n + 1 end
+  return n
+end
+
+-- Makes whole batches of ten buttons until the group has one for each aura it shows: the client's AcquireFrame makes a
+-- batch when none is free (Blizzard_AuraContainerShared.lua:100-106 FrameCreationBatchSize = 10).
+local function growGroup(c, g, wanted)
+  while #g.buttons < wanted do addAuraButtons(c, g, 10) end
+end
+
+-- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows), up to
+-- its maxFrameCount. A switched-off container shows nothing, samples included: ParseAllAuras returns while not
+-- IsEnabled(), before any aura source (Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525, both
+-- clients). Not modelled: the client moves a container to Edit Mode's source only on AURA_DATA_PROVIDER_SWITCH, so one
+-- made after Edit Mode opened keeps the unit's auras there; stub.editMode covers every container at once.
 local function fillGroup(c, g)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
-  local samples = stub.editMode and c.__enabled and c.__editModePreview ~= false
+  local samples, cap = stub.editMode and c.__enabled and c.__editModePreview ~= false, g.opts.maxFrameCount or math.huge
+  if not samples then growGroup(c, g, aurasShown(c, g, get)) end
   for i, b in ipairs(g.buttons) do
-    local aura = samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter) or nil
+    local aura = i <= cap and (samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter)) or nil
     fillButton(b, aura, g.filter:find("HARMFUL") ~= nil)
   end
 end
@@ -1345,9 +1449,11 @@ function stub.drag(frame, point, x, y)
   runScript(frame, "OnDragStop")
 end
 
--- Types into an edit box: sets the text and runs OnTextChanged (as user input).
+-- Types into an edit box: sets the text and runs OnTextChanged once, as user input.
 function stub.type(frame, text)
+  frame.__typing = true
   frame:SetText(text)
+  frame.__typing = nil
   runScript(frame, "OnTextChanged", true)
 end
 

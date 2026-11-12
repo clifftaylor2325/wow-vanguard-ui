@@ -3,7 +3,8 @@
 // while the client hides threat values.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, loggedIn, setCombat, tok } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, loggedIn, setCombat, tok } from "./helpers.mjs";
 import { insets } from "./dialogs.mjs";
 
 const ON = { savedVariables: "VanguardDB.profiles = { Default = { GroupThreat = { show = true } } }" };
@@ -209,4 +210,16 @@ it("group threat: a hidden 'can attack' answer on your target is checked before 
   addon.fire("ADDON_LOADED", "TEST-ONLY");
   addon.fire("PLAYER_TARGET_CHANGED");
   expect([panel(addon)[0], addon.eval("return __checked") > 0, addon.eval("return #ns.errors")], "no panel, the answer was asked whether it is hidden, no error").toEqual([false, true, 0]);
+});
+
+it("H45-17-51 group threat: a long player name stops short of the percent instead of drawing over it", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + "VanguardDB.profiles.Default = VanguardDB.profiles.Default or {} VanguardDB.profiles.Default.GroupThreat = { show = true }", textFit: true });
+  addon.login();
+  addon.world.setUnit("player", { name: "Wwwwwwwwwwww", threat: 0, threatPct: 30 });
+  addon.world.setUnit("party1", { name: "Mmmmmmmmmmmm", threat: 3, threatPct: 100 });
+  addon.world.setUnit("target", { name: "TEST-ONLY Boar", hp: 100, maxhp: 100, reaction: 2 });
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  addon.advance(0.3);
+  const found = addon.textFit("Vanguard_GroupThreat");
+  expect(found.filter((f) => /overlap/.test(JSON.stringify(f))), "no text over another").toEqual([]);
 });

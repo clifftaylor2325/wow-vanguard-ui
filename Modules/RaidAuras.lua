@@ -110,11 +110,14 @@ local function repaint(b, unit)
   if b.dispel and RA.scope.on then paintDispel(b, unit) end
 end
 
+-- Each fallback tile's UNIT_AURA subscription (RF.OnTileUnit), and the tiles whose one is paused while the module is off.
+RA.dispelSubs, RA.dispelPaused = setmetatable({}, { __mode = "k" }), setmetatable({}, { __mode = "k" })
+
 -- On the fallback: the tile's own wash and edge, painted on each refresh.
 -- Only these need UNIT_AURA here (the rows follow their own units), and each tile
 -- listens for its own unit's only (RF.OnTileUnit).
 local function legacyDispel(b)
-  RF.OnTileUnit(b, "UNIT_AURA", repaint)
+  RA.dispelSubs[b] = RF.OnTileUnit(b, "UNIT_AURA", repaint)
   b.dispel = CreateFrame("Frame", nil, b)
   b.dispel:SetAllPoints()
   b.dispel:SetFrameLevel(b:GetFrameLevel() + RA.LEVEL_ABOVE)
@@ -124,9 +127,10 @@ end
 
 -- Containers -------------------------------------------------------------------------------
 
--- The debuff groups: first one you can dispel (carrying the highlight), then the others.
+-- The debuff groups: first one you can dispel (carrying the highlight), then the others. The count is rounded, as
+-- the client's aura container takes only whole ones (a crafted profile can hold any number).
 local function debuffGroups(b, z, s)
-  local count = math.min(s.debuffs, z.per)
+  local count = math.min(math.floor(s.debuffs + 0.5), z.per)
   local first = (count > 0 or s.dispel) and 1 or 0
   return {
     { filter = RA.DISPELLABLE, max = first, size = z.icon, debuff = true, register = s.dispel and engineDispel(b) or nil },
@@ -141,10 +145,10 @@ function RA.DebuffSpec(b, z, s)
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = debuffGroups(b, z, s) }
 end
 
--- Your HoTs from the bottom-right corner of the icon strip, growing left.
+-- Your HoTs from the bottom-right corner of the icon strip, growing left (a whole count, as for the debuffs).
 function RA.HotSpec(b, z, s)
   local right, bottom = z.hots[1] + z.hots[3], z.hots[2] + z.icon
-  local count = s.hots and math.min(s.maxHots, z.per) or 0
+  local count = s.hots and math.min(math.floor(s.maxHots + 0.5), z.per) or 0
   return { point = { "BOTTOMRIGHT", b, "BOTTOMRIGHT", right - z.width, z.height - bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10,
     groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
@@ -398,11 +402,26 @@ RA.HOOKS = {
   { RF.emptyHooks, indicatorEmptied }, { RF.sizeHooks, RA.Resized },
 }
 
+-- Stops each fallback tile's UNIT_AURA subscription (RF.PauseTileUnit), so no tile listens while the module is off.
+local function pauseDispel()
+  for b, sub in pairs(RA.dispelSubs) do
+    if not RA.dispelPaused[b] then RF.PauseTileUnit(b, sub) end
+    RA.dispelPaused[b] = true
+  end
+end
+
+-- Gives each paused tile its UNIT_AURA subscription back, following its unit again.
+local function resumeDispel()
+  for b in pairs(RA.dispelPaused) do RF.ResumeTileUnit(b, RA.dispelSubs[b]) end
+  RA.dispelPaused = setmetatable({}, { __mode = "k" })
+end
+
 -- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
 -- rows ahead now and whenever the group changes. The hooks are on the parent's lists for as long as the
 -- module runs (RA.Disable takes them off).
 function RA.Enable(settings, scope)
   RA.settings, RA.scope = settings, scope
+  resumeDispel()
   for _, b in ipairs(RF.buttons) do reconcile(b) end
   for _, hook in ipairs(RA.HOOKS) do RA.AddHook(hook[1], hook[2]) end
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
@@ -410,11 +429,13 @@ function RA.Enable(settings, scope)
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end
 
--- Switched off: the hooks leave the tiles' lists and every tile's rows, indicators and highlight are cleared and
--- hidden (kept for the next start, which makes them again only if the settings changed their shape).
+-- Switched off: the hooks leave the tiles' lists, every tile's rows, indicators and highlight are cleared and
+-- hidden (kept for the next start, which makes them again only if the settings changed their shape), and the
+-- fallback tiles stop hearing UNIT_AURA.
 function RA.Disable()
   for _, hook in ipairs(RA.HOOKS) do RA.RemoveHook(hook[1], hook[2]) end
   RA.waiting = {}
+  pauseDispel()
   for _, b in ipairs(RF.buttons) do
     if built(b) then clearTile(b) end
   end

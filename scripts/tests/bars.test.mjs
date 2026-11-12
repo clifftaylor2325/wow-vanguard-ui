@@ -214,15 +214,15 @@ const getBarOption = (addon, n, label) => addon.eval(`
   end`);
 
 // Bar 2's secure visibility driver (without the pet battle clause a retail bar's begins with; `raw` keeps it),
-// alpha, and whether it takes the mouse.
+// alpha, whether it takes the mouse, and whether clicks land on it.
 const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   local raw = bar.__states.visibility
-  return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
+  return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse, click = bar:IsMouseClickEnabled() }`);
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const start = barVis(addon);
-  expect(start.driver === "show" && start.alpha === 1 && start.mouse === false, "a bar shown always: driver show, full alpha, doesn't take the mouse").toBeTruthy();
+  expect(start.driver === "show" && start.alpha === 1 && start.mouse === false && start.click === false, "a bar shown always: driver show, full alpha, doesn't take the mouse").toBeTruthy();
   const modes = { mouseover: "show", combat: "[combat] show; hide", hidden: "hide", always: "show" };
   for (const [mode, driver] of Object.entries(modes)) {
     expect(setBarOption(addon, 2, "Visibility", JSON.stringify(mode)), `the Visibility row sets ${mode}`).toBeTruthy();
@@ -230,6 +230,9 @@ it("action bar visibility: each mode's state driver and mouseover alpha", () => 
   }
   setBarOption(addon, 2, "Visibility", '"mouseover"');
   expect(barVis(addon).alpha === 0 && barVis(addon).mouse === true, "a mouseover bar starts faded out and takes the mouse").toBeTruthy();
+  // The motion-only idiom of Blizzard_UIWidgets/Blizzard_UIWidgetTemplateBase.lua UIWidgetTemplateTooltipFrameMixin:SetMouse
+  // (/home/user/blizz/{forever,live}/Interface/AddOns): EnableMouse, then SetMouseClickEnabled(false).
+  expect(barVis(addon).click, "but takes no clicks, so clicks over its empty slots reach the world").toBe(false);
   // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
   addon.eval("__shows = 0 local bar = Vanguard_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
   setCombat(addon, true);
@@ -278,7 +281,7 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   expect(JSON.stringify(saved4) === JSON.stringify([true, "mouseover", 12, 1]), `a fresh enable is saved with On mouseover (got ${JSON.stringify(saved4)})`).toBeTruthy();
   const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { bars = { [4] = { enabled = true, visibility = "mouseover", buttons = 12, perRow = 1 } } } } } }' });
   const bar4 = barVis(on, 4);
-  expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true, "turned on, bar 4 is faded out until the mouse is over it").toBeTruthy();
+  expect(bar4.driver === "show" && bar4.alpha === 0 && bar4.mouse === true && bar4.click === false, "turned on, bar 4 is faded out until the mouse is over it, and takes no clicks").toBeTruthy();
   const second = on.eval("local _, _, _, x, y = Vanguard_Bar4Button2:GetPoint(1) return { x, y }");
   expect(second, "one button per row, as before (38 + 2 apart, each in whole screen pixels)").toEqual([0, -(px(on, 38) + px(on, 2))]);
 });
@@ -993,6 +996,26 @@ it("bar backing: a stacked bar dragged away keeps a plate of its own, and no two
   expect(shownBackings(addon).map((p) => p.bar), "reset into the stack, it joins the plinth again at once").toEqual([1]);
   setBarOption(addon, 2, "Visibility", '"mouseover"');
   expect(shownBackings(addon).map((p) => p.bar), "a bar that fades on its own keeps its own plate").toEqual([1, 2, 3]);
+});
+
+it("bar backing: under the Calm HUD's Hide each bar carries its own plate; Dim and Calm off share the plinth", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { UnitFrames = { calm = true, calmBars = "hide" } }' });
+  // The bars (of 1 to 3) whose backing is shown; a faded bar's plate is drawn at the bar's alpha.
+  const owners = () => Object.values(addon.eval(`local out = {}
+  for n = 1, 3 do
+    local f = _G["Vanguard_Bar" .. n].vgBacking
+    if f and f:IsShown() then out[#out + 1] = n end
+  end
+  return out`) || {});
+  // Sets the Calm HUD's switch and its Action bars choice, and re-applies every calm frame.
+  const calmBars = (on, choice) => addon.eval(`local s = VanguardDB.profiles.Default.UnitFrames s.calm = ${on} s.calmBars = "${choice}" ns.Visibility.ApplyCalm()`);
+  expect(owners(), "each bar fades under its own mouse, so each has its own plate").toEqual([1, 2, 3]);
+  calmBars(true, "dim");
+  expect(owners(), "Dim keeps the one plinth (the bars dim together)").toEqual([1]);
+  calmBars(true, "hide");
+  expect(owners(), "Hide again: one plate each").toEqual([1, 2, 3]);
+  calmBars(false, "hide");
+  expect(owners(), "Calm HUD off: one plinth on bar 1").toEqual([1]);
 });
 
 it("hotkey text stays on one line inside the button, right-aligned", () => {

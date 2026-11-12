@@ -411,7 +411,7 @@ end
 -- included); the marks stay for the next start. The range job and the events go with the scope.
 function RS.Disable()
   for _, hook in ipairs(RS.HOOKS) do RA.RemoveHook(hook[1], hook[2]) end
-  RS.following, RS.readyRunning = false, false
+  RS.following, RS.readyRunning, RS.readyFinished, RS.readyAnswers = false, false, false, {}
   for _, b in ipairs(RF.buttons) do
     if b.raidIcon then clearTile(b) end
   end

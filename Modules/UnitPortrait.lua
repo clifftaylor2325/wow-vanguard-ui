@@ -19,7 +19,8 @@ PT.KEYS = { player = true, target = true, focus = true }
 PT.CHOICES = { portrait = true, class = true }
 -- What changes a unit's portrait (the target and focus also repaint when they change: PT.UNIT_CHANGES).
 PT.EVENTS = { "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }
--- The deepest cut or rounding (units) an outer corner may have and still leave the square its room: Rimmed's four.
+-- The deepest cut or rounding (screen pixels, not units: the corners are drawn in pixels) an outer corner may have and
+-- still leave the square its room: Rimmed's four fit; the shield's eight-pixel cut and the points do not.
 PT.MAX_CORNER = 4
 -- The client's sheet of class icons (CLASS_ICON_TCOORDS holds each class's square on it).
 PT.SHEET = "Interface\\TargetingFrame\\UI-Classes-Circles"
@@ -33,10 +34,10 @@ function PT.Choice(f)
 end
 
 -- Whether the frame's outer end is square enough to hold the portrait under the HUD look in force (never while the
--- frame stands as a banner: its end is its hem).
+-- frame stands as a banner: its end is its hem; nor while the Versus deck holds it: the pair reads as one panel).
 local function fits(f)
   local point = "TOP" .. f.outer
-  return not UF.Standing(f) and T.CornerLook(f, point) ~= "point" and T.CornerAt(f, point) <= PT.MAX_CORNER
+  return not UF.Standing(f) and not UF.Decked(f) and T.CornerLook(f, point) ~= "point" and T.CornerAt(f, point) <= PT.MAX_CORNER * T.Pixel(f)
 end
 
 -- The portrait's side: the frame's height less the bar inset above and below.

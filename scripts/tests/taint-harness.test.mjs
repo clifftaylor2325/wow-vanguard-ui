@@ -48,6 +48,16 @@ it("game or test code overwriting a field on the game's frame is not recorded", 
   expect(addon.eval("return { #__wfgStub.violations, TestGameFrame.layoutIndex }")).toEqual([0, 7]);
 });
 
+// The stub keeps its own state in fields named __... (stub.isStubKey); addon code is judged before that shortcut, so a
+// field it names __vg... on a game frame is recorded too, while the stub's own __ writes from wow-*.lua stay quiet.
+it("addon code storing a field named with two underscores on the game's frame is recorded; the stub's own are not", () => {
+  const addon = createAddon();
+  addon.eval(`${GAME_FRAME} TestGameFrame:SetAlpha(0.5)`);
+  asAddon(addon, "TestGameFrame.__vgSkinned = true");
+  expect(violations(addon)).toEqual(["field write: Modules/TEST-ONLY.lua:1 stored the field __vgSkinned on the game's frame TestGameFrame"]);
+  expect(addon.eval("return TestGameFrame:GetAlpha()"), "the stub's own write landed").toBe(0.5);
+});
+
 it("the game's action, pet, stance, raid and boss frames are protected by name, and a bar holding one is too", () => {
   const addon = createAddon();
   addon.eval(`TestBar = CreateFrame("Frame", "TestBar", UIParent)

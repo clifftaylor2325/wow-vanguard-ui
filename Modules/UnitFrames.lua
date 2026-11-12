@@ -389,6 +389,7 @@ end
 local function decked(f)
   return deckOn() and UF.COMBAT.keys[f.key] == true
 end
+UF.Decked = decked
 
 -- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
 -- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
@@ -410,10 +411,19 @@ local function barsTop(f)
   return barInset(f)
 end
 
+-- The power bar's height on a frame h units tall: the setting, or on a short bare frame (the name row takes a lot of
+-- it) no more than the health bar keeps beside it, in whole pixels and never below zero.
+local function powerHeightOf(f, h)
+  local height = UF.settings.powerHeight
+  if not T.BareOf(f) then return height end
+  local beside = T.PixelRound(f, (h - UF.NAME_ROW - 3 * barInset(f)) / 2)
+  return math.max(0, math.min(height, beside))
+end
+
 -- The health bar's height on a frame h units tall (from the height the frame was given: a fight may hide the one it
 -- reports).
 local function healthHeight(f, h)
-  return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
+  return h - barsTop(f) - powerHeightOf(f, h) - 2 * barInset(f)
 end
 
 -- The width of a frame's health bar (units), from the width the frame was given, as the bars were last laid out
@@ -584,10 +594,10 @@ local function addLayer(f)
 end
 
 -- The health and power bars, laid out and cut to the shield corners.
-local function addBars(f, settings)
+local function addBars(f)
   f.health, f.power = createBar(f), createBar(f)
   addLayer(f)
-  layoutBars(f, settings.powerHeight)
+  layoutBars(f, powerHeightOf(f, f.vgHeight))
   shieldBars(f)
 end
 
@@ -612,7 +622,7 @@ local function createUnitFrame(key, w, h, outer)
   makeSecure(f, key)
   T.HudPanel(f, { shield = true, role = "unit", outer = f.outer })
   addTab(f)
-  addBars(f, UF.settings)
+  addBars(f)
   addTexts(f, UF.settings)
   addRaidIcon(f)
   return f
@@ -720,14 +730,14 @@ local function textEndRoom(f)
   return (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
 end
 
--- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
--- while the power text takes the bottom one, there short of the tag mark too.
+-- The health text at the other end from the name, short of the marks on a frame that has them and, on the target,
+-- short of the tag mark in every look; on the bar's top line while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
   local room = textEndRoom(f)
+  room = f.tag and math.max(room, UF.TAG_ROOM) or room
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
-    room = f.tag and math.max(room, UF.TAG_ROOM) or room
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
   else
     f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
@@ -920,7 +930,7 @@ end
 -- texts, the name reading from the side its shield points from or its tab sits over (the left otherwise), the health
 -- text and marks at the other end, the raid icon, the bars filling toward your character, and the parts riding them.
 local function placeAcross(f)
-  layoutBars(f, UF.settings.powerHeight)
+  layoutBars(f, powerHeightOf(f, f.vgHeight))
   showTexts(f)
   local side = readSide(f)
   placeTexts(f, side)
@@ -1596,13 +1606,6 @@ local function deckNow()
   UF.ApplySizes()
   for _, f in ipairs({ player, target }) do T.SetRound(f, on) end
   UF.ApplyLook()
-end
-
--- Gives a frame's name and health text the deck's larger role (on), or the roles the look gives them (UF.TextRoles).
-function UF.DeckText(f, on)
-  if not on then return UF.TextRoles(f) end
-  T.Text(f.name, UF.DECK.text)
-  T.Text(f.healthText, UF.DECK.text, T.ColorToken(f.healthText))
 end
 
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller

@@ -178,10 +178,12 @@ C_ContentTracking = {
       for _, c in ipairs(list) do if c.target and c.target[1] == targetType and c.target[2] == targetID then return c.objective end end
     end
   end,
+  -- Stops tracking an entry, then says so: the event's third argument is isTracked (ContentTrackingDocumentation.lua), which
+  -- the trackers read as "added" (Blizzard_AdventureObjectiveTracker.lua:38-44, Blizzard_AchievementObjectiveTracker.lua:16-22).
   StopTracking = function(kind, id, stopType)
     world.stopped[#world.stopped + 1] = { kind, id, stopType }
     for i, c in ipairs(world.collectables[kind] or {}) do if c.id == id then table.remove(world.collectables[kind], i) break end end
-    stub.fire("CONTENT_TRACKING_UPDATE", kind, id, true)
+    stub.fire("CONTENT_TRACKING_UPDATE", kind, id, false)
   end,
 }
 

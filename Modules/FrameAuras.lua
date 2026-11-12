@@ -45,11 +45,11 @@ FA.SETTLE = 0.3
 
 -- Specs ----------------------------------------------------------------------------------
 
--- What the rows are built from: the settings, each number kept to its slider's range and a buff
--- choice this version doesn't know read as all.
+-- What the rows are built from: the settings, each number kept to its slider's range as a whole number (the
+-- client's aura container takes only whole counts) and a buff choice this version doesn't know read as all.
 function FA.Look(s)
   local look = { onlyMine = s.onlyMine, timers = s.timers, buffFilter = FA.BUFF_FILTERS[s.buffFilter] and s.buffFilter or "all" }
-  for key, range in pairs(FA.RANGES) do look[key] = math.max(range.min, math.min(range.max, s[key])) end
+  for key, range in pairs(FA.RANGES) do look[key] = math.floor(math.max(range.min, math.min(range.max, s[key])) + 0.5) end
   return look
 end
 

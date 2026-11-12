@@ -271,15 +271,22 @@ local function keysFull(plan, row)
   return count >= 2
 end
 
+-- Leaves a row as it is, for `why`, and drops what its change would have written (a rank it would cover, a spell
+-- it would move), so nothing that reads the row tells of a change that is not made.
+local function leave(row, why)
+  row.kind, row.why = "unchanged", why
+  row.over, row.replaced, row.to, row.moved = nil, nil, nil, nil
+end
+
 -- A writing row's last word: a key this plan gave another command stays with that ("used"); a row that writes no
 -- slot and binds a key to the command it already has is "unchanged" ("already"); a command with two other keys
 -- takes no third ("keys").
 local function settle(plan, row)
   if not KA.WRITES[row.kind] then return end
   local taken = plan.keys[row.key]
-  if taken and taken ~= row.command then row.kind, row.why = "unchanged", "used" return end
-  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" return end
-  if keysFull(plan, row) then row.kind, row.why = "unchanged", "keys" end
+  if taken and taken ~= row.command then return leave(row, "used") end
+  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then return leave(row, "already") end
+  if keysFull(plan, row) then leave(row, "keys") end
 end
 
 -- Takes a row's key, its command's new key and its button in the plan (an "already" row too, so no later row takes
@@ -760,15 +767,13 @@ local function undoRun(run)
   ns.Chat(ns.Format(L["No key changed, but {count} button(s) couldn't be put back yet. Put everything back restores them."], { count = #left }))
 end
 
--- Records one applied key: its first pre-image, and every character it placed spells for, while the key still did
--- what Vanguard last set; else the pre-image this run took (the player changed it in between).
+-- Records one applied key: every character it placed spells for, whatever the key did in between, and its first
+-- pre-image while the key still did what Vanguard last set; else the pre-image this run took (the player changed it).
 local function keepKey(run, rec, row)
   local old, now, by = rec.keys[row.key], run.keys[row.key], { [me()] = true }
   local before = now
-  if type(old) == "table" and now == old.after then
-    before = old.before
-    for name in pairs(type(old.by) == "table" and old.by or {}) do by[name] = true end
-  end
+  if type(old) == "table" and now == old.after then before = old.before end
+  for name in pairs(type(old) == "table" and type(old.by) == "table" and old.by or {}) do by[name] = true end
   rec.keys[row.key] = { before = before, after = row.command, by = by }
 end
 

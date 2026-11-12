@@ -25,7 +25,7 @@ it("the addon's truth test, `not` and `==` on a secret raise the client's errors
   expect(tryAddon(addon, "return __yes ~= nil"), "~= nil too").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to compare a secret value"]);
   expect(asAddon(addon, "return { __five and 1, issecretvalue(__yes), type(__yes), UIParent == UIParent }"), "a secret number tests true, issecretvalue and type() read it, other tables compare")
     .toEqual([1, true, "boolean", true]);
-  expect(addon.eval("return { __yes and 1, not __yes, __five == 5 }"), "test code (the game's own) tests and compares secrets as the values they hide, as untainted code may").toEqual([1, false, false]);
+  expect(addon.eval("return { __yes and 1, not __yes, __five == 5 }"), "test code may truth-test and compare a secret without an error; it sees the stand-in table (any secret tests true, == is identity), not the value it hides").toEqual([1, false, false]);
 });
 
 // [widget kind, the setter's Lua with a secret argument, the getter, its aspect]: each setter that takes a secret from the addon.

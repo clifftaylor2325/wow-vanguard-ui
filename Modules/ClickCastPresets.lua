@@ -391,6 +391,11 @@ function CP.Upgrades()
   return out
 end
 
+-- Marks every offer the page shows now as told: after an answer the page names them, so they are not news for chat.
+local function markShown(rec)
+  for _, o in ipairs(CP.Upgrades()) do rec.told[o.key .. ":" .. o.to] = true end
+end
+
 -- Puts an offered spell on its key (out of combat, like any change), as the preset's own: on a list still as the
 -- preset made it, picking a preset after it doesn't ask (a list with the player's own clicks still does). An offer the
 -- list no longer has (its record went) does nothing.
@@ -400,6 +405,7 @@ function CP.Use(u)
   local clean = not CP.HasOwnClicks()
   CC.Add(u.key, "spell", u.to, u.spellID)
   if clean then rec.made = mouseText() end
+  markShown(rec)
 end
 
 -- Keeps what the key holds: this spell isn't offered on it again.
@@ -408,6 +414,7 @@ function CP.Keep(u)
   if not rec then return end
   rec.kept = rec.kept or {}
   rec.kept[u.key .. ":" .. u.to] = true
+  markShown(rec)
 end
 
 -- Says an offer in chat once (rec.told keeps the ones said); true when it was new.

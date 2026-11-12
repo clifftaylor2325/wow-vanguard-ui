@@ -556,32 +556,30 @@ local function setAction(f, prefix, suffix, b)
   if b.action == "macro" then setAttr(f, prefix .. "macrotext" .. suffix, b.value) end
 end
 
--- The secure snippet run on entering a frame: bind each hover key to a
--- click on the frame's virtual button vg<i>. Built from the bindings; no
--- player input ends up in it except keys, quoted, and only bindable ones: the
--- client refuses the whole snippet if a key brings "function" or a brace into it.
-function CC.EnterSnippet(bindings)
-  local lines = { "self:ClearBindings()" }
+-- The secure snippet run on entering a frame: bind each hover key CC.ApplyFrame left in the frame's vg-key<i>
+-- attributes to a click on its virtual button vg<i>. Fixed text with no "function" and no brace (the client refuses
+-- either, Blizzard_RestrictedAddOnEnvironment/RestrictedExecution.lua BuildRestrictedClosure), so each frame is wrapped
+-- once and never unwrapped: SecureHandlers.lua RemoveWrapper restores only while GetScript still returns the wrapper,
+-- which a hook added after the wrap (Calm HUD's hover watch) may change, and a second wrap would stack the old keys.
+CC.ENTER_SNIPPET = [[
+self:ClearBindings()
+for i = 1, self:GetAttribute("vg-count") or 0 do
+  local key = self:GetAttribute("vg-key" .. i)
+  if key then self:SetBindingClick(true, key, self, "vg" .. i) end
+end]]
+
+-- Hands the enter snippet the hover keys: vg-key<i> for each bindable one, vg-count the list's length.
+local function setHoverKeys(f, bindings)
   for i, b in ipairs(bindings) do
-    if not CC.MouseParts(b.key) and bindable(b.key) then
-      lines[#lines + 1] = string.format("self:SetBindingClick(true, %q, self, %q)", b.key, "vg" .. i)
-    end
+    if not CC.MouseParts(b.key) and bindable(b.key) then setAttr(f, "vg-key" .. i, b.key) end
   end
-  return table.concat(lines, "\n")
+  setAttr(f, "vg-count", #bindings)
 end
 
--- Takes the hover-key snippets off a frame, and any keys they bound while the pointer was over it.
-local function unwrap(f)
-  if not f.vgWrapped then return end
-  for _, script in ipairs({ "OnEnter", "OnLeave", "OnHide" }) do SecureHandlerUnwrapScript(f, script) end
-  ClearOverrideBindings(f)
-  f.vgWrapped = false
-end
-
--- (Re)wraps the frame's enter, leave and hide scripts with the hover-key snippets.
-local function wrap(f, enter)
-  unwrap(f)
-  SecureHandlerWrapScript(f, "OnEnter", CC.handler, enter)
+-- Wraps the frame's enter, leave and hide scripts with the hover-key snippets, once (they read the keys as they run).
+local function wrap(f)
+  if f.vgWrapped then return end
+  SecureHandlerWrapScript(f, "OnEnter", CC.handler, CC.ENTER_SNIPPET)
   SecureHandlerWrapScript(f, "OnLeave", CC.handler, "self:ClearBindings()")
   SecureHandlerWrapScript(f, "OnHide", CC.handler, "self:ClearBindings()")
   f.vgWrapped = true
@@ -599,16 +597,19 @@ function CC.UsesGame()
   return CC.settings ~= nil and CC.settings.useGame == true and type(C_ClickBindings) == "table"
 end
 
--- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears Vanguard's.
+-- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears Vanguard's, leaving
+-- the enter snippet nothing to bind; either way the keys bound while the pointer was over it go.
 function CC.ApplyFrame(f)
   clearAttrs(f)
-  if CC.UsesGame() then return unwrap(f) end
+  ClearOverrideBindings(f)
+  if CC.UsesGame() then return end
   local bindings = CC.Bindings()
   for i, b in ipairs(bindings) do
     local prefix, n = CC.MouseParts(b.key)
     if prefix then setAction(f, prefix, n, b) else setAction(f, "*", "-vg" .. i, b) end
   end
-  if CC.SnippetsOn() then wrap(f, CC.EnterSnippet(bindings)) end
+  setHoverKeys(f, bindings)
+  if CC.SnippetsOn() then wrap(f) end
 end
 
 -- The key of the list the frames were last given, to tell whether a change of talent group needs another apply even

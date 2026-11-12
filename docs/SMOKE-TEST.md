@@ -6129,6 +6129,90 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: chat says "Selling 1 junk item(s)." and the grey item is gone.
 - If it fails, paste: the chat line, or that none came.
 
+### 33.686 Portraits stay off on the Versus deck (H45-13-2)
+
+- Do: under the Hairline HUD look, set Player portrait and Target portrait to 2D portrait, then turn on Unit frames > Versus deck. [Client: Forever and Retail.]
+- Expect: neither frame shows a portrait while the deck is on, and both come back when you turn the deck off.
+- If it fails, paste: a screenshot.
+
+### 33.687 Health line on small Hairline frames (H45-13-3)
+
+- Do: under the Hairline HUD look, look at your pet and target-of-target frames. [Client: Forever and Retail.]
+- Expect: each health line is at least as tall as the thin power line under it, and the name sits on the health line.
+- If it fails, paste: a screenshot.
+
+### 33.688 Target health number clear of the tag mark (H45-13-4)
+
+- Do: under the Hairline HUD look, fight a hostile creature you have tagged and look at the target frame. [Client: Forever and Retail.]
+- Expect: the health number ends clear of the tag mark at the frame's top corner, under Hairline and under Shield.
+- If it fails, paste: a screenshot of the target frame.
+
+### 33.689 Window borders after a UI scale change (H45-14-1)
+
+- Do: open the character window, then move the UI scale slider in the game's System options and close the options. [Client: Forever and Retail.]
+- Expect: the window's one-pixel border stays sharp and dark on every side, with the faint sheen line just inside the top edge.
+- If it fails, paste: a cropped screenshot of one corner.
+
+### 33.690 Enchant cells after a login (H45-15-2)
+
+- Do: as a rogue or shaman, put a poison or imbue on your main hand, log out fully and log back in. [Client: Forever.]
+- Expect: the enchant's cell shows in front of your buffs right after the loading screen, without touching your gear.
+- If it fails, paste: a screenshot of the buff block after login.
+
+### 33.691 Enchant cells after a scale change (H45-15-50)
+
+- Do: put a poison, oil or imbue on your weapon, then change the game's UI scale. [Client: Forever and Retail.]
+- Expect: the enchant cell's one-pixel edge stays as crisp as the buffs' beside it.
+- If it fails, paste: a zoomed screenshot of the enchant cell and the buff beside it.
+
+### 33.692 The game's cast bars while yours is unticked (H45-16-50)
+
+- Do: untick Options > Unit frames > Cast bars > Your cast bar (and your pet's), reload, then as a warlock with the Imp out cast a spell with a cast time and let the Imp cast Firebolt. [Client: Forever and Retail.]
+- Expect: the game's own pet cast bar shows the Imp's cast, and the game's own player cast bar shows yours unless Edit Mode locks it to the player frame.
+- If it fails, paste: /vg errors and /vg frame PlayerCastingBarFrame.
+
+### 33.693 Plate debuff icons after a target change in a fight (H45-16-R1)
+
+- Do: set Nameplates > Target plate size to 115%, put a debuff of yours on two mobs in a dungeon and switch target between them in the fight; after the fight, target one. [Client: Forever and Retail.]
+- Expect: each debuff icon on both plates keeps an even one-pixel dark inset and edge.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.694 Clicks through a fading bar (H45-18-1)
+
+- Do: turn on bar 4 (On mouseover) with most of its slots empty; right-drag starting over its empty part, then left-click an NPC behind it. Do the same over an empty slot of bar 3 with the Calm HUD on and Action bars set to Hide, out of combat. [Client: Forever and Retail.]
+- Expect: the camera turns and the NPC is targeted both times, and hovering still fades the bars in.
+- If it fails, paste: what happened and /vg errors.
+
+### 33.695 Each Calm bar shows its own backing (H45-18-2)
+
+- Do: with the Shield HUD look, turn the Calm HUD on with Action bars set to Hide, then out of combat hover bar 3, then bar 1. [Client: Forever and Retail.]
+- Expect: each bar shows with its own backing under it, never a backing under invisible buttons.
+- If it fails, paste: a screenshot.
+
+### 33.696 Bag bar after an item pickup (H45-18-50)
+
+- Do: with the bag and menu bar on, pick up an item from a bag and put it back. [Client: Forever.]
+- Expect: the key ring's slot stays the size of the bag slots and no brass dividers show between the bag slots.
+- If it fails, paste: a screenshot of the bar before and after.
+
+### 33.697 Hover keys after the Calm HUD turns on (H45-19-R1)
+
+- Do: with click casting's "Also on player, target and focus" on and the Calm HUD off, reload; add hover key Shift-Q = Renew, turn the Calm HUD on, remove Shift-Q and add F = Flash Heal; with the pointer on your player frame press Shift-Q, then F, then do the same over a raid frame. [Client: Forever and Retail.]
+- Expect: Shift-Q does its usual job and casts nothing on you, F casts Flash Heal on the frame's unit, the frame still brightens under the pointer, and no Lua error shows.
+- If it fails, paste: /vg binds and /vg errors.
+
+### 33.698 A long buff list in a fight (H45-12-50)
+
+- Do: with 15 or more buffs on you, enter a fight and gain one more buff. [Client: Forever and Retail.]
+- Expect: every buff shows in your buff rows, the new one dressed like the others.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.699 Clearing the settings search (H45-12-51)
+
+- Do: open the options window, type a word in Search settings, then click the search box's clear button. [Client: Forever and Retail.]
+- Expect: the list shows every setting again and the clear button hides.
+- If it fails, paste: a screenshot and /vg errors.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
