@@ -434,3 +434,11 @@ it("prep buffs: /vg prep buffs prints its count line and 'no check' in the clien
   expect(chatHas(addon, /Deine 1 Stärkungszauber und die Instanzvorbereitung, für die jeder zählt:/), "the count line").toBe(true);
   expect(chatHas(addon, /Haste of the Camp -> keine Prüfung/), "a buff no check counts it for").toBe(true);
 });
+
+it("prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)", () => {
+  const addon = loggedIn(PREP_ENV + CLICK_LUA + BUFF_ENV, { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true C_Spell.GetSpellName = nil GetSpellInfo = nil");
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /keine, die dieser Client kennt, also keine Zeile/), "the German line").toBe(true);
+  expect(chatHas(addon, /none this client knows, so no row/), "not the English").toBe(false);
+});

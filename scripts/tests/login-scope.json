@@ -332,6 +332,7 @@
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)",
+      "prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)",
       "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",

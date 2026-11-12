@@ -2690,6 +2690,7 @@ L["no stat in it that Vanguard weighs"] = "kein Wert darin, den Vanguard gewicht
 L["no usable bindings in it"] = "keine nutzbaren Belegungen darin"
 L["none"] = "keine"
 L["none named by the client"] = "vom Client nicht genannt"
+L["none this client knows, so no row"] = "keine, die dieser Client kennt, also keine Zeile"
 L["none undercut"] = "keine unterboten"
 L["none up"] = "keine angeboten"
 L["none yet"] = "noch keine"
