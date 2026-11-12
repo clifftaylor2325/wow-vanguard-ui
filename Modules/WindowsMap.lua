@@ -736,7 +736,7 @@ end
 
 -- The Legacy cards' texts, by key, as { role, colour }: the game colours them for its dark plates (dim grey while
 -- locked or unfinished), the theme's text tiers clear 4.5:1 on a panel. A key a card lacks is skipped.
-GW.LEGACY_TEXTS = { Title = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
+GW.LEGACY_TEXTS = { Label = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
 -- The points crests (a bronze crown over a shield) by key, and the frame art round a card's icon.
 GW.LEGACY_CRESTS = { "Shield", "PointsIcon", "PointsBadge", "LegacyPointShield" }
 GW.LEGACY_ICON_ART = { "IconBorder", "IconFrame", "IconRing" }

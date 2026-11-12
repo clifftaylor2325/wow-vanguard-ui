@@ -822,7 +822,7 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     local c = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.DetailPane)
     for _, key in ipairs({ "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar", "PlusMinus" }) do c[key] = c:CreateTexture() end
     c.Tracked, c.selected = __check(c), selected
-    c.Title, c.Description, c.Icon, c.IconBorder, c.Shield = __fs(c), __fs(c), c:CreateTexture(), c:CreateTexture(), c:CreateTexture()
+    c.Label, c.Description, c.Icon, c.IconBorder, c.Shield = __fs(c), __fs(c), c:CreateTexture(), c:CreateTexture(), c:CreateTexture()
     function c:IsSelected() return self.selected end
     function c:RefreshStateArt() end
     return c
@@ -992,7 +992,7 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   // A crest's desaturated flag and whether it was tinted.
   const tint = (expr) => addon.eval(`local r = ${expr} return { r.__desaturated, r.__vertexColor ~= nil }`);
   expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "a category's name is in the text colour, not the game's yellow").toBe(true);
-  expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Title, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Title:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
+  expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Label, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Label:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
   expect(addon.eval(`return ${cards}.items[1].Icon.__texCoord ~= nil`), "its icon is cropped").toBe(true);
   // A card whose icon is a button and whose crest is a frame holding a texture (and a font string, which is left alone).
   addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Button", nil, c) c.Icon.Icon = c.Icon:CreateTexture() c.PointsBadge = CreateFrame("Frame", nil, c)
