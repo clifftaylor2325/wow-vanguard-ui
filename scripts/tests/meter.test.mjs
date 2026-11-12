@@ -263,6 +263,26 @@ it("reset clears the game's segments out of combat only", () => {
   expect(chatHas(addon, /can't be reset now/), "a refusal is caught").toBe(true);
 });
 
+// The spell panel's shown state after clicking meter line 1 twice, a repaint between, for one source line's fields.
+// The game's own source window matches a line by GUID, then by creature ID (Blizzard_DamageMeter/DamageMeterSourceWindow.lua:233-243).
+function clickedTwice(fields) {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, `{ { name = 'Pet', amountPerSecond = 300, ${fields} } }`);
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 1, totalAmount = 900 } } } end`);
+  addon.advance(1);
+  // Clicks meter line 1.
+  const click = () => addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  click();
+  addon.advance(1);
+  click();
+  return addon.eval("return Vanguard_MeterDetail:IsShown()");
+}
+it("a line with no GUID is matched by its creature ID, a hidden GUID is not", () => {
+  expect(clickedTwice("sourceCreatureID = 7"), "a creature line clicked again closes").toBe(false);
+  expect(clickedTwice("sourceGUID = __wfgWorld.secret('Player-1'), sourceCreatureID = 7"), "a hidden GUID gives no key").toBe(true);
+});
+
 it("a click on a line opens that player's spells, in the game's order; again or the title closes it", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, "{ { name = 'Tess', classFilename = 'WARRIOR', amountPerSecond = 300, sourceGUID = 'g1' }, { name = 'Bo', amountPerSecond = 100, sourceGUID = 'g2' } }");

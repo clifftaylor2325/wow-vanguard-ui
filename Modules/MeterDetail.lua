@@ -117,11 +117,13 @@ function MT.SayRecap(src)
   if link then ns.Chat(ns.Format(L["Death recap: {link}"], { link = link })) end
 end
 
--- A meter line's source as a plain key ("GUID:creature ID"), or nil when the client hides either.
+-- A meter line's source as a plain key: "GUID:creature ID", or (a creature line the game gives no GUID, as its
+-- own window matches it) "creature:ID"; nil when the client hides a part it needs.
 local function sourceKey(src)
   local guid, creature = src.sourceGUID, src.sourceCreatureID
-  if ns.IsSecret(guid) or ns.IsSecret(creature) or type(guid) ~= "string" then return nil end
-  return guid .. ":" .. tostring(creature)
+  if ns.IsSecret(guid) or ns.IsSecret(creature) then return nil end
+  if type(guid) == "string" then return guid .. ":" .. tostring(creature) end
+  return type(creature) == "number" and "creature:" .. creature or nil
 end
 
 -- Whether the open panel shows this line's source. The meter repaints from a new read every
