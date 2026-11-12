@@ -147,7 +147,7 @@ end
 -- /vg reset <frame|all>
 local function resetCommand(rest)
   if rest == "" then return chat(L["Usage: /vg reset <frame|all>"]) end
-  local n = ns.ResetMovers(rest)
+  local n = ns.ResetMovers(rest:lower() == "all" and "all" or rest)
   chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = rest }))
 end
 
@@ -182,7 +182,7 @@ end
 -- /vg accent <rrggbb> | <name> | class | reset
 local function accentCommand(rest)
   if rest:lower() == "class" then return classAccent() end
-  if rest == "reset" then
+  if rest:lower() == "reset" then
     return resetAccent()
   end
   local r, g, b = T.ParseColor(rest:lower())
@@ -201,11 +201,11 @@ end
 
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
-  local o, size = ns.MoverOptions(), tonumber(rest)
+  local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
   if size and size >= 8 and size <= 256 then
     o.grid, o.gridSize = true, math.floor(size)
-  elseif rest == "on" or rest == "off" or rest == "" then
-    o.grid = rest == "on" or (rest == "" and not o.grid)
+  elseif word == "on" or word == "off" or word == "" then
+    o.grid = word == "on" or (word == "" and not o.grid)
   else
     return chat(L["Usage: /vg grid [8-256 | on | off]"])
   end
@@ -287,7 +287,7 @@ end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
 local function cooldownsCommand(rest)
-  if rest == "setup" then return ns.Options.CooldownWizard.Open() end
+  if rest:lower() == "setup" then return ns.Options.CooldownWizard.Open() end
   ns.Options.Show("cooldowns")
 end
 
@@ -320,6 +320,7 @@ local iconsCommand = switchCommand({
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
+  rest = rest:lower()
   if rest ~= "default" and not T.VARIANTS[rest] then return chat(ns.Literal(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"])) end
   local assistBefore = T.ColorAssist()
   T.Settings().variant = rest
@@ -331,6 +332,7 @@ end
 -- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
 local function cornersCommand(rest)
   if rest == "" then rest = T.Settings().corners end
+  rest = rest:lower()
   if rest ~= "square" and rest ~= "rounded" then return chat(ns.Literal(L["Usage: /vg corners square|rounded"])) end
   T.Settings().corners = rest
   T.Refresh()
@@ -356,7 +358,7 @@ local frameBufferCommand = switchCommand({
 
 -- /vg theme reset
 local function themeCommand(rest)
-  if rest ~= "reset" then
+  if rest:lower() ~= "reset" then
     return chat(L["Usage: /vg theme reset"])
   end
   chat(ns.Options.ResetTheme() and L["Theme back to defaults (reload to apply)."] or L["Theme back to defaults."])
@@ -605,10 +607,11 @@ local function specCommand(rest)
   local spec = ns.SpecKey()
   if not spec then return chat(L["No specialization on this character yet."]) end
   if rest == "" then return chat(ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"])) end
-  if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
-  ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
-  chat(rest == "off" and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
-  if rest ~= "off" then ns.OfferSpecReload(rest) end
+  local off = rest:lower() == "off" and (rest == "off" or not VanguardDB.profiles[rest])
+  if not off and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
+  ns.SetSpecProfile(not off and rest or nil, spec)
+  chat(off and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
+  if not off then ns.OfferSpecReload(rest) end
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).
@@ -772,8 +775,9 @@ end
 -- /vg errors [clear|resume]: the errors Vanguard caught this session, newest last, in the copy window with the
 -- version, client and aura backend a bug report needs; clear empties the list, resume runs paused parts again.
 local function errorsCommand(rest)
-  if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
-  if rest == "resume" then return resumeCommand() end
+  local word = rest:lower()
+  if word == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
+  if word == "resume" then return resumeCommand() end
   if #ns.errors + #ns.paused + #ns.blocked + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
   chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
   ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())

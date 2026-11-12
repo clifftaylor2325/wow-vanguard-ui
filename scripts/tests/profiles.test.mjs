@@ -208,6 +208,16 @@ it("spec profiles", () => {
   addon.slash("spec off");
   expect(addon.eval("return VanguardCharDB.specProfiles[2]") === null, "/vg spec off stops switching").toBeTruthy();
 });
+it("/vg spec reads Off in any case unless a profile is called Off (H46-24-50)", () => {
+  const addon = loggedIn("GetSpecialization = function() return __spec end __spec = 2");
+  addon.slash("profile new Healer");
+  addon.slash("spec Healer");
+  addon.slash("spec Off");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "Off stops switching").toBe(null);
+  addon.slash("profile new Off");
+  addon.slash("spec Off");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "a profile called Off still maps").toBe("Off");
+});
 it("copying a profile over another keeps the craft queue and cooldowns of the characters the destination had", () => {
   // A profile's craft queue holding one queued recipe for the character `key`.
   const queue = (key, name) => `CraftQueue = { on = true, chars = { ["${key}"] = { queue = { { id = 1, n = 5, name = "${name}" } }, cooldowns = {} } } }`;

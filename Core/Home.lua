@@ -305,6 +305,7 @@ end
 
 -- /vg launch [clear]: what is saved from before launch, or (clear, once launch has passed) removes it.
 function H.Launch(arg)
+  arg = (arg or ""):lower()
   if arg == "clear" and not H.Launched() then return ns.Chat(L["Launch is on 4 November 2026; nothing is cleared before then."]) end
   local text = betaText(arg == "clear" and H.ClearBeta() or H.Beta())
   if not text then return ns.Chat(L["No prices, sales or characters saved from before launch."]) end

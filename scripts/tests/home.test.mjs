@@ -169,7 +169,7 @@ it("home: /vg launch counts what the beta left, and clears only data stamped bef
   addon.slash("launch clear");
   expect([chatHas(addon, /Launch is on 4 November 2026/), left(addon)], "before launch nothing goes").toEqual([true, [3, 4, 2, 4, 3]]);
   addon.eval("__now = " + LIVE_DAY);
-  addon.slash("launch clear");
+  addon.slash("launch Clear");
   expect(chatHas(addon, /Cleared what was saved from before launch: 2 prices, 3 sales, 1 characters\./), "cleared").toBe(true);
   expect(left(addon), "the live prices, sales, auctions and characters stay in order; the price count is redone").toEqual([1, 2, 1, 3, 1]);
   expect(addon.eval("return VanguardDB.ah.ledgers['ForeverTest-Alliance'].records[1].amount"), "the live sale kept").toBe(9);

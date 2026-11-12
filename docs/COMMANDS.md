@@ -1,6 +1,6 @@
 # Commands
 
-Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the commands in game with the same command words. Six words are WoW Forever only: `ranks`, `trainers`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
+Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the commands in game with the same command words. Six words are WoW Forever only: `ranks`, `trainers`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against. The words after a command (`on`, `off`, `clear`, `reset`, `all` and the like) are read in any case; a name you made yourself (a profile, a frame) is matched as typed, or in any case where the command says so.
 
 ## Options and setup
 
