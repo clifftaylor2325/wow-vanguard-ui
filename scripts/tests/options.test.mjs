@@ -2492,6 +2492,16 @@ it("the class accent: /vg accent class sets it, a shared profile gives each char
   expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
 });
 
+it("H46-B-G2 the class accent: a profile reset leaves no theme table, and a profile notice adds none", () => {
+  const addon = loggedIn();
+  addon.slash("accent class");
+  expect(addon.eval("return type(ns.Profile().theme)"), "the class accent was chosen, so the profile has a theme").toBe("table");
+  addon.eval("ns.ResetProfile()");
+  expect(addon.eval("return type(ns.Profile().theme)"), "reset: the class accent listener filled nothing back in").toBe("nil");
+  addon.eval("ns.ProfileChanged()");
+  expect(addon.eval("return { type(ns.Profile().theme), #ns.errors }"), "a notice for a profile that never chose it adds no theme").toEqual(["nil", 0]);
+});
+
 it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
   const addon = loggedIn();
   addon.slash("");
