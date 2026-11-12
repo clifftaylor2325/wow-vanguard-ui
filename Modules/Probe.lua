@@ -587,7 +587,7 @@ local function questLines()
   return {
     flag and ("new-quest flag: " .. flag.source .. " " .. flag.name .. " = " .. describe(flag.value)) or "new-quest flag: none found",
     enumLine("QuestClassification"), enumLine("QuestTag"),
-    ns.GuideData.Line({ "C_QuestLog.GetQuestClassification", "quest" }),
+    ns.GuideData.Line({ "C_QuestInfoSystem.GetQuestClassification", "quest" }),
     ns.GuideData.Line({ "C_QuestLog.GetQuestTagInfo", "quest" }),
   }
 end
