@@ -2854,3 +2854,18 @@ it("quest tracker: with Vanguard's tracker off, the game's tracker takes clicks 
   off.eval("ObjectiveTrackerFrame:Update()");
   expect(trackerMouse(off), "the game's own tracker, untouched").toEqual({ line: [true, true], bar: [false, true], locked: [true, true], added: [true, true] });
 });
+// H46-27-1: the quest log's own switch turned off live (O.RestartSetting) leaves the earlier run's toggle hook in the gate; it must go quiet.
+it("H46-27-1: with Vanguard's quest log switched off live, the game's button, a tracker title and /vg quests are the game's", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
+  addon.eval("ns.Settings('QuestLog').own = false ns.RestartModule('QuestLog')");
+  addon.update(0.5);
+  addon.eval("ToggleQuestLog()");
+  expect(addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown(), __game }"), "the game's button opens the game's log").toEqual([false, true, 1]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  addon.slash("quests");
+  expect([addon.eval("return Vanguard_QuestLog:IsShown()"), chatHas(addon, /quest log is off/)], "a tracker title and /vg quests leave Vanguard's log shut").toEqual([false, true]);
+  addon.eval("ns.Settings('QuestLog').own = true ns.RestartModule('QuestLog')");
+  addon.update(0.5);
+  addon.eval("WorldMapFrame:Hide() ToggleQuestLog()");
+  expect(addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown() }"), "switched back on, the button opens Vanguard's log again").toEqual([true, false]);
+});

@@ -36,7 +36,7 @@ local function questRows()
     check(L["Vanguard's quest dialog (reload)"], O.RestartSetting("QuestDialog", "dialog")),
   }, append(fallbackRows(), {
     check(L["Vanguard's quest log (reload)"], O.RestartSetting("QuestLog", "own")),
-    check(L["Each quest's XP in the quest log list"], liveSetting("QuestLog", "xp", function() if ns.GetModule("QuestLog").frame and ns.ModuleLive("QuestLog") then ns.GetModule("QuestLog").Refresh() end end)),
+    check(L["Each quest's XP in the quest log list"], liveSetting("QuestLog", "xp", function() if ns.GetModule("QuestLog").InUse() then ns.GetModule("QuestLog").Refresh() end end)),
     foldsRow(),
   }))
 end

@@ -398,11 +398,24 @@ function QL.Disable()
   if QL.toggle and type(ClearOverrideBindings) == "function" then ns.OutOfCombat(function() ClearOverrideBindings(QL.toggle) end, "quest log keys") end
 end
 
+-- Whether Vanguard's own quest log is in use: the module live and its window switched on (a window built earlier in
+-- the session stays built when the switch goes off).
+function QL.InUse()
+  return ns.ModuleLive("QuestLog") and QL.frame ~= nil and QL.settings ~= nil and QL.settings.own == true
+end
+
+-- Own window off: the toggle hook and the theme gate (kept from an earlier run in the session) point at nothing, so
+-- the game's quest log button opens the game's log again.
+local function pointAway(scope)
+  scope:Point("quest log toggle", nil)
+  scope:Point("theme", nil)
+end
+
 -- Module entry point (Core/Modules.lua): the window and the key's button are made once a session; everything else
 -- goes through the scope.
 function QL.Enable(settings, scope)
   QL.settings = settings
-  if not settings.own then return end
+  if not settings.own then return pointAway(scope) end
   ns.GetModule("QuestTracker").KeepFoldsOpen()
   if not QL.frame then QL.Build() end
   scope:Mover(QL.frame, "questlog", L["Quest log"], QL.SPOT)

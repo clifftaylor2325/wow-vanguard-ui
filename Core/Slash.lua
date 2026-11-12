@@ -880,7 +880,7 @@ end
 local function questsCommand(rest)
   if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
   local QL = ns.GetModule("QuestLog")
-  if QL.frame and ns.ModuleLive("QuestLog") then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
+  if QL.InUse() then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
 end
 
 local COMMANDS = {
