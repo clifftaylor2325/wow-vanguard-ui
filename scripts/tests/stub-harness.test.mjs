@@ -291,3 +291,18 @@ it("a frame shown or hidden under a hidden parent runs its OnShow or OnHide only
     return table.concat(seen, " ")`);
   expect(runs).toBe("hide | show | hide |");
 });
+
+// Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525 ParseAllAuras clears the groups and returns while
+// not IsEnabled(), before any aura source, Edit Mode's included; Blizzard_AuraContainer.lua:24-25 IsEnabled is
+// `self.enabled == true` (both clients).
+it("a switched-off aura container shows nothing in Edit Mode, though its preview is on", () => {
+  const addon = createAddon();
+  const shown = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    c:AddAuraGroup("x", "HELPFUL", { maxFrameCount = 1, layout = {}, initializeFrame = function(b) b:SetSize(20, 20) end })
+    c:SetUnit("player")
+    __wfgStub.editMode = true c:SetEnabled(false)
+    local off = c.__groups[1].buttons[1].__shown
+    c:SetEnabled(true)
+    return { off, c.__groups[1].buttons[1].__shown }`);
+  expect(shown).toEqual([false, true]);
+});
