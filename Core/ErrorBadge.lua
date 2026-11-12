@@ -51,7 +51,8 @@ local function shortCount(n)
 end
 
 -- Keeps the footer line's two forms, the full sentence (also its tooltip when only the count fits) and the count,
--- (counting what the sentence counts: the paused parts when any, else the errors), and both widths: the count's, which the reload notice leaves free (EB.FooterRoom), and the sentence's, which a fit compares.
+-- (counting what the sentence counts: the paused parts when any, else the errors), and both widths: the count's,
+-- which the reload notice leaves free (EB.FooterRoom), and the sentence's, which a fit compares.
 local function setFooterTexts(b, n)
   local counted = #ns.paused > 0 and #ns.paused or n
   b.fullText, b.shortText = footerText(n), shortCount(counted)
