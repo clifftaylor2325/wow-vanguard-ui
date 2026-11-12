@@ -652,7 +652,7 @@ function checkedOwned(locale, undercut) {
 }
 
 it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, and the summary shows in the heading, in real translations (P10-5, B10-1)", () => {
-  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU"]) {
+  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU", "itIT", "esES", "esMX", "koKR", "zhCN", "zhTW"]) {
     const addon = checkedOwned(locale, true);
     const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
     expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
