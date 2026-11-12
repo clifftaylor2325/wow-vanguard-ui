@@ -584,6 +584,7 @@ end
 -- put away and comes back after).
 function ns.OfferReload(why)
   local f = reloadDialog()
+  f.earlier = f:IsShown() and f.why ~= why and (f.earlier or f.why) or nil
   f.why = why
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
@@ -594,8 +595,13 @@ function ns.OfferReload(why)
 end
 
 -- Takes an offered reload back when it was made for this reason and is still up (the change it waited for
--- no longer needs one). An offer made for another reason stays. Vanguard's own dialog: safe in combat.
+-- no longer needs one). An offer made for another reason stays. When it had replaced an earlier reason that
+-- is still owed (the dialog stayed up), that one is offered again instead of the dialog hiding. Vanguard's own
+-- dialog: safe in combat.
 ---@param why string
 function ns.WithdrawReload(why)
-  if reload and reload:IsShown() and reload.why == why then reload:Hide() end
+  if not (reload and reload:IsShown() and reload.why == why) then return end
+  local earlier = reload.earlier
+  reload.earlier, reload.why = nil, nil
+  if earlier then ns.OfferReload(earlier) else reload:Hide() end
 end

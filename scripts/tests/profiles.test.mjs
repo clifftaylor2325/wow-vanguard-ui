@@ -373,6 +373,18 @@ it("ns.WithdrawReload does nothing before any reload was offered", () => {
   const addon = offerCharacter(false);
   expect(addon.eval("ns.WithdrawReload('x') return true")).toBe(true);
 });
+// H46-21-51: the reload dialog's title and whether it is shown, after the Lua `steps` ran.
+const reloadAfter = (steps) => {
+  const addon = loggedIn();
+  return addon.eval(`${steps} return { Vanguard_Reload:IsShown(), (Vanguard_Reload.title:GetText():gsub(" Reload the UI now to apply it%?", "")) }`);
+};
+it("H46-21-51 withdrawing a spec offer brings back the earlier reason still owed", () => {
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.WithdrawReload('B.')"), "A is offered again").toEqual([true, "A."]);
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.WithdrawReload('B.') ns.WithdrawReload('B.') ns.OfferReload('A.') ns.WithdrawReload('A.')"), "then nothing more is owed").toEqual([false, "A."]);
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.OfferReload('C.') ns.WithdrawReload('C.')")[1], "the oldest reason stays").toBe("A.");
+  expect(reloadAfter("ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "an offer with nothing earlier hides").toBe(false);
+  expect(reloadAfter("ns.OfferReload('A.') Vanguard_Reload:Hide() ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "a closed dialog starts clean").toBe(false);
+});
 it("Copy here, a partial import and /vg profile copy write into the profile the reload loads, not a hand pick a spec overrides", () => {
   const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Raid = {}, Src = { theme = { accent = { 0, 0, 1 }, reduceMotion = true } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
   const addon = createAddon({ savedVariables: sv });
