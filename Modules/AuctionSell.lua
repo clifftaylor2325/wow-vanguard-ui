@@ -243,10 +243,21 @@ local function ofSuffix(r, suffix)
   return want == 0 or (type(r.itemKey) == "table" and ns.PlainNumber(r.itemKey.itemSuffix) == want)
 end
 
--- Whether a result may hold a listing of yours: it says so, or the client hides whether (left out of a
--- price to beat, as the price store leaves it out).
-local function mayBeOwn(r)
-  return ns.IsSecret(r.containsOwnerItem) or r.containsOwnerItem == true
+-- Whether a commodity price row holds nothing but your units (the count of others' units is not above
+-- 0, or the client hides a count); a row is shared by every seller at that price (Blizzard's
+-- AggregateSearchResultsByQuantity counts quantity - numOwnerItems).
+local function allOwn(r)
+  local qty, mine = ns.PlainNumber(r.quantity), ns.PlainNumber(r.numOwnerItems)
+  return not (qty and mine) or qty - mine < 1
+end
+
+-- Whether a result may hold only listings of yours: it says it holds yours and, for a commodity, no
+-- one else's units share its price, or the client hides whether (left out of a price to beat, as the
+-- price store leaves it out).
+local function mayBeOwn(r, commodity)
+  if ns.IsSecret(r.containsOwnerItem) then return true end
+  if r.containsOwnerItem ~= true then return false end
+  return not commodity or allOwn(r)
 end
 
 -- The cheapest unit price someone else asks for an item now (your listings left out), or nil:
@@ -255,7 +266,7 @@ end
 function AH.Cheapest(commodity, key, suffix)
   local best
   for _, r in ipairs(results(commodity, key)) do
-    local unit = not mayBeOwn(r) and ofSuffix(r, suffix) and resultUnit(r, commodity)
+    local unit = not mayBeOwn(r, commodity) and ofSuffix(r, suffix) and resultUnit(r, commodity)
     if unit and (not best or unit < best) then best = unit end
   end
   return best
@@ -265,7 +276,7 @@ end
 -- names it (AH.BandText: the game's words, TIME_LEFT_SHORT...), else nothing.
 function AH.TimeLeft(r)
   local secs = ns.PlainNumber(r.timeLeftSeconds)
-  if secs then return secs >= 3600 and ns.Format(L["{count} h"], { count = math.floor(secs / 3600) }) or ns.Format(L["{count} min"], { count = math.max(1, math.ceil(secs / 60)) }) end
+  if secs then return AH.SecondsText(secs) end
   return AH.BandText(ns.PlainNumber(r.timeLeft))
 end
 

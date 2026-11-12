@@ -841,3 +841,14 @@ it("H44-G3-6: the game's answer to the last stack goes when the house closes", (
   addon.update(0);
   expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "back at the house: the old refusal is gone, the finished line as before").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
 });
+
+it("H45-31-101 a commodity price row shared with another seller counts: it is the price to beat", () => {
+  // Blizzard_AuctionHouseUtil.lua AggregateSearchResultsByQuantity: units for sale = quantity - numOwnerItems.
+  const shared = `__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 25, numOwnerItems = 5, containsOwnerItem = true }, { unitPrice = 150, quantity = 3 } }`;
+  const addon = atAuctionHouse(BAGS + shared);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(card(addon)[0][0], "someone else asks 1s for 20 units").toBe("1s 0c");
+  const hidden = atAuctionHouse(BAGS + shared.replace("numOwnerItems = 5", "numOwnerItems = __wfgWorld.secret(5)"));
+  dropAndAnswer(hidden, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(card(hidden)[0][0], "a hidden count of yours keeps the row out").toBe("1s 50c");
+});

@@ -197,6 +197,16 @@ function AL.OnOwned()
   end
 end
 
+-- The records an auction event cannot join (as a set): those read from a mail only, before moment. A mail
+-- cannot tell of a sale announced after it was read.
+local function mailOnlyBefore(book, moment)
+  local out = {}
+  for _, r in ipairs(book.records) do
+    if r.auction == nil and r.t < moment then out[r] = true end
+  end
+  return out
+end
+
 -- Auction id sold (row: its sold row from your auctions list, else it is as it was up): a sale of
 -- its units at its price, unless the ledger never saw it; it is up no more.
 function AL.Sold(auctionID, row)
@@ -204,7 +214,8 @@ function AL.Sold(auctionID, row)
   local a = row and openOf(row) or book.open[auctionID]
   book.open[auctionID] = nil
   local amount = row and row.amount or a and a.unit and a.unit * a.qty
-  if amount then AL.Note(eventRecord("sold", auctionID, a, amount)) end
+  if not amount then return end
+  AL.Note(eventRecord("sold", auctionID, a, amount), mailOnlyBefore(book, row and AL.since or math.huge))
 end
 
 -- Auction id ran out ("expired") or was cancelled ("cancelled"): a record of what it was; for a
