@@ -6783,7 +6783,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.793 The Grid spacing slider and the Skin for switches (H46-24-53; WoW Forever and Retail)
 
-- Do: Open /vg, General, Layout, open More settings, press Move frames and drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
+- Do: Open /vg, General, Layout, open More settings, tick Show a grid while moving and press Move frames (the window closes); type /vg and open General, Layout, More settings again while the frames are unlocked, then drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
 - Expect: The grid redraws at the new spacing at once while unlocked; the skin switch shows the reload notice, and after the reload /vg skins lists that skin as off.
 - If it fails, paste: /vg skins.
 
@@ -6981,8 +6981,8 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.826 The sell list and vendor words in any case (H46-40-F1; WoW Forever and Retail)
 
-- Do: Type /vg junk add <item link>, then /vg junk Remove <the same link> (capital R); then /vg vendors Clear. [Client: Forever and Retail.]
-- Expect: The item leaves the sell list (it is not added again), and the remembered merchants are forgotten.
+- Do: Type /vg junk <item link>, then /vg junk Remove <the same link> (capital R); then /vg vendors Clear. [Client: Forever and Retail.]
+- Expect: The first puts the item on the sell list and the second takes it off (it is not added again); the remembered merchants are forgotten.
 - If it fails, paste: the chat lines.
 
 ### 33.827 Taking a staged profile switch back closes its reload offer (H46-10-11; WoW Forever and Retail)
@@ -7008,6 +7008,42 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: With the chat filter on and its Filtered tab made, switch Chat filter off under Modules and /reload; close the Filtered tab (its tab menu, Close Chat Window) and make a new chat window from the main tab's menu; then switch Chat filter on under Modules and wait for a spam line in Trade. [Client: Forever and Retail.]
 - Expect: The new window keeps its own name and gets no spam; a new Filtered tab is made for the caught line.
 - If it fails, paste: the tab names along the chat dock.
+
+### 33.831 The options page keeps its scroll over a profile change (H46-40-301; WoW Forever and Retail)
+
+- Do: Open /vg on the Modules page, scroll it halfway down, then type /vg profile copy <another profile> and answer Copy here. [Client: Forever and Retail.]
+- Expect: The Modules page stays on its tab, scrolled where it was; it does not jump to the top.
+- If it fails, paste: whether it jumped to the top, and the tab it showed.
+
+### 33.832 A chat size dragged in Edit Mode and not saved is not kept (H46-40-401; WoW Forever and Retail)
+
+- Do: Type /run print(ChatFrame1:GetSize()), open Edit Mode, drag the main chat window's corner grip to a new size, close Edit Mode and pick Exit (do not save); /reload and type /run print(ChatFrame1:GetSize()) again. [Client: Forever and Retail.]
+- Expect: The size after the reload is the size from before Edit Mode, not the dragged one.
+- If it fails, paste: both printed sizes.
+
+### 33.833 A saved Edit Mode chat size outlasts a later drag that is thrown away (H46-40-401; WoW Forever and Retail)
+
+- Do: On a layout of your own, open Edit Mode, drag the main chat window's corner grip, press Save, drag it again, close Edit Mode and pick Exit (do not save); /reload and type /run print(ChatFrame1:GetSize()). [Client: Forever and Retail.]
+- Expect: The printed size is the one you saved, not the second drag's and not the size from before.
+- If it fails, paste: the printed size, and the saved size if you noted it.
+
+### 33.834 A chat size saved as a new layout from a preset is kept (H46-40-401; WoW Forever and Retail)
+
+- Do: With the Modern or Classic preset layout active, open Edit Mode, drag the main chat window's corner grip, press Save and name the new layout, close Edit Mode; /reload and type /run print(ChatFrame1:GetSize()). [Client: Forever and Retail.]
+- Expect: The printed size is the dragged one, the size the new layout saved.
+- If it fails, paste: the printed size and the layout's name.
+
+### 33.835 A second staged profile switch, taken back, closes the reload offer (H46-40-903; WoW Forever and Retail)
+
+- Do: Type /vg profile <profile A> so the reload offer comes up, leave it up, type /vg profile <profile B>, then /vg profile <the profile you use>. [Client: Forever and Retail.]
+- Expect: After B the offer names only B; after the last command it closes.
+- If it fails, paste: the offer's text after each command.
+
+### 33.836 An imported profile's reload offer closes when the switch is taken back (H46-40-904; WoW Forever and Retail)
+
+- Do: Type /vg import and import a whole profile string, leave the reload offer up, then type /vg profile <the profile you use>. [Client: Forever and Retail.]
+- Expect: The reload offer closes.
+- If it fails, paste: the offer's text if it stayed.
 
 ## 34. Retail
 
