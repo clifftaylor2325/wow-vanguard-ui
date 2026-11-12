@@ -6,7 +6,7 @@
 //   Modules/SwingTimer.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 // AllowLoadGameType loads the file only on a client of one of the listed game types;
 // ExcludeLoadGameType skips it on a client of any listed type. Values are
-// comma-separated. Other bracket directives are reported by scripts/check-toc.mjs.
+// comma- or space-separated. Other bracket directives are reported by scripts/check-toc.mjs.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -28,7 +28,7 @@ export function tocLine(raw) {
   const entry = { path: (at < 0 ? line : line.slice(0, at)).trim().replace(/\\/g, "/"), allow: null, exclude: [], unknown: [] };
   for (const [, name, values] of line.slice(Math.max(at, 0)).matchAll(TAG)) {
     const field = TAG_FIELDS[name];
-    const types = values.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
+    const types = values.split(/[\s,]+/).map((v) => v.trim().toLowerCase()).filter(Boolean);
     if (field) entry[field] = [...(entry[field] ?? []), ...types];
     else entry.unknown.push(name);
   }
