@@ -2601,3 +2601,14 @@ it("options: while the spec's profile overrides a staged pick, Copy here names t
   profileButton(addon, "Heal  (in use)", "use");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "Use on the running profile clears the staged pick").toBeFalsy();
 });
+
+it("Escape closes the options window with the close sound and the fade, as the close button does (H46-23-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`ns.Options.Show("general")
+    __sounds, __closes = {}, 0
+    local T = ns.Theme local sound, close = T.Sound, T.CloseWindow
+    T.Sound = function(kind, ...) __sounds[#__sounds + 1] = kind return sound(kind, ...) end
+    T.CloseWindow = function(...) __closes = __closes + 1 return close(...) end`);
+  addon.key("Vanguard_Options", "ESCAPE");
+  expect(addon.eval("return { table.concat(__sounds, ','), __closes, Vanguard_Options:IsShown() }"), "the close sound, the fade, the window gone").toEqual(["close", 1, false]);
+});

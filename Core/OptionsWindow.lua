@@ -1041,11 +1041,11 @@ end
 
 -- A key while the window is open: the ones it uses stop here, every other one
 -- goes on to the game; none is used while a box (search, a value) has the typing.
--- Escape closes the window itself (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
+-- Escape closes the window itself, with the close sound and fade (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
 local function onKey(f, key)
   local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
   if key == "ESCAPE" and not typing then
-    if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else f:Hide() end
+    if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else O.Hide() end
     if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(false) end
     return
   end
