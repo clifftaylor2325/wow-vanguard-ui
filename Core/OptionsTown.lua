@@ -15,7 +15,7 @@ local function auctionScanRows()
     check(L["Scan button (one scan every 15 minutes)"], setting("AuctionHelper", "scanButton")),
     check(L["Recheck undercuts after posting"], setting("AuctionHelper", "recheck")),
     check(L["Disenchant values in tooltips"], ns.AuctionPrices.DisenchantSetting()),
-    check(L["Crafting costs and profit"], setting("AuctionHelper", "crafting")),
+    check(L["Crafting costs and profit"], liveMethod("AuctionHelper", "crafting", "PaintCrafting")),
     check(L["Deals list"], liveMethod("AuctionHelper", "deals", "PaintDeals")),
     check(L["Upgrades list"], liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
   }

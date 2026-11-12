@@ -170,6 +170,11 @@ function CR.Paint()
   f:Show()
 end
 
+-- The panel painted again after its switch changed in the options (Town and gear), so it shows or hides at once.
+function AH.PaintCrafting()
+  CR.Paint()
+end
+
 -- Add reagents -------------------------------------------------------------------------------
 
 -- How many crafts a typed count asks for: a whole number from 1 to CR.MAX_CRAFTS (1 for anything else;

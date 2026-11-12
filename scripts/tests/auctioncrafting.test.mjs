@@ -3,7 +3,7 @@
 // reagents, at the TEST-ONLY profession window of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, items, and recipes. 100 makes a TEST-ONLY bag from 3 Linen Cloth and a
 // thread (plus slots left out: an optional reagent, a currency, a hidden count); 101 is an enchant
@@ -184,4 +184,14 @@ it("the panel goes left of the profession window when the screen has no room at 
   back.eval(`ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 450, -116) ${CR}.Paint() ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) ${CR}.Paint()`);
   const [p, w] = [back.frame("Vanguard_CraftingPanel").rect, back.frame("ProfessionsFrame").rect];
   expect(p.left - w.right, "the window moved back: the panel returns to the right").toBe(52);
+});
+
+it("H46-31-202 the Crafting costs switch in the options hides and shows the panel at once", () => {
+  const addon = crafter(CLICK_LUA);
+  addon.world.openProfession(100);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Crafting costs and profit")');
+  expect(addon.eval("return Vanguard_CraftingPanel:IsVisible()"), "switched off: the panel hides").toBe(false);
+  addon.eval('__click("Crafting costs and profit")');
+  expect(addon.eval("return Vanguard_CraftingPanel:IsVisible()"), "switched on: it shows again for the recipe open").toBe(true);
 });
