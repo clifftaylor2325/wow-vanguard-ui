@@ -1224,23 +1224,70 @@ local function after(name, fn)
   if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn)) end
 end
 
--- Keeps the size the player gives the main window in Edit Mode, by the corner grip or the dialog's Width and Height:
--- both reach EditModeManagerFrame:OnSystemSettingChange (Blizzard_EditMode/Shared/EditModeManager.lua:390, called by
--- EditModeSystemTemplates.lua EditMode_OnResized and EditModeDialogs.lua), never UpdateSystem, so a later layout
--- apply would put the older kept size back. Not UpdateSystemSettingWidth/Height: every layout apply calls those.
-local function keepEditModeSize(_, systemFrame)
-  if systemFrame == _G.ChatFrame1 and CH.settings.place then CH.KeepSize(systemFrame:GetWidth(), systemFrame:GetHeight()) end
-end
+-- The size the player gives the main window in Edit Mode, kept only once Edit Mode saves it: the corner grip and the
+-- dialog's Width and Height both reach EditModeManagerFrame:OnSystemSettingChange (Blizzard_EditMode/Shared/
+-- EditModeManager.lua:400, called by EditModeSystemTemplates.lua EditMode_OnResized and EditModeDialogs.lua), never
+-- UpdateSystem (not UpdateSystemSettingWidth/Height either: every layout apply calls those). Every save ends in
+-- SaveLayouts (EditModeManager.lua:1655-1660: Save, a rename or delete, a new layout), and Revert Changes and every
+-- exit in RevertAllChanges (:1670-1674, from ExitEditMode :116-119); a new layout (MakeNewLayout, :1567-1588) reverts,
+-- then saves the copy of the layout being edited it was given. A size thrown away is not kept, but the window shows
+-- the layout's size until the next layout apply or reload, as it did before sizes from Edit Mode were kept.
+local watchEditMode
+do
+  -- The size set in Edit Mode and not saved yet ({ width, height }), and the one the last revert threw away.
+  local pending, reverted
 
--- Puts the main window's kept size back each time the game's Edit Mode applies a layout to it: ChatFrame1 is an Edit
--- Mode system, and EditModeChatFrameSystemMixin:UpdateSystem sets its size from the layout after placing it
--- (same file), so a post-hook sees the layout's size set; a size the player sets in Edit Mode is kept (keepEditModeSize).
-local function watchEditMode()
-  local frame, manager = _G.ChatFrame1, _G.EditModeManagerFrame
-  if type(hooksecurefunc) ~= "function" or type(frame) ~= "table" or type(frame.UpdateSystem) ~= "function" then return end
-  hooksecurefunc(frame, "UpdateSystem", ns.Guard("hook chat edit mode", CH.RestoreSize))
-  if type(manager) ~= "table" or type(manager.OnSystemSettingChange) ~= "function" then return end
-  hooksecurefunc(manager, "OnSystemSettingChange", ns.Guard("hook chat edit mode size", keepEditModeSize))
+  -- Notes the size Edit Mode just gave the main window (only a window Vanguard places), and only when both numbers
+  -- are plain: while its geometry is secret nothing is noted, so a save or a new layout keeps the size from before.
+  local function noteSize(_, systemFrame)
+    if systemFrame ~= _G.ChatFrame1 or not CH.settings.place then return end
+    local width, height = ns.PlainNumber(systemFrame:GetWidth()), ns.PlainNumber(systemFrame:GetHeight())
+    pending = width and height and { width, height } or nil
+  end
+
+  -- Edit Mode saved its layouts: the noted size is kept while the window still has it (a switch to another layout
+  -- without saving has put that layout's size on it).
+  local function keepSaved()
+    local frame, size = _G.ChatFrame1, pending
+    pending = nil
+    if not size or ns.PlainNumber(frame:GetWidth()) ~= size[1] or ns.PlainNumber(frame:GetHeight()) ~= size[2] then return end
+    CH.KeepSize(size[1], size[2])
+  end
+
+  -- Edit Mode threw its changes away: the noted size goes, remembered for a new layout made from them.
+  local function dropReverted()
+    reverted, pending = pending, nil
+  end
+
+  -- A new layout made from the layout being edited (not an imported one) saves the size its revert threw away.
+  local function keepNewLayout(_, _, _, _, isLayoutImported)
+    local size = reverted
+    reverted = nil
+    if size and isLayoutImported ~= true then CH.KeepSize(size[1], size[2]) end
+  end
+
+  -- The Edit Mode manager's methods watched for the main window's size, with their post-hooks.
+  local MANAGER_HOOKS = { OnSystemSettingChange = noteSize, SaveLayouts = keepSaved, RevertAllChanges = dropReverted, MakeNewLayout = keepNewLayout }
+
+  -- True when the manager has every method watched: a client missing one keeps no Edit Mode size at all.
+  local function watchable(manager)
+    if type(manager) ~= "table" then return false end
+    for name in pairs(MANAGER_HOOKS) do
+      if type(manager[name]) ~= "function" then return false end
+    end
+    return true
+  end
+
+  -- Puts the main window's kept size back each time the game's Edit Mode applies a layout to it: ChatFrame1 is an
+  -- Edit Mode system, and EditModeChatFrameSystemMixin:UpdateSystem sets its size from the layout after placing it
+  -- (EditModeSystemTemplates.lua), so a post-hook sees the layout's size set; a size saved in Edit Mode is kept.
+  function watchEditMode()
+    local frame, manager = _G.ChatFrame1, _G.EditModeManagerFrame
+    if type(hooksecurefunc) ~= "function" or type(frame) ~= "table" or type(frame.UpdateSystem) ~= "function" then return end
+    hooksecurefunc(frame, "UpdateSystem", ns.Guard("hook chat edit mode", CH.RestoreSize))
+    if not watchable(manager) then return end
+    for name, fn in pairs(MANAGER_HOOKS) do hooksecurefunc(manager, name, ns.Guard("hook chat edit mode " .. name, fn)) end
+  end
 end
 
 -- Re-stacks the side buttons after the game's chat alert container re-anchors Quick Join and text

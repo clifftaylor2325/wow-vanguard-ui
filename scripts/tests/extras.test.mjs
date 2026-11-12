@@ -1127,3 +1127,28 @@ it("H46-13-2: the height goes through the range clamp, a dragged column keeps it
   addon.eval('ns.GetModule("UnitFrames").settings.partyHeight = 60 ns.GetModule("UnitFrames").ApplySizes()');
   expect(Math.abs(addon.eval("return Vanguard_party4:GetBottom()") - foot) <= 2, "a live change keeps the foot").toBe(true);
 });
+
+// TEST-ONLY: an item for the bag and stock words, a stock list holding it, and the mail tools on.
+const ANY_CASE_ENV = `__wfgWorld.items[90021] = { name = "TEST-ONLY Linen" }
+  VanguardCharDB.stockList = { [90021] = 5 }\n`;
+const ANY_CASE_WORDS = ["stock Clear", "bag Add Herbs item:90021", "bag Top Herbs", "bag Remove item:90021", "bag Deposit Herbs", "bag Delete Herbs",
+  "history Off", "history On", "history Nowhispers", "history Whispers", "history Clear",
+  "watch Add Gold", "watch List", "watch Remove Gold", "watch Clear",
+  "mail Preset Add Alts Bobalt", "mail Preset", "mail Send Alts", "mail Takeall", "mail Returnall", "mail Preset Remove Alts"];
+// What each command says, typed in turn on one character, the command word as given (the rest keeps its case).
+function answers(cased) {
+  const addon = loggedIn(ANY_CASE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MailTools = { on = true } } }" });
+  return ANY_CASE_WORDS.map((words) => {
+    addon.clearChat();
+    addon.slash(cased(words));
+    return Array.from(addon.chat()).join(" | ");
+  });
+}
+
+it("H46-40-901 H46-40-R1 the second word of stock, bag, history, watch and mail reads the same with a capital as in lower case", () => {
+  // The same words with the command word (and mail preset's) in lower case.
+  const lower = (words) => words.replace(/^(mail preset|\S+) (\S+)/i, (_, cmd, word) => `${cmd.toLowerCase()} ${word.toLowerCase()}`);
+  const said = answers((words) => words);
+  expect(said, "each answer as lower case gives it").toEqual(answers(lower));
+  expect(said.filter((line) => /Usage:|No mail matches/.test(line)), "no capital falls to the usage line or to a mail search").toEqual([]);
+});

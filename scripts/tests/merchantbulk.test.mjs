@@ -298,10 +298,27 @@ it("the merchant helpers switched off live take the drawer off the open quantity
   expect(split(addon)[0], "Stack shows on the merchant's item").toBe(true);
   addon.eval('ns.SetModuleEnabled("Merchant", false)');
   expect([split(addon), addon.eval("return ns.FrameState('vgSplitBulk')[StackSplitFrame].drawer:IsShown()")], "off: the drawer and its buttons and line hidden").toEqual([[false, false, false, "Max 40 for 0s 80c"], false]);
+  // MERCHANT_SHOW opens the merchant interaction (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+  // MerchantFrameDocumentation.lua:112; the window opens through MerchantFrame_MerchantShow, Blizzard_UIPanels_Game/
+  // Mainline/MerchantFrame.lua:89). That no second one comes while the window stays up is game-only.
+  addon.eval('MerchantFrame = { selectedTab = 1, IsShown = function() return true end }');
   addon.eval('ns.SetModuleEnabled("Merchant", true)');
-  addon.fire("MERCHANT_SHOW");
   addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
-  expect(split(addon)[0], "on again: the next opening has it").toBe(true);
+  expect(split(addon)[0], "H46-32-1 on again at the still-open merchant, no second MERCHANT_SHOW: the next opening has it").toBe(true);
+});
+
+it("H46-32-1 the merchant helpers switched on away from a merchant are not open, and /vg sell says to open one", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.eval('ns.SetModuleEnabled("Merchant", false)');
+  addon.eval('MerchantFrame = { selectedTab = 1, IsShown = function() return false end }');
+  addon.eval('ns.SetModuleEnabled("Merchant", true)');
+  expect(addon.eval("return ns.GetModule('Merchant').open"), "a hidden window is no merchant").toBe(false);
+  addon.slash("sell 159");
+  expect(chatHas(addon, /Open a merchant first/)).toBe(true);
+  addon.eval("MerchantFrame = nil");
+  addon.eval('ns.SetModuleEnabled("Merchant", false)');
+  addon.eval('ns.SetModuleEnabled("Merchant", true)');
+  expect(addon.eval("return ns.GetModule('Merchant').open"), "no MerchantFrame global at all: closed").toBe(false);
 });
 
 it("opening the quantity window for another item while it is open refreshes the drawer, and a stale press buys nothing", () => {
@@ -589,4 +606,13 @@ it("an irreversible move started in a fight is refused before any question, with
   addon.world.combat(true);
   addon.eval(`ns.Irreversible({ question = "TEST-ONLY?", yes = "TEST-ONLY", act = function() __acted = true end })`);
   expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return __acted == true"), chatHas(addon, /Not in a fight: try again after it/)]).toEqual([false, false, true]);
+});
+
+it("/vg junk reads clear and remove in any case, as the other /vg words are read", () => {
+  const addon = loggedIn(BULK_ENV);
+  set(addon, "j[159] = true j[4540] = true");
+  addon.slash("junk Remove |Hitem:159::|h[TEST-ONLY Water]|h");
+  expect([chatHas(addon, /TEST-ONLY Water is off your sell list\.$/), addon.eval("return ns.GetModule('Merchant').SellList()[159] == nil")], "Remove takes the item off").toEqual([true, true]);
+  addon.slash("junk CLEAR");
+  expect([chatHas(addon, /Your sell list is empty\.$/), addon.eval("return next(ns.GetModule('Merchant').SellList()) == nil")], "CLEAR empties the list").toEqual([true, true]);
 });

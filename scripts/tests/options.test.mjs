@@ -2710,6 +2710,30 @@ it("options: pages built before a profile change are built again, so the Damage 
   expect([addon.eval('return __click("Remove: TEST-ONLY old phrase")'), addon.eval('return __click("Remove: TEST-ONLY new phrase")')], "the Chat page lists the new profile's phrase, not the old one").toEqual([false, true]);
 });
 
+// H46-40-301: the shown Modules page's view.
+const MODULES_VIEW = `local function view() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.child and c.child.pageKey == "modules" and c:IsShown() then return c end end end`;
+// The Modules page scrolled to 200 on Town and gear, then `change` run: { scroll before, a new view, scroll after, tab }.
+const scrolledThrough = (addon, change) => {
+  addon.eval('ns.Options.Show("modules") ns.Options.ShowTab("Town and gear")');
+  return addon.eval(`${MODULES_VIEW}
+    local v = view() v:ScrollTo(200) local before = v:GetVerticalScroll()
+    ${change}
+    return { before, view() ~= v, view():GetVerticalScroll(), view().cards[view().tab].tabName }`);
+};
+it("H46-40-301 a profile change while a page shows builds it again on its tab and at its scroll", () => {
+  expect(scrolledThrough(loggedIn(CLICK_LUA), "ns.ProfileChanged()"), "a new view, the same tab and offset").toEqual([200, true, 200, "Town and gear"]);
+});
+it("H46-40-301 /vg profile applied at once keeps the shown page where it was", () => {
+  const addon = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Raid = { modules = {} } } }\nVanguardCharDB = { profile = "Default", setupDone = true }` });
+  addon.eval(`${CLICK_LUA}
+for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`);
+  addon.login();
+  const out = scrolledThrough(addon, 'SlashCmdList.VANGUARD("profile Raid")');
+  expect([addon.eval("return ns.ProfileName()"), out], "Raid at once, the page where it was").toEqual(["Raid", [200, true, 200, "Town and gear"]]);
+});
+
 it("H46-24-53: General has a Grid spacing slider, and the Modules page a switch per registered skin", () => {
   const addon = loggedIn(CLICK_LUA + 'Vanguard.RegisterSkin("TESTONLY", function() end)');
   addon.eval('ns.Options.Show("general")');

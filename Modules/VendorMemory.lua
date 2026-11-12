@@ -130,9 +130,9 @@ local function merchantCount(store)
   return n
 end
 
--- /vg vendors [clear]: how many merchants are remembered, or forget them all.
+-- /vg vendors [clear]: how many merchants are remembered, or forget them all (clear in any case).
 function VM.Command(rest)
-  if rest == "clear" then VanguardDB.vendors = nil return ns.Chat(L["Forgot every merchant."]) end
+  if (rest or ""):lower() == "clear" then VanguardDB.vendors = nil return ns.Chat(L["Forgot every merchant."]) end
   local store = VM.Store()
   ns.Chat(ns.Format(L["{merchants} merchant(s) remembered, selling {items} item(s). /vg vendors clear forgets them."], { merchants = merchantCount(store), items = store.count }))
 end

@@ -22,5 +22,5 @@ description: Add or change a texture, icon or piece of art in Vanguard's Media/ 
 ## Do not
 
 - Commit a PNG, TGA or BLP that no source makes.
-- Ship a font: fonts come from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` only.
+- Ship a font: Fira Sans Condensed comes from upstream by `scripts/fonts/make-fonts.py`, the faction heading fonts (Cinzel, Metamorphous) by `scripts/fonts/make-heading-fonts.py`; no other font ships without Cliff's say and a license file beside it.
 - Crop a game atlas with file coordinates: once `SetAtlas` has run, `SetTexCoord` is relative to the atlas member on both clients (Blizzard's cast bar slices its empower tiers that way, `Blizzard_UIPanels_Game/Shared/CastingBarFrame.lua`), and `SetAtlas` takes a `resetTexCoords` argument for earlier coordinates. Size and anchor the art instead.

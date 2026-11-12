@@ -39,6 +39,7 @@ export const FULL_CASES = [
   "scripts/tests/casts.test.mjs|H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
   "scripts/tests/hudstyling.test.mjs|H26-1-2 the swing timer keeps riding the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
   "scripts/tests/chat.test.mjs|H26-1-2 on a narrow screen chat keeps clear of the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
+  "scripts/tests/bars.test.mjs|A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame", // with ActionBars off there are no buttons, so once-per-button passes vacuously (H46-35-101)
 ];
 
 // The account file version a fresh install is stamped with, read from Core/DB.lua so a scoped

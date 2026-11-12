@@ -452,3 +452,14 @@ it("Standards: a spark mid-sweep moves along the new axis when the layout change
   expect([orient, x, y > 0 && y < barH, barW > 0], "the spark follows the standing bar at once, on one anchor").toEqual(["VERTICAL", barW / 2, true, true]);
   expect(addon.eval(`local n = 0 for _ in pairs(ns.GetModule("PowerTicks").spark.__points) do n = n + 1 end return n`), "one anchor").toBe(1);
 });
+
+it("H46-40-102 a spark mid-sweep is shaped again for the bar when the layout turns it, both ways", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + TICKS_ENV);
+  addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
+  addon.eval("__wfgStub.advance(2.5) ns.SetHudLayout('standards') __wfgStub.update(0.01)");
+  const [, , , , barW, , sparkW, sparkH, turn] = addon.eval(SPARK_LUA);
+  expect([sparkW, sparkH, turn], "standing: as wide as the line, a thin streak turned a quarter").toEqual([barW, 6, Math.PI / 2]);
+  addon.eval("ns.SetHudLayout('centered') __wfgStub.update(0.01)");
+  const [orient, , , , , barH, lyingW, lyingH, flat] = addon.eval(SPARK_LUA);
+  expect([orient, lyingW, lyingH, flat], "lying again: a thin streak as tall as the bar, not turned").toEqual(["HORIZONTAL", 6, barH, 0]);
+});

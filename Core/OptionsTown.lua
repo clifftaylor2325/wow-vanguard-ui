@@ -7,7 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local O = ns.Options
-local setting, liveMethod, check, append = O.Setting, O.LiveMethod, O.Check, O.Append
+local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
@@ -15,7 +15,7 @@ local function auctionScanRows()
     check(L["Scan button (one scan every 15 minutes)"], setting("AuctionHelper", "scanButton")),
     check(L["Recheck undercuts after posting"], setting("AuctionHelper", "recheck")),
     check(L["Disenchant values in tooltips"], ns.AuctionPrices.DisenchantSetting()),
-    check(L["Crafting costs and profit"], setting("AuctionHelper", "crafting")),
+    check(L["Crafting costs and profit"], liveMethod("AuctionHelper", "crafting", "PaintCrafting")),
     check(L["Deals list"], liveMethod("AuctionHelper", "deals", "PaintDeals")),
     check(L["Upgrades list"], liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
   }
@@ -25,7 +25,7 @@ end
 local function auctionRows()
   return append({
     { "header", L["Auction house"] },
-    check(L["Lists and Posting tabs"], setting("AuctionHelper", "panel")),
+    O.ReloadRow(check(L["Lists and Posting tabs"], reloadSetting("AuctionHelper", "panel"))),
     check(L["Auction prices in tooltips"], setting("AuctionHelper", "tooltip")),
     { "cycle", L["Undercut by"], { { "copper", L["1 copper"] }, { "silver", L["1 silver"] }, { "percent", "1 %" }, { "match", L["Match"] } }, setting("AuctionHelper", "undercut") },
     { "cycle", L["Auction length"], ns.GetModule("AuctionHelper").DurationSettingChoices(), setting("AuctionHelper", "duration") },
@@ -58,7 +58,7 @@ end
 local function errandRows()
   return {
     { "header", L["Errands"] },
-    check(L["Train all button at trainers"], setting("Errands", "trainAll")),
+    check(L["Train all button at trainers"], liveMethod("Errands", "trainAll", "UpdateTrainButton")),
     check(L["Keep items stocked from merchants"], setting("Errands", "stock")),
     { "button", L["Edit list..."], function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
     check(L["Flight timer (reload)"], O.RestartSetting("Errands", "flightTimer")),
@@ -163,7 +163,7 @@ local function upgradeRows()
   local rows = { { "header", L["Gear upgrades"] }, { "cycle", L["Weigh stats for"], roles, liveMethod("Upgrades", "role", "Changed") } }
   return append(append(rows, styleRows()), {
     check(L["Upgrade or downgrade on item tooltips"], setting("Upgrades", "tooltip")),
-    check(L["Arrow on upgrades in the combined bag"], setting("Upgrades", "bags")), check(L["Arrow on quest rewards that are upgrades"], setting("Upgrades", "quests")),
+    check(L["Arrow on upgrades in the combined bag"], liveMethod("Upgrades", "bags", "OnGearChanged")), check(L["Arrow on quest rewards that are upgrades"], setting("Upgrades", "quests")),
     { "button", L["Set up stat weights"], function() O.Hide(); ns.GetModule("Upgrades").Wizard.Open() end },
     { "button", L["Import stat weights"], function() O.Hide(); ns.GetModule("Upgrades").ImportDialog() end },
     { "text", L["/vg weights shows the stat weights in use; wizard, set <stat> <n>, reset, export and import change or share them."] },

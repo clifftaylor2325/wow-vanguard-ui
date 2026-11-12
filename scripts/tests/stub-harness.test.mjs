@@ -703,6 +703,19 @@ it("a world power or combo change fires UNIT_POWER_UPDATE with its power type, o
   expect(out).toEqual(["player COMBO_POINTS", "player MANA"]);
 });
 
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:4407-4415
+// (UnitMaxpower; live :4271-4279): the payload is unitTarget, powerType, neither nilable.
+it("a world change of a unit's maximum power fires UNIT_MAXPOWER with the unit's power type", () => {
+  const addon = createAddon();
+  const out = addon.eval(`__wfgWorld.setUnit("player", { ptypeName = "ENERGY" })
+    local seen, f = {}, CreateFrame("Frame")
+    f:RegisterEvent("UNIT_MAXPOWER")
+    f:SetScript("OnEvent", function(_, _, unit, powerType) seen[#seen + 1] = unit .. " " .. tostring(powerType) end)
+    __wfgWorld.setUnit("player", { maxpower = 777 })
+    return seen`);
+  expect(out).toEqual(["player ENERGY"]);
+});
+
 // /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/LuaCurveObjectConstantsDocumentation.lua:
 // Linear "Linearly interpolates between points", Step "snapping to values exactly"; CurveUtilDocumentation.lua:21-29
 // CreateCurve. An unset type interpolates: Blizzard_SharedXMLBase/CurveConstants.lua:3-6 calls the untyped ZeroToOne

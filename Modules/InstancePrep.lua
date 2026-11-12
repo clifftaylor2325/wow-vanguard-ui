@@ -399,12 +399,12 @@ end
 -- You are out of every door: forget the instance, and have the dungeon card count its hour from now.
 local function leftDoor()
   PR.lastInstance = nil
-  if cardOn() then ns.DungeonCard.Left() end
+  ns.DungeonCard.Left()
 end
 
 -- The game is saving (a reload or a log out): inside a dungeon that is leaving it, so the card's hour counts from now.
 function PR.OnLogout()
-  if cardOn() then ns.DungeonCard.Left() end
+  ns.DungeonCard.Left()
 end
 
 -- You came into a world: at a dungeon or raid's door, once per visit (a reload
@@ -497,5 +497,6 @@ end
 
 -- Switched off: the wanted-amounts window, a second frame made when it is first opened, closes with the card.
 function PR.Disable()
+  ns.DungeonCard.Left()
   if PR.Wizard.frame then PR.Wizard.frame:Hide() end
 end

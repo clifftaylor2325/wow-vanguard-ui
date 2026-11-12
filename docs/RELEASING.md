@@ -2,11 +2,11 @@
 
 Two routes ship the same files. The normal one is the `release` workflow in GitHub Actions. The local one is `scripts/release-local.mjs`, which needs no Actions minutes and takes the same release-content checks, the same release zip (the same file names; the store packager rewrites line endings, so the bytes differ), the same release notes and the same CurseForge and Wago packager. Which version to cut and when is Cliff's call; nothing here tags, pushes or publishes until you say so.
 
-**The tests are the author's to run before the tag.** No pull request runs a test in CI (Cliff, 2026-11-10): each one ran the whole suite on its branch before it merged (CLAUDE.md, Tests run locally). The workflow's `Suite` job (`lua-suite.yml` with `tests: false`: the raid benchmark's instruction caps, the quality scan, TOC check, luacheck, Lua 5.1 syntax and the zip, no test) must pass before its `Publish` job starts, so a red test does not stop the workflow. Before the tag, start a full suite on `main` (*full suite* → *Run workflow*: every test on both clients with the coverage floor) and read it, or run the local script, which runs every test before its first upload; if the release ships without either, say so in the release thread. A red test stops the release by the author's hand: fix it on a branch, merge, and start again.
+**The tests are the author's to run before the tag.** No pull request runs a test in CI (Cliff, 2026-11-10): each one ran the whole suite on its branch before it merged (CLAUDE.md, Tests run locally). The workflow's `Suite` job (`lua-suite.yml` with `tests: false`: the raid benchmark's instruction caps, the quality scan, TOC check, luacheck, Lua 5.1 syntax, the media check and the zip, no test) must pass before its `Publish` job starts, so a red test does not stop the workflow. Before the tag, start a full suite on `main` (*full suite* → *Run workflow*: every test on both clients with the coverage floor) and read it, or run the local script, which runs every test before its first upload; if the release ships without either, say so in the release thread. A red test stops the release by the author's hand: fix it on a branch, merge, and start again.
 
 ## One-time setup (do it before launch day)
 
-- Node 22 and `gh` signed in as Cliff (`gh auth status`); `bash`, `git`.
+- Node 24 (`.nvmrc`, the version CI uses) and `gh` signed in as Cliff (`gh auth status`); `bash`, `git`.
 - `lua5.1` (`luac5.1`) on the PATH, so the Lua 5.1 syntax check runs. Without it the script says it skipped it.
 - `CF_API_KEY` (CurseForge, Account → API Tokens) and `WAGO_API_TOKEN` (Wago, Developer tools) in your shell environment. The script never prints them, writes them to a file or puts them on a command line.
 - `npm install` once.
@@ -20,7 +20,7 @@ Two routes ship the same files. The normal one is the `release` workflow in GitH
 4. Rehearse once more: `node scripts/release-local.mjs`. Everything under "Would block a publish" must be empty. This runs `npm run quality`, `npm run test:quick`, `npm run coverage` (every test with the floor, 10 minutes or more), the raid bench with its instruction caps, luacheck when it is installed (the run says when it is not), the zip and its check, and the packager without uploading.
 5. In a real hurry, add `--fast`: every test still runs, as `npm test` without coverage (about half the time). The run says so, and the PR or release notes should too.
 6. Publish: `node scripts/release-local.mjs --publish=v<version>`. The value after `=` must be `v` plus the TOC version, so a stale command can't ship the wrong thing. It uploads to CurseForge and Wago, then creates the GitHub release (the zip attached, the tag created on GitHub at that commit). Each upload runs even if another fails, and the last line names any that failed.
-7. Open the CurseForge and Wago pages and the GitHub release once. The first real upload also shows whether CurseForge lists the file as Forever only or as retail too (the TOC's second Interface value is a retail one); that is the one thing nobody has seen yet.
+7. Open the CurseForge and Wago pages and the GitHub release once.
 8. Tell the site thread: release notes in `scripts/lib/changelog-content.mjs`, and `sourceRef` in the site's `site.config.json`.
 
 Options: `--no-listings` (GitHub only), `--no-github` (stores only), `--fast`, `--help`.

@@ -149,6 +149,11 @@ function CF.Closed(frame, fallback)
   if frame ~= nil and (frame == CF.window or (number and frame == _G["ChatFrame" .. number])) then forget() end
 end
 
+-- Watched from load whether or not the module ever runs (it may be switched off since login), as Chat history's
+-- watch is: a Filtered tab closed meanwhile must not leave its number saved for the tab that takes it next.
+-- FCF_Close is the game's own (Blizzard_ChatFrameBase, loaded before any addon).
+ns.OnChatWindowClosed("filter", CF.Closed)
+
 -- The open window with the saved number, or nil.
 local function savedWindow()
   local number = savedNumber()
@@ -526,7 +531,6 @@ end
 -- through, so it has no Disable. A start after login makes the Filtered tab at once (the world is entered already).
 function CF.Enable(settings, scope)
   CF.settings, CF.scope = settings, scope
-  ns.OnChatWindowClosed("filter", CF.Closed)
   hookChat(scope)
   hookTabName(scope)
   scope:On("PLAYER_ENTERING_WORLD", CF.Prepare)

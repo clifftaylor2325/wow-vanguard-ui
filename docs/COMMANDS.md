@@ -28,7 +28,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | --- | --- |
 | `/vg variant [name]` | Theme variant: default, contrast, vellum, classic, midnight, obsidian, moss, ember |
 | `/vg corners [square\|rounded]` | Panel corners |
-| `/vg accent <colour>`, `/vg theme reset` | The accent colour |
+| `/vg accent <colour>` | The accent colour |
+| `/vg theme reset` | Every Look setting back to its default: accent, variant, corners, panel texture, font and text size |
 | `/vg ornaments`, `/vg gradient`, `/vg icons` | Window ornaments, panel gradient, sharper menu icons (off by default) |
 | `/vg texelsnap`, `/vg nineslice`, `/vg slug`, `/vg framebuffer` | Side-by-side tests (off by default) |
 
@@ -114,7 +115,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
-/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
+/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour
+/vg theme reset                 every theme setting back to default
 /vg modules       the list of modules; /vg enable|disable <module> (a part that can't switch at once says /reload to apply; one whose required part is off says it starts once that is on)
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
@@ -130,7 +132,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
 /vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use, and for the unit tooltip data of your target (its line count only) (chat only; nothing changes)
 /vg probe [chat|fight|last|legacy]    one run out of combat asks the client the open questions (the client's project, interface and build, which of the 14 Forever-only calls it has (presence only; a retail client has none), how many C_Secrets functions it has, which of the game's class resource bars and the encounter timeline exist and whether they are shown or forbidden, SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack (which widget methods exist, among them the texture's slice, SVG and sprite-sheet ones; presence only, nothing is called), quest and map reads, party health, raid marks and boss units, the bars' CVar defaults, reward XP and watched faction, and the click-casting starter layouts' spell ids) and opens the report in a copy box; chat prints it too; typed in a fight it takes only the party, mark and boss reads and keeps them; fight takes the secrecy reads in the next fight; last reopens the saved report with the fight reads after it
-/vg junk [<item>|remove <item>|clear]   your sell list (this character's own): items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it (the Buyback tab holds the last 12 stacks, so a bigger sale says so)
+/vg junk [<item>|remove <item>|clear]   your sell list (this character's own; remove and clear in any case): items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it (the Buyback tab holds the last 12 stacks, so a bigger sale says so)
 /vg bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your bag categories: a name and its items, each under its own header in the combined bag, above the built-in sections; deposit sends one to the open bank tab (reagent bag included; refundable items bound for the Warband bank stay put)
 /vg sell <item>                 at a merchant: sell every stack of an item in your bags (of a random-suffix item, only the variant linked), after a question (past 12 stacks it says only the last 12 can be bought back)
 /vg stock [<item> <n>]          items to keep in your bags; a merchant tops them up (0 removes, clear empties)
@@ -154,7 +156,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel
 /vg ranks [swap]                bar buttons holding an older spell rank; swap puts the newest rank there (out of combat)
 /vg trainers [next|clear]       what the trainers you've visited teach: how many services, the next levels and where, or forget them
-/vg vendors [clear]             how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them
+/vg vendors [clear]             how many merchants Vanguard remembers (for tooltips and the stock list); clear (any case) forgets them
 /vg prep [want <kind> <n>|setup|buffs]   the Instance prep card now; want sets how many food, bandages, potions, ammo or shards to carry; setup opens the wanted-amounts window; buffs lists your buffs and the buff check each counts for
 /vg watch [add|remove <phrase>|list|clear]   Chat watch's phrases: add one, remove one, list them, or clear them all
 /vg filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: switch it on or off, send caught lines to the Filtered tab or hide them, add or remove a word of your own, or show its state

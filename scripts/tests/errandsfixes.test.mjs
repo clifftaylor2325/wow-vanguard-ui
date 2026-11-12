@@ -1,7 +1,7 @@
 // errandsfixes: the H44 wave 23 fixes to Errands (Train all, Keep stocked) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
 
 // Client rule: Forever's GetTrainerServiceInfo returns five values (the fifth is the rank text), forever
 // Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:618; live Mainline reads four, same file :205.
@@ -131,4 +131,16 @@ it("H44-23-150: switching Errands off during the wait clears it, so Train all wo
   addon.fire("TRAINER_SHOW");
   trainAll(addon);
   expect(addon.eval("return #__learned"), "the new session trains again at once").toBe(2);
+});
+
+it("H46-33-R1: the Train all switch hides and shows the button at an open trainer", () => {
+  const addon = loggedIn(RANK_TRAINER + CLICK_LUA);
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.Options.Show("town")');
+  // Whether the Train all button shows.
+  const shown = () => addon.eval('return ns.GetModule("Errands").trainButton:IsShown()');
+  addon.eval('__click("Train all button at trainers")');
+  expect(shown(), "switched off: the button goes at once").toBe(false);
+  addon.eval('__click("Train all button at trainers")');
+  expect(shown(), "switched on: it comes back with no new TRAINER_SHOW").toBe(true);
 });

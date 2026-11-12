@@ -2,7 +2,7 @@
 // (Modules/AuctionPrices.lua), at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
 // hooks, and a way to show an item's tooltip (the client's own price shown, so only the added
@@ -640,4 +640,16 @@ it("H44-21-101: making room in the saved file drops other homes first, not the o
   const addon = loggedIn(RULESET_ENV, { savedVariables: RULESET_SAVED });
   const out = addon.eval("local n = ns.AuctionPrices.DropOldestHomes(1, function() return 1 end) local keys = {} for k in pairs(VanguardDB.ah.houses) do keys[#keys + 1] = k end return { n, table.concat(keys, ',') }");
   expect(out).toEqual([1, "ForeverTest-hardcore-Alliance"]);
+});
+
+it("H46-31-201 the Lists and Posting tabs switch is a reload row; tabs already built keep working until then", () => {
+  const addon = atAuctionHouse(CLICK_LUA);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Lists and Posting tabs")');
+  expect([addon.eval("return ns.Settings('AuctionHelper').panel"), addon.eval("return Vanguard_Options.reload:IsShown()")], "off, and the footer asks for a reload").toEqual([false, true]);
+  addon.world.closeAuctionHouse();
+  addon.eval(`__paints, __paint = 0, ${HELPER}.PaintScan ${HELPER}.PaintScan = function(...) __paints = __paints + 1 return __paint(...) end`);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval("return { #AuctionHouseFrame.Tabs, __paints > 0 }"), "the built tabs are still painted at the next opening").toEqual([5, true]);
 });

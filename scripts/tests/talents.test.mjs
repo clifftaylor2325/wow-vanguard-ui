@@ -585,7 +585,11 @@ it("talent planner: the order window lists the plan, moves talents up and down, 
   expect(orderRows(addon), "Down on the last row changes nothing").toEqual(["1. Wand Specialization (1)", "2. Unbreakable Will (2)"]);
   addon.eval(`${TP}.MoveInOrder(9999, 1)`);
   addon.eval("__click(103)");
-  expect(Object.values(addon.eval(`return ${TP}.Plan().order`)).length, "a talent planned later joins the end of the order").toBeGreaterThanOrEqual(2);
+  expect(Object.values(addon.eval(`return ${TP}.Plan().order`)), "a talent planned later joins the end of the order").toEqual([102, 101, 103]);
+  addon.eval("__click(101, 'RightButton') __click(101, 'RightButton')");
+  addon.eval("__click(101)");
+  expect(Object.values(addon.eval(`return ${TP}.Plan().order`)), "a talent taken out of the plan and planned again joins the end").toEqual([102, 103, 101]);
+  addon.eval("__click(101)");
   addon.eval(`local f = ${TP}.orderFrame f.reset:GetScript('OnClick')(f.reset)`);
   expect(addon.eval(`return ${TP}.Plan().order == nil`), "Top row first forgets the order").toBe(true);
   expect(orderRows(addon)[0], "and the list follows").toBe("1. Unbreakable Will (2)");

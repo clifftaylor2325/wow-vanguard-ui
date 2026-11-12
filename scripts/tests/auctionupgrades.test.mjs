@@ -92,6 +92,23 @@ it("upgrades: a scan lists the gear that beats what you wear, the biggest gain f
   expect([sent(addon).at(-1), addon.eval("return #__wfgWorld.ah.restricted"), addon.eval("return AuctionHouseFrame.selectedTab")], "a click shows it in the game's own list, on its Buy tab; nothing is bought").toEqual(["SearchForItemKeys:102", 0, 1]);
 });
 
+// TEST-ONLY weapons and off-hand items for H46-31-101.
+const HANDS = `local d, items = "ITEM_MOD_DAMAGE_PER_SECOND_SHORT", __wfgWorld.items
+  items[120] = { name = "TEST-ONLY Hand Axe", classID = 2, equipLoc = "INVTYPE_WEAPON", stats = { [d] = 6 } }
+  items[121] = { name = "TEST-ONLY Main Mace", classID = 2, equipLoc = "INVTYPE_WEAPONMAINHAND", stats = { [d] = 7 } }
+  items[130] = { name = "TEST-ONLY Buckler", classID = 4, equipLoc = "INVTYPE_SHIELD", stats = { ITEM_MOD_STAMINA_SHORT = 5 } }
+  items[131] = { name = "TEST-ONLY Orb", classID = 4, equipLoc = "INVTYPE_HOLDABLE", stats = { ITEM_MOD_STAMINA_SHORT = 10 } }`;
+it("H46-31-101 the empty main hand is one slot: one row, whatever the equip types for it are called", () => {
+  const addon = warrior(HANDS);
+  scan(addon, "{ { itemID = 107, count = 1, buyoutPrice = 2000 }, { itemID = 120, count = 1, buyoutPrice = 500 }, { itemID = 121, count = 1, buyoutPrice = 600 } }");
+  expect([1, 2, 3].map((i) => row(addon, i)[0]), "one row").toEqual([true, false, false]);
+  expect([row(addon, 1)[1], card(addon)[1]], "the one with the best score, and the pane counts one").toEqual(["TEST-ONLY Greatsword", 1]);
+});
+it("H46-31-101 the empty off hand is one slot too", () => {
+  const addon = warrior(HANDS);
+  scan(addon, "{ { itemID = 130, count = 1, buyoutPrice = 300 }, { itemID = 131, count = 1, buyoutPrice = 400 } }");
+  expect([row(addon, 1)[1], row(addon, 2)[0]], "the better of shield and held item, alone").toEqual(["TEST-ONLY Orb", false]);
+});
 it("upgrades: an item search's results are judged too, bids only skipped, a listing seen again at its new price", () => {
   const addon = warrior();
   addon.eval(`__wfgWorld.ah.items[102] = { { buyoutAmount = 300, quantity = 1, itemLink = __link(102) }, { minBid = 5, quantity = 1, itemLink = __link(102) },
@@ -143,8 +160,7 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   addon.update(0.01);
   expect([card(addon)[1], row(addon, 1).slice(1, 4)], "the worse bracers worn: the better ones gain 140 %").toEqual([4, ["TEST-ONLY Better Bracers", "Wrist", "+140 %"]]);
   addon.slash("weights set STR 0");
-  addon.eval(`${HELPER}.PaintUpgrades()`);
-  addon.update(0.01);
+  for (let i = 0; i < 10; i++) addon.update(0.01);
   expect([card(addon)[1], row(addon, 1)[1]], "strength worth nothing: the bracers are no gain; the helm and the sword still fill their slots").toEqual([2, "TEST-ONLY Cheap Helm"]);
   addon.world.closeAuctionHouse();
   addon.world.openAuctionHouse();
@@ -161,6 +177,23 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   expect(addon.eval("return #ns.errors"), "gear changing with nothing seen: no error").toBe(0);
 });
 
+it("H46-31-102 Gear upgrades switched off at the house empties the list", () => {
+  const addon = warrior();
+  scan(addon, SCAN);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  for (let i = 0; i < 10; i++) addon.update(0.01);
+  expect([card(addon)[1], row(addon, 1)[0]], "nothing judged any more").toEqual([0, false]);
+});
+it("H46-31-102 weights changed away from the house are judged at the next visit", () => {
+  const addon = warrior();
+  scan(addon, SCAN);
+  addon.world.closeAuctionHouse();
+  addon.slash("weights set STR 0");
+  addon.world.openAuctionHouse();
+  for (let i = 0; i < 10; i++) addon.update(0.01);
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  expect(row(addon, 1)[1], "the bracers are no gain at the next visit").toBe("TEST-ONLY Cheap Helm");
+});
 it("upgrades: a big scan is judged a hundred listings a frame, and closing the house pauses it", () => {
   const addon = warrior(`__rows = {}
     for i = 1, 150 do

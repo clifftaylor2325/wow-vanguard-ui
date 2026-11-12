@@ -108,8 +108,9 @@ end
 
 -- Takes the number typed in a slider's box (any finite number, past the slider's ends too); anything else puts the weight back.
 local function typed(r)
-  local n = UP.ParseWeight(r.box:GetText())
-  if n then r.set(n) end
+  local text = r.box:GetText()
+  local n = UP.ParseWeight(text)
+  if n and text ~= tostring(r.get()) then r.exact(n) end
   r.box:ClearFocus()
   r:Refresh()
 end
@@ -126,6 +127,8 @@ end
 local function sliderRow(list, i)
   local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, SLIDER_WIDTH)
   r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
+  -- Takes a typed weight as it is: the slider's own setter rounds to two places for its float noise, not for the player's number.
+  r.exact = function(v) state.draft[state.stats[i]] = v end
   addBox(r, list)
   r.Refresh = ownRefresh(r.Refresh, i)
   return r

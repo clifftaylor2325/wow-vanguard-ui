@@ -2877,20 +2877,126 @@ it("H46-29-1 chat window size: Vanguard's size comes back after Edit Mode applie
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-// Blizzard_EditMode/Shared/EditModeManager.lua:390 OnSystemSettingChange, reached by the grip (EditModeSystemTemplates.lua:2156) and the dialog (EditModeDialogs.lua:661).
-const MANAGER_ENV = "\nEditModeManagerFrame = { OnSystemSettingChange = function(self, frame, setting, value) frame:SetSize(value, frame:GetHeight()) end }";
+// Edit Mode's manager as the game runs it for the main window's size (Blizzard_EditMode/Shared/EditModeManager.lua,
+// forever lines, live's after the slash): OnSystemSettingChange (:400 / :390), reached by the grip
+// (EditModeSystemTemplates.lua:2233-2240 EditMode_OnResized) and the dialog (EditModeDialogs.lua:661), changes the
+// layout being edited; SaveLayouts (:1655-1660 / :1561-1566) saves it, from Save (SaveLayoutChanges :1662-1668), a
+// rename or delete, and a new layout; RevertAllChanges (:1670-1674 / :1576-1580: UpdateLayoutInfo(C_EditMode.GetLayouts()))
+// applies the saved layout again, from Revert Changes (:58) and every exit (ExitEditMode :116-119 / :111-114, inside the
+// game's own OnHide, :140-142, while Vanguard's pins are still paused); MakeNewLayout (:1567-1588) reverts, then saves the
+// copy of a layout it was given: the one being edited, from the new-layout dialog (CreateNewLayoutFromDialog :1253-1256,
+// also what Save does on a preset), or an imported one (ImportLayout). Layout sizes here are { width, height }.
+const MANAGER_ENV = `
+  __saved, __edit = { 600, 300 }, { 600, 300 }
+  ChatFrame1.UpdateSystem = function(self) self:SetSize(__saved[1], __saved[2]) end
+  EditModeManagerFrame = {
+    OnSystemSettingChange = function(self, frame, setting, value)
+      frame:SetSize(value, frame:GetHeight())
+      if frame == ChatFrame1 then __edit = { value, frame:GetHeight() } end
+    end,
+    SaveLayouts = function(self) __saved = __edit end,
+    RevertAllChanges = function(self) __edit = __saved ChatFrame1:UpdateSystem({}) end,
+    MakeNewLayout = function(self, info, layoutType, name, imported) self:RevertAllChanges() __edit = info self:SaveLayouts() end,
+  }`;
+// The kept size of the main window.
+const kept = (addon) => addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }");
+// A logged-in character whose kept and saved Edit Mode size is 600 x 300, with Edit Mode open (Vanguard's pins paused).
+const inEditMode = () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + MANAGER_ENV, {
+    savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
+  });
+  addon.eval("ns.PausePins(true)");
+  return addon;
+};
+// Drags the main window's grip to `width` wide.
+const drag = (addon, width) => addon.eval(`EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, ${width})`);
+// Leaves Edit Mode (its OnHide reverts what was not saved, then the pins go on) and reloads: the layout applied, then
+// PLAYER_ENTERING_WORLD with isReloadingUi.
+const exitAndReload = (addon) => {
+  addon.eval("EditModeManagerFrame:RevertAllChanges() ns.PausePins(false)");
+  addon.eval("ChatFrame1:UpdateSystem({})");
+  addon.fire("PLAYER_ENTERING_WORLD", false, true);
+  return size(addon);
+};
 it("H46-C-CR3 chat window size: a size set in Edit Mode (grip or dialog) is kept and survives a layout apply; a layout apply alone keeps nothing", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + MANAGER_ENV, {
     savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
   });
   addon.eval("ChatFrame1:UpdateSystem({}) ns.PausePins(true) ChatFrame1:UpdateSystem({})");
   expect(addon.eval("return VanguardCharDB.chatSize.width"), "a layout apply alone changes nothing kept").toBe(600);
-  addon.eval("EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 700) EditModeManagerFrame:OnSystemSettingChange(ChatFrame2, 1, 250)");
-  expect(addon.eval("return VanguardCharDB.chatSize.width"), "the dialog's Width is kept, another window's is not").toBe(700);
+  addon.eval("EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 700) EditModeManagerFrame:OnSystemSettingChange(ChatFrame2, 1, 250) EditModeManagerFrame:SaveLayouts()");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "the dialog's Width is kept once saved, another window's is not").toBe(700);
   addon.eval("ns.PausePins(false) ChatFrame1:UpdateSystem({})");
   expect(size(addon)[0], "and comes back after the next layout apply").toBe(700);
-  addon.eval("ns.GetModule('Chat').settings.place = false EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 710)");
+  addon.eval("ns.GetModule('Chat').settings.place = false EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 710) EditModeManagerFrame:SaveLayouts()");
   expect(addon.eval("return VanguardCharDB.chatSize.width"), "a window Vanguard does not place keeps nothing").toBe(700);
+});
+
+it("H46-40-401 a chat size dragged in Edit Mode and left without saving is not kept: the size from before comes back at the reload", () => {
+  const addon = inEditMode();
+  drag(addon, 700);
+  expect(kept(addon), "nothing kept before a save").toEqual([600, 300]);
+  expect(exitAndReload(addon), "the size from before Edit Mode").toEqual([600, 300]);
+});
+it("H46-40-401 a chat size dragged in Edit Mode and saved is kept, and comes back at the reload", () => {
+  const addon = inEditMode();
+  drag(addon, 700);
+  addon.eval("EditModeManagerFrame:SaveLayouts()");
+  expect([kept(addon), exitAndReload(addon)], "the saved size").toEqual([[700, 300], [700, 300]]);
+});
+it("H46-40-401 a size saved, then a second drag thrown away, keeps the saved size", () => {
+  const addon = inEditMode();
+  drag(addon, 700);
+  addon.eval("EditModeManagerFrame:SaveLayouts()");
+  drag(addon, 760);
+  expect(exitAndReload(addon), "the saved size, not the discarded one or the one from before").toEqual([700, 300]);
+});
+it("H46-40-401 Revert Changes drops the dragged size, so a save after it keeps nothing new", () => {
+  const addon = inEditMode();
+  drag(addon, 700);
+  addon.eval("EditModeManagerFrame:RevertAllChanges() EditModeManagerFrame:SaveLayouts()");
+  expect(kept(addon), "the size from before").toEqual([600, 300]);
+});
+// The window's own Revert Changes (EditModeDialogs.lua:683-686 -> EditModeManager.lua:407-420 RevertSystemChanges:
+// UpdateSystem(savedSystemInfo)) and a switch to another layout without saving both put another size on the window.
+it("H46-40-401 a drag the window's own Revert Changes or a switch to another layout took off is not kept by a later save", () => {
+  const reverted = inEditMode();
+  drag(reverted, 700);
+  reverted.eval("ChatFrame1:UpdateSystem({}) EditModeManagerFrame:SaveLayouts()");
+  expect(kept(reverted), "the window's Revert Changes").toEqual([600, 300]);
+  const switched = inEditMode();
+  drag(switched, 700);
+  switched.eval("__saved = { 450, 180 } ChatFrame1:UpdateSystem({}) EditModeManagerFrame:SaveLayouts()");
+  expect(kept(switched), "another layout's size on the window").toEqual([600, 300]);
+});
+it("H46-40-401 a new layout made from the one being edited (Save on a preset) keeps its size; an imported layout keeps nothing", () => {
+  const made = inEditMode();
+  drag(made, 700);
+  made.eval('EditModeManagerFrame:MakeNewLayout({ 700, 300 }, 1, "Mine", false)');
+  expect(exitAndReload(made), "the dragged size, saved in the new layout").toEqual([700, 300]);
+  const imported = inEditMode();
+  drag(imported, 700);
+  imported.eval('EditModeManagerFrame:MakeNewLayout({ 500, 200 }, 1, "Theirs", true)');
+  expect(kept(imported), "the drag it threw away is not kept").toEqual([600, 300]);
+});
+
+// The main window in Edit Mode with its geometry held secret, as the client may: Vanguard reads no size from it.
+const secretInEditMode = () => {
+  const addon = inEditMode();
+  addon.eval("__wfgWorld.holdSecret(ChatFrame1, 'Anchoring')");
+  return addon;
+};
+it("H46-D-G3A1 a chat size saved in Edit Mode while the main window's geometry is secret keeps the size from before", () => {
+  const addon = secretInEditMode();
+  drag(addon, 700);
+  addon.eval("EditModeManagerFrame:SaveLayouts()");
+  expect([kept(addon), addon.eval("return #ns.errors")], "the kept size, and no errors").toEqual([[600, 300], 0]);
+});
+it("H46-D-G3A1 a new layout made in Edit Mode while the main window's geometry is secret keeps the size from before", () => {
+  const addon = secretInEditMode();
+  drag(addon, 720);
+  addon.eval('EditModeManagerFrame:MakeNewLayout({ 720, 300 }, 1, "Mine", false)');
+  expect([kept(addon), addon.eval("return #ns.errors")], "the kept size, and no errors").toEqual([[600, 300], 0]);
 });
 
 it("H46-29-1 chat window size: after a reload the kept size comes back over the layout's, and the General sliders' size is the one kept", () => {

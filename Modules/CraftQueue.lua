@@ -3,7 +3,8 @@
 -- from the costs the Auction helper already works out (Modules/AuctionCrafting.lua).
 --   * /vg craft add [n]   queues n crafts (1 by default) of the recipe on display in the profession window;
 --   * /vg craft           lists the queue, with the reagents it still needs (bags and banks, as the game counts them for a craft);
---   * /vg craft next      opens the first recipe in the profession window with its count typed in; you press Create;
+--   * /vg craft next      opens the first recipe in the profession window and says how many to make; you set that count in
+--     the game's own box (Vanguard never writes it) and press Create (the cost panel's Crafts box takes it too);
 --   * /vg craft stock     raises Keep stocked to what the queue still needs in your bags (less what the banks and
 --                         other ranks hold) and makes the Restock list (you buy);
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
@@ -177,14 +178,15 @@ function CQ.Done(id)
   CQ.Repaint()
 end
 
--- /vg craft next: the first recipe opened in the profession window with its count typed in.
+-- /vg craft next: the first recipe opened in the profession window, its count told in chat and put in the cost panel's
+-- Crafts box (not the game's own count box, which only the player sets).
 function CQ.Next()
   local e = CQ.Mine().queue[1]
   if not e then return ns.Chat(L["The craft queue is empty."]) end
   local open = type(C_TradeSkillUI) == "table" and C_TradeSkillUI.OpenRecipe
   if type(open) == "function" then open(e.id) end
   if CR.frame then CR.frame.crafts:SetText(tostring(e.n)) end
-  ns.Chat(ns.Format(L["Next: {count} x {recipe}. Press Create in the profession window."], { count = e.n, recipe = recipeName(e) }))
+  ns.Chat(ns.Format(L["Next: {count} x {recipe}. Set the count in the profession window, then press Create."], { count = e.n, recipe = recipeName(e) }))
 end
 
 -- Keep stocked list raised to what the queue needs of each reagent in your bags, less what the banks and its

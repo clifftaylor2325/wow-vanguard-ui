@@ -194,3 +194,10 @@ it("the scrolling combat text and the floating damage numbers in the theme font,
   const none = loggedIn("DAMAGE_TEXT_FONT = nil C_AddOns.IsAddOnLoaded = nil");
   expect([none.eval("return DAMAGE_TEXT_FONT == nil"), none.eval("return #ns.errors")], "a client without the path or the loaded check: left alone, no error").toEqual([true, 0]);
 });
+
+it("/vg vendors reads clear in any case, as the other /vg words are read", () => {
+  const addon = loggedIn(VENDOR_ENV);
+  visit(addon, '"Thomas Miller"');
+  addon.slash("vendors Clear");
+  expect([chatHas(addon, /Forgot every merchant\.$/), addon.eval("return VanguardDB.vendors == nil")], "Clear forgets them").toEqual([true, true]);
+});

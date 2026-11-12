@@ -428,7 +428,8 @@ local function sentLine(p, count)
   if count == 0 and p.words:find("%S") then
     return ns.Format(L["{preset}: nothing you can mail has every word of {words} in its name. Commas separate alternatives, such as: ore, bar"], { preset = p.name, words = p.words })
   end
-  return ns.Format(L["{preset}: {count} items attached for {to}. Press Send."], { preset = p.name, count = count, to = p.to })
+  local said = count == 1 and L["{preset}: {count} item attached for {to}. Press Send."] or L["{preset}: {count} items attached for {to}. Press Send."]
+  return ns.Format(said, { preset = p.name, count = count, to = p.to })
 end
 
 -- Sends: the Send Mail tab (open) gets the character's name and the items; you press Send.
@@ -756,9 +757,11 @@ local function listPresets()
   if #MT.settings.presets == 0 then ns.Chat(L["No presets yet. /vg mail preset add <name> <character> [words]"]) end
 end
 
--- /vg mail preset [add <name> <character> [words]|remove <name>]: lists, adds or removes.
+-- /vg mail preset [add <name> <character> [words]|remove <name>]: lists, adds or removes; the word in any case,
+-- the names and words as typed.
 function MT.PresetCommand(arg)
   local verb, rest = arg:match("^(%S*)%s*(.-)$")
+  verb = verb:lower()
   local name, to, words = parsePreset(rest)
   if verb == "add" and not name then ns.Chat(L["/vg mail preset add <name> <character> [words the item's name holds]"])
   elseif verb == "add" then MT.AddPreset(name, to, words)
@@ -775,11 +778,12 @@ function MT.Search(words)
   if #found > MT.ROWS then ns.Chat(ns.Format(L["+{count} more."], { count = #found - MT.ROWS })) end
 end
 
--- /vg mail [words]|preset ...|send <name>|takeall|returnall.
+-- /vg mail [words]|preset ...|send <name>|takeall|returnall: the command word in any case, the rest as typed.
 function MT.Command(rest)
   rest = rest or ""
   if not MT.Active() then return ns.Chat(L["The mail tools are off (/vg > Town and gear > Mail tools)."]) end
   local word, arg = rest:match("^(%S*)%s*(.-)$")
+  word = word:lower()
   if word == "preset" then return MT.PresetCommand(arg) end
   if word == "send" then return MT.Send(arg) end
   if word == "takeall" then return MT.TakeAll() end

@@ -220,3 +220,40 @@ it("a reload inside a dungeon more than an hour after the way in is the same vis
   expect(text(addon)[1], "reloaded 70 minutes in: still the same run").toBe("Last run: 5 days ago");
   expect(addon.eval("return VanguardCharDB.dungeonRuns[389].prior"), "the earlier visit is kept").toBe(1000 - 5 * 86400);
 });
+
+// Inside the dungeon with the card on, the card then switched off (the setting, as the options row does), and a way out.
+const leftWithCardOff = () => {
+  const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
+  const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
+  addon.eval("local m = ns.GetModule('InstancePrep') m.settings.dungeonCard = false __inside = false");
+  visit(addon, 1600);
+  return addon;
+};
+
+it("the card switched off inside a dungeon still forgets the dungeon on the way out, so a later loading screen stamps nothing", () => {
+  const addon = leftWithCardOff();
+  expect(addon.eval("return ns.DungeonCard.inside or 0"), "left: nothing inside").toBe(0);
+  addon.eval("local m = ns.GetModule('InstancePrep') m.settings.dungeonCard = true");
+  visit(addon, 1000 + 3 * 3600);
+  addon.eval("__inside = true");
+  visit(addon, 1000 + 3 * 3600 + 1800);
+  addon.slash("prep");
+  expect(text(addon)[1], "the first run's visit is the earlier one, not a stamp from the loading screen").toBe("Last run: today");
+});
+
+it("Instance prep switched off inside a dungeon ends the visit it was tracking", () => {
+  const addon = character(ON, "__t = 1000 time = function() return __t end");
+  visit(addon, 1000);
+  expect(addon.eval("return ns.DungeonCard.inside or 0"), "noted at the door").toBe(389);
+  addon.eval("__t = 2000 ns.SetModuleEnabled('InstancePrep', false)");
+  expect([addon.eval("return ns.DungeonCard.inside"), addon.eval("return VanguardCharDB.dungeonRuns[389].at")]).toEqual([null, 2000]);
+});
+
+it("a reload or log out with the card switched off inside a dungeon still ends the visit at that time", () => {
+  const addon = character(ON, "__t = 1000 time = function() return __t end");
+  visit(addon, 1000);
+  expect(addon.eval("return ns.DungeonCard.inside or 0"), "noted at the door").toBe(389);
+  addon.eval("local m = ns.GetModule('InstancePrep') m.settings.dungeonCard = false __t = 2500");
+  addon.fire("PLAYER_LOGOUT");
+  expect([addon.eval("return ns.DungeonCard.inside"), addon.eval("return VanguardCharDB.dungeonRuns[389].at")], "the visit ends at the log out").toEqual([null, 2500]);
+});

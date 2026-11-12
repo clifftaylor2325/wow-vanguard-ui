@@ -13,7 +13,7 @@ Read this before touching anything. README.md and the feature pages in `docs/fea
 ## Commands
 
 ```sh
-npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
+npm install           # once; also turns on .githooks/pre-push (test:quick, quality, the baselines check, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); the fast run while iterating
 npm test              # all tests (JS + Lua harness)
 npm run test:slot -- <vitest args>   # npm test is this with no arguments; e.g. --project lua scripts/tests/chat.test.mjs
@@ -29,7 +29,7 @@ npm run link:wow -- --wow "<Forever folder>"   # link the clone into the game fo
 
 Before you say a change is done: `npm run quality` and `npm run coverage` must both pass (coverage runs every test, so `npm run verify` on top of it only runs the suite twice). Every new line of addon Lua needs a test that executes it.
 
-**Tests run locally, not on pull requests** (Cliff, 2026-11-10). No PR runs a test in CI: `verify.yml` ("Quick checks") runs only spelling, the code-quality scan, the TOC check, luacheck, Lua 5.1 syntax and the release zip. Before an agent merges a PR, it brings `main` into the branch and runs the whole suite there, `npm run quality` and `npm run coverage` (every test, 100% floor), and the PR body says they passed and on which commit. A PR whose local suite is red does not merge. **For now CI runs no tests by itself** (Cliff, 2026-11-10): the suite took 45 to 60 minutes as one job, so the weekly run is off and `release.yml` runs the raid bench and the checks without the tests, until Cliff says to turn them back on (sharded CI and the Lua 5.1 engine have merged; whether to switch the weekly run back on is his call). The tests still run on the agent's machine before a merge, and from the Actions tab on demand (*full suite* → *Run workflow*, every test with the coverage floor). Before a release, run that hand-started suite on `main` or `scripts/release-local.mjs`, or say in the release thread that it was not run.
+**Tests run locally, not on pull requests** (Cliff, 2026-11-10). No PR runs a test in CI: `verify.yml` ("Quick checks") runs only spelling, the code-quality scan, the TOC check, luacheck, Lua 5.1 syntax, the release zip and the baselines against the base (`scripts/check-baselines.mjs`). Before an agent merges a PR, it brings `main` into the branch and runs the whole suite there, `npm run quality` and `npm run coverage` (every test, 100% floor), and the PR body says they passed and on which commit. A PR whose local suite is red does not merge. **For now CI runs no tests by itself** (Cliff, 2026-11-10): the suite took 45 to 60 minutes as one job, so the weekly run is off and `release.yml` runs the raid bench and the checks without the tests, until Cliff says to turn them back on (sharded CI and the Lua 5.1 engine have merged; whether to switch the weekly run back on is his call). The tests still run on the agent's machine before a merge, and from the Actions tab on demand (*full suite* → *Run workflow*, every test with the coverage floor). Before a release, run that hand-started suite on `main` or `scripts/release-local.mjs`, or say in the release thread that it was not run.
 
 ## Hard rules (the checks and tests enforce these)
 
@@ -42,7 +42,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - **Widget methods:** add a method to `scripts/lib/wow-widget-api.lua` only after confirming it exists in the 12.1 client (Blizzard's wow-ui-source or the API docs). Unlisted methods are nil in tests on purpose.
 - **Libs/:** LibStub, CallbackHandler-1.0 and LibSharedMedia-3.0, kept unmodified. Don't edit them.
 - **Media/:** generated. Change `scripts/lib/media-sources.mjs` and run `npm run media`. Never hand-edit textures or icons. `node scripts/build-media.mjs --check` must pass.
-- **Fonts:** made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py`.
+- **Fonts:** Fira Sans Condensed is made from upstream by `scripts/fonts/make-fonts.py`; the faction heading fonts (Cinzel, Metamorphous) by `scripts/fonts/make-heading-fonts.py` from `art/fonts` (`art/CREDITS.md`).
 - **New files:** a file the game loads must be listed in `Vanguard.toc`. A new top-level file or folder that players don't need must be added to the `ignore` list in `.pkgmeta`, or `scripts/pkgmeta.test.mjs` fails.
 - **Lua 5.1 only.** No `goto`, no integer division, no `//`, no bit library from 5.3+.
 

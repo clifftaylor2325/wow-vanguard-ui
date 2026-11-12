@@ -1472,3 +1472,79 @@ it("H46-4-R3: on a spec with its own profile, Use it turns Pixel-perfect off in 
   expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "off in the imported profile and in Heal, which the reload loads").toEqual([false, false, "0.9"]);
   expect([chatHas(addon, /Created profile Imported\./), chatHas(addon, /will use it after a reload/), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "no promise and no reload offer").toEqual([true, false, false]);
 });
+// H46-10-11: a switch to Raid staged through /vg profile Raid, its reload offered; `back` takes it back.
+const takenBack = (back) => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  back(addon);
+  return addon.eval("return { ns.PendingProfileName() == nil, Vanguard_Reload:IsShown() }");
+};
+it("H46-10-11 /vg profile back to the running profile takes the staged switch's reload offer back", () => {
+  expect(takenBack((addon) => addon.slash("profile Default")), "nothing staged, no offer").toEqual([true, false]);
+});
+it("H46-10-11 any pick that takes the staged switch back (the Profiles page's Use) takes the offer back too", () => {
+  expect(takenBack((addon) => addon.eval('ns.PickProfile("Default")')), "nothing staged, no offer").toEqual([true, false]);
+});
+it("H46-10-11 a take-back leaves a reload offered for another reason up", () => {
+  const shown = takenBack((addon) => addon.eval("ns.OfferReload('Something else changed.')") || addon.slash("profile Default"));
+  expect(shown, "the other reason's offer stays").toEqual([true, true]);
+});
+// H46-40-F3: Heal (spec 2's own, or with `specProfiles` dropped no spec's) in use, and Mine matches the string imported.
+const importMatching = (saved) => {
+  const addon = createAddon({ savedVariables: saved.replace("Mine = {}", 'Mine = { theme = { accent = "jade" } }') });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
+  const offered = addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText() or false");
+  return [chatHas(addon, /This string matches profile Mine\.$/), offered, addon.eval("return ns.PendingProfileName()")];
+};
+it("H46-40-F3 on a spec with its own profile, a string matching another profile picks it with no reload promise or offer", () => {
+  expect(importMatching(HEAL_SPEC), "said plainly, Mine staged, no reload offered").toEqual([true, false, "Mine"]);
+});
+it("H46-40-F3 with no spec profile, a string matching another profile still promises it after a reload", () => {
+  expect(importMatching(HEAL_SPEC.replace(', specProfiles = { [2] = "Heal" }', "")), "promised and offered").toEqual([false, "This string matches profile Mine; this character will use it after a reload. Reload the UI now to apply it?", "Mine"]);
+});
+// H46-40-903: profiles Raid, Heal and Third made; `steps` run in turn; then what is staged and the reload offer.
+const staging = (steps) => {
+  const addon = loggedIn();
+  for (const name of ["Raid", "Heal", "Third"]) addon.slash(`profile new ${name}`);
+  steps(addon);
+  return addon.eval("return { ns.PendingProfileName() or false, Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText() or false }");
+};
+it("H46-40-903 staging Raid, then Heal, then taking it back leaves no reload offer", () => {
+  expect(staging((addon) => ["Raid", "Heal", "Default"].forEach((name) => addon.slash(`profile ${name}`))), "nothing staged, no offer").toEqual([false, false]);
+});
+it("H46-40-903 staging Raid, Heal and Raid again, then taking it back leaves no reload offer", () => {
+  expect(staging((addon) => ["Raid", "Heal", "Raid", "Default"].forEach((name) => addon.slash(`profile ${name}`))), "nothing staged, no offer").toEqual([false, false]);
+});
+it("H46-40-903 a second stage offers only its own profile, and a new or deleted other profile leaves the offer up", () => {
+  // Raid, then Heal staged, then a fourth profile made and the third deleted.
+  const steps = (addon) => {
+    addon.slash("profile Raid");
+    addon.slash("profile Heal");
+    addon.slash("profile new Fourth");
+    addon.eval('ns.DeleteProfile("Third")');
+  };
+  expect(staging(steps), "Heal staged and offered").toEqual(["Heal", "This character will use profile Heal after the reload. Reload the UI now to apply it?"]);
+});
+it("H46-40-904 an imported whole profile's reload offer goes when the switch to it is taken back", () => {
+  // A whole profile imported (its offer up), then the switch taken back.
+  const steps = (addon) => {
+    importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
+    expect(addon.eval("return Vanguard_Reload:IsShown()"), "offered first").toBe(true);
+    addon.slash("profile Default");
+  };
+  expect(staging(steps), "nothing staged, no offer").toEqual([false, false]);
+});
+it("H46-40-904 a partial import's reload offer stays after a profile is staged and taken back", () => {
+  // A partial string imported, then Raid staged and taken back.
+  const steps = (addon) => {
+    importText(addon, addon.eval('return ns.Serialize.Encode("parts", ns.StampPayload({ parts = { "global" }, theme = { reduceMotion = true } }))'));
+    addon.slash("profile Raid");
+    addon.slash("profile Default");
+  };
+  const [staged, offer] = staging(steps);
+  expect([staged, /^Imported .*settings into profile Default\. Reload the UI now to apply it\?$/.test(offer)], "the partial import still needs its reload").toEqual([false, true]);
+});

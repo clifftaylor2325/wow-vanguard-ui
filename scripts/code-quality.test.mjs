@@ -452,6 +452,23 @@ const WEAK_GUARDS = [
   `if not (x or ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
   `if InCombatLockdown() == false then return end\n  ${SECURE_CALL_LINE}`,
   `if ns.InCombat() ~= true then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-35-1: the wrong sense through a colon or a longer name, a unit's combat flag, and a field that is not called.
+  `if not ns:InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if not ns.Combat.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if state.InCombat then return end\n  ${SECURE_CALL_LINE}`,
+  `if UF.InCombat(u) then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-10-8: a comparison written before the check, or a doubled not.
+  `if false == InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if x ~= ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if x == not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-40-902: the same comparisons with the check in brackets that hold only it.
+  `if (InCombatLockdown()) == false then return end\n  ${SECURE_CALL_LINE}`,
+  `if (ns.InCombat()) ~= true then return end\n  ${SECURE_CALL_LINE}`,
+  `if false == (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if x == (not InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if x ~= (ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
+  `if not not InCombatLockdown() then return end\n  ${SECURE_CALL_LINE}`,
+  `if not not ns.InCombat() then ${SECURE_CALL_LINE} end`,
 ];
 
 // H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
@@ -473,6 +490,11 @@ const STRICT_GUARDS = [
   `if InCombatLockdown() then return else ${SECURE_CALL_LINE} end`,
   `if x then\n    fn()\n  else\n    if ns.InCombat() then return end\n    ${SECURE_CALL_LINE}\n  end`,
   `if ns.InCombat() then return end\n  if x then fn() else ${SECURE_CALL_LINE} end`,
+  // H46-35-1: ns.InCombat called with a colon, and a real check after another name's InCombat in an `or` chain.
+  `if ns:InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if UF.InCombat(u) or ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-40-902: a check in brackets that hold only it, read as itself.
+  `if (InCombatLockdown()) then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: the shapes of a real guard pass.
@@ -635,6 +657,9 @@ function unwrappedBare() {
   expect(reported(src)).toEqual([UNWRAPPED, UNWRAPPED, UNWRAPPED]);
   expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: 'English text not in L[…]: "Experience bar"' });
   expect(problems("Modules/t.lua", src)).toBe("");
+  // H46-35-R1: a local name for a sink, at file level (Core/Slash.lua's chat) or in the function, is read as the sink.
+  expect(reported('local chat = ns.Chat\n-- doc\nlocal function f()\n  chat("Hello there")\nend\n')).toEqual([UNWRAPPED]);
+  expect(reported(inFn('local say = ns.Chat\n  say("Hello there")'))).toEqual([UNWRAPPED]);
 }
 
 // Wrapped text, paths, icons, symbols, variables and files outside Core and Modules pass.
@@ -642,6 +667,14 @@ function unwrappedPasses() {
   expect(reported(inFn('fs:SetText(L["Experience bar"])\n  ns.Chat(ns.Format(L["{n} sold"], { n = 1 }))'))).toEqual([]);
   expect(reported(inFn('fs:SetText("|TInterface\\\\Icons\\\\X:0|t")\n  fs:SetText("·")\n  fs:SetText("")\n  fs:SetText(name)'))).toEqual([]);
   expect(reported(inFn('fs:SetText("Experience bar")'), "scripts/lib/t.lua")).toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat(x)\n  chat("Hello there")')), "the answer of a sink call is no sink").toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat\n  self.chat("Hello there")')), "another table's field of the same name is no sink").toEqual([]);
+  // H46-G2-6: the name is the sink only when the sink is the whole right-hand side; a multiple assignment is not read.
+  expect(reported(inFn('local on = r.check and 1\n  on("Hello there")')), "a sink and more is no sink").toEqual([]);
+  expect(reported(inFn('local say = r.header or print\n  say("Hello there")')), "a sink or another is no sink").toEqual([]);
+  expect(reported(inFn('local a, chat = 1, ns.Chat\n  chat("Hello there")')), "several names: not read").toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat, 1\n  chat("Hello there")')), "several values: not read").toEqual([]);
+  expect(reported(inFn('local chat = ns.Chat;\n  chat("Hello there")')), "a semicolon ends it").toEqual([UNWRAPPED]);
 }
 
 const TRUTH = "secret-truth-test";
@@ -716,12 +749,17 @@ const ENGLISH_SHAPES = [
   'fs:SetFormattedText("%d items left", n)', 'chatFrame:AddMessage("Hello there")', 'ns.Ask("Delete it?", yes)', 'ns.AskText("Name it", ok)',
   'ns.DialogButton(parent, "Reload now", f)', 'tip:AddLine(key .. " to open")',
   'fs:SetText(n .. (on and "On" or "Off"))',
+  // H46-35-R1: through a local name for the sink.
+  'local chat = ns.Chat\n  chat(n .. " is ready")', 'local say = ns.Chat\n  say(on and "Turned on" or "Turned off")',
+  // H46-35-R2: a two-column tooltip line's right-hand text.
+  'tt:AddDoubleLine(L["Name"], "Right side")', 'tt:AddDoubleLine(L["Name"], on and "Turned on" or "Turned off")',
 ];
 // Statements that look alike and are not English text to translate.
 const NOT_ENGLISH = [
   'fs:SetText(L["Level"] .. n)', 'fs:SetText(("%d x %s"):format(n, name))', 'ns.Chat(mode == "tab" and L["a"] or L["b"])', 'ns.DialogButton(parent, "Vanguard", f)',
   'fs:SetText(t["key"])', 'fs:SetText(fmt("Hello"))', 'ns.DialogButton("Hello", L["Reload"], f)', 'ns.Chat(string.format("%d. %s", i, name))', 'fs:SetFormattedText("%.1f", n)',
   'ns.Chat(ns.Format(L["Sold {n}"], { n = n }))', 'fs:SetText(L["x"] .. "|r")', 'fs:SetText(("%s"):rep(2))',
+  'tt:AddDoubleLine(L["Name"], value, 1, 1, 1)',
 ];
 
 // English joined to a value, chosen by and/or, formatted, or handed to a sink the narrow rule lacked is counted under its own key, and does not block.
@@ -732,11 +770,16 @@ function shapesReported() {
   expect(reported(inFn('fs:SetText("Level " .. n)')), "a literal that comes first is the narrow rule's").toEqual([UNWRAPPED]);
 }
 
+// A function named `name` that prints an English format pattern, as /vg status's lines do.
+const status = (name) => `-- doc\nlocal function ${name}()\n  ns.Chat(string.format("Vanguard %s on", v))\nend\n`;
+
 // Wrapped text, format patterns with no words, compares, indexes, nested calls, the brand, the diagnostics' files and other folders pass.
 function shapesPass() {
   for (const stmt of NOT_ENGLISH) expect(reported(inFn(stmt)), stmt).toEqual([]);
   expect(reported(inFn('fs:SetText(n .. " items")'), "scripts/lib/t.lua")).toEqual([]);
   expect(reported(inFn('ns.Chat(realm .. " is the realm")'), "Core/Home.lua"), "a file that prints a diagnostic").toEqual([]);
+  expect(reported(status("statusCommand"), "Core/Slash.lua"), "the function that prints /vg status (H46-35-R1)").toEqual([]);
+  expect(reported(status("helpCommand"), "Core/Slash.lua"), "the rest of its file is read").toEqual([SHAPES]);
 }
 
 // The diagnostics the doc names are the table's keys, so the doc and the rule cannot drift.

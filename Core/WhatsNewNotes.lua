@@ -21,7 +21,7 @@ ns.WHATS_NEW = {
       { text = "Options search finds what you changed, Undo setup puts your UI scale back, and settings that need a reload carry the reload tag." },
     } },
     { module = "Other", label = "Safety and tools", items = {
-      { text = "Fixes from a 30-wave bug hunt: unit frames, auras and nameplates, HUD layouts, key setup and click casting, quests, waypoints and chat tabs." },
+      { text = "Fixes across unit frames, auras and nameplates, HUD layouts, key setup and click casting, quests, waypoints and chat tabs." },
       { text = "Auto Shot shows its ammo on WoW Forever, and declining strangers' group invites works again." },
     } },
   } },

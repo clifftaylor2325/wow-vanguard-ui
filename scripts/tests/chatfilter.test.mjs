@@ -578,11 +578,15 @@ it("H44-19-50 chat filter: a saved keyword that is no text is dropped, so add, r
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// FCF_Close as the client has it before any addon loads (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua:1766,
+// a base addon of the UI): it hides the closed window.
+const CLOSE_CLIENT = "FCF_Close = function(frame, fallback) frame = fallback or frame if frame and frame ~= ChatFrame1 then frame:Hide() end end";
 // The game closes a window (FCF_Close hides and undocks it) and gives its number to the next tab made: the first number
 // neither shown nor docked (forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua: FCF_GetNextOpenChatWindowIndex,
 // FCF_IsChatWindowIndexActive), as the harness's FCF_OpenNewWindow does.
 it("H44-19-52 chat filter: a Filtered tab closed and its number given to a new tab is never fed spam; the filter makes another", () => {
-  const addon = filtering("FCF_Close = function(frame, fallback) frame = fallback or frame if frame and frame ~= ChatFrame1 then frame:Hide() end end");
+  const addon = loggedIn("", { client: CLOSE_CLIENT });
+  addon.slash("filter on");
   deliver(addon, GOLD, "Goldy");
   expect(addon.eval("return VanguardCharDB.filteredTab"), "the Filtered tab is ChatFrame3").toBe(3);
   addon.eval("FCF_Close(ChatFrame3) FCF_OpenNewWindow('Loot') ChatFrame3Tab:SetText('Loot') ChatFrame3.__messages = {}");
@@ -598,7 +602,8 @@ it("H44-19-52 chat filter: a Filtered tab closed and its number given to a new t
 // Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua: FCF_GetNextOpenChatWindowIndex).
 it("H44-19-53 chat filter: a tab that takes a closed Filtered tab's number is kept by Chat history, whether the filter is on, off or its module stopped", () => {
   // ChatFrame3 exists (and is followed by Chat history) but is closed, so the filter's tab takes its number.
-  const addon = filtering("__now = 1790000000 time = function() return __now end FCF_Close = function(frame) frame:Hide() end FCF_OpenNewWindow('old') ChatFrame3:Hide()");
+  const addon = loggedIn("__now = 1790000000 time = function() return __now end FCF_OpenNewWindow('old') ChatFrame3:Hide()", { client: CLOSE_CLIENT });
+  addon.slash("filter on");
   expect(addon.eval("return VanguardCharDB.filteredTab"), "the Filtered tab is ChatFrame3").toBe(3);
   addon.slash("filter off");
   addon.eval("ns.SetModuleEnabled('ChatFilter', false)");
@@ -670,4 +675,15 @@ it("H45-8-2 chat filter: the game's own refresh of the chat windows is followed 
   addon.eval("FCF_SetWindowName(ns.GetModule('ChatFilter').window, 'Filtered', true)");
   addon.update(0.5);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("H46-40-F4 chat filter: a Filtered tab closed with the module off since login loses its saved number, so the tab that takes it is never fed", () => {
+  // A Filtered tab from an earlier session is ChatFrame3; the module is switched off in this profile.
+  const off = "FCF_OpenNewWindow('Filtered') VanguardCharDB.filteredTab = 3 VanguardDB.profiles.Default.modules = VanguardDB.profiles.Default.modules or {} VanguardDB.profiles.Default.modules.ChatFilter = false VanguardDB.profiles.Default.ChatFilter = { on = true }";
+  const addon = loggedIn(off, { client: CLOSE_CLIENT });
+  addon.eval("FCF_Close(ChatFrame3) FCF_OpenNewWindow('Loot') ChatFrame3.__messages = {}");
+  expect(addon.eval("return VanguardCharDB.filteredTab == nil"), "the closed tab's number is forgotten").toBe(true);
+  addon.eval("ns.SetModuleEnabled('ChatFilter', true)");
+  deliver(addon, GOLD, "Goldy");
+  addon.update(0.1);
+  expect(addon.eval("return { #ChatFrame3.__messages, ns.GetModule('ChatFilter').window:GetName() }"), "Loot holds no spam; a new Filtered tab has it").toEqual([0, "ChatFrame4"]);
 });

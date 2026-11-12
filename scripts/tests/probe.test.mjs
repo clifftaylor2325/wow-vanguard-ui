@@ -442,3 +442,41 @@ it("/vg probe legacy copes with a window without a panel, secret ids, a failing 
   addon.slash("probe legacy");
   expect(chatHas(addon, /Not in a fight: try again after it\./), "nothing is read in combat").toBe(true);
 });
+
+it("/vg probe: the new-quest flag section asks C_QuestInfoSystem for the first quest's classification", () => {
+  // QuestInfoSystemDocumentation.lua (forever and live): GetQuestClassification is in C_QuestInfoSystem; C_QuestLog has none.
+  const addon = loggedIn(PROBE_ENV + "C_QuestInfoSystem = { GetQuestClassification = function() return 7 end } __wfgWorld.quests = { { questID = 5, title = \"TEST-ONLY Quest\" } }");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "C_QuestInfoSystem.GetQuestClassification"), "the call that exists is the one asked").toBe("  C_QuestInfoSystem.GetQuestClassification: present, number 7");
+  expect(text, "the call neither client has is not asked").not.toContain("C_QuestLog.GetQuestClassification");
+});
+
+// One armed fight, played out, then /vg probe last's text.
+const armedFight = (addon) => {
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(4);
+  setCombat(addon, false);
+};
+
+it("H46-34-104 /vg probe: a fight report from an earlier session is gone after a new session's report", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe");
+  armedFight(addon);
+  addon.eval("ns.Probe.session = 'another'");
+  addon.slash("probe");
+  addon.slash("probe last");
+  expect(reportText(addon), "the old session's fight block does not follow the new report").not.toMatch(/== Fight, start/);
+});
+
+it("H46-34-104 /vg probe: a fight armed after an earlier session's report stays through this session's next report", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe");
+  addon.eval("ns.Probe.session = 'another'");
+  armedFight(addon);
+  addon.slash("probe");
+  addon.slash("probe last");
+  expect(reportText(addon), "this session's fight is carried into its next report").toMatch(/== Fight, start/);
+});

@@ -117,7 +117,7 @@ local function restoreCharacter(known)
   ns.UseProfile(name)
   local later = ns.PendingProfileName() ~= nil
   ns.Chat(characterLine(name, later))
-  if later then ns.OfferReload(ns.Format(L["This character used profile {profile}."], { profile = name })) end
+  if later then ns.OfferProfileReload(name, ns.Format(L["This character used profile {profile}."], { profile = name })) end
 end
 
 -- A lost account file ------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ function G.UseRestored()
   ns.UseProfile(name)
   G.Resolve()
   local text = ns.Format(L["Using profile {profile}, which another character already restored from a newer backup."], { profile = name })
-  if ns.PendingProfileName() then return ns.OfferReload(text) end
+  if ns.PendingProfileName() and ns.OfferProfileReload(name, text) then return end
   ns.Chat(text)
 end
 

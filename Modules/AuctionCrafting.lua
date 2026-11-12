@@ -170,6 +170,11 @@ function CR.Paint()
   f:Show()
 end
 
+-- The panel painted again after its switch changed in the options (Town and gear), so it shows or hides at once.
+function AH.PaintCrafting()
+  CR.Paint()
+end
+
 -- Add reagents -------------------------------------------------------------------------------
 
 -- How many crafts a typed count asks for: a whole number from 1 to CR.MAX_CRAFTS (1 for anything else;
@@ -328,5 +333,27 @@ ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" and AH
 ns.On("TRADE_SKILL_SHOW", function() if AH.settings then CR.Hook() end end)
 -- The profession window closed: the panel goes with it.
 ns.On("TRADE_SKILL_CLOSE", function() if CR.frame then CR.frame:Hide() end end)
+-- Whether an item is what the recipe displayed makes or one of its reagents (any rank).
+local function usesItem(data, id)
+  if data.output == id then return true end
+  for _, r in ipairs(data.reagents) do
+    for _, rank in ipairs(r.ids) do
+      if rank == id then return true end
+    end
+  end
+  return false
+end
+
+-- An item's info came in: the panel shown for a recipe that uses it is painted again, once for a burst
+-- of them, so its "item 123" row gets the name and icon.
+local function onItemInfo(_, id, success)
+  if not (success and CR.frame and CR.frame:IsShown() and CR.data and usesItem(CR.data, id)) then return end
+  ns.Soon("crafting item info", CR.Paint)
+end
+
+-- The helper's events for the panel (on: the helper's scope).
+function AH.ListenCrafting(on)
+  on("GET_ITEM_INFO_RECEIVED", onItemInfo)
+end
 -- New prices repaint the panel while it shows.
 AP.OnChange(function() if CR.frame and CR.frame:IsShown() then CR.Paint() end end)

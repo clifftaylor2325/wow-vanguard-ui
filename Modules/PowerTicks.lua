@@ -55,21 +55,25 @@ end
 
 PT.PLACE = { HORIZONTAL = acrossBar, VERTICAL = upBar }
 
--- Moves the spark along the bar (one anchor, moved in place each frame); it
--- hides, and the timer stops, once a sweep is over.
+-- Moves the spark along the bar (one anchor, moved in place each frame), shaped again when a HUD layout has turned
+-- the bar since (the layout's own listeners may run in either order, so the sweep checks); it hides, and the timer
+-- stops, once a sweep is over.
 function PT.Tick()
   local at = PT.Fraction(GetTime())
   PT.spark:SetShown(at ~= nil)
   if not at then PT.driver:SetScript("OnUpdate", nil) return end
-  local place = PT.PLACE[PT.bar:GetOrientation()] or PT.PLACE.HORIZONTAL
+  local orientation = PT.bar:GetOrientation()
+  if orientation ~= PT.shaped then PT.Shape() end
+  local place = PT.PLACE[orientation] or PT.PLACE.HORIZONTAL
   local across, along = place(PT.bar, at)
   PT.spark:SetPoint("CENTER", PT.bar, "BOTTOMLEFT", across, along)
 end
 
--- Sizes and turns the spark for the bar's orientation: as tall as a lying bar, and across a standing one as a thin
--- streak turned a quarter (the Spark texture is a vertical streak).
+-- Sizes and turns the spark for the bar's orientation (noted in PT.shaped): as tall as a lying bar, and across a
+-- standing one as a thin streak turned a quarter (the Spark texture is a vertical streak).
 function PT.Shape()
   local bar, spark = PT.bar, PT.spark
+  PT.shaped = bar:GetOrientation()
   if bar:GetOrientation() == "VERTICAL" then
     spark:SetSize(bar:GetWidth(), PT.THICKNESS)
     return spark:SetRotation(math.pi / 2)

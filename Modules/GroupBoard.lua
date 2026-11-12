@@ -38,6 +38,10 @@ ns.Options.MODULE_INFO.GroupBoard = { L["Group board"], L["Looking-for-more and 
 GB.MAX = 40
 -- Chat events -> the channel switch that reads them.
 GB.EVENTS = { CHAT_MSG_CHANNEL = "channel", CHAT_MSG_YELL = "yell", CHAT_MSG_SAY = "say", CHAT_MSG_GUILD = "guild" }
+-- The channels in the order the options list them, and the words the probe calls them. GB.Rows writes the same four
+-- captions as literals (the site's settings reader needs string captions); the groupboard test pins the pair.
+GB.CHANNEL_ORDER = { "channel", "yell", "say", "guild" }
+GB.CHANNEL_NAMES = { channel = L["Numbered channels"], yell = L["Yell"], say = L["Say"], guild = L["Guild"] }
 -- The roles, in the order a row shows them.
 GB.ROLE_ORDER = { "tank", "healer", "dps" }
 GB.ROLE_NAMES = { tank = L["Tank"], healer = L["Healer"], dps = L["DPS"] }
@@ -214,10 +218,10 @@ end
 
 -- The numbered channels you are in, "1 General, 2 Trade", or "none" (the game's list; a client without it says so).
 function GB.Channels()
-  if type(GetChannelList) ~= "function" then return "unknown (this client has no channel list)" end
+  if type(GetChannelList) ~= "function" then return L["unknown (this client has no channel list)"] end
   local out, list = {}, { GetChannelList() }
   for i = 1, #list, 3 do out[#out + 1] = tostring(list[i]) .. " " .. tostring(list[i + 1]) end
-  return #out > 0 and table.concat(out, ", ") or "none"
+  return #out > 0 and table.concat(out, ", ") or L["none"]
 end
 
 -- Whether the module runs now (the board's window opens only then).
@@ -225,16 +229,21 @@ function GB.Active()
   return GB.scope ~= nil and GB.scope:Running()
 end
 
+-- The channels the board reads, by the names the options give them, or "no channel".
+local function readingList()
+  local names = {}
+  for _, key in ipairs(GB.CHANNEL_ORDER) do
+    if GB.settings.channels[key] then names[#names + 1] = GB.CHANNEL_NAMES[key] end
+  end
+  return #names > 0 and table.concat(names, ", ") or L["no channel"]
+end
+
 -- /vg lfg probe: what the board has heard, the channels you are in and the switches, to say why the board is empty.
 function GB.Probe()
-  local on = {}
-  for key, v in pairs(GB.settings.channels) do if v then on[#on + 1] = key end end
-  table.sort(on)
   ns.Chat(ns.Format(L["Group board: {summary}"], { summary = GB.Summary() }))
-  local reading = #on > 0 and table.concat(on, ", ") or L["no channel"]
-  ns.Chat(ns.Format(L["Reading: {channels}. You are in channels: {joined}."], { channels = reading, joined = GB.Channels() }))
+  ns.Chat(ns.Format(L["Reading: {channels}. You are in channels: {joined}."], { channels = readingList(), joined = GB.Channels() }))
   ns.Chat(ns.Format(L["Last line that was not a post: {line}"], { line = GB.stats.lastPlain or L["none yet"] }))
-  local counts = { kept = #GB.entries, shown = #GB.Shown(), filter = GB.filter, mine = tostring(GB.settings.mine) }
+  local counts = { kept = #GB.entries, shown = #GB.Shown(), filter = GB.FILTERS[GB.filter][2], mine = GB.settings.mine and L["on"] or L["off"] }
   ns.Chat(ns.Format(L["Posts kept: {kept}, shown: {shown} (filter {filter}, only my level {mine})."], counts))
 end
 

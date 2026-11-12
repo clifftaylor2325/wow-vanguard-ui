@@ -288,12 +288,13 @@ local function setJunk(id, on)
   ns.Chat(said)
 end
 
--- /vg junk [<item> | remove <item> | clear]: show, add to, take from or empty the sell list.
+-- /vg junk [<item> | remove <item> | clear]: show, add to, take from or empty the sell list (clear and remove in any case).
 function MC.JunkCommand(rest)
   rest = (rest or ""):match("^%s*(.-)%s*$")
   if rest == "" then return listJunk() end
-  if rest == "clear" then VanguardCharDB.sellList = {} return ns.Chat(L["Your sell list is empty."]) end
-  local removing = rest:match("^remove%s+(.+)")
+  if rest:lower() == "clear" then VanguardCharDB.sellList = {} return ns.Chat(L["Your sell list is empty."]) end
+  local word, item = rest:match("^(%S+)%s+(.+)")
+  local removing = word and word:lower() == "remove" and item or nil
   local id = MC.ItemID(removing or rest)
   if not id then return ns.Chat(L["Usage: /vg junk <shift-click an item>, /vg junk remove <item>, /vg junk clear"]) end
   setJunk(id, not removing)

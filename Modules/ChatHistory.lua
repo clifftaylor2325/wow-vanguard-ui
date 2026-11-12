@@ -259,9 +259,9 @@ local function status()
   ns.Chat(ns.Format(L["Saved chat lines: {lines}, in windows: {windows}."], { lines = lines, windows = windows }))
 end
 
--- /vg history [on | off | whispers | nowhispers | clear].
+-- /vg history [on | off | whispers | nowhispers | clear], the word in any case.
 function CHH.Command(rest)
-  local verb, s = (rest or ""):match("^(%S*)"), ns.Settings("ChatHistory", CHH.defaults)
+  local verb, s = (rest or ""):match("^(%S*)"):lower(), ns.Settings("ChatHistory", CHH.defaults)
   if verb == "on" or verb == "off" then s.on = verb == "on" return ns.Chat(s.on and L["Chat history on. Your chat comes back after a reload or the next login."] or L["Chat history off. What is saved stays until it ages out or you clear it."]) end
   if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and L["Whispers are kept too."] or L["New whispers are not kept. Whispers already saved stay until they age out or you clear them."]) end
   if verb == "clear" then return CHH.AskClear() end

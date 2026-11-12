@@ -310,6 +310,17 @@ it("a switch under Bars and bags gives back the plain combined bag at once, and 
   expect(addon.eval("return ns.FrameState('vgSections')[ContainerFrameCombinedBags] == nil"), "switched off and on while closed: laid out at the next opening").toBe(true);
 });
 
+it("with the game's gamepad interface on the combined bag is the game's plain grid, and the sections return when it is off", () => {
+  // Forever's InputUtil.IsGamepadUIEnabled (Blizzard_SharedXML/Mainline/InputUtil.lua:11) is what BG.GamepadUI reads, on every layout.
+  const addon = loggedIn(BAG_ENV + "__pad = true InputUtil = { IsGamepadUIEnabled = function() return __pad end }");
+  addon.eval("__openBag()");
+  expect([headers(addon), spot(addon, "b0s1"), height(addon)], "gamepad on: the game's grid and height, no headers").toEqual([[], [343, 75], 186]);
+  addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:Hide() __openBag()");
+  expect([headers(addon), spot(addon, "b0s1")], "and it stays plain as the bag fills and opens").toEqual([[], [343, 75]]);
+  addon.eval("__pad = false ContainerFrameCombinedBags:Hide() __openBag()");
+  expect([headers(addon).length, spot(addon, "b0s1"), height(addon)], "gamepad off again: the sections are back").toEqual([7, [12, 160], 233]);
+});
+
 it("a client without the bag window's layout calls keeps the plain combined bag", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.eval("ContainerFrameCombinedBags:Show()");
@@ -486,6 +497,22 @@ it("bag categories: your own sections above the built-in ones, in list order, fi
   addon.slash("bag add Mix 6948");
   addon.slash("bag");
   expect(chat(), "the list names each category and its items").toMatch(/Mix: /);
+});
+
+it("H46-32-101 bag remove takes a link whose item name holds spaces; add with a link alone is still refused", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
+  const link = "|cffffffff|Hitem:159::::::::60:::::|h[TEST-ONLY Spring Water]|h|r";
+  // Whether the first category holds the item.
+  const holds = () => addon.eval(`local c = ns.Settings("Bags").categories[1] return c ~= nil and c.items[159] == true`);
+  addon.slash("bag add " + link);
+  expect(addon.eval(`return #ns.Settings("Bags").categories`), "no category name: usage line, no group").toBe(0);
+  addon.slash("bag add Potions " + link);
+  expect(holds()).toBe(true);
+  addon.slash("bag remove " + link);
+  expect(holds(), "the linked item left its group").toBe(false);
+  addon.slash("bag add Potions 159");
+  addon.slash("bag remove Potions 159");
+  expect(holds(), "a category name before the item still works").toBe(false);
 });
 
 it("bag categories saved under names that fold to one key show as one section holding both groups' items", () => {

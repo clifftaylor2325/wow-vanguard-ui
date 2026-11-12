@@ -1213,10 +1213,11 @@ local function tokenEvent(token)
   return "UNIT_NAME_UPDATE", token
 end
 
--- The power type a power or combo change names: UNIT_POWER_UPDATE's payload is unitTarget, powerType, neither
--- nilable (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, UnitPowerUpdate). A power change names the
--- unit's own power (true here: UnitPowerType's token).
-local POWER_TYPE_OF = { power = true, combo = "COMBO_POINTS" }
+-- The power type a power, maximum power or combo change names: UNIT_POWER_UPDATE's and UNIT_MAXPOWER's payloads are
+-- unitTarget, powerType, neither nilable (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, UnitPowerUpdate,
+-- and UnitMaxpower :4407-4415, live :4271-4279). A power or maximum change names the unit's own power (true here:
+-- UnitPowerType's token).
+local POWER_TYPE_OF = { power = true, maxpower = true, combo = "COMBO_POINTS" }
 
 -- The power type a changed field names on unit u, or nil when its event names none.
 local function powerTypeOf(field, u)

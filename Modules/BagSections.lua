@@ -315,8 +315,10 @@ end
 
 -- Sections in the open bag window (when switched on); a layout already showing the same sections is left
 -- as it is. The Junk header's value is painted each time, as a stack can change without moving a section.
+-- With the game's gamepad interface on, the bag stays the game's plain grid (its per-bag tiles and collapsed
+-- bags are laid out by the game), read at every layout, as with the switch off.
 function BG.LayOutSections(frame)
-  if not ns.Settings("Bags", BG.defaults).sections then return BG.PlainBag(frame) end
+  if not ns.Settings("Bags", BG.defaults).sections or BG.GamepadUI() then return BG.PlainBag(frame) end
   if not frame:IsShown() then return end
   local list, sig = BG.Group(buttonsOf(frame))
   if sig ~= vgSections[frame] then

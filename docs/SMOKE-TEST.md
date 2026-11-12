@@ -229,7 +229,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.5 Memory over a minute
 
 - Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
-- Expect: first `Saved data (estimate): account file X of a 16.0 MB budget; largest: ...` and `This character's file: ...` (note both, and the real size of `WTF\Account\<name>\SavedVariables\Vanguard.lua` on disk, so the estimate can be checked); then the line `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, peak ... ms, N % of all addons; N frames over 5 ms)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers since login...` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
+- Expect: first `Saved data (estimate): account file X of a 16.0 MB budget; largest: ...` and `This character's file: ...` (note both, and the real size of `WTF\Account\<name>\SavedVariables\Vanguard.lua` on disk, so the estimate can be checked); then the line `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, ... in boss fights, peak ... ms, N % of all addons; frames over 1 / 5 / 10 ms: N / N / N)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over N ms):` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
 - If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
 
 ## 2. Options window and wizard
@@ -585,9 +585,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
 
-- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
-- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
-- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf slow` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf slow` lists no `event UNIT_AURA` line with calls over 5 ms.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf slow` lines.
 
 ### 6.4 Preview the party and raid frames alone
 
@@ -1991,7 +1991,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 15.3 Spend, level-up and sharing
 
 - Do: with a point to spend and a plan, click **Spend planned** (or `/vg talents spend`); then `/vg talents export`, `/vg talents clear`, `/vg talents import` and paste the string. Gain a level with a plan set.
-- Expect: the next pick is bought and applied (the game's Apply Changes is not needed), chat says what was spent, and the window repaints; the export box shows a VG1:talents string, clear asks first (No, and a Clear button with a red label; the question names the planned points and says it can't be undone) and Clear empties the plan, import brings it back with its point count in chat. At the level-up (a second later, out of combat) chat says how many points wait and the next pick; with "Spend planned points by itself" ticked under `/vg` → Talents it buys them instead.
+- Expect: the next pick is bought and applied (the game's Apply Changes is not needed), chat says what was spent, and the window repaints; the export box shows a VG1:talents string, clear asks first (No, and a Clear button with a red label; the question names the planned points and says it can't be undone) and Clear empties the plan, import brings it back with its point count in chat. At the level-up (a second later, out of combat) chat says how many points wait and the next pick; with "Spend planned points at a level-up" ticked under `/vg` → Talents it buys them instead.
 - If it fails, paste: chat and `/vg errors`.
 
 ### 15.4 Switch
@@ -2414,8 +2414,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 28.1a The command with the module switched off
 
-- Do: switch the Cooldown glow module off in `/vg`, then type `/vg cdmglow on`.
-- Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
+- Do: switch the Cooldown Manager glow module off in `/vg`, then type `/vg cdmglow on`.
+- Expect: chat says "Cooldown Manager glow is off: turn the module on in the options first." and `/vg errors` stays empty.
 - If it fails, paste: `/vg errors`.
 
 ### 28.1b The glow in a dungeon fight
@@ -5686,9 +5686,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.645 Raid holds (H41-3-1, H41-4-1, H44-7-3, H44-7-51 with H5-9-1, H44-9-3)
 
-- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf reset, take damage 30 s, /vg perf; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
-- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; about one UNIT_HEALTH per change for your tile; the roster line says Dead and loses it; nothing is cast under the map.
-- If it fails, paste: /vg perf lines for RaidFrames, /vg errors, screenshots.
+- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf slow reset, take damage 30 s, /vg perf slow; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
+- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; if a line `event UNIT_HEALTH` is listed, note its calls (they count every Vanguard handler of the event, not only your tile); the roster line says Dead and loses it; nothing is cast under the map.
+- If it fails, paste: the /vg perf slow lines, /vg errors, screenshots.
 
 ### 33.646 Plate quest marks (H41-11-1)
 
@@ -6253,7 +6253,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 ### 33.705 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
 
 - Do: in German or French at Text size 130%, switch Unit frames off.
-- Expect: the footer notice ends in "…" before the version line and Reload now is whole.
+- Expect: the footer notice stops before the version line: drawn smaller, and where it is still too long (French) it ends in "…"; Reload now is whole.
 - If it fails, paste: a screenshot of the footer.
 
 ### 33.706 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
@@ -6783,7 +6783,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.793 The Grid spacing slider and the Skin for switches (H46-24-53; WoW Forever and Retail)
 
-- Do: Open /vg, General, Layout, open More settings, press Move frames and drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
+- Do: Open /vg, General, Layout, open More settings, tick Show a grid while moving and press Move frames (the window closes); open the options window again (type /vg), then General, Layout, More settings while the frames are unlocked, then drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
 - Expect: The grid redraws at the new spacing at once while unlocked; the skin switch shows the reload notice, and after the reload /vg skins lists that skin as off.
 - If it fails, paste: /vg skins.
 
@@ -6895,9 +6895,159 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The dimmed AFK screen comes up at once, and any key ends it.
 - If it fails, paste: nothing unless it stays hidden.
 
+### 33.812 The Upgrades list follows a changed stat weight at once (H46-31-102; WoW Forever and Retail)
+
+- Do: At the auction house, with Upgrades picked on the Lists tab, type /vg weights set STR 0. [Client: Forever and Retail.]
+- Expect: The list repaints at once, and rows that only gained from Strength are gone.
+- If it fails, paste: the Upgrades rows before and after.
+
+### 33.813 An empty Sell card shows no late warning (H46-31-103 and H46-31-R2; WoW Forever and Retail)
+
+- Do: Post your last stack of an item, close the auction house and cause a red error line within 3 seconds (try to mount indoors), then open the house again later and look at the Posting tab. [Client: Forever and Retail.]
+- Expect: Chat may say "Post: the game said ...", but the empty Sell card shows only its guide line, no warning.
+- If it fails, paste: the Sell card's guide line.
+
+### 33.814 The Lists and Posting tabs switch asks for a reload (H46-31-201; WoW Forever and Retail)
+
+- Do: Untick Lists and Posting tabs under /vg, Town and gear, then open the auction house; /reload and open it again. [Client: Forever and Retail.]
+- Expect: The options footer asks for a reload and the two tabs still work until then; after the reload they are gone.
+- If it fails, paste: the footer text.
+
+### 33.815 The Crafting costs switch hides and shows the panel at once (H46-31-202; WoW Forever and Retail)
+
+- Do: Open a recipe in the profession window, then untick Crafting costs and profit under /vg, Town and gear, and tick it again. [Client: Forever and Retail.]
+- Expect: The cost panel beside the window hides at once and shows again for the same recipe when ticked.
+- If it fails, paste: whether it hid and whether it came back.
+
+### 33.816 A reagent the client names late gets its name and icon (H46-31-203; WoW Forever and Retail)
+
+- Do: After a /reload, open a recipe with a reagent you have never seen and look at the cost panel's reagent rows. [Client: Forever and Retail.]
+- Expect: Within a moment the row reads the reagent's name with its icon, not "item 123".
+- If it fails, paste: the row's text.
+
+### 33.817 Merchant helpers switched on at an open merchant (H46-32-1; WoW Forever and Retail)
+
+- Do: At an open merchant, switch Merchant helpers off and on again under Modules (or /vg disable merchant, then /vg enable merchant), then Shift-click a stackable item for sale. [Client: Forever and Retail.]
+- Expect: The Stack and Max panel hangs under the game's quantity window, as at a merchant opened with the module on.
+- If it fails, paste: whether the panel showed, and a screenshot of the quantity window.
+
+### 33.818 The combined bag with the gamepad interface on (H46-32-102, pick of a decision still open; WoW Forever)
+
+- Do: With a controller, the game's gamepad interface on and Combined bag in sections ticked, open the combined bag and collapse one bag with the controller; then turn the gamepad interface off and open the bag again. [Client: Forever.]
+- Expect: With the gamepad interface on, the bag is the game's plain combined grid with no Vanguard headers, its per-bag tiles in the grid and not over slots, the collapsed bag hidden; with it off, the sections are back.
+- If it fails, paste: a screenshot with the gamepad interface on and one with it off.
+
+### 33.819 The Train all switch at an open trainer (H46-33-R1; WoW Forever)
+
+- Do: At a class trainer with Train all showing, untick Train all button at trainers under /vg, Town and gear, then tick it again. [Client: Forever.]
+- Expect: The button leaves the trainer window at once, and comes back when ticked.
+- If it fails, paste: whether the button left and whether it came back.
+
+### 33.820 The combined bag's upgrade arrow follows the weights and its switch (H46-33-102; WoW Forever)
+
+- Do: Open the combined bag with an upgrade arrow showing, change a stat weight in the stat weights wizard and Save (or /vg weights set str 0), then untick Arrow on upgrades in the combined bag. [Client: Forever.]
+- Expect: The arrow updates at once each time, with no bag update needed.
+- If it fails, paste: what the arrow did after each change.
+
+### 33.821 The craft queue's Next line says to set the count (H46-33-1; WoW Forever)
+
+- Do: Queue 3 of a recipe (/vg craft add 3 with it open), then type /vg craft next. [Client: Forever.]
+- Expect: Chat reads "Next: 3 x <recipe>. Set the count in the profession window, then press Create."; Create makes the count set in the game's box.
+- If it fails, paste: the chat line.
+
+### 33.822 The reputation bar's percent reads like the XP bar's (H46-34-1; WoW Forever and Retail)
+
+- Do: On a German, French or Spanish client, watch a reputation and look at the XP and reputation bars. [Client: Forever and Retail.]
+- Expect: The reputation bar writes its percent the same way as the XP bar (with the space before the % the language uses).
+- If it fails, paste: both bars' texts.
+
+### 33.823 The Dungeon card keeps a visit ended while it was off (H46-34-102; WoW Forever)
+
+- Do: Inside a dungeon, switch the Dungeon card off; leave the dungeon, switch it on, /reload outside, then walk back in within 30 minutes. [Client: Forever.]
+- Expect: The card says "Last run: today".
+- If it fails, paste: the card's line.
+
+### 33.824 The group board probe speaks your language (H46-34-105; WoW Forever)
+
+- Do: On a client in another language than English, open the group board and type /vg lfg probe. [Client: Forever.]
+- Expect: The channel names, the filter and the on or off word are all in your language.
+- If it fails, paste: the two probe lines.
+
+### 33.825 The Buyback word matches the merchant's tab (H46-37-303; WoW Forever, Chinese clients)
+
+- Do: At a merchant on a zhCN and then a zhTW client, sell one item and compare the Buyback tab's own label with the word in Vanguard's chat line. [Client: Forever.]
+- Expect: The same word (zhCN 购回, zhTW 買回).
+- If it fails, paste: the tab label and the chat line.
+
+### 33.826 The sell list and vendor words in any case (H46-40-F1; WoW Forever and Retail)
+
+- Do: Type /vg junk <item link>, then /vg junk Remove <the same link> (capital R); then /vg vendors Clear. [Client: Forever and Retail.]
+- Expect: The first puts the item on the sell list and the second takes it off (it is not added again); the remembered merchants are forgotten.
+- If it fails, paste: the chat lines.
+
+### 33.827 Taking a staged profile switch back closes its reload offer (H46-10-11; WoW Forever and Retail)
+
+- Do: Type /vg profile <another profile> so the reload offer comes up, leave it up, then type /vg profile <the profile you use> (or press Use on it on the Profiles page). [Client: Forever and Retail.]
+- Expect: The reload offer closes either way (the command also says this character already uses that profile).
+- If it fails, paste: whether the offer stayed, and its text.
+
+### 33.828 The accent usage line names class and reset (H46-4-103; WoW Forever and Retail)
+
+- Do: Type /vg accent nonsense. [Client: Forever and Retail.]
+- Expect: Chat reads "Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper | class | reset", each bar shown.
+- If it fails, paste: the chat line.
+
+### 33.829 An import that matches a profile while your spec's own profile wins (H46-40-F3; WoW Forever and Retail)
+
+- Do: Use a profile Mine and export it from the Profiles page (copy the string); switch to another profile, give your current spec (on WoW Forever, your talents) a profile of its own with /vg spec <that profile>, /reload, then import the copied string. [Client: Forever and Retail.]
+- Expect: Chat says "This string matches profile Mine." and that your spec's profile switches back at the reload; no reload offer comes up and nothing promises Mine after a reload.
+- If it fails, paste: the chat lines and the reload offer's text, if one came up.
+
+### 33.830 A Filtered tab closed with the Chat filter module off (H46-40-F4; WoW Forever and Retail)
+
+- Do: With the chat filter on and its Filtered tab made, switch Chat filter off under Modules and /reload; close the Filtered tab (its tab menu, Close Chat Window) and make a new chat window from the main tab's menu; then switch Chat filter on under Modules and wait for a spam line in Trade. [Client: Forever and Retail.]
+- Expect: The new window keeps its own name and gets no spam; a new Filtered tab is made for the caught line.
+- If it fails, paste: the tab names along the chat dock.
+
+### 33.831 The options page keeps its scroll over a profile change (H46-40-301; WoW Forever and Retail)
+
+- Do: Open the options window (/vg) on the Modules page, scroll it halfway down, then type /vg profile copy <another profile> and answer Copy here. [Client: Forever and Retail.]
+- Expect: The Modules page stays on its tab, scrolled where it was; it does not jump to the top.
+- If it fails, paste: whether it jumped to the top, and the tab it showed.
+
+### 33.832 A chat size dragged in Edit Mode and not saved is not kept (H46-40-401; WoW Forever and Retail)
+
+- Do: Type /run print(ChatFrame1:GetSize()), open Edit Mode, drag the main chat window's corner grip to a new size, close Edit Mode and pick Exit (do not save); /reload and type /run print(ChatFrame1:GetSize()) again. [Client: Forever and Retail.]
+- Expect: The size after the reload is the size from before Edit Mode, not the dragged one.
+- If it fails, paste: both printed sizes.
+
+### 33.833 A saved Edit Mode chat size outlasts a later drag that is thrown away (H46-40-401; WoW Forever and Retail)
+
+- Do: On a layout of your own, open Edit Mode, drag the main chat window's corner grip, press Save, drag it again, close Edit Mode and pick Exit (do not save); /reload and type /run print(ChatFrame1:GetSize()). [Client: Forever and Retail.]
+- Expect: The printed size is the one you saved, not the second drag's and not the size from before.
+- If it fails, paste: the printed size, and the saved size if you noted it.
+
+### 33.834 A chat size saved as a new layout from a preset is kept (H46-40-401; WoW Forever and Retail)
+
+- Do: With the Modern or Classic preset layout active, open Edit Mode, drag the main chat window's corner grip, press Save and name the new layout, close Edit Mode; /reload and type /run print(ChatFrame1:GetSize()). [Client: Forever and Retail.]
+- Expect: The printed size is the dragged one, the size the new layout saved.
+- If it fails, paste: the printed size and the layout's name.
+
+### 33.835 A second staged profile switch, taken back, closes the reload offer (H46-40-903; WoW Forever and Retail)
+
+- Do: Type /vg profile <profile A> so the reload offer comes up, leave it up, type /vg profile <profile B>, then /vg profile <the profile you use>. [Client: Forever and Retail.]
+- Expect: After B the offer names only B; after the last command it closes.
+- If it fails, paste: the offer's text after each command.
+
+### 33.836 An imported profile's reload offer closes when the switch is taken back (H46-40-904; WoW Forever and Retail)
+
+- Do: Type /vg import and import a whole profile string, leave the reload offer up, then type /vg profile <the profile you use>. [Client: Forever and Retail.]
+- Expect: The reload offer closes.
+- If it fails, paste: the offer's text if it stayed.
+
 ## 34. Retail
 
-Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
+Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
 
 ### 34.1 Retail login, and the parts that stay WoW Forever's
 
@@ -7011,21 +7161,21 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
 
-### 35.1 Raid auras
+### 35.1 Raid debuffs and HoTs
 
-- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Do: in a group (or a raid), with Raid frames on, switch **Raid debuffs and HoTs** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
 - Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.2 Raid healing
+### 35.2 Raid heals and aggro
 
-- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid heals and aggro** off under `/vg` → Modules, then on again.
 - Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.3 Raid status
+### 35.3 Raid marks
 
-- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid marks** off under `/vg` → Modules, then on again. Run a ready check while it is off.
 - Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
@@ -7073,14 +7223,14 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 
 ### 35.11 Chat, quest and HUD modules switch off live (A4-2f)
 
-- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet, Quest dialog, Quest log, Cooldown keys, Cooldown glow, Data bars, Broker strip, HUD text and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
-- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet and HUD text print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after Data bars goes off.]
+- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet the game, Quest dialog, Quest log, Cooldown Manager keys, Cooldown Manager glow, XP and reputation, Broker strip, HUD text font and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
+- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet the game and HUD text font print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after XP and reputation goes off.]
 - If it fails, paste: the `/vg errors` text and the module's name.
 
-### 35.12 Data bars off: the game's own status bars, as the game would show them (review M6)
+### 35.12 XP and reputation off: the game's own status bars, as the game would show them (review M6)
 
-- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **Data bars** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with Data bars still off and look again. Switch Data bars on, watch one faction, switch Data bars off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
-- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with Data bars off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when Data bars goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
+- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **XP and reputation** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with XP and reputation still off and look again. Switch XP and reputation on, watch one faction, switch XP and reputation off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
+- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with XP and reputation off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when XP and reputation goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
 - If it fails, paste: a screenshot of the bottom of the screen right after the switch and one after the reload, your level, whether a faction is watched, and `/vg errors`.
 
 ## When you are done

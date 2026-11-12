@@ -8,7 +8,9 @@
 // more than the dropped ones' did, nor any of them, largest first, be above the dropped one in its place, nor their
 // lists hold a line the dropped lists lacked. In a file whose keys are all
 // items of one audit (ONE_AUDIT_FILES: the options budget, one key per tab over it) a new key is a new overflow, so it
-// fails there unless it stands in for a dropped one.
+// fails there unless it stands in for a dropped one. The coverage floor (FLOOR_FILES: scripts/lua-coverage-floor.json)
+// is the same kind of ratchet the other way round: every number the base holds must still be there, a number, and no
+// lower (floorFalls), so a commit that adds untested Lua cannot lower the floor to fit.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -17,6 +19,10 @@ import path from "node:path";
 export const BASELINE_FILES = ["scripts/code-quality-baseline.json", "scripts/tests/textfit-baseline.json", "scripts/tests/options-budget-baseline.json"];
 // The baseline files whose keys are all items of one audit, where a new key is a rise, not a new audit's record.
 export const ONE_AUDIT_FILES = new Set(["scripts/tests/options-budget-baseline.json"]);
+// The floors that only go up, judged by floorFalls instead of baselineRises.
+export const FLOOR_FILES = ["scripts/lua-coverage-floor.json"];
+// Every file checkBaselines reads by default: the baselines and the floors.
+export const CHECKED_FILES = [...BASELINE_FILES, ...FLOOR_FILES];
 
 // A baseline value's kind as a word: "list" or "number" (anything else by its typeof).
 const kindOf = (value) => (Array.isArray(value) ? "list" : typeof value);
@@ -73,6 +79,17 @@ export function baselineRises(file, base, head) {
   return keyRises(file, base, head).concat(newKeyRises(file, base, head), renameRises(file, base, head));
 }
 
+// What fell in one floor file against its base copy (both parsed): one line for each number of the base's that is lower
+// in the head, gone from it or no longer a number. A key the base lacks is a new floor and passes.
+export function floorFalls(file, base, head) {
+  return Object.entries(base).flatMap(([key, was]) => {
+    const now = head[key];
+    if (!(key in head)) return [`${file}: ${key}: ${was} -> gone; the floor only goes up`];
+    if (typeof now !== "number") return [`${file}: ${key}: was a number, now a ${kindOf(now)}; the floor only goes up`];
+    return now < was ? [`${file}: ${key}: ${was} -> ${now}; the floor only goes up`] : [];
+  });
+}
+
 // The options budget baseline a VG_BUDGET_WRITE run writes (scripts/tests/options-budget.test.mjs): what each tab
 // already listed shows now, a tab that is back within the budget taken out. Throws naming any tab over the budget
 // that is not listed yet: a new overflow never goes in that way (rename a renamed tab's key by hand).
@@ -115,11 +132,13 @@ function atRef(root, ref, file) {
   return succeeds(root, "cat-file", "-e", `${ref}:${file}`) ? git(root, "show", `${ref}:${file}`) : null;
 }
 
-// Every rise in the baseline files under root against the ref: strings, empty when none went up. Throws when the base cannot be read.
-export function checkBaselines(root, ref, files = BASELINE_FILES) {
+// Every rise in the baseline files and every fall in the floor files (FLOOR_FILES) under root against the ref: strings,
+// empty when none moved the wrong way. Throws when the base cannot be read.
+export function checkBaselines(root, ref, files = CHECKED_FILES) {
   return files.flatMap((file) => {
     const base = atRef(root, ref, file);
     const head = JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
-    return base === null ? [] : baselineRises(file, JSON.parse(base), head);
+    const judged = FLOOR_FILES.includes(file) ? floorFalls : baselineRises;
+    return base === null ? [] : judged(file, JSON.parse(base), head);
   });
 }

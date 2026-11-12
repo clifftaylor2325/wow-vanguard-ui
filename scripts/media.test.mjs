@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { orphanMedia, staleMedia, unlistedMedia } from "./build-media.mjs";
-import { fontFacts } from "./lib/truetype.mjs";
+import { advanceEms, fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
 import { FIXED_MEDIA, ICONS, ICON_SIZES, MEDIA, POINT_DEPTHS, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
@@ -383,6 +383,14 @@ function shapesPadded() {
   expect(shapes.map((f) => [f, edgePixels(MEDIA[f]())]).filter(([, n]) => n > 0)).toEqual([]);
 }
 
+// The text-fit harness measures the arrow, the dashes and the curly quotes at the font's own widths, not wow-text.lua's
+// 0.6 em guess for a glyph it has no advance for (H46-36-202): Medium's hmtx gives these.
+function punctuationMeasured() {
+  const ems = advanceEms(fontPath("Medium"));
+  const widths = [0x2192, 0x2014, 0x2013, 0x2019, 0x201c, 0x2026, 0x2212].map((code) => Math.round((ems[code] ?? 0) * 1000) / 1000);
+  expect(widths, "→ — – ’ “ … − (0 is a glyph left unmeasured)").toEqual([0.9, 0.722, 0.475, 0.222, 0.415, 0.682, 0.462]);
+}
+
 describe(
   "media",
   // Generated art, then digits, glyphs and the license for each weight.
@@ -393,6 +401,7 @@ describe(
     it("SemiBold: digits 0-9 must share one width", semiBoldDigits);
     it("SemiBold: Latin, Greek, Cyrillic and euro glyphs", semiBoldGlyphs);
     it("Media/Fonts/OFL.txt must hold the font license", oflLicense);
+    it("Medium: the arrow, dashes, curly quotes and minus are measured at their own widths", punctuationMeasured);
     it("game-icons sources rasterize from their SVGs", crestsRasterize);
     it("game-icons sources are credited", crestsCredited);
   },

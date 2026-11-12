@@ -842,6 +842,38 @@ it("H44-G3-6: the game's answer to the last stack goes when the house closes", (
   expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "back at the house: the old refusal is gone, the finished line as before").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
 });
 
+it("H46-31-103 a refusal of the last stack that comes after another item was dropped is not on the new item's guide", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.advance(0.5);
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "the dust was never posted").not.toBe("The auction house refused it.");
+  expect(chatHas(addon, /Post: the auction house refused it/), "chat still says it").toBe(true);
+});
+it("H46-31-103 the answer to the stack posted still lands on its own sale's guide", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 3 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.type(`${CARD}.qty`, "2");
+  addon.type(`${CARD}.stack`, "1");
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(addon.eval(`return ${HELPER}.sell.answer`), "the sale in progress keeps it").toBe("the auction house refused it");
+});
+it("H46-31-R2 an answer that comes after the house closed is not kept for the next visit", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.advance(0.5);
+  addon.world.closeAuctionHouse();
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY You can't mount here");
+  addon.advance(600);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "a new visit: the empty card's own guide").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
+});
+
 it("H45-31-101 a commodity price row shared with another seller counts: it is the price to beat", () => {
   // Blizzard_AuctionHouseUtil.lua AggregateSearchResultsByQuantity: units for sale = quantity - numOwnerItems.
   const shared = `__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 25, numOwnerItems = 5, containsOwnerItem = true }, { unitPrice = 150, quantity = 3 } }`;

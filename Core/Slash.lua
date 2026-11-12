@@ -187,7 +187,7 @@ local function accentCommand(rest)
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat(L["Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper"])
+    return chat(ns.Literal(L["Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper | class | reset"]))
   end
   T.SetAccent(r, g, b)
   chat(ns.Format(L["Accent set to {accent}."], { accent = rest:lower() }))
@@ -262,7 +262,7 @@ local nineSliceCommand = switchCommand({
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
-  if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
+  if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown Manager glow is off: turn the module on in the options first."]) end
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
@@ -443,14 +443,13 @@ local function skinsCommand(rest)
 end
 
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
--- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
--- (ns.WarnSpecWins has said so).
+-- applies it offered (naming what differs, when that alone waits; ns.OfferProfileReload takes it back with the
+-- switch). No offer when the spec's own profile loads instead (ns.WarnSpecWins has said so).
 local function switchTo(name)
   if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
   if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
-  ns.OfferReload(wait and why .. " " .. wait or why)
+  ns.OfferProfileReload(name, wait and why .. " " .. wait or why)
 end
 
 -- The existing profile a typed name means: its exact name, else the first (in name order) that differs
@@ -550,6 +549,13 @@ local function importProgress(percent)
   ns.TextProgress(ns.Format(L["Importing… {percent}%"], { percent = percent }))
 end
 
+-- The reload an import needs: one that staged a profile is offered as that stage's (taken back with the switch);
+-- a partial import's is owed whatever is staged.
+local function offerImportReload(done, detail)
+  if detail.profile then return ns.OfferProfileReload(detail.profile, done) end
+  ns.OfferReload(done)
+end
+
 -- The end of /vg import: why it failed (the box stays, to try again), or the notes (fonts and
 -- textures this client lacks, the backup), the UI scale question for a whole profile that
 -- carries one, then the reload (when nothing needs one, what happened is said in chat at once).
@@ -561,7 +567,7 @@ local function imported(done, detail)
   ns.HideText()
   printLines(detail.notes)
   if not detail.reload then chat(done) end
-  ns.OfferDisplay(detail.display, function() if detail.reload then ns.OfferReload(done) end end)
+  ns.OfferDisplay(detail.display, function() if detail.reload then offerImportReload(done, detail) end end)
 end
 
 -- /vg import: a box to paste into. A large string is read a frame's work at a time, with
