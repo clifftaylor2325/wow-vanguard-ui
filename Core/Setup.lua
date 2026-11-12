@@ -1168,7 +1168,7 @@ local function startRun()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup, state.look, state.undone, state.scale = "keep", "keep", nil, false, false, nil
   state.appliedLayout, state.appliedScreen = nil, nil
-  state.reload, state.paused, state.done, state.role = false, false, false, false
+  state.reload, state.paused, state.done, state.role, state.retile = false, false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()
   state.spots = ns.ExportProfile("layout")
