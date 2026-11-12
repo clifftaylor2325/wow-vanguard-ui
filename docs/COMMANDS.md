@@ -9,7 +9,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg` | The options window (also `/vg options`, `/vg config`, the addons button by the minimap) |
 | `/vg setup` | The first-run setup again |
 | `/vg whatsnew` | What changed in this version |
-| `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
+| `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one (a part that can't switch at once says `/reload to apply`) |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
 | `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions, game windows by state (`/vg status windows` lists them) |
 
@@ -115,7 +115,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
 /vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
-/vg modules       the list of modules; /vg enable|disable <module>, then /reload
+/vg modules       the list of modules; /vg enable|disable <module> (a part that can't switch at once says /reload to apply)
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
 /vg profile [name]              switch (any case; a name that matches nothing asks before creating one); profile new|copy|delete <name> (copy and delete ask first), profile reset (asks and backs up first); a profile's exact name wins over these words
@@ -138,7 +138,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg alts [<name>]                every character's level, money, rested XP and time played; with a name, that character's bags and bank
 /vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
 /vg weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
-/vg talents [plan|spend|order|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string
+/vg talents [plan|spend|order|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, order opens the list that sets what Spend planned buys first, share it as a string
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
 /vg factionart                  which of the game's own faction pictures this client has
 /vg launch [clear]               (WoW Forever only) prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)

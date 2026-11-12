@@ -13,7 +13,7 @@
 --     remembers the character: it uses its profile again, and setup stays shut.
 -- A first run, or a file saved before the guard, has no stamps, so nothing fires.
 -- While a loss is unanswered, logout leaves both stamps and the backup as they
--- were (unless a profile was imported or picked), so the next login offers it again.
+-- were (unless another profile was imported or picked), so the next login offers it again.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -283,7 +283,7 @@ end
 -- At login, before setup decides whether it is owed (and after old notes are folded). A loss is told in
 -- chat once; after that only the General and Profiles pages show it, until it is answered there.
 function G.OnLogin()
-  G.key = G.CharKey()
+  G.key, G.loginProfile = G.CharKey(), ns.ProfileName()
   local acct = tbl(VanguardDB.guard)
   if acct and tbl(acct.chars) then foldRealmSpellings(acct.chars) end
   local lost, detail = G.Check()
@@ -333,16 +333,17 @@ local function charStamp(key, t)
   return (tbl(VanguardCharDB.guard) or {}).stamp
 end
 
--- Notes that the player picked a profile this session (a list pick, an import, a restore): that answers an
--- unanswered loss at logout. A spec change stages a profile without it. Session state, never saved.
-function G.Picked() G.picked = true end
+-- Notes the profile the player picked this session (a list pick, an import, a restore), staged or live: a pick of
+-- another profile than the one in use at login answers an unanswered loss at logout; the same one (or a pick
+-- taken back) does not. A spec change stages a profile without it. Session state, never saved.
+function G.Picked() G.picked = ns.SelectedProfileName() end
 
 -- Leaves the stamp in both files, the profile each character uses in the account file and
--- the backup in this character's; not while a loss is unanswered and nothing was imported or picked.
+-- the backup in this character's; not while a loss is unanswered and no other profile was imported or picked.
 -- The character's key is the one the client gives now, else the one it gave at login (G.key): the client
 -- may not name the character any more at logout.
 function G.Save()
-  if G.lost and not G.picked then return end
+  if G.lost and (G.picked == nil or G.picked == G.loginProfile) then return end
   local t, key, acct = now(), G.CharKey() or G.key, accountGuard()
   acct.stamp = t
   if key then acct.chars[key] = { profile = ns.SelectedProfileName(), uses = ns.ProfilesHeld(), stamp = t } end
