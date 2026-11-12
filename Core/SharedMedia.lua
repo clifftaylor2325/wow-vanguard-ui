@@ -60,8 +60,10 @@ end
 
 -- Another addon shares a bar or panel texture (Vanguard's own are registered at load, before the window): the General
 -- page, which lists them in its Bar texture and Panel texture choices, is built again once, even for a burst of them.
+-- A font counts only when it is the one the theme uses: the Font choice lists no other (T.FontChoices).
 local function sharedLater(_, kind, name)
-  if (kind ~= "statusbar" and kind ~= "background") or T.SHARED_MEDIA[kind][name] then return end
+  if not T.SHARED_MEDIA[kind] or T.SHARED_MEDIA[kind][name] then return end
+  if kind == "font" and name ~= T.Settings().font then return end
   ns.Soon("shared media page", function()
     if ns.Options.Frame() then ns.Options.RebuildPage("general") end
   end)

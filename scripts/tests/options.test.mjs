@@ -705,6 +705,20 @@ it("options: a bar or panel texture another addon shares later is offered by the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("options: the font the profile uses, shared late by its addon, is offered by the General page's Font choice", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The values of the newest Font choice row.
+  const fonts = () => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Font" then last = w end end
+    local out = {} for _, c in ipairs(last.choices) do out[#out + 1] = c[1] end return out`);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Options.Show("general")');
+  addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Other", [[Interface\\TEST-ONLY.ttf]])');
+  addon.advance(0.1);
+  expect(fonts(), "another font shared late is not offered").not.toContain("TEST-ONLY Other");
+  addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])');
+  addon.advance(0.1);
+  expect(fonts(), "the one in use is").toContain("TEST-ONLY Font");
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
