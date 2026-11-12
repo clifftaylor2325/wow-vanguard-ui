@@ -79,7 +79,7 @@ it("Shield: fills grow toward the character, the target's texts and marks mirror
   const inset = addon.eval("local px, UF = ns.Theme.Pixel(Vanguard_player), ns.GetModule('UnitFrames') local health = Vanguard_player.vgHeight - UF.settings.powerHeight - 6 * px local v = UF.TEXT_INSET + math.max(0, ns.Theme.CornerAt(Vanguard_player, 'TOPLEFT') - (2 * px + health / 2)) return math.floor(v * 100 + 0.5) / 100");
   expect(inset > 4 && inset < 14, "the name starts past the point's reach at the health bar's middle (more than the plain inset of 4)").toBe(true);
   expect([player.name, player.health, player.justify], "the player's level and name read from the left, the health text ends short of the swords at the right").toEqual([`LEFT LEFT ${inset}`, "RIGHT RIGHT -10", "LEFT"]);
-  expect([target.name, target.health, target.justify], "the target's read from the right, its health text at the left end, short of the diamond").toEqual([`RIGHT RIGHT -${inset}`, "LEFT LEFT 10", "RIGHT"]);
+  expect([target.name, target.health, target.justify], "the target's read from the right, its health text at the left end, short of the diamond").toEqual([`RIGHT RIGHT -${inset}`, "LEFT LEFT 26", "RIGHT"]);
   expect(addon.eval("local t = Vanguard_target return { (select(3, t.class:GetPoint(1))), (select(4, t.class:GetPoint(1))), (select(3, t.tag:GetPoint(1))), (select(4, t.tag:GetPoint(1))), (select(3, Vanguard_player.combat:GetPoint(1))) }"), "the diamond and tag mark sit over the target's top-left corner, the swords over the player's top-right").toEqual(["TOPLEFT", 2, "TOPLEFT", 18, "TOPRIGHT"]);
   expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "target", "accentDim"), hairlines(addon, "focus", "accentDim")], "three hairline edges (not up the point) in the dim accent on your frame and your target's, none on the focus").toEqual([3, 3, 0]);
   setCombat(addon, true);
@@ -96,7 +96,7 @@ it("Plain: the HUD look row under Look gives the flat frames back at once, texts
   expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row (Shield, Hairline, Rimmed, Tabs, Plain) saves Plain").toBe("plain");
   const target = shape(addon, "target");
   expect([target.corners, target.edges, target.reverse, target.name, target.health, target.justify], "the target has 8-pixel cuts on every corner, four edges, fills from the left and reads from the left")
-    .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -10", "LEFT"]);
+    .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -26", "LEFT"]);
   expect(shape(addon, "player").half > 12, "the frames are still as tall").toBe(true);
   expect([shape(addon, "player").reverse, hairlines(addon, "player", "accentDim"), addon.eval("return select(3, Vanguard_target.class:GetPoint(1))")], "the player fills from the left, no hairline, the diamond back at the top right").toEqual([false, 0, "TOPRIGHT"]);
   addon.eval('__click("Shield corners on unit frames")');
@@ -216,7 +216,7 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   expect([player.shown, player.at, player.fits, player.width >= 48, player.edges, player.home, player.crown], "your tab stands on the frame's top-left corner a pixel down, sized to your name, open at the bottom, the name in it, the crown risen to its top").toEqual([true, "BOTTOMLEFT TOPLEFT -1", true, true, ["LEFT", "RIGHT", "TOP"], "tab", "tab"]);
   const target = tab(addon, "target");
   const body = shape(addon, "target");
-  expect([target.at, target.home, target.icon, body.corners, body.edges, body.name, body.health, body.justify, body.reverse], "the target's tab sits on its right corner, the name reading from the right in it, the health text and the raid icon at the inner (left) end of a square body with four edges, filling from the left").toEqual(["BOTTOMRIGHT TOPRIGHT -1", "tab", "TOPLEFT 34", ["0 nil", "0 nil", "0 nil", "0 nil"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], "RIGHT RIGHT -4", "LEFT LEFT 10", "RIGHT", false]);
+  expect([target.at, target.home, target.icon, body.corners, body.edges, body.name, body.health, body.justify, body.reverse], "the target's tab sits on its right corner, the name reading from the right in it, the health text and the raid icon at the inner (left) end of a square body with four edges, filling from the left").toEqual(["BOTTOMRIGHT TOPRIGHT -1", "tab", "TOPLEFT 34", ["0 nil", "0 nil", "0 nil", "0 nil"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], "RIGHT RIGHT -4", "LEFT LEFT 26", "RIGHT", false]);
   expect([addon.eval("return ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT')"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), rows(addon, "player").outlined], "the cast bar is square, no plinth, shadowed text").toEqual([null, false, false]);
   // The cast bars' default y, less the block's rise on this canvas (Core/Layout.lua HudLift).
   const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
