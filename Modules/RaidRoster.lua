@@ -90,11 +90,13 @@ end
 
 -- The room the panel f has to grow into: from its bottom edge up to the screen's top when it is anchored
 -- by a bottom point (a panel dropped low is saved on a bottom corner and grows up), else down from its top.
+-- The screen's height is taken in the panel's own units, as its edges are.
 local function roomFor(f)
   local point = f:GetPoint()
   if not (point and point:find("BOTTOM", 1, true)) then return ns.PlainNumber(f:GetTop()) end
   local bottom = ns.PlainNumber(f:GetBottom())
-  return bottom and (UIParent:GetHeight() or 0) - bottom
+  local screen = (UIParent:GetHeight() or 0) * UIParent:GetEffectiveScale() / f:GetEffectiveScale()
+  return bottom and screen - bottom
 end
 
 -- How many lines fit in the panel's room on this screen (at least the heading and one more). The room
