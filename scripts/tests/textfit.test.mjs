@@ -347,6 +347,49 @@ it("text fits: the options footer's error line stops short of the reload notice,
   }
 });
 
+it("H46-4-5 text fits: a long reload notice and the errors line share the footer, the notice shrinking and the line showing its count", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  let counts = 0;
+  for (const [locale, scale] of [["enUS", 1], ["deDE", 1], ["deDE", 1.3], ["frFR", 1.3]]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() for i = 1, 3 do ns.Report("TEST-ONLY site", "failure " .. i) end`);
+    addon.advance(0.5);
+    addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+    const [errLeft, errRight, textRight, noticeLeft, versionRight, shown, text, tip] = addon.eval(`local b = Vanguard_OptionsErrors
+      return { b:GetLeft(), b:GetRight(), b.text:GetRight(), Vanguard_Options.notice:GetLeft(), Vanguard_Options.version:GetRight(), b:IsShown(), b.text:GetText(), b.short == true }`);
+    const where = `${locale} at ${scale * 100}%`;
+    expect(shown, `${where}: the errors line stays`).toBe(true);
+    expect(errRight, `${where}: its room is not inverted`).toBeGreaterThan(errLeft);
+    expect(errRight, `${where}: it ends before the notice`).toBeLessThanOrEqual(noticeLeft + 1e-6);
+    expect(textRight, `${where}: its text stays inside its click area`).toBeLessThanOrEqual(errRight + 1e-6);
+    expect(noticeLeft, `${where}: the notice starts right of the version line`).toBeGreaterThanOrEqual(versionRight - 1e-6);
+    counts += tip ? 1 : 0;
+    if (tip) expect(text, `${where}: a line too narrow for the sentence shows the count`).toBe("3");
+    expect(addon.textFit("Vanguard_Options").filter((finding) => finding.text === text), `${where}: the errors line is not cut`).toEqual([]);
+  }
+  expect(counts, "at least one of the long-notice cases is too narrow for the sentence and shows the count").toBeGreaterThan(0);
+});
+
+it("H46-4-5 the errors line shows its count when the notice takes the room, with the sentence as its tooltip, and the sentence again when the notice goes", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Report("TEST-ONLY site", "failure 1") ns.Report("TEST-ONLY site", "failure 2")');
+  addon.advance(0.5);
+  addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+  const hover = 'local b = Vanguard_OptionsErrors b:GetScript("OnEnter")(b) local shown, line = GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text b:GetScript("OnLeave")(b) return { shown, line or false, b.text:GetText(), GameTooltip:IsShown() }';
+  const full = addon.eval('return ns.L["{count} errors caught this session: click to list them"]').replace("{count}", "2");
+  expect(addon.eval(hover), "the count, the sentence as its tooltip, gone on leaving").toEqual([true, full, "2", false]);
+  addon.eval('ns.SetModuleEnabled("UnitFrames", true) ns.SetModuleEnabled("Minimap", true) ns.SetModuleEnabled("Chat", true)');
+  expect(addon.eval(hover), "with no notice the whole sentence shows and the tooltip stays hidden").toEqual([false, full, full, false]);
+  addon.eval("GameTooltip = nil Vanguard_OptionsErrors.short = true");
+  expect(addon.eval('local b = Vanguard_OptionsErrors b:GetScript("OnEnter")(b) b:GetScript("OnLeave")(b) return true'), "a client without the tooltip shows none").toBe(true);
+  addon.eval("ns.ClearErrors()");
+  addon.advance(0.5);
+  expect(addon.eval("return { Vanguard_OptionsErrors:IsShown(), ns.ErrorBadge.FooterRoom() }"), "no errors: no line and no room kept").toEqual([false, 0]);
+});
+
 it("text fits: the options footer's reload notice naming two modules stays between the version line and Reload now (H45-23-2)", () => {
   for (const [locale, scale] of [["deDE", 1], ["deDE", 1.3], ["frFR", 1], ["frFR", 1.3]]) {
     const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });

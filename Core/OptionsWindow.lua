@@ -842,14 +842,21 @@ end
 
 -- The notice keeps its own width (0, the text's) while it fits with a column free on each side, between the version
 -- line and the Reload now button; a longer one shrinks to T.FIT_FLOOR and only then ends in "...", so a cut notice
--- never starts against the version's last letter. Waits while either edge is unknown.
+-- never starts against the version's last letter. The errors line keeps the room its count needs. Waits while either
+-- edge is unknown.
 function O.FitNotice(f)
   local from, to = f.version:GetRight(), f.reload:GetLeft()
-  local room = from and to and math.floor(to - from - 2 * T.SPACE.col)
+  local room = from and to and math.floor(to - from - 2 * T.SPACE.col - ns.ErrorBadge.FooterRoom())
   local full = T.FullWidth(f.notice)
   local over = room and full > room
   f.notice:SetTextScale(over and math.max(T.FIT_FLOOR, room / full) or 1)
   f.notice:SetWidth(over and math.max(1, room) or 0)
+  ns.ErrorBadge.FitFooter()
+end
+
+-- Fits the notice again (the errors line came or went), once the window is built.
+function O.RefitNotice()
+  if window then O.FitNotice(window) end
 end
 
 -- The footer: your faction's crest (T.CREST.footer, while the faction look is on) and the version on the left; a
