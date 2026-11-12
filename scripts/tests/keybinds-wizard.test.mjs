@@ -628,3 +628,15 @@ it("H45-6-102 step 2: a change unticked on Ready is not drawn, listed or named a
   expect(tipText(addon)).toContain("F: stays as it is");
   expect(tipText(addon)).not.toContain("Shield Bash added");
 });
+
+it("H45-6-R4 step 3: the gamepad interface switched on while Ready is open stops Apply and step 1 says why", () => {
+  const addon = warrior("__pad = false InputUtil = { IsGamepadUIEnabled = function() return __pad end }");
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  addon.eval("__pad = true");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(keys(addon, ["F"]), "no key changed").toEqual([""]);
+  expect([win(addon).shown, win(addon).step, win(addon).left]).toEqual([true, 1, "Close"]);
+  expect(addon.texts("You play with a gamepad, so Vanguard won't change your keys.").length).toBe(1);
+});

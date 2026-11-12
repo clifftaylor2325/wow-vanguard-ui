@@ -694,6 +694,7 @@ end
 -- listeners hear of it. With every change unticked it says so and stays; with nothing to change it closes and keeps
 -- the tick box.
 local function apply()
+  if WZ.Blocked() then return WZ.Show(1) end
   if KA.SharesKeys() ~= state.shared then return stale() end
   local set = state.shared and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined, keys = kept()
