@@ -377,12 +377,14 @@ end
 
 -- One of a plate's aura rows on the backend in use, noting its signature (what of it is fixed once made,
 -- Core/Auras.lua) and whether that was the client's engine (a plate first drawn in combat gets the
--- fallback: a row put away after an earlier fight when there is one, else a new one).
+-- fallback: a row put away after an earlier fight when there is one, else a new one). The row is followed
+-- (Core/Auras.lua A.Follow), so icons the client held back at a scale change are refit once it lets them go.
 local function addRow(f, key, spec)
   local sig = ns.Auras.Signature(spec)
   local spare = ns.Auras.Backend() ~= ns.AuraEngine and takeSpare(key, sig)
   f[key] = spare and reuseRow(spare, f, spec) or ns.Auras.Container(f, spec, rowUnit(key, f.unit))
   f[key].sig, f[key .. "OnEngine"] = sig, ns.Auras.Backend() == ns.AuraEngine
+  ns.Auras.Follow(f[key].frame)
 end
 
 -- A plate's texts, tag mark, soft-target icon, click area and mouseover wash.
