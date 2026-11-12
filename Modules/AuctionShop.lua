@@ -557,11 +557,12 @@ local function itemListing(r)
   return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = AH.BandText(band) }
 end
 
--- A commodity listing as a row: its unit price, quantity and seconds left; nil for a hidden number.
+-- A commodity listing as a row: its unit price, quantity and seconds left (read as Up now reads them,
+-- AH.TimeLeft); nil for a hidden number.
 local function commodityListing(r)
   local unit, qty, secs = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeftSeconds)
   if not (unit and qty) then return nil end
-  return { price = unit, qty = qty, time = secs or 0, timeText = secs and AH.SecondsText(secs) or "" }
+  return { price = unit, qty = qty, time = secs or 0, timeText = AH.TimeLeft(r) }
 end
 
 -- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).
