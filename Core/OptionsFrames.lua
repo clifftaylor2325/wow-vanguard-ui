@@ -264,10 +264,13 @@ local function sizeSetting(key)
   return get, function(v) set(v); ns.GetModule("RaidFrames").ApplySize(); ns.RaidPreview.Refresh() end, initial
 end
 
--- The raid tiles' width and height sliders: every step the choices used to have (72, 90, 100, 120 wide; 36, 40, 48, 56 tall)
--- lies on them, so no saved size changes.
-local RAID_WIDTHS = { min = 72, max = 120, step = 2 }
-local RAID_HEIGHTS = { min = 36, max = 56, step = 2 }
+-- A raid tile slider's range: the module's limits (read when the rows are built, as the module loads after this
+-- file), in steps of 2. Every step the choices used to have (72, 90, 100, 120 wide; 36, 40, 48, 56 tall) lies on them,
+-- so no saved size changes.
+local function raidRange(key)
+  local limits = ns.GetModule("RaidFrames").LIMITS[key]
+  return { min = limits[1], max = limits[2], step = 2 }
+end
 
 -- get/set for Stack big raids: the real frames and the preview follow at once, so no reload is waited for.
 local function stackSetting()
@@ -285,8 +288,8 @@ local function raidRows()
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
     essential(check(L["Stack big raids at the left"], stackSetting())), essential(reloadRow(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
-    essential({ "slider", L["Width"], RAID_WIDTHS, sizeSetting("width") }),
-    essential({ "slider", L["Height"], RAID_HEIGHTS, sizeSetting("height") }),
+    essential({ "slider", L["Width"], raidRange("width"), sizeSetting("width") }),
+    essential({ "slider", L["Height"], raidRange("height"), sizeSetting("height") }),
   }
 end
 

@@ -24,6 +24,10 @@ local RF = ns.Module("RaidFrames", {
   defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true, layout = "columns", stackBig = true },
 })
 
+-- The tile width, tile height and gap the Width and Height sliders and the migration below both read, in px, as
+-- { lowest, highest } (spacing has no control: its range is the action bars').
+RF.LIMITS = { width = { 72, 120 }, height = { 36, 56 }, spacing = { 0, 10 } }
+
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
 -- The most players a grid grows for when the raid mover's Scale is above 100% (the Healing preset's 115%):
@@ -935,6 +939,21 @@ local function migrateStyle(s)
   s.style = nil
 end
 
+-- Drops a saved width, height or spacing that is not a number inside RF.LIMITS (a hand-edited file or a crafted
+-- string; NaN fails both comparisons), so the default fills it in.
+local function cleanSizes(saved)
+  for key, limits in pairs(RF.LIMITS) do
+    local v = saved[key]
+    if v ~= nil and not (type(v) == "number" and v >= limits[1] and v <= limits[2]) then saved[key] = nil end
+  end
+end
+
+-- Every upgrade of saved raid frame settings, at login and for an imported string.
+ns.Migrate("RaidFrames", function(saved)
+  migrateStyle(saved)
+  cleanSizes(saved)
+end)
+
 -- The roster changed (or you zoned in): the grid is fitted to the group now,
 -- and every tile is refreshed once on the next frame, however many roster
 -- events come in this one (the marks and heal parts refresh with the tiles).
@@ -949,7 +968,6 @@ local TILE_EVENTS = { PLAYER_TARGET_CHANGED = "PaintEdge", PLAYER_ROLES_ASSIGNED
 -- Module entry point (Core/Modules.lua): build out of combat, then listen.
 function RF.Enable(settings)
   RF.settings = settings
-  migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
   for e, part in pairs(TILE_EVENTS) do ns.On(e, function() RF.EachTile(RF[part]) end) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.RosterChanged) end

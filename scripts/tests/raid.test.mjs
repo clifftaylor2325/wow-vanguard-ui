@@ -200,6 +200,29 @@ it("raid role mark: a hidden role shows no mark, no role call or NONE shows none
   expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
 });
 
+it("H45-5-52 raid frames: a saved tile width, height or spacing outside the sliders' limits is dropped at login and in an import", () => {
+  for (const field of ["width = 0", "height = 0", "height = -40", "width = 0/0", "height = 1/0", "spacing = -500", "width = 100000", "height = 4", "width = '5'"]) {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: `VanguardDB.profiles = { Default = { RaidFrames = { ${field} } } }\n` });
+    addon.eval('__spawn(1, "raid1")');
+    expect(addon.eval('local b, s = Vanguard_RaidUnitButton1, ns.GetModule("RaidFrames").settings return { b:GetWidth(), b:GetHeight(), s.spacing, #ns.errors }'), `${field}: the defaults fill in`).toEqual([100, 48, 4, 0]);
+    const kept = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, RaidFrames = { ${field} } })
+      local r = data.RaidFrames return { kind, r.width == nil, r.height == nil, r.spacing == nil }`);
+    expect([kept[0], kept.slice(1).includes(true)], `${field}: an import is read and its bad value dropped`).toEqual(["parts", true]);
+  }
+  const inside = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { RaidFrames = { width = 72, height = 56, spacing = 10 } } }\n' });
+  expect(inside.eval('local s = ns.GetModule("RaidFrames").settings return { s.width, s.height, s.spacing }'), "the limits themselves stay").toEqual([72, 56, 10]);
+});
+
+it("H45-5-52 raid frames: an imported width that is out of range is cleaned, and the sliders read the module's limits", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const cleaned = addon.eval(`local _, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, RaidFrames = { width = 100000, height = 40, spacing = 0/0 } })
+    local r = data.RaidFrames return { r.width == nil, r.height, r.spacing == nil }`);
+  expect(cleaned, "width and spacing dropped, a height inside the range kept").toEqual([true, 40, true]);
+  const ranges = addon.eval(`local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
+    if r[2] == "Width" or r[2] == "Height" then out[#out + 1] = { r[3].min, r[3].max, r[3].step } end end end end return out`);
+  expect(ranges, "Width 72 to 120, Height 36 to 56, in steps of 2").toEqual([[72, 120, 2], [36, 56, 2]]);
+});
+
 it("raid frames: a dark style chosen before 'look' carries over", () => {
   const sv = 'VanguardDB = { profiles = { Default = { RaidFrames = { style = "dark" } } }, chars = {} }';
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
