@@ -95,7 +95,7 @@
       "reagent and item counts show even at 0 and 1",
       "the bars touch at a UI scale where a button rounds up to a whole pixel (the 1440p preset), and re-stack when the scale changes",
       "the bottom stack follows per-bar size and rows, live",
-      "the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps",
+      "one cooldown event refreshes the sweeps",
       "the mouseover fade still follows hovering an action button",
       "the right-edge bars start off and show on mouseover when turned on"
     ],

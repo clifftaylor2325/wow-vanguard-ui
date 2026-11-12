@@ -237,13 +237,14 @@ local function built(b)
 end
 
 -- What is fixed in a tile's rows once they are made, as one string: the dispel switch and each row's signature
--- (ns.Auras.Signature). A tile built with another string than the settings now give needs its rows made again.
+-- (ns.Auras.Signature), with where each indicator sits (its offsets move with the tile's height though its icon
+-- size may not). A tile built with another string than the settings now give needs its rows made again.
 local function rowsSignature(b)
   local z, s = RF.TileZones(), RA.settings
   local parts = { tostring(s.dispel), ns.Auras.Signature(RA.DebuffSpec(b, z, s)), ns.Auras.Signature(RA.HotSpec(b, z, s)) }
   for n = 1, RA.IND_SLOTS do
     local spec = RA.IndicatorSpec(b, z, n)
-    parts[#parts + 1] = spec and ns.Auras.Signature(spec) or "-"
+    parts[#parts + 1] = spec and (ns.Auras.Signature(spec) .. "@" .. spec.point[4] .. "," .. spec.point[5]) or "-"
   end
   return table.concat(parts, "|")
 end
