@@ -355,9 +355,16 @@ local function shownAlready(shown, text)
   return shown[text] or shown[CX.Rewrite(text)] or shown[restored] or shown[CX.Rewrite(restored)]
 end
 
+-- Whether Chat history is switched on (the module running and its switch set; its settings are nil when the module was off at login).
+local function historyOn()
+  return ns.ModuleLive("ChatHistory") and ns.Settings("ChatHistory", ns.GetModule("ChatHistory").defaults).on == true
+end
+
 -- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more (as saved, or as Vanguard rewrote it on screen), oldest first.
+-- None while Chat history is off.
 local function savedLines(shown)
   local out, CHH = {}, ns.GetModule("ChatHistory")
+  if not historyOn() then return out end
   local store = CHH.Store()
   for i = 1, windowCount() do
     for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do

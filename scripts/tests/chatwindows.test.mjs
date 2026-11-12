@@ -352,15 +352,30 @@ it("chat find: the find box and the copy box never stack; the one opening takes 
 });
 
 it("chat find: saved history that no window shows is searched too, and only the newest lines are listed", () => {
-  const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
+  const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
   const sword = lit(addon, "Sword");
   expect(addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))"), "the old saved line first, the duplicate of a showing line once").toBe(`old ${sword} talk\n[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`);
   addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1");
   expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
 });
 
+it("H45-29-2 chat find: saved lines are listed only while Chat history is on and its module runs", () => {
+  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk" } } }';
+  // The lines Find lists for "sword".
+  const lines = (addon) => addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))");
+  const off = loggedIn(ENV + LINES, { savedVariables: saved });
+  expect(lines(off), "history off (the default): only the window's own lines").not.toContain("old");
+  const on = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } ' + saved });
+  expect(lines(on), "history on: the saved line too").toContain("old");
+  on.eval("ns.SetModuleEnabled('ChatHistory', false)");
+  expect(lines(on), "the module off: the saved line is not listed").not.toContain("old");
+  const never = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true }, modules = { ChatHistory = false } } } ' + saved });
+  expect(lines(never), "the module off at login: nothing raised").not.toContain("old");
+  expect(off.eval("return #ns.errors") + never.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat find: a saved channel line that a window shows shortened is listed once, with Chat extras on or off", () => {
-  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
+  const saved = 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
   // The Find result of "wts" in a loaded client.
   const find = (addon) => addon.eval("return { ns.GetModule('ChatWindows').Find('wts') }");
   const lines = '__lines1 = { "|Hchannel:CHANNEL:2|h[2]|h Bob: wts sword" } ChatFrame1.GetNumMessages = function() return 1 end ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end';
