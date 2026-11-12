@@ -187,13 +187,14 @@ it("home: a house saved without its price table clears to a count of none, with 
     "nothing to clear: the count is none, and no error").toEqual([true, 0, 0]);
 });
 
-it("home: the first login after launch says once that beta data is saved; the Town and gear button asks before clearing", () => {
+it("home: the first login after launch says once that beta data is saved", () => {
   const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
   addon.fire("PLAYER_LOGIN");
   expect(chatHas(addon, /Still saved from the beta: 2 prices, 3 sales, 1 characters\./), "told").toBe(true);
-  addon.eval("__said = 0");
+  addon.clearChat();
   addon.fire("PLAYER_LOGIN");
-  expect(addon.eval("return VanguardDB.launchNoticed"), "and marked, so not again").toBe(true);
+  expect(chatHas(addon, /Still saved from the beta/), "not said again at the next login").toBe(false);
+  expect(addon.eval("return VanguardDB.launchNoticed"), "and marked").toBe(true);
   addon.eval("time = function() return " + BETA_DAY + " end VanguardDB.launchNoticed = nil");
   addon.fire("PLAYER_LOGIN");
   expect(addon.eval("return VanguardDB.launchNoticed"), "before launch: not marked").toBe(null);
