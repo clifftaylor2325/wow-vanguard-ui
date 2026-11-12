@@ -260,6 +260,21 @@ it("Names only on friendly plates: a unit you can't attack shows its name alone,
   expect([look("nameplate1").alpha, look("nameplate2").alpha, addon.eval("return #ns.errors")], "switched off: whole plates again").toEqual([1, 1, 0]);
 });
 
+it("Names only on friendly plates: a friendly NPC's name takes a new colour variant at once, as its bar does", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  // The friendly NPC's name colour.
+  const name = () => addon.eval("local r, g, b = __plateOf('nameplate2').name:GetTextColor() return { r, g, b }");
+  // The friendly reaction token now.
+  const friendly = () => addon.eval('return { ns.Theme.RGB("friendly") }').slice(0, 3);
+  expect(name(), "name-only: the name is in the friendly colour").toEqual(friendly());
+  const before = friendly();
+  addon.slash("variant contrast");
+  expect(friendly(), "the friendly colour moved").not.toEqual(before);
+  expect(name(), "the name took the new friendly colour").toEqual(friendly());
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
 it("a plate's aura row the client has closed is never pointed at a unit: a removed plate is let go, a refresh paints the rest", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
   // TEST-ONLY: the boar's debuff row closed as the client closes one it keeps; pointing it at a unit raises, as touching it would.

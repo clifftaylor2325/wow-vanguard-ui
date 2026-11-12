@@ -1178,9 +1178,11 @@ local EVENTS = {
 
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
+-- A name-only plate's name is painted with T.ColorRGB, which T.RefreshText skips, so it is repainted here too.
 local function repaintLook(f, unit)
   paintTarget(f, targetShown(unit, isUnit(unit, "target")), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
+  if f.vgNameOnly then T.ColorRGB(f.name, UF.UnitColor(unit)) end
 end
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
