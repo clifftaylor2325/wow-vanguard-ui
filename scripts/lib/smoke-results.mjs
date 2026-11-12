@@ -10,7 +10,7 @@ import path from "node:path";
 export const LEDGER = "docs/smoke-results.json";
 export const RESULTS = ["pass", "fail", "partial", "skip"];
 const FIELDS = ["step", "build", "date", "result", "note"];
-const STEP_ID = /^\d+(?:\.\d+)*[a-z]?$/;
+export const STEP_ID = /^\d+(?:\.\d+)*[a-z]?$/;
 
 // The step ids SMOKE-TEST.md defines ("### 33.390 Title" gives "33.390"), as a Set.
 export function smokeSteps(md) {
@@ -54,10 +54,11 @@ function inRange(id, from, to) {
 // The SMOKE steps a changelog section names: "steps 33.344 to 33.389" and single ids, as a sorted list.
 export function namedSteps(section, steps) {
   const found = new Set();
-  for (const m of section.matchAll(/\bsteps? (\d+\.\d+[a-z]?) to (\d+\.\d+[a-z]?)(?!\d|\.\d)/g)) {
+  for (const m of section.matchAll(/\bsteps? (\d+\.\d+[a-z]?) to (\d+\.\d+[a-z]?)(?![\da-z]|\.\d)/g)) {
     for (const id of steps) if (inRange(id, m[1], m[2])) found.add(id);
   }
-  for (const m of section.matchAll(/(?<![\d.])(\d+\.\d+(?:\.\d+)?[a-z]?)(?!\d|\.\d)/g)) if (steps.has(m[1])) found.add(m[1]);
+  // An id followed by a letter or digit is a longer id (7.2h1), never read as its shorter prefix (7.2).
+  for (const m of section.matchAll(/(?<![\d.])(\d+\.\d+(?:\.\d+)?[a-z]?)(?![\da-z]|\.\d)/g)) if (steps.has(m[1])) found.add(m[1]);
   return [...found].sort((x, y) => x.localeCompare(y, "en", { numeric: true }));
 }
 

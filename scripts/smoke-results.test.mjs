@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { coreSteps, isMajor, ledgerProblems, namedSteps, readLedger, smokeSteps, unpassedCore, unrecordedSteps } from "./lib/smoke-results.mjs";
+import { STEP_ID, coreSteps, isMajor, ledgerProblems, namedSteps, readLedger, smokeSteps, unpassedCore, unrecordedSteps } from "./lib/smoke-results.mjs";
 import { root } from "./check-zip.mjs";
 
 const SMOKE = fs.readFileSync(path.join(root, "docs/SMOKE-TEST.md"), "utf8");
@@ -17,6 +17,21 @@ it("the committed ledger is well formed and every entry names a SMOKE-TEST.md st
 
 it("reads step ids from the headings, letters and three-part ids included", () => {
   expect(smokeSteps("### 33.390 A\n### 1.5a B\n### 14.8.7 C\n#### 9.9 not a step\n")).toEqual(new Set(["33.390", "1.5a", "14.8.7"]));
+});
+
+it("every '### <digit>' heading in SMOKE-TEST.md is a step id of the one shape, used once", () => {
+  const ids = [...SMOKE.matchAll(/^### (\d\S*) /gm)].map((m) => m[1]);
+  expect(ids.length, "the checklist's steps").toBeGreaterThan(900);
+  expect(ids.filter((id) => !STEP_ID.test(id)), "an id the ledger could not record (use 7.2h, not 7.2h1)").toEqual([]);
+  const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
+  expect(repeated, "an id used twice, so a result cannot say which step ran").toEqual([]);
+  expect(STEPS.size, "smokeSteps reads every heading").toBe(ids.length);
+});
+
+it("a heading that does not match the id shape is not read as a step, and a repeated one is seen", () => {
+  expect(smokeSteps("### 2.1f2 A\n### 7.2a1 B\n### 5.1 C\n").has("2.1f2")).toBe(false);
+  expect(STEP_ID.test("2.1f2")).toBe(false);
+  expect(STEP_ID.test("14.8.7a")).toBe(true);
 });
 
 it("a malformed entry is named for each thing wrong with it", () => {
@@ -32,6 +47,13 @@ it("a changelog section's steps: ranges within one section and single ids, only 
   expect(namedSteps("see SMOKE-TEST.md (steps 33.344 to 33.345), and 33.390, 1.5a, 7.7", steps)).toEqual(["1.5a", "33.344", "33.345", "33.390"]);
   expect(namedSteps("steps 33.344 to 34.1", steps)).toEqual(["33.344", "34.1"]);
   expect(namedSteps("a multiple saved in 0.9.0 to 0.9.2, and 33.344.", new Set(["9.0", "0.9", "9.1", "33.344"])), "version numbers are not steps").toEqual(["33.344"]);
+});
+
+it("an id followed by a letter or digit is never read as its shorter prefix", () => {
+  const steps = new Set(["2.1", "7.2", "7.2h", "9.1"]);
+  expect(namedSteps("fixed in 7.2h1 and 2.1f2", steps), "7.2h1 and 2.1f2 are not steps, nor 7.2 and 2.1").toEqual([]);
+  expect(namedSteps("and 7.2h.", steps)).toEqual(["7.2h"]);
+  expect(namedSteps("steps 7.2 to 9.1x", steps), "a range end followed by a letter is not a range").toEqual(["7.2"]);
 });
 
 it("a release's steps without an entry for that build are listed; another build's entry does not count", () => {
