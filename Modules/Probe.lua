@@ -555,11 +555,19 @@ local function previousLine(prev)
   return string.format("earlier run: #%s, build %s, %d s ago, %s", tostring(prev.runs), tostring(prev.build), age, same and "same session (a reload would show the same)" or "from an earlier session (saved across a log out or reload)")
 end
 
+-- The saved fight report and its session, only when it was taken in this session: a fight block has no clock or
+-- build on it, so one from an earlier session would read as this run's.
+local function carriedFight(prev)
+  if type(prev) ~= "table" or prev.fightSession ~= P.session then return nil, nil end
+  return prev.fight, prev.fightSession
+end
+
 -- Writes this run's marker; returns the record it replaced.
 local function stampSaved(store)
   local prev = store.probe
   local runs = (type(prev) == "table" and tonumber(prev.runs) or 0) + 1
-  store.probe = { runs = runs, build = select(2, GetBuildInfo()), time = now(), session = P.session, report = prev and prev.report, fight = prev and prev.fight }
+  local fight, fightSession = carriedFight(prev)
+  store.probe = { runs = runs, build = select(2, GetBuildInfo()), time = now(), session = P.session, report = prev and prev.report, fight = fight, fightSession = fightSession }
   return prev, store.probe
 end
 
@@ -1030,7 +1038,7 @@ end
 -- The fight is over: saves the report and tells the player it is ready.
 local function fightDone()
   VanguardDB.probe = VanguardDB.probe or {}
-  VanguardDB.probe.fight = P.fight
+  VanguardDB.probe.fight, VanguardDB.probe.fightSession = P.fight, P.session
   P.running = nil
   ns.Chat(L["Probe: the fight report is ready. /vg probe last shows it after the main report."])
 end
