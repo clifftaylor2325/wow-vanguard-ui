@@ -418,8 +418,9 @@ it("/vg probe legacy copes with a window without a panel, secret ids, a failing 
   addon.slash("probe legacy");
   expect(chatHas(addon, /perk panel: configID hidden, treeID 9, nodes unknown/), "hidden ids and a failing call").toBe(true);
   addon.eval("C_Traits = nil LegacySystemFrame.TreePage.LegacyTreeTraitPanel.treeID = nil");
+  addon.clearChat();
   addon.slash("probe legacy");
-  expect(chatHas(addon, /treeID nil|treeID table|nodes unknown/), "no trait calls").toBe(true);
+  expect(chatHas(addon, /perk panel: configID hidden, treeID nil, nodes unknown/), "no trait calls").toBe(true);
   addon.world.combat(true);
   addon.slash("probe legacy");
   expect(chatHas(addon, /Not in a fight: try again after it\./), "nothing is read in combat").toBe(true);
