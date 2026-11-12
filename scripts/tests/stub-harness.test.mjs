@@ -318,3 +318,23 @@ it("FCF_OpenNewWindow gives the window and its number up to the tenth window, th
     return { made[1], made[8], select("#", FCF_OpenNewWindow("TEST-ONLY full")) }`);
   expect(out).toEqual(["ChatFrame3 3", "ChatFrame10 10", 0]);
 });
+
+// Blizzard_SharedXMLBase/CallbackRegistry.lua (both clients, identical): RegisterCallback raises for a non-string
+// event, then for a non-function func, before the owner rules (:112-117); TriggerEvent (:187-188) and
+// UnregisterCallback (:225-226) raise for a non-string event.
+it("EventRegistry refuses a missing callback and an event name that is not text, with the client's messages", () => {
+  const addon = createAddon();
+  const errs = addon.eval(`local function why(...) local ok, err = pcall(...) return ok and "ok" or err:match("CallbackRegistryMixin.*$") end
+    local R = EventRegistry
+    return { why(R.RegisterCallback, R, "TEST-ONLY", nil, {}), why(R.RegisterCallback, R, 5, function() end, {}),
+      why(R.RegisterCallback, R, 5, nil, 5), why(R.UnregisterCallback, R, 5, nil), why(R.TriggerEvent, R, 5),
+      why(R.TriggerEvent, R, "TEST-ONLY") }`);
+  expect(errs).toEqual([
+    "CallbackRegistryMixin::RegisterCallback 'func' requires function type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:UnregisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:TriggerEvent 'event' requires string type.",
+    "ok",
+  ]);
+});

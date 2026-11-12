@@ -339,23 +339,35 @@ local function runCallback(cb, ...)
   return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
 end
 
+-- The client's check on an event name: text, else it raises with the method's own message (the client writes
+-- RegisterCallback's with a double colon). Blizzard_SharedXMLBase/CallbackRegistry.lua:112-113, 187-188, 225-226.
+local function needEventName(method, event)
+  if type(event) ~= "string" then error(method .. " 'event' requires string type.", 3) end
+end
+
 EventRegistry = {
-  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner.
+  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner. The event name and
+  -- the function are checked first, then the owner, in the client's order (CallbackRegistry.lua:112-121).
   RegisterCallback = function(self, event, fn, owner, ...)
+    needEventName("CallbackRegistryMixin::RegisterCallback", event)
+    if type(fn) ~= "function" then error("CallbackRegistryMixin::RegisterCallback 'func' requires function type.", 2) end
     owner = callbackOwner(owner)
     self:UnregisterCallback(event, owner)
     world.callbacks[event] = world.callbacks[event] or {}
     table.insert(world.callbacks[event], { fn = fn, owner = owner, args = stub.pack(...) })
     return owner
   end,
-  -- Drops the owner's callback for an event; the owner is required.
+  -- Drops the owner's callback for an event; the event name must be text and the owner is required.
   UnregisterCallback = function(_, event, owner)
+    needEventName("CallbackRegistryMixin:UnregisterCallback", event)
     if owner == nil then error("CallbackRegistryMixin:UnregisterCallback 'owner' is required.", 2) end
     local list = world.callbacks[event] or {}
     for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
   end,
-  -- Runs the callbacks for an event: those kept with extra arguments (the client's closures) first, then the rest.
+  -- Runs the callbacks for an event (its name must be text): those kept with extra arguments (the client's closures)
+  -- first, then the rest.
   TriggerEvent = function(_, event, ...)
+    needEventName("CallbackRegistryMixin:TriggerEvent", event)
     local list = { stub.unpack(world.callbacks[event] or {}) }
     for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
     for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
