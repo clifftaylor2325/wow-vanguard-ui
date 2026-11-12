@@ -88,10 +88,19 @@ function RT.RosterLines()
   return out
 end
 
--- How many lines fit under the panel's top on this screen (at least the heading and one more). The top is
--- where the panel f sits now, so a moved panel gets its room; without f, the default spot.
+-- The room the panel f has to grow into: from its bottom edge up to the screen's top when it is anchored
+-- by a bottom point (a panel dropped low is saved on a bottom corner and grows up), else down from its top.
+local function roomFor(f)
+  local point = f:GetPoint()
+  if not (point and point:find("BOTTOM", 1, true)) then return ns.PlainNumber(f:GetTop()) end
+  local bottom = ns.PlainNumber(f:GetBottom())
+  return bottom and (UIParent:GetHeight() or 0) - bottom
+end
+
+-- How many lines fit in the panel's room on this screen (at least the heading and one more). The room
+-- counts from the edge the panel is anchored by, so a moved panel gets its room; without f, the default spot.
 function RT.MaxLines(f)
-  local top = f and ns.PlainNumber(f:GetTop()) or (UIParent:GetHeight() or 0) - RT.RTOP
+  local top = f and roomFor(f) or (UIParent:GetHeight() or 0) - RT.RTOP
   local room = top - 2 * RT.RPAD
   return math.max(2, math.floor(room / RT.RLINE))
 end
