@@ -89,14 +89,18 @@ function RT.RosterLines()
 end
 
 -- The room the panel f has to grow into: from its bottom edge up to the screen's top when it is anchored
--- by a bottom point (a panel dropped low is saved on a bottom corner and grows up), else down from its top.
+-- by a bottom point (a panel dropped low is saved on a bottom corner and grows up), down from its top when it is
+-- anchored by a top point, and the smaller of the two for a middle point (LEFT, RIGHT, CENTER), which grows both ways.
 -- The screen's height is taken in the panel's own units, as its edges are.
 local function roomFor(f)
-  local point = f:GetPoint()
-  if not (point and point:find("BOTTOM", 1, true)) then return ns.PlainNumber(f:GetTop()) end
+  local point = f:GetPoint() or ""
+  local top = ns.PlainNumber(f:GetTop())
+  if point:find("TOP", 1, true) then return top end
   local bottom = ns.PlainNumber(f:GetBottom())
   local screen = (UIParent:GetHeight() or 0) * UIParent:GetEffectiveScale() / f:GetEffectiveScale()
-  return bottom and screen - bottom
+  local up = bottom and screen - bottom
+  if point:find("BOTTOM", 1, true) or not (top and up) then return up end
+  return math.min(top, up)
 end
 
 -- How many lines fit in the panel's room on this screen (at least the heading and one more). The room

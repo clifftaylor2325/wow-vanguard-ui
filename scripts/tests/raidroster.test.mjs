@@ -148,3 +148,15 @@ it("H45-17-3: a roster anchored by a bottom point counts its room up from its bo
   const shown = addon.eval("local n = 0 for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:IsShown() then n = n + 1 end end return n");
   expect(shown, "the room above the bottom edge: the whole raid and its heading, not a few lines").toBe(41);
 });
+
+it("H45-17-3: a roster anchored by a middle point counts the smaller of its room above and below, as it grows both ways", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768)");
+  say(addon, "loot roster");
+  addon.eval("ns.SetMoverPoint('officerroster', 'LEFT', 'LEFT', 6, 250)");
+  addon.advance(0.1);
+  for (let i = 1; i <= 40; i += 1) addon.world.setUnit(`raid${i}`, { name: `Pal${String(i).padStart(2, "0")}`, class: "MAGE", className: "Mage", isPlayer: true, role: "DAMAGER" });
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
+  const shown = addon.eval("local n = 0 for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:IsShown() then n = n + 1 end end return n");
+  expect(shown, "high on the screen the room above is the short one: the raid does not all fit").toBeLessThan(41);
+});
