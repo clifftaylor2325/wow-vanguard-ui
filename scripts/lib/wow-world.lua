@@ -119,7 +119,10 @@ world.client = "forever"
 world.locale = "enUS"
 -- ActionButtonUseKeyDown starts on: the default is not in Blizzard's source and is not confirmed in game (the value
 -- docs/SMOKE-TEST.md's totem step expects); stub.secureActs and GetCVarBool both read this one value.
-world.cvars = { ActionButtonUseKeyDown = "1" }
+-- loadDeprecationFallbacks starts on too, so the fallback globals the world defines (IsPlayerSpell,
+-- ChatFrame_AddMessageEventFilter) agree with the CVar that gates them (Blizzard_DeprecatedSpellBook/
+-- Deprecated_SpellBook.lua:4-6). That it is on by default is a guess: no Blizzard file sets it; needs the game.
+world.cvars = { ActionButtonUseKeyDown = "1", loadDeprecationFallbacks = "1" }
 world.sounds = {}
 world.reloads = 0
 world.keys = {}
@@ -1396,7 +1399,8 @@ local function spellOf(key)
 end
 world.spell = spellOf
 
--- GetSpellInfo (the Forever client has it): name, rank, icon, castTime, minRange, maxRange, spellId.
+-- GetSpellInfo (a guess that the Forever client has it: its own Lua calls the global only in Classic-folder files):
+-- name, rank, icon, castTime, minRange, maxRange, spellId.
 function GetSpellInfo(key)
   local id, s = spellOf(key)
   if not s then return nil end
@@ -1453,7 +1457,8 @@ local function knowsSpell(id)
   end
   return false
 end
--- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default).
+-- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default: a
+-- guess, see world.cvars).
 IsPlayerSpell = knowsSpell
 
 -- Forgets every learned spell (the spellbook is empty again).

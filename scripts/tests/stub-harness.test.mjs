@@ -528,3 +528,13 @@ it("UnitGetDetailedHealPrediction fills the calculator and returns nothing", () 
     return { select("#", UnitGetDetailedHealPrediction("player", "player", calc)), calc.unit }`);
   expect(out).toEqual([0, "player"]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_DeprecatedSpellBook/Deprecated_SpellBook.lua:4-6: the fallbacks
+// load only while GetCVarBool("loadDeprecationFallbacks"). The world defines them, so the CVar reads on (its default
+// is a guess: not in Blizzard's source).
+it("the deprecation fallbacks CVar reads on in the world that defines the fallback globals", () => {
+  const addon = createAddon();
+  const out = addon.eval(`return { GetCVar("loadDeprecationFallbacks"), GetCVarBool("loadDeprecationFallbacks"), type(IsPlayerSpell),
+    type(ChatFrame_AddMessageEventFilter) }`);
+  expect(out).toEqual(["1", true, "function", "function"]);
+});
