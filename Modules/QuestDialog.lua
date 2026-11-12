@@ -495,6 +495,12 @@ local function itemArrived()
   ns.Soon("questdialog items", QD.Redraw)
 end
 
+-- The quest log changed: a talk with lines (gossip or a greeting) redraws on the next frame, as the game's own gossip
+-- and greeting windows do on QUEST_LOG_UPDATE (a quest turned complete lights its line). One comparison while none shows.
+local function questsChanged()
+  if QD.frame:IsShown() and (QD.key == "gossip" or QD.key == "greeting") then ns.Soon("questdialog items", QD.Redraw) end
+end
+
 -- The module switched off (Core/Modules.lua), always out of combat: the game's gossip and quest windows get back the
 -- events Vanguard took, by the same path as the session hand-back switch, so the next talk opens them, and a talk
 -- that is open moves to them. Vanguard's dialog, mover and handlers go with the scope. Needs an in-game look: that
@@ -516,4 +522,5 @@ function QD.Enable(settings, scope)
   scope:On("PLAYER_REGEN_DISABLED", releaseKeys)
   scope:On("QUEST_ITEM_UPDATE", QD.Redraw)
   scope:On("GET_ITEM_INFO_RECEIVED", itemArrived)
+  scope:On("QUEST_LOG_UPDATE", questsChanged)
 end

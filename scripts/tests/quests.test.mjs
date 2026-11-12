@@ -2880,3 +2880,21 @@ it("H46-27-2: a tracker click opening another quest starts its details at the to
   addon.eval("local s = Vanguard_QuestLog.detailScroll s.__scripts.OnMouseWheel(s, -3) ns.GetModule('QuestLog').Open(90052)");
   expect(addon.eval("return Vanguard_QuestLog.detailScroll:GetVerticalScroll()"), "reopening the same quest keeps the scroll").toBeGreaterThan(0);
 });
+// H46-27-54: Blizzard_UIPanels_Game Mainline/GossipFrame.lua:68-72 (GossipFrameMixin:OnEvent) and Mainline/QuestFrame.lua:86-91
+// (QuestFrame_OnEvent) redraw their quest lines on QUEST_LOG_UPDATE; Vanguard's dialog did not.
+it("H46-27-54: a gossip quest that becomes complete mid-talk lights its line; a detail page is not redrawn by the event", () => {
+  const addon = loggedIn();
+  addon.eval(`__wfgWorld.openNpc({ greeting = "x", active = { { title = "TEST-ONLY Speak", questID = 91904, questLevel = 5, isComplete = false } } })`);
+  // Whether the first line's text is gold.
+  const gold = () => isTok(addon, addon.eval("return Vanguard_QuestDialog.lines[1].text.__textColor"), "gold");
+  const before = gold();
+  addon.eval("__wfgWorld.npc.active[1].isComplete = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([before, gold()], "the line turns gold once the quest is complete").toEqual([false, true]);
+  addon.eval(`__wfgWorld.openNpc({ quest = { title = "TEST-ONLY Offer", questID = 91905, text = "x" } })`);
+  addon.eval("__redraws = 0 local QD = ns.GetModule('QuestDialog') local redraw = QD.Redraw QD.Redraw = function(...) __redraws = __redraws + 1 return redraw(...) end");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(addon.eval("return __redraws"), "a quest detail page is left alone").toBe(0);
+});
