@@ -155,3 +155,17 @@ it("broker strip: a feed change that fails is caught and named, and other feeds'
   addon.eval('ns.GetModule("BrokerStrip").Fill = __fill __set("TEST-ONLY Gold", "text", "2g")');
   expect(strip(addon).slots[0][1], "the next change repaints").toBe("2g");
 });
+
+it("broker strip: a feed shared after the Map page was built gets its switch there, in a fight after the fight (H45-23-52)", () => {
+  const addon = loggedIn(LDB_ENV);
+  const row = (name) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "${name}" then last = w end end return last ~= nil`);
+  addon.eval('ns.Options.Show("map")');
+  addon.eval('__feed("TEST-ONLY Late", { type = "data source", text = 7 })');
+  expect(row("TEST-ONLY Late"), "the Map page lists the new feed at once").toBe(true);
+  addon.world.combat(true);
+  addon.eval('__feed("TEST-ONLY Later", { type = "data source", text = 8 }) __feed("TEST-ONLY Latest", { type = "data source", text = 9 })');
+  expect(row("TEST-ONLY Later"), "in a fight the page waits").toBe(false);
+  addon.world.combat(false);
+  expect([row("TEST-ONLY Later"), row("TEST-ONLY Latest")], "after it both are there, from one rebuild").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
