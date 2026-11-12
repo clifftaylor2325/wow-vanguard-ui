@@ -575,6 +575,15 @@ function ns.SetMoverPoint(key, point, relPoint, x, y)
   savePosition(movers[key], point, relPoint or point, x, y)
 end
 
+-- Forgets a frame's saved spot (its point and its link, so a frame anchored to another is not pulled back there), keeping
+-- its scale and opacity: for a frame whose handle is gone and whose next spot is the game's to choose.
+---@param key string
+function ns.ForgetMoverPoint(key)
+  local p = saved()[key]
+  if type(p) ~= "table" then return end
+  for _, field in ipairs({ "point", "relPoint", "x", "y", "rel" }) do p[field] = nil end
+end
+
 -- A frame's rect as { left, bottom, w, h } in UIParent's units (its own times
 -- its scale), or nil if the client can't say (not laid out yet).
 local function rectOf(f)
