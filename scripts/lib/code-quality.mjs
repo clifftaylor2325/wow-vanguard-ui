@@ -389,8 +389,8 @@ const COLOR_SETTER = /\b(SetTextColor|SetVertexColor|SetStatusBarColor|SetColorT
 // A table of three or four numbers (checked below to be 0-1: a color).
 const NUM = String.raw`\s*(\d*\.?\d+)\s*`;
 const COLOR_TABLE = new RegExp(String.raw`\{${NUM},${NUM},${NUM}(?:,${NUM})?\}`, "g");
-// A color table written with r, g and b number fields ({ r = 1, g = 0.82, b = 0 }), checked to be 0-1 as well.
-const RGB_FIELDS = new RegExp(String.raw`\br\s*=${NUM},\s*g\s*=${NUM},\s*b\s*=${NUM}`, "g");
+// The fields that make a table a color when each is one written number from 0 to 1 (rgbFieldTables).
+const RGB_NAMES = ["r", "g", "b"];
 const COLOR_MESSAGE = "color numbers outside Core/Theme.lua: use a theme color (T.RGB, T.Color, T.Tint, T.BarColor, T.Paint)";
 
 // Lua source with comments and strings blanked out (newlines kept), so rules see only code.
@@ -405,12 +405,42 @@ function luaCodeOnly(src) {
   return out + src.slice(last);
 }
 
-// Offsets of color tables: three or four numbers, or r, g and b fields, all between 0 and 1.
+// Offsets of color tables: three or four numbers, all between 0 and 1.
 function colorTables(code) {
   const hits = [];
-  for (const m of [...code.matchAll(COLOR_TABLE), ...code.matchAll(RGB_FIELDS)]) {
+  for (const m of code.matchAll(COLOR_TABLE)) {
     if (m.slice(1).filter(Boolean).every((v) => Number(v) <= 1)) hits.push(m.index);
   }
+  return hits;
+}
+
+// The value of the table field named by tokens[k] (`r = 0.82` after a "{", "," or ";") when it is one written
+// number, else NaN.
+function fieldNumber(tokens, k) {
+  if (![",", ";", "{"].includes(tokens[k - 1]?.text) || tokens[k + 1]?.text !== "=" || tokens[k + 2]?.text === "=") return NaN;
+  let end = k + 2;
+  while (/^[\d.]$/.test(tokens[end]?.text ?? "")) end++;
+  const text = tokens.slice(k + 2, end).map((t) => t.text).join("");
+  return [",", ";", "}"].includes(tokens[end]?.text) && /\d/.test(text) ? Number(text) : NaN;
+}
+
+// Adds to hits the offset of a closed table's first r, g or b field when all three are written numbers from 0 to 1.
+function rgbHit(fields, hits) {
+  const found = RGB_NAMES.map((name) => fields?.[name]);
+  if (found.every((f) => f && f.value >= 0 && f.value <= 1)) hits.push(Math.min(...found.map((f) => f.at)));
+}
+
+// Offsets of tables whose r, g and b fields, in any order and with any other fields among them, are each one
+// written number from 0 to 1 ({ b = 0, g = 0.82, r = 1 }): a color written out. Only a table's own fields count.
+function rgbFieldTables(tokens) {
+  const hits = [];
+  const open = [];
+  tokens.forEach((t, k) => {
+    const table = open.at(-1);
+    if (t.kind === "punct" && "{([".includes(t.text)) open.push(t.text === "{" ? {} : null);
+    else if (t.kind === "punct" && "})]".includes(t.text)) rgbHit(open.pop(), hits);
+    else if (t.kind === "word" && table && RGB_NAMES.includes(t.text)) table[t.text] ??= { at: t.start, value: fieldNumber(tokens, k) };
+  });
   return hits;
 }
 
@@ -428,7 +458,7 @@ function colorProblems(file, src) {
   if (!COLOR_SCOPE.test(file) || file === COLOR_HOME) return [];
   const code = luaCodeOnly(src);
   const line = lineIndex(src);
-  const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code));
+  const hits = [...code.matchAll(COLOR_SETTER)].map((m) => m.index).concat(colorTables(code), rgbFieldTables(codeTokens(src)));
   hits.push(...[...src.matchAll(COLOR_ESCAPE)].map((m) => m.index), ...hexStringColors(src));
   return hits.map((i) => ({ line: line(i), message: COLOR_MESSAGE }));
 }
