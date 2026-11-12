@@ -457,6 +457,17 @@ it("H44-5-50 your buffs: an enchant that runs out and is put on again in one fig
   expect(before.cell && before.x < 0, "one enchant cell to start with").toBe(true);
 });
 
+it("H45-15-2 your buffs: entering the world refreshes the enchant cells", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "__enchants[0] = nil");
+  // Whether the first enchant cell shows.
+  const shown = () => addon.eval("return ns.GetModule('PlayerAuras').cells[1]:IsShown()");
+  expect(shown(), "no enchant at login").toBe(false);
+  addon.eval(`__enchants[0] = { { hasEnchant = true, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Imbue" } }`);
+  // PLAYER_ENTERING_WORLD carries isInitialLogin, isReloadingUi (Blizzard_APIDocumentationGenerated/SystemDocumentation.lua).
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(shown(), "the enchant the client lists by the loading screen's end shows").toBe(true);
+});
+
 const RETAIL_ENCHANTS_ENV = `
   C_Item.GetWeaponEnchantInfo = nil
   __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }

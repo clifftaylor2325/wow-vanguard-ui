@@ -254,6 +254,9 @@ local function onWeapons(_, unit)
   if unit == nil or unit == "player" then PA.UpdateEnchants() end
 end
 
+-- Entering the world (its payload is two booleans, never a unit): the client's enchant list may only be ready now.
+local function onEnterWorld() PA.UpdateEnchants() end
+
 -- Puts the game's buff frames away and builds Vanguard's in their place. Both wait for the fight to end after a
 -- login in combat, so the player is never left without a buff display.
 local function replace(settings)
@@ -266,5 +269,6 @@ end
 function PA.Enable(settings)
   PA.settings = settings
   ns.OutOfCombat(function() replace(settings) end)
-  for _, e in ipairs({ "UNIT_INVENTORY_CHANGED", "WEAPON_ENCHANT_CHANGED", "WEAPON_SLOT_CHANGED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, onWeapons) end
+  for _, e in ipairs({ "UNIT_INVENTORY_CHANGED", "WEAPON_ENCHANT_CHANGED", "WEAPON_SLOT_CHANGED" }) do ns.On(e, onWeapons) end
+  ns.On("PLAYER_ENTERING_WORLD", onEnterWorld)
 end
