@@ -676,6 +676,20 @@ it("options: the Profiles page lists a profile made, backed up or deleted from a
   expect(listed(), "Reset profile's backup is listed").toEqual(["Default backup", "TEST-ONLY Tank"]);
 });
 
+it("options: a bar or panel texture another addon shares later is offered by the General page's choices (H45-23-81)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const names = (caption) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "${caption}" then last = w end end
+    local out = {} for _, c in ipairs(last.choices) do out[#out + 1] = c[1] end return out`);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("statusbar", "TEST-ONLY Late", [[Interface\\TEST-ONLY]]) lsm:Register("background", "TEST-ONLY Backdrop", [[Interface\\TEST-ONLY]])
+    lsm:Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])`);
+  addon.advance(0.1);
+  expect(names("Bar texture"), "the Bar texture choice lists the late texture").toContain("TEST-ONLY Late");
+  expect(names("Panel texture"), "and the Panel texture choice the late background").toContain("TEST-ONLY Backdrop");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
