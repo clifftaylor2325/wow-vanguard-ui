@@ -816,6 +816,10 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     r.Text = __fs(r)
     r.selected = selected
     function r:SetSelected(on) self.selected = on end
+    -- Blizzard_SharedXML/ListTemplates.lua:48-56 sets the title's colour; Blizzard_LegacyChallengeCategoryList.lua:170-178 calls it from OnEnter and OnLeave.
+    function r:CheckHighlightTitle() self.Text:SetTextColor(1, 0.82, 0) end
+    r:SetScript("OnEnter", function(self) self:CheckHighlightTitle() end)
+    r:SetScript("OnLeave", function(self) self:CheckHighlightTitle() end)
     return r
   end
   function __challenge(selected)
@@ -992,6 +996,10 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   // A crest's desaturated flag and whether it was tinted.
   const tint = (expr) => addon.eval(`local r = ${expr} return { r.__desaturated, r.__vertexColor ~= nil }`);
   expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "a category's name is in the text colour, not the game's yellow").toBe(true);
+  addon.eval(`local r = ${list}.ScrollBox.items[1] r:GetScript("OnEnter")(r)`);
+  expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "H46-28-5 a hover does not bring the game's yellow back").toBe(true);
+  addon.eval(`local r = ${list}.ScrollBox.items[1] r:GetScript("OnLeave")(r)`);
+  expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "nor does leaving it").toBe(true);
   expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Label, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Label:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
   expect(addon.eval(`return ${cards}.items[1].Icon.__texCoord ~= nil`), "its icon is cropped").toBe(true);
   // A card whose icon is a button and whose crest is a frame holding a texture (and a font string, which is left alone).

@@ -874,12 +874,14 @@ local function skinCollapse(button)
 end
 
 -- One category row of the challenge list: a theme row (the game's bars faded, the unseen-challenges dot kept) lit while
--- the game has the category selected, its plus or minus in the text colour.
+-- the game has the category selected, its plus or minus in the text colour. The game puts its gold back on the name
+-- on every hover (CheckHighlightTitle), so the name follows that too.
 local function skinCategory(row)
   GW.DressRow(row, { "NotificationIcon" })
   skinCollapse(row.CollapseButton)
   followCategory(row)
   GW.HookAfter(row, "SetSelected", followCategory)
+  GW.HookAfter(row, "CheckHighlightTitle", followCategory)
 end
 
 -- The challenge list's top: the filter dropdown (its label light), the search box and the no-challenges line, and
