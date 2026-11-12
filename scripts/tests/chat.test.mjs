@@ -846,6 +846,21 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+// TEST-ONLY dock as the game has it: FCFDock_UpdateTabs hides every docked window but the selected one (forever
+// Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCFDock_UpdateTabs :2334-2339).
+const SHOWN_DOCK = `function FCFDock_SelectWindow(dock, frame) __selected = frame for _, w in ipairs(dock.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end end
+  function FCFDock_GetSelectedWindow() return __selected end`;
+it("H45-29-3 chat bar tiles: Find or Copy switched on while another docked tab is shown lands on that tab's bar, with or without a tile already there", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + SHOWN_DOCK, { savedVariables: "VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }" });
+  addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ChatFrame2)");
+  addon.eval("local CW = ns.GetModule('ChatWindows') CW.settings.find = true CW.ApplyFind()");
+  const out = addon.eval(`local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')
+    return { CX.copyButton:IsVisible(), CX.copyButton:GetParent() == F[ChatFrame2].bar, CW.findButton:IsVisible(), CW.findButton:GetParent() == F[ChatFrame2].bar }`);
+  expect(out, "Find, switched on late, rides the shown bar beside Copy").toEqual([true, true, true, true]);
+  const bare = loggedIn(UI_ENV + CHAT_DOCK_ENV + SHOWN_DOCK, { savedVariables: "VanguardDB.profiles = { Default = { ChatWindows = { find = false }, ChatExtras = { copy = false } } }" });
+  bare.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ChatFrame2) local CW = ns.GetModule('ChatWindows') CW.settings.find = true CW.ApplyFind()");
+  expect(bare.eval("local F = ns.GetModule('Chat').frames local find = ns.GetModule('ChatWindows').findButton return { find:IsVisible(), find:GetParent() == F[ChatFrame2].bar, #ns.errors }"), "with no other tile on the window, the new one still goes to the shown bar").toEqual([true, true, 0]);
+});
 it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its own bar, though the game selects it before it is dressed", () => {
   const popOut = `local opened = FCF_OpenTemporaryWindow
     function FCF_OpenTemporaryWindow(...)
@@ -867,6 +882,14 @@ it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its 
   const bare = loggedIn(UI_ENV);
   bare.eval("GENERAL_CHAT_DOCK = nil FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
   expect(bare.eval("return #ns.errors"), "and a client with no dock to ask is left alone").toBe(0);
+});
+it("H45-G3-7: carrying the tiles onto the shown window lays the bar out once, and still lays it out when there is no window to carry to", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + "function FCFDock_GetSelectedWindow() return __selected end __selected = ChatFrame1");
+  addon.eval("__placed = 0 local place = ns.GetModule('Chat').PlaceBarButtons ns.GetModule('Chat').PlaceBarButtons = function(...) __placed = __placed + 1 return place(...) end");
+  addon.eval("ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY', 'click test', function() end)");
+  expect(addon.eval("return __placed"), "the tile is carried to the shown window and the bar laid out once").toBe(1);
+  addon.eval("__placed = 0 __selected = nil ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY 2', 'click test', function() end)");
+  expect(addon.eval("return __placed"), "with no window to carry to, it is laid out once all the same").toBe(1);
 });
 // TEST-ONLY a third docked tab as the game lays it out (FloatingChatFrame.lua FCFDock_UpdateTabs and
 // FloatingChatFrame.xml): General and the Combat Log fixed on the dock, "Loot / Trade" scrolling in the
@@ -1202,7 +1225,7 @@ it("chat: the wheel adds one line to the game's three, Shift too, Ctrl + wheel j
   addon.keys({ shift: false, ctrl: true });
   expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom, nothing added to the game's lines").toEqual([["top", 3], ["bottom", -3]]);
   addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
-  expect(wheel(1), "switched off, nothing jumps").toEqual(["none", 3]);
+  expect(wheel(1), "switched off, nothing jumps and Ctrl is a plain tick (H45-29-53)").toEqual(["none", 4]);
   addon.keys({ ctrl: false });
   expect(wheel(1)[1], "and the plain tick still adds its line").toBe(4);
 });
@@ -1332,6 +1355,18 @@ it("H44-18-A1 minimap drawer: a button its addon shows or hides while the drawer
   expect(toggle(), "SetShown(false) counts as a hide").toBe(false);
   addon.eval("LibDBIcon10_TestOnlyOne:Show()");
   expect(toggle(), "and Show as a show").toBe(true);
+});
+it("H45-28-2 minimap drawer: open when its last button is hidden, it shuts with the toggle, and stays shut when the button returns", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  addon.eval("LibDBIcon10_TestOnlyOne:Hide()");
+  addon.update(0);
+  // Whether the drawer and the toggle show.
+  const state = () => addon.eval("return { Vanguard_MinimapDrawer:IsShown(), Vanguard_MinimapDrawerToggle:IsShown() }");
+  expect(state(), "no button left: drawer and toggle both hidden").toEqual([false, false]);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show()");
+  addon.update(0);
+  expect(state(), "the button returns: the toggle is back, the drawer shut").toEqual([false, true]);
 });
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });

@@ -287,6 +287,16 @@ it("a staged profile that no longer exists is dropped when it would be applied",
   addon.login();
   expect(addon.eval("return { ns.ProfileName(), VanguardDB.profiles.Gone == nil, VanguardCharDB.pendingProfile == nil }"), "the character keeps its profile, and the deleted one isn't made again empty").toEqual(["Default", true, true]);
 });
+it("the profile the next reload loads can't be deleted, though a staged pick differs from it", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Healer = {}, Other = {} } }\nVanguardCharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval("__spec = 1 VanguardCharDB.specProfiles[1] = 'Default' VanguardCharDB.pendingProfile = 'Other'");
+  expect(addon.eval("return ns.LoadingProfileName()"), "the spec's profile wins over the staged pick at login").toBe("Default");
+  expect(addon.eval("return ns.DeleteProfile('Default')"), "ns.DeleteProfile refuses it").toBe(false);
+  addon.slash("profile delete Default");
+  expect([chatHas(addon, /Can't delete/), addon.eval("return VanguardDB.profiles.Default ~= nil")], "and so does /vg profile delete").toEqual([true, true]);
+});
 it("the spec change events stage the spec's profile, whatever they pass", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, profiles = { Default = {}, Healer = {} } }\nVanguardCharDB = { profile = "Default", specProfiles = { [2] = "Healer" } }' });
@@ -315,6 +325,67 @@ it("swapping back to a spec with no profile of its own takes back the switch ano
   addon.eval("ns.UseProfile('Picked')");
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
+});
+it("a staged hand pick of another spec's profile survives a swap there and back, and a spec event in the same spec", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { modules = { Bags = false } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("ns.PickProfile('Heal')");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "the same spec again keeps the pick").toBe("Heal");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardCharDB.ownProfile }"), "a swap there and back keeps it").toEqual(["Heal", "Heal"]);
+});
+// A character on Default whose spec 2 uses Heal (a module switch that differs when `waits`), logged in as spec 1.
+function offerCharacter(waits) {
+  const heal = waits ? "{ modules = { Bags = false } }" : "{}";
+  const sv = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = ${heal} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }`;
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  return addon;
+}
+for (const waits of [false, true]) {
+  it(`swapping back takes the spec's reload offer back${waits ? " (it named what waits)" : ""}`, () => {
+    const addon = offerCharacter(waits);
+    addon.eval("__spec = 2");
+    addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+    expect(addon.eval("return Vanguard_Reload:IsShown()"), "spec 2 offers it").toBe(true);
+    addon.eval("__spec = 1");
+    addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+    expect(addon.eval("return Vanguard_Reload:IsShown()"), "spec 1 withdraws it").toBe(false);
+  });
+}
+it("swapping back leaves a reload offered for another reason up", () => {
+  const addon = offerCharacter(false);
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("ns.OfferReload('Something else changed.')");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return Vanguard_Reload:IsShown()"), "still up").toBe(true);
+});
+it("ns.WithdrawReload does nothing before any reload was offered", () => {
+  const addon = offerCharacter(false);
+  expect(addon.eval("ns.WithdrawReload('x') return true")).toBe(true);
+});
+it("Copy here, a partial import and /vg profile copy write into the profile the reload loads, not a hand pick a spec overrides", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Raid = {}, Src = { theme = { accent = { 0, 0, 1 }, reduceMotion = true } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval("ns.UseProfile('Raid')");
+  expect(addon.eval("return { ns.ProfileName(), ns.LoadingProfileName() }"), "Heal runs and loads").toEqual(["Heal", "Heal"]);
+  expect(addon.eval("return ns.CopyProfile('Src')"), "Copy here writes into the loading profile").toBe("Heal");
+  const text = addon.eval('return ns.Serialize.Encode("parts", { format = 2, parts = { "global" }, theme = { sounds = false } })');
+  addon.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(addon.eval("return { VanguardDB.profiles.Heal.theme.accent[3], tostring(VanguardDB.profiles.Heal.theme.sounds), tostring(VanguardDB.profiles.Raid.theme) }"), "a partial import too, the pick untouched").toEqual([1, "false", "nil"]);
+  addon.slash("profile copy Default");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the typed command warns about the loading profile").toMatch(/profile Heal with profile Default/);
 });
 // The reload that applies a staged profile, with the client in `spec` (what login does first).
 function reloadInSpec(addon, spec) {
@@ -988,6 +1059,20 @@ it("importing a string that matches a profile here uses that profile instead of 
   addon.eval("VanguardDB.profiles.Raid = ns.Copy(ns.Profile()) ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion");
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
+});
+it("a whole string exported from another profile matches it although Pixel-perfect differs there, and writes nothing into it", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  const raidText = addon.eval(`VanguardDB.profiles.Raid = ns.Copy(ns.Profile())
+    VanguardDB.profiles.Raid.theme.pixelScale = true
+    VanguardDB.profiles.Raid.theme.reduceMotion = true
+    local keep = VanguardCharDB.profile
+    VanguardCharDB.profile = "Raid"
+    local s = ns.ExportProfile()
+    VanguardCharDB.profile = keep
+    return s`);
+  expect(imports(addon, raidText), "it matches Raid instead of making a copy").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
+  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, VanguardDB.profiles.Raid.theme.pixelScale }"), "Raid's own switch is kept").toEqual([true, true]);
 });
 it("an import names each font, bar and panel texture this client doesn't have, and what it draws instead", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])');

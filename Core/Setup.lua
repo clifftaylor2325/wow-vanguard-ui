@@ -303,6 +303,9 @@ function S.ChosenRole()
   return LAYOUT_ROLE[state.layout] or playerRole()
 end
 
+-- Defined with setup's snapshot below; S.ApplyProfile takes the snapshot again after a fork.
+local settingsNow
+
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
 -- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
 -- "share" changes nothing. The Profiles page, if built, is built again for the new profile: forking stages nothing,
@@ -310,6 +313,7 @@ end
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
+  state.before = settingsNow()
   ns.Options.RebuildPage("profiles")
   state.floor = state.step + 1
   VanguardCharDB.pickProfile = nil
@@ -322,6 +326,7 @@ end
 
 -- Sets the raid frame style, repainting the raid frames when they are built.
 function S.SetStyle(look)
+  if raidSettings().look == look then return end
   S.Backup()
   state.look = true
   raidSettings().look = look
@@ -909,9 +914,19 @@ local function stylePicker(page)
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
 
+-- Sets the accent to a preset at once; does nothing when it is already that preset (a class-following accent
+-- that matches a preset still switches to it).
+local function pickAccent(rgb)
+  if isAccent(rgb) and not T.Settings().accentClass then return end
+  S.Backup()
+  state.look = true
+  T.SetAccent(rgb[1], rgb[2], rgb[3])
+  refresh()
+end
+
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
-  local s = W.Swatch(page, rgb, function() S.Backup(); state.look = true; T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
+  local s = W.Swatch(page, rgb, function() pickAccent(rgb) end)
   s:SetPoint("TOPLEFT", (i - 1) * STEP.swatchAcross, LOOK_Y.swatches)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")
@@ -987,7 +1002,7 @@ S.READ_FIRST = { "RaidFrames", "UnitFrames", "ActionBars" }
 -- The profile in use and its settings as an export string (sorted, so the same settings give the same string), which
 -- setup takes as it opens to tell at Done whether anything changed. What the steps read is read first (the unlock
 -- options, and the settings of modules that may be off): a first read fills defaults into the profile, which is no change.
-local function settingsNow()
+function settingsNow()
   ns.MoverOptions()
   for _, name in ipairs(S.READ_FIRST) do moduleSettings(name) end
   return ns.ProfileName() .. "\n" .. tostring(ns.ExportProfile())
@@ -1175,7 +1190,7 @@ local function startRun()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup, state.look, state.undone, state.scale = "keep", "keep", nil, false, false, nil
   state.appliedLayout, state.appliedScreen = nil, nil
-  state.reload, state.paused, state.done, state.role = false, false, false, false
+  state.reload, state.paused, state.done, state.role, state.retile = false, false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()
   state.spots = ns.ExportProfile("layout")

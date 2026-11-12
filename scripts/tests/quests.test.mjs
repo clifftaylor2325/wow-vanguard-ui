@@ -61,6 +61,71 @@ it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   key(addon, "SPACE");
   expect([dialog(addon).primary, dialog(addon).secondary, calls(addon)], "a quest the game already accepted: just OK").toEqual(["OK", false, ["ack nil"]]);
 });
+// Client rule: QuestFrame_OnEvent, QUEST_DETAIL branch (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua):
+// an adventure map's offer returns with no window; QuestGetAutoAccept() and QuestIsFromAreaTrigger() show a tracker popup and CloseQuest().
+it("H45-27-50: an auto-accepted area-trigger quest opens no dialog and the offer is closed, as the game does", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("__autoAccept = true QuestIsFromAreaTrigger = function() return true end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "no dialog, closed once, nothing acknowledged").toEqual([false, ["closeQuest nil"]]);
+  addon.eval("__autoAccept = true QuestIsFromAreaTrigger = function() return false end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([dialog(addon).primary, calls(addon)], "an NPC's auto-accepted quest still shows OK, closing nothing").toEqual(["OK", []]);
+});
+it("H45-27-50: an adventure map's offer opens no dialog and is not closed, as the game does", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("QuestIsFromAdventureMap = function() return true end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "the map's own dialog has it").toEqual([false, []]);
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "only a QUEST_DETAIL is the map's").toBe(true);
+  addon.eval("__calls = {}");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "a page still showing goes down for the map's offer, without ending the talk").toEqual([false, []]);
+});
+// Client rule: QuestFrame_OnEvent hides the window only on QUEST_FINISHED (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua).
+const GAME_TALK_WINDOW = `__gameSaw = {}
+  QuestFrame:SetScript("OnEvent", function(self, event) __gameSaw[#__gameSaw + 1] = event if event == "QUEST_FINISHED" then self:Hide() else self:Show() end end)
+  QuestFrame:RegisterEvent("QUEST_FINISHED")`;
+it("H45-27-51: a module switched off during a talk the game has does not make the next talk the game's", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = false ns.SetModuleEnabled('QuestDialog', false)");
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "the dialog shows the next talk").toEqual([true, false]);
+});
+it("H45-27-R1: the dialog taking a talk back while the game's window shows it leaves the talk to the game", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW);
+  addon.fire("QUEST_DETAIL");
+  addon.eval("ns.SetModuleEnabled('QuestDialog', false)");
+  addon.update(0.5);
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "off: the game's window has the page").toEqual([false, true]);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  expect(addon.eval("return QuestFrame:IsShown()"), "the talk's end closes the game's window").toBe(false);
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "the next talk is the dialog's").toBe(true);
+});
+it("H45-27-R1: the session hand-back switched on and off inside a talk keeps the page in the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW + " GossipFrame = CreateFrame('Frame', 'GossipFrame', UIParent)");
+  addon.fire("QUEST_PROGRESS");
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true)");
+  addon.eval("ns.GetModule('QuestDialog').HandBack(false)");
+  addon.fire("QUEST_COMPLETE");
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "one window shows the page").toEqual([false, true]);
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  expect(addon.eval("return QuestFrame:IsShown()"), "the game's window closes with the talk").toBe(false);
+  addon.eval("GossipFrame:Show() ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
+  expect(addon.eval("return ns.GetModule('QuestDialog').gameTalk"), "an open game gossip window counts too").toBe(true);
+});
 it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.eval("__completable = false");
@@ -999,6 +1064,29 @@ it("A1-5: with Vanguard's tracker and quest log both off, a zone folded in the g
   tracker.fire("PLAYER_ENTERING_WORLD");
   tracker.advance(0.25);
   expect(tracker.eval("return __log[4].isCollapsed"), "the tracker alone is enough to open it").toBe(false);
+});
+it("H45-G3-8: a saved profile with no QuestLog switch still counts as the quest log being in use, so zones are opened", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false }, QuestLog = { xp = false } } }" });
+  addon.advance(0.25);
+  // The profile table is replaced, as a profile switch does, so the settings cache refills from it.
+  addon.eval("__log[4].isCollapsed = true VanguardDB.profiles.Default.QuestLog = { xp = false }");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.25);
+  expect(addon.eval("return __log[4].isCollapsed"), "the log's own default (on) applies").toBe(false);
+});
+it("H45-27-1: with the tracker's own switch off, switching Vanguard's quest log off live stops zones being opened", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  addon.advance(0.25);
+  addon.eval("ns.Settings('QuestLog').own = false ns.RestartModule('QuestLog') __expanded = 0 __log[4].isCollapsed = true");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "both windows off: the zone stays folded").toEqual([true, 0]);
+});
+it("H45-27-1: a login in a fight with the tracker on still opens the folds once the tracker is built", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + "__wfgStub.inCombat = true", { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  expect(addon.eval("return { Vanguard_QuestTrackerFrame == nil, __log[4].isCollapsed }"), "tracker not built yet, zone opened").toEqual([true, false]);
 });
 it("A1-5: the switch on the Quests page stops zones being opened by themselves, at once; opening Vanguard's log still opens them", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT });

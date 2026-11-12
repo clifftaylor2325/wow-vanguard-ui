@@ -137,22 +137,51 @@ local function liveMethod(module, key, method)
   return liveSetting(module, key, function() ns.GetModule(module)[method]() end)
 end
 
--- get/set for an unlock-mode option (grid, snap), applied at once.
+-- get/set for an unlock-mode option (grid, snap), applied at once, and its default.
 local function moverOption(key)
-  return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
+  return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end, ns.MoverDefault(key)
 end
 
 -- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
 local function sizedMover()
   local list = ns.MoverList()
-  return O.sizedMover or (list[1] and list[1].key)
+  for _, m in ipairs(list) do
+    if m.key == O.sizedMover then return m.key end
+  end
+  return list[1] and list[1].key
 end
+
+local noteListed
 
 -- Every movable frame as a { key, label } choice.
 local function moverChoices()
   local out = {}
   for i, m in ipairs(ns.MoverList()) do out[i] = { m.key, m.label } end
+  noteListed()
   return out
+end
+
+-- The General page is built again when the frames you can move change (a module switched on or off, settled by
+-- ns.OnModulesChanged), so the Frame to size choice never offers a frame that is gone or misses a new one.
+do
+  local listed = ""
+
+  -- The movable frames' keys as one string.
+  local function moverKeys()
+    local keys = {}
+    for i, m in ipairs(ns.MoverList()) do keys[i] = m.key end
+    return table.concat(keys, ",")
+  end
+
+  -- Records the frames the Frame to size choice was built with, so the first change is compared with them.
+  function noteListed() listed = moverKeys() end
+
+  ns.OnModulesChanged(function()
+    local now = moverKeys()
+    if now == listed then return end
+    listed = now
+    if O.Frame() then O.RebuildPage("general") end
+  end)
 end
 
 -- get/set for which frame the sliders size; picking one re-reads the sliders.
@@ -222,15 +251,16 @@ function O.ModuleRows(name, rowsFn)
   return {}
 end
 
--- get/set for a theme setting; changes apply on reload.
+-- get/set for a theme setting, and its default; changes apply on reload.
 local function themeSetting(key)
-  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v) T.Settings()[key] = v; O.NeedReload() end
+  return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v) T.Settings()[key] = v; O.NeedReload() end,
+    T.DEFAULTS[key]
 end
 
 -- get/set for a theme setting that applies on reload, shown at once in the General page's sample.
 local function previewedSetting(key)
-  local get, set = themeSetting(key)
-  return get, function(v) set(v); T.Refresh() end
+  local get, set, initial = themeSetting(key)
+  return get, function(v) set(v); T.Refresh() end, initial
 end
 
 -- get/set for a theme setting that applies at once (font, text size): every
@@ -241,18 +271,18 @@ local function liveThemeSetting(key)
     if T.Settings()[key] == v then return end
     T.Settings()[key] = v
     T.Refresh()
-  end
+  end, T.DEFAULTS[key]
 end
 
 -- get/set for the theme variant, applied at once; when it turns Safer colours on or off (High contrast does),
 -- the aura icons' type colours settle only after a reload, so the options notice shows.
 local function variantSetting()
-  local get, set = liveThemeSetting("variant")
+  local get, set, initial = liveThemeSetting("variant")
   return get, function(v)
     local before = T.ColorAssist()
     set(v)
     if T.ColorAssist() ~= before then O.NeedReload() end
-  end
+  end, initial
 end
 
 -- The built-in fonts and bar textures; the bar picker adds what LibSharedMedia shares (the font picker only the one in use).
@@ -289,9 +319,23 @@ local function hudRows()
   }
 end
 
--- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat.
-local function hudLayoutSetting()
-  return function() return ns.HudLayout() end, function(v) ns.OutOfCombat(function() ns.SetHudLayout(v) end, "HUD layout") end
+-- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat. A pick made in a fight waits
+-- for it to end (the latest wins) and the row shows it meanwhile, so a second click steps on from the pick, not the old layout.
+local hudLayoutSetting
+do
+  local queued
+
+  -- Applies the pick that waited for the fight.
+  local function applyQueuedLayout()
+    local pick = queued
+    queued = nil
+    if pick then ns.SetHudLayout(pick) end
+  end
+
+  -- The row's getter and setter: the queued pick (if any) or the layout in use.
+  function hudLayoutSetting()
+    return function() return queued or ns.HudLayout() end, function(v) queued = v; ns.OutOfCombat(applyQueuedLayout, "HUD layout") end
+  end
 end
 
 -- HUD layout: where the frames around your character stand, with a note on the two walled layouts.
@@ -364,7 +408,7 @@ local function lookRows()
     { "text", L["Turns Safer colours on while the game's own colour-blind mode is on."], "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check(L["Pixel-perfect scale"], function() return T.Settings().pixelScale end,
-    function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
+    function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end, T.DEFAULTS.pixelScale)
   rows[#rows + 1] = { "button", L["Reset theme"], function() O.ResetTheme() end }
   return rows
 end
@@ -413,7 +457,7 @@ local function barRows()
   return {
     { "header", L["Bars"] },
     O.ReloadRow({ "cycle", L["Bar texture"], T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") }),
-    check(L["Smooth health and power bars"], function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
+    check(L["Smooth health and power bars"], function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end, T.DEFAULTS.smoothBars),
     check(L["Soft shadows under frames (reload)"], themeSetting("hudShadow")),
   }
 end
@@ -424,7 +468,7 @@ local function motionRows()
     { "header", L["Motion and sound"] },
     check(L["Reduce motion (no fades or flashes)"], liveThemeSetting("reduceMotion")),
     check(L["State cues"], liveThemeSetting("motionCues")),
-    check(L["Interface sounds"], function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end),
+    check(L["Interface sounds"], function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end, T.DEFAULTS.sounds),
   }
 end
 

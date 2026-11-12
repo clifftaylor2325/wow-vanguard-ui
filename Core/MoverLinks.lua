@@ -298,9 +298,20 @@ local function watchSize(key)
   f:HookScript("OnSizeChanged", ns.Guard("hook OnSizeChanged", function() ns.OutOfCombat(function() K.Changed(key) end, "links " .. key) end))
 end
 
--- A mover was registered (its module built its frame): it watches its size when a frame is
--- linked to it, and the frames linked to it are placed again (they may have been waiting for it).
+-- Watches the size of every frame key's saved link points at (anchor, matched width, matched height),
+-- so a link saved before this login follows its target whichever of the two registered first.
+local function watchTargets(key)
+  local p = entryOf(key)
+  local rel, match = part(p, "rel") or {}, part(p, "match") or {}
+  for _, to in ipairs({ rel.to or false, match.width or false, match.height or false }) do
+    if to and ns.MoverFrame(to) then watchSize(to) end
+  end
+end
+
+-- A mover was registered (its module built its frame): it watches the frames it links to and, when a
+-- frame is linked to it, its own size; the frames linked to it are placed again (they may have been waiting for it).
 function K.Registered(key)
+  watchTargets(key)
   if #dependents(key) > 0 then watchSize(key) end
   K.Changed(key)
 end

@@ -344,7 +344,8 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   expect([shown(), reads()], "a rebuilt page replaces its rows: the page shows as many, the profiles page read again to build it").toEqual([rows, [0, 1]]);
   const stale = addon.eval("local n = 0 for _, w in ipairs(__old) do w.Refresh = function() n = n + 1 end end ns.Options.Refresh() return { #__old > 0, n }");
   expect(stale, "the thrown-away rows are no longer refreshed").toEqual([true, 0]);
-  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.RebuildPage("profiles") ns.Options.Search("tank")');
+  // ns.NewProfile rebuilds the Profiles page itself (H45-23-80).
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.Search("tank")');
   expect([shown(), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
@@ -591,6 +592,142 @@ const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frame
   if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then
     return { w.reset ~= nil and w.reset:IsShown(), w.reset ~= nil } end end`);
 
+it("options: General's look, motion and moving rows have their defaults: arrow, dot, changed and Reset this page follow (H45-23-1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('__click("General")');
+  addon.eval(`local s = ns.Theme.Settings()
+    s.textScale = 1.1 s.font = "client" s.hudLook = "plain" s.variant = "contrast" s.sounds = false s.smoothBars = false ns.MoverOptions().snap = false
+    ns.Theme.Refresh() ns.Options.Refresh()`);
+  const captions = addon.eval('local out = {} for _, h in ipairs(ns.Options.FindSettings("changed")) do out[#out + 1] = h.caption end return out');
+  expect(Object.values(captions), "'changed' lists them").toEqual(expect.arrayContaining(["Text size", "Font", "HUD look", "Theme variant", "Interface sounds", "Smooth health and power bars", "Snap to other frames"]));
+  expect(addon.eval("return Vanguard_Options.nav.general.changed:IsShown()"), "the General nav dot shows").toBe(true);
+  expect(resetDot(addon, "Text size"), "Text size shows its arrow").toEqual([true, true]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w.label.__text == "Font" then w.reset:GetScript("OnClick")(w.reset) end end`);
+  expect(addon.eval("return ns.Theme.Settings().font"), "the Font arrow puts the default back").toBe("");
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval(`local s = ns.Theme.Settings() return { s.textScale, s.hudLook, s.variant, s.sounds, s.smoothBars, ns.MoverOptions().snap }`),
+    "Reset this page puts every changed one back").toEqual([1, "shield", "default", true, true, true]);
+  expect(addon.eval("return Vanguard_Options.nav.general.changed:IsShown()"), "and the dot goes").toBe(false);
+  addon.eval("ns.Theme.Settings().textScale = 0.7 ns.Options.Refresh()");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "Text size" and w.Step then w:Step(6) end end`);
+  expect(resetDot(addon, "Text size"), "stepping the slider back to 100% lands on the default exactly: no arrow").toEqual([false, true]);
+});
+
+it("options: a click on a module row greyed by an off parent jumps to the parent even under Show: On (H45-23-3)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The scoped login (scripts/tests/login-scope.json) starts with both modules off: switch the child on, then the parent off.
+  addon.eval('ns.SetModuleEnabled("UnitFrames", true) ns.SetModuleEnabled("FrameAuras", true) ns.SetModuleEnabled("UnitFrames", false) ns.Options.moduleFilter = "on" ns.Options.Show("modules")');
+  const click = `local target
+    for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "module" and w.source[7] == "FrameAuras" and ns.Options.RevealRow(w) then target = w end end
+    target:GetScript("OnClick")(target, "LeftButton")
+    local f, marked = Vanguard_Options.found
+    for _, w in ipairs(__wfgStub.frames) do if w.found == f and f and f:IsShown() and w.source then marked = w.source[7] end end
+    return { marked or false, ns.Options.moduleFilter, ns.ModuleEnabled("FrameAuras") }`;
+  expect(addon.eval(click), "the parent's row is marked, the filter is back on All, the clicked module is unchanged").toEqual(["UnitFrames", "all", true]);
+  addon.eval('ns.Options.moduleFilter = "on" ns.Options.Show("general")');
+  expect(addon.eval("return ns.Options.JumpToModule('UnitFrames') == nil and ns.Options.moduleFilter"), "from another page the filter is left alone").toBe("on");
+});
+
+it("options: a HUD layout picked in a fight shows on its row at once and a second click steps on from it (H45-23-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("HUD layout")');
+  const step = `local row for _, w in ipairs(__wfgStub.frames) do if w.caption == "Where the frames stand" and ns.Options.RevealRow(w) then row = w end end
+    row:GetScript("OnClick")(row, "LeftButton")
+    return { row.get(), ns.HudLayout() }`;
+  addon.world.combat(true);
+  expect(addon.eval(step), "the first click: the row shows the pick, the layout waits for the fight").toEqual(["fort", "centered"]);
+  expect(addon.eval(step), "the second steps on from the pick").toEqual(["standards", "centered"]);
+  addon.world.combat(false);
+  expect(addon.eval("return { ns.HudLayout(), ns.Options.Frame() ~= nil }"), "after the fight the last pick lands").toEqual(["standards", true]);
+  expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
+});
+
+it("options: the Your characters lines on Game windows follow the record when the window opens again (H45-23-50)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The page's newest All together line.
+  const total = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.GetText and w.source and w.source[1] == "text" and type(w:GetText()) == "string" and w:GetText():find("^All together") then out[#out + 1] = w:GetText() end end
+    return out[#out]`);
+  addon.eval('ns.Options.Show("windows")');
+  const first = total();
+  addon.eval('local r = ns.GetModule("Inventory").Mine() r.money = (r.money or 0) + 123450000');
+  addon.eval('Vanguard_Options:Hide() ns.Options.Show("windows")');
+  expect(total(), "the total follows the record").not.toBe(first);
+  expect(total(), "and is the overview's own line").toBe(addon.eval('local t = ns.GetModule("Inventory").AltLines() return t[#t]'));
+  addon.eval('local IV = ns.GetModule("Inventory") for name in pairs(IV.Characters()) do IV.Characters()[name] = nil end Vanguard_Options:Hide() ns.Options.Show("windows")');
+  expect(addon.eval("return #ns.errors"), "a character forgotten since the page was built leaves an empty line, no error").toBe(0);
+});
+
+it("options: the Frame to size choice follows the frames you can move when a module is switched on or off (H45-23-R1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Whether the newest Frame to size choice offers the Broker strip.
+  const listed = () => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end
+    for _, c in ipairs(last.choices) do if c[1] == "brokerstrip" then return true end end return false`);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", false) ns.Options.Show("general")');
+  expect(listed(), "a module that is off has no entry").toBe(false);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", true)');
+  expect(listed(), "switched on with the window open: its frame is offered").toBe(true);
+  addon.eval('ns.Options.sizedMover = "brokerstrip" ns.SetModuleEnabled("BrokerStrip", false)');
+  expect(listed(), "switched off again: it is gone").toBe(false);
+  expect(addon.eval("return ns.MoverLook(ns.MoverList()[1].key) == 1 and #ns.errors"), "and the sliders fall back to the first frame").toBe(0);
+  expect(addon.eval('ns.Options.Refresh() local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end return last.get() == ns.MoverList()[1].key'), "the picked key that is gone is ignored").toBe(true);
+});
+
+it("options: switching a module that has no movable frame does not build the General page again (H45-23-R1)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // How many Frame to size choices have been built.
+  const rows = () => addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then n = n + 1 end end return n');
+  addon.eval('ns.Options.Show("general")');
+  const before = rows();
+  addon.eval('ns.SetModuleEnabled("ChatFilter", false)');
+  expect(rows(), "the first switch with the same frames builds nothing").toBe(before);
+});
+
+it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The profile names the page lists.
+  const listed = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.label and w.use ~= nil and w.card and ns.Options.RevealRow(w) then out[#out + 1] = w.label.__text end end table.sort(out) return out`);
+  addon.eval('ns.NewProfile("TEST-ONLY Raid") ns.Options.Show("profiles")');
+  expect(listed(), "built with the profiles there are").toEqual(["TEST-ONLY Raid"]);
+  addon.slash("profile new TEST-ONLY Tank");
+  expect(listed(), "/vg profile new: listed at once").toEqual(["TEST-ONLY Raid", "TEST-ONLY Tank"]);
+  addon.eval('ns.DeleteProfile("TEST-ONLY Raid")');
+  expect(listed(), "a deleted profile leaves the list").toEqual(["TEST-ONLY Tank"]);
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(listed(), "Reset profile's backup is listed").toEqual(["Default backup", "TEST-ONLY Tank"]);
+});
+
+it("options: a bar or panel texture another addon shares later is offered by the General page's choices (H45-23-81)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The values of the newest choice row with this caption.
+  const names = (caption) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "${caption}" then last = w end end
+    local out = {} for _, c in ipairs(last.choices) do out[#out + 1] = c[1] end return out`);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("statusbar", "TEST-ONLY Late", [[Interface\\TEST-ONLY]]) lsm:Register("background", "TEST-ONLY Backdrop", [[Interface\\TEST-ONLY]])
+    lsm:Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])`);
+  addon.advance(0.1);
+  expect(names("Bar texture"), "the Bar texture choice lists the late texture").toContain("TEST-ONLY Late");
+  expect(names("Panel texture"), "and the Panel texture choice the late background").toContain("TEST-ONLY Backdrop");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("options: the font the profile uses, shared late by its addon, is offered by the General page's Font choice", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The values of the newest Font choice row.
+  const fonts = () => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Font" then last = w end end
+    local out = {} for _, c in ipairs(last.choices) do out[#out + 1] = c[1] end return out`);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Options.Show("general")');
+  addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Other", [[Interface\\TEST-ONLY.ttf]])');
+  addon.advance(0.1);
+  expect(fonts(), "another font shared late is not offered").not.toContain("TEST-ONLY Other");
+  addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])');
+  addon.advance(0.1);
+  expect(fonts(), "the one in use is").toContain("TEST-ONLY Font");
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
@@ -604,7 +741,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
-  expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
+  expect(resetDot(addon, "Snap to other frames"), "an unlock option has a default too: a dot, hidden while it is held").toEqual([false, true]);
   addon.eval('__click("Action bars") __click("Bar backing")');
   expect(resetDot(addon, "Bar backing"), "choices get one too").toEqual([true, true]);
   addon.eval(`local def = ns.GetModule("ActionBars").defaults.backing
@@ -2398,4 +2535,18 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
     __s.track.__left, __s.track.__width = 0, 100 GetCursorPosition = function() return 50 end
     __s.track:GetScript("OnMouseDown")() __wfgStub.update(0.05) __wfgStub.update(0.05) __wfgStub.update(0.05)`);
   expect(addon.eval("return __sets"), "a locked slider is set once").toBe(1);
+});
+
+it("options: while the spec's profile overrides a staged pick, Copy here names the profile that loads and is not on its row", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {}, Raid = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval(CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 2");
+  addon.login();
+  addon.eval('ns.UseProfile("Raid") ns.Options.Show("profiles")');
+  expect(profileRow(addon, "Heal  (in use)").slice(1), "the running profile keeps Use, to take the staged pick back").toEqual([true, false, false]);
+  expect(profileRow(addon, "Raid")[2], "nor does the staged pick it overrides").toBe(false);
+  expect(profileHover(addon, "Default", "copy", "OnEnter")[1], "Copy here names the profile the reload loads")
+    .toBe("Replaces every setting in profile Heal with profile Default's. It can't be undone.");
+  profileButton(addon, "Heal  (in use)", "use");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "Use on the running profile clears the staged pick").toBeFalsy();
 });

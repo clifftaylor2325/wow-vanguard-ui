@@ -389,6 +389,27 @@ local function tipButton(button, label)
   button:HookScript("OnLeave", ns.Guard("chat tile tip", function() GameTooltip:Hide() end))
 end
 
+-- Carries the main window's bar tiles onto the shown docked window's bar and lays them out there: the
+-- game hides every docked window but the selected one, the main window too, and its tiles with it. True when it
+-- carried them (and so laid them out); false when there was no window to carry them to, or no tiles.
+local function carryTiles(_, selected)
+  local main = _G.ChatFrame1
+  local parts = type(selected) == "table" and CH.frames and CH.frames[selected]
+  local tiles = vgBarTiles[main]
+  if not (parts and tiles) then return false end
+  for _, tile in pairs(tiles) do tile:SetParent(parts.bar) end
+  CH.PlaceBarButtons(main)
+  return true
+end
+
+-- Carries the tiles onto the window the dock shows now (none on a client without the dock) and lays them out, once.
+local function carryToShown()
+  local dock = _G.GENERAL_CHAT_DOCK
+  local docked = type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table"
+  if docked and carryTiles(nil, FCFDock_GetSelectedWindow(dock)) then return end
+  CH.PlaceBarButtons(_G.ChatFrame1)
+end
+
 -- A glyph tile (the side buttons' window control, 20 x 20) in the tab bar's right end, in the slot
 -- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it; the shown ones close up, and the
 -- tab dock ends before the furthest). Its label is its tooltip. While Chat isn't running (off, or
@@ -404,7 +425,7 @@ function CH.AddBarButton(frame, label, where, onClick)
   if not bar then placeLooseButton(button, frame, look.slot) return button end
   vgBarTiles[frame] = vgBarTiles[frame] or {}
   vgBarTiles[frame][look.slot] = button
-  CH.PlaceBarButtons(frame)
+  carryToShown()
   return button
 end
 
@@ -1195,17 +1216,6 @@ local function hookAlertFlash()
   after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
 end
 
--- Carries the main window's bar tiles onto the shown docked window's bar and lays them out there: the
--- game hides every docked window but the selected one, the main window too, and its tiles with it.
-local function carryTiles(_, selected)
-  local main = _G.ChatFrame1
-  local parts = type(selected) == "table" and CH.frames and CH.frames[selected]
-  local tiles = vgBarTiles[main]
-  if not (parts and tiles) then return end
-  for _, tile in pairs(tiles) do tile:SetParent(parts.bar) end
-  CH.PlaceBarButtons(main)
-end
-
 -- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab, the side
 -- buttons and a window's background (the Combat Log's band), and its colouring of a tab: each is
 -- put right after it.
@@ -1225,10 +1235,7 @@ end
 -- shown window: the game selects a new one before it returns, while it is not dressed yet.
 local function skinTemporary()
   CH.SkinAll()
-  local dock = _G.GENERAL_CHAT_DOCK
-  if type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table" then
-    carryTiles(nil, FCFDock_GetSelectedWindow(dock))
-  end
+  carryToShown()
 end
 
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu

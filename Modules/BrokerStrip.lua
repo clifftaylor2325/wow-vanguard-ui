@@ -234,13 +234,22 @@ function BS.Restyle()
   BS.Layout()
 end
 
+-- A feed was created: the strip lays out again, and the Map page, which lists the feeds, is built again once on the
+-- next frame however many feeds came (a burst is one rebuild), and after the fight when it is in one.
+function BS.OnCreated()
+  BS.Layout()
+  ns.Soon("map feeds", function()
+    ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map feeds")
+  end)
+end
+
 -- Listens to LibDataBroker once an addon has loaded it: changes repaint, new feeds lay out again.
 function BS.Hook()
   local ldb = BS.Broker()
   if BS.hooked or not ldb then return end
   BS.hooked = true
   ldb.RegisterCallback(BS, "LibDataBroker_AttributeChanged", ns.Guard("broker feed changed", BS.OnChanged))
-  ldb.RegisterCallback(BS, "LibDataBroker_DataObjectCreated", ns.Guard("broker feed created", BS.Layout))
+  ldb.RegisterCallback(BS, "LibDataBroker_DataObjectCreated", ns.Guard("broker feed created", BS.OnCreated))
   BS.Layout()
 end
 

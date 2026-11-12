@@ -166,16 +166,15 @@ GW.Add("town", { "PetStableFrame" }, GW.SkinStable)
 
 -- Trainer -------------------------------------------------------------------------------------------
 
--- A skill row's text parts, in the theme font: the name, the requirements and the name's side note.
-local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText" }
+-- A skill row's text parts, in the theme font: the name, the requirements, the name's side note and (Forever's
+-- pet skills) the price in training points.
+local TRAINER_ROW_TEXTS = { "name", "subText", "nameSubText", "alternateCost" }
 -- The three pieces of a category header row's plate (faded; its label and fold icon stay).
 local TRAINER_PLATE = { "LeftPiece", "RightPiece", "CenterPiece" }
 -- What a skill row keeps of its art: the skill's icon, the lock on it and the grey shade over a skill you cannot learn.
 local TRAINER_KEEP = { "icon", "lock", "disabledBG" }
 
--- The category rows already hooked (the game's hover swaps their label's font object), and the trainer's own
--- row initialisers already hooked, by function name.
-local vgCategoryRows = ns.FrameState("vgCategoryRows")
+-- The trainer's own row initialisers already hooked, by function name.
 local trainerHooked = {}
 
 -- What a skill row's art fade leaves: its icon, lock and shade, and the layers the row primitive drew.
@@ -213,18 +212,12 @@ local function dressSkillRow(row)
   followSelection(row)
 end
 
--- A category header's label as a section head, again after the game's hover puts its gold font object back.
-local function sectionLabel(row)
-  GW.SkinSection(row.Label)
-end
-
--- A category header row (a list of skills' group): its plate faded, its label a section head that stays one on hover.
+-- A category header row (a list of skills' group): its plate faded, its label a section head that stays one when the game's
+-- hover swaps the label's font object (a SetFontObject on the label, whichever way the game wires the hover scripts).
 local function dressCategoryRow(row)
   fadeWhole(row, TRAINER_PLATE)
-  sectionLabel(row)
-  if vgCategoryRows[row] or type(row.HookScript) ~= "function" then return end
-  vgCategoryRows[row] = true
-  for _, script in ipairs({ "OnEnter", "OnLeave" }) do row:HookScript(script, ns.Guard("hook " .. script, function() sectionLabel(row) end)) end
+  GW.SkinSection(row.Label)
+  GW.HookAfter(row.Label, "SetFontObject", GW.SkinSection)
 end
 
 -- One row of the trainer list: a category header or a skill. Safe to run again, as the game fills a row each time.

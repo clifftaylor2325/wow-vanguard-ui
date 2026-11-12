@@ -362,6 +362,9 @@ function R.Enable(settings, scope)
   R.settings = settings
   panel(scope)
   scope:On("CHAT_MSG_SYSTEM", onSystem)
-  if R.HasLoot() then R.WatchLoot(scope) end
+  if R.HasLoot() then
+    R.WatchLoot(scope)
+    R.ReadLoot()
+  end
   scope:Gate("theme", function() R.Paint() end, T.OnChanged)
 end

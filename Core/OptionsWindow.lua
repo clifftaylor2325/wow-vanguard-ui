@@ -840,6 +840,17 @@ local function placeVersion(f)
   f.version:SetPoint("LEFT", f.footer, "LEFT", T.SPACE.pad + past, 0)
 end
 
+-- Leaves the footer's reload notice its own width (0, the text's) while it fits between the version line and the Reload
+-- now button, and caps it to that room when it does not (a long list of module names ends in "..." instead of running
+-- over the version). The room ends at the version's last letter, as the notice sits T.SPACE.col left of the button.
+-- Waits while either edge is unknown.
+function O.FitNotice(f)
+  local from, to = f.version:GetRight(), f.reload:GetLeft()
+  local room = from and to and math.floor(to - from - T.SPACE.col)
+  local capped = room and T.FullWidth(f.notice) > room
+  f.notice:SetWidth(capped and math.max(1, room) or 0)
+end
+
 -- The footer: your faction's crest (T.CREST.footer, while the faction look is on) and the version on the left; a
 -- reload notice and button on the right when needed.
 local function addFooter(f)
@@ -851,7 +862,7 @@ local function addFooter(f)
   f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
   f.reload = ns.WidenToLabel(ns.ReloadButton(W.Primary(f.footer, L["Reload now"])))
   f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
-  f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
+  f.notice = ns.SingleLine(T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn"))
   f.notice:SetPoint("RIGHT", f.reload, "LEFT", -T.SPACE.col, 0)
 end
 
@@ -1159,7 +1170,7 @@ function O.Refresh()
     if w.Refresh then ns.Try("refresh options row", w.Refresh, w) end
   end
   quiet = false
-  if window then window.profile:Refresh() window.reload:Refresh() placeVersion(window) O.MarkChanged() end
+  if window then window.profile:Refresh() window.reload:Refresh() placeVersion(window) O.FitNotice(window) O.MarkChanged() end
 end
 
 -- Marks the current page's nav entry (the row's selected look, and its text and icon) and dims pages the search misses.
@@ -1248,6 +1259,7 @@ function O.ShowReloadNotice()
   window.reload:SetShown(text ~= nil)
   window.notice:SetShown(text ~= nil)
   window.notice:SetText(text or "")
+  O.FitNotice(window)
 end
 
 -- Forgets the rows of the pages not built yet, so a new opening reads them afresh. A built page keeps
@@ -1352,16 +1364,26 @@ function O.JumpTo(text)
   O.MarkRow(w)
 end
 
--- Scrolls the current page to a module's switch (the Modules page) and marks it; nothing when the row isn't shown.
-function O.JumpToModule(name)
-  local view = pages[O.current]
+-- The widget of a module's switch on the current page, when its row shows (the Modules page's Show choice may leave it out).
+function O.ModuleWidget(name)
   for _, w in ipairs(widgets) do
     local row = w.source
-    if view and row and row[1] == "module" and row[7] == name and O.RevealRow(w) then
-      view:ScrollTo(w.pageY - JUMP_ABOVE)
-      return O.MarkRow(w)
-    end
+    if pages[O.current] and row and row[1] == "module" and row[7] == name and O.RevealRow(w) then return w end
   end
+end
+
+-- Scrolls the current page to a module's switch (the Modules page) and marks it. A row the Show choice hides (a module
+-- that is off, under Show: On) is found again after the choice goes back to All; nothing when there is no such row.
+function O.JumpToModule(name)
+  local w = O.ModuleWidget(name)
+  if not w and O.current == "modules" and O.moduleFilter ~= "all" then
+    O.moduleFilter = "all"
+    O.RebuildPage("modules")
+    w = O.ModuleWidget(name)
+  end
+  if not w then return end
+  pages[O.current]:ScrollTo(w.pageY - JUMP_ABOVE)
+  return O.MarkRow(w)
 end
 
 -- Shows the tab holding row w (a row's widget on a built page) and says whether the row shows now (a row the page

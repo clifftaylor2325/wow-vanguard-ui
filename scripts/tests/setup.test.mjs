@@ -505,3 +505,40 @@ it("the setup comfort step's switch rows grow to a wrapped caption and stack by 
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
   expect(addon.eval("local p = Vanguard_Setup.pages.comfort return p.use:GetBottom() >= p:GetBottom() - 0.01"), "and the page is as tall as its last control").toBe(true);
 });
+
+// Clicks setup's Next n times.
+const nextTimes = (addon, n) => { for (let i = 0; i < n; i += 1) setupClick(addon, "next"); };
+// The All set page: its question and visible lines, and whether Undo setup shows.
+const allSetLines = (addon) => addon.eval(`local p = Vanguard_Setup.pages.done local out = { p.question:GetText() }
+  for _, l in ipairs(p.lines) do if l:IsShown() then out[#out + 1] = l:GetText() end end return { out, p.undo:IsShown() }`);
+// Whether the reload offer is showing.
+const reloadShown = (addon) => addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()");
+
+it("H45-24-1: a tile size set by /vg graphics apply doesn't make a later all-Keep run offer a reload", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(2560, 1440) __fps = 45 GetFramerate = function() return __fps end __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = '6', '1'");
+  addon.slash("graphics");
+  addon.advance(5, 1);
+  addon.slash("graphics apply");
+  if (reloadShown(addon)) addon.eval("Vanguard_Reload:Hide()");
+  addon.slash("setup");
+  nextTimes(addon, 9);
+  expect(reloadShown(addon), "a run that kept everything ends without the tile reload").toBe(false);
+});
+
+it("H45-24-2: a profile of its own, kept at every step, ends with no reload offer", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.eval('__click("A profile of its own")');
+  nextTimes(addon, 10);
+  if (addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()")) addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(reloadShown(addon), "forking the profile needs no reload").toBe(false);
+});
+
+it("H45-24-3: clicking the accent swatch or style tile that is already chosen changes nothing", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.slash("setup");
+  nextTimes(addon, 2);
+  addon.eval("local s = Vanguard_Setup.pages.look.swatches[1] s:GetScript('OnClick')(s)");
+  addon.eval("local look = ns.Settings('RaidFrames').look for _, b in ipairs(Vanguard_Setup.pages.look.styles) do if b.value == look then b:GetScript('OnClick')(b) end end");
+  nextTimes(addon, 6);
+  expect(allSetLines(addon), "no change listed and no Undo").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
+});

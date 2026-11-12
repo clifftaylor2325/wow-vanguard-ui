@@ -24,6 +24,7 @@ function ns.NewProfile(name)
     return false
   end
   VanguardDB.profiles[name] = {}
+  ns.ProfileStagedChanged()
   return true
 end
 
@@ -34,15 +35,15 @@ local function ownCopy(profile)
   return ns.Copy(profile)
 end
 
--- Copies another profile's settings over the one this character uses after the next reload: the
--- active one, or the one staged while a switch waits (so the profile running until then is never
--- overwritten). `into` names another profile to copy into (setup's Undo puts the profile it backed up
+-- Copies another profile's settings over the one this character loads after the next reload (ns.LoadingProfileName):
+-- the active one, or the one a staged switch or the spec's profile loads (so the profile running until then is never
+-- overwritten by a staged switch). `into` names another profile to copy into (setup's Undo puts the profile it backed up
 -- back, which a switch staged since is not). Returns the name copied into, or false.
 ---@param from string
 ---@param into string|nil
 function ns.CopyProfile(from, into)
   local source = VanguardDB.profiles[from]
-  into = into or ns.SelectedProfileName()
+  into = into or ns.LoadingProfileName()
   if not source or from == into then
     return false
   end
@@ -51,14 +52,16 @@ function ns.CopyProfile(from, into)
   return into
 end
 
--- Deletes a profile (never the active or the staged one). A character using it, or with it staged,
+-- Deletes a profile (never the active, the staged or the one the next reload loads). A character using it, or with it staged,
 -- falls back to Default at its next load (Core/DB.lua); a spec set to it uses the character's profile.
 function ns.DeleteProfile(name)
-  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then
+  local inUse = name == ns.ProfileName() or name == ns.SelectedProfileName() or name == ns.LoadingProfileName()
+  if not VanguardDB.profiles[name] or inUse then
     return false
   end
   VanguardDB.profiles[name] = nil
   if type(VanguardDB.backupOf) == "table" then VanguardDB.backupOf[name] = nil end
+  ns.ProfileStagedChanged()
   return true
 end
 
@@ -229,6 +232,7 @@ function ns.BackupProfile(source)
   VanguardDB.profiles[name] = ownCopy(source == ns.ProfileName() and ns.Profile() or VanguardDB.profiles[source])
   VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
   VanguardDB.backupOf[name] = source
+  ns.ProfileStagedChanged()
   return name
 end
 
@@ -290,7 +294,7 @@ end
 -- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
 -- makes or picks a profile, so the running one is what a backup holds.
 local function importTarget(kind)
-  return kind == "parts" and ns.SelectedProfileName() or ns.ProfileName()
+  return kind == "parts" and ns.LoadingProfileName() or ns.ProfileName()
 end
 
 -- A partial string: its tables merge into the named profile, key by key; a theme it carries keeps
@@ -472,9 +476,11 @@ local function isSpecProfile(name)
   return false
 end
 
--- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+-- True when the staged profile is one a spec uses and not the player's own pick (VanguardCharDB.ownProfile,
+-- set by every hand pick), so a spec change staged it; a hand pick of a spec's profile stays staged.
 local function specStaged()
-  return isSpecProfile(ns.PendingProfileName())
+  local pending = ns.PendingProfileName()
+  return isSpecProfile(pending) and pending ~= VanguardCharDB.ownProfile
 end
 
 -- "Spec 2 uses Healer." (on WoW Forever, "Primary talents use Healer.") for a spec key.
@@ -503,6 +509,13 @@ end
 function ns.ProfileAfterReload()
   local name = ns.SpecProfile() or ns.PendingProfileName()
   return name ~= ns.ProfileName() and name or nil
+end
+
+-- The profile the next login loads: the spec's or the staged one when it differs from the one in use, else the
+-- one in use. Copy here and a partial import write into it, so they change what the player will see.
+---@return string
+function ns.LoadingProfileName()
+  return ns.ProfileAfterReload() or ns.ProfileName()
 end
 
 -- Offers the reload when the spec's profile just set (/vg spec, or the Profiles page's button) is not the one in use.
@@ -548,15 +561,24 @@ end
 -- At login (before modules read settings), take the spec's profile quietly.
 ns.On("PLAYER_LOGIN", function() followSpec(true) end)
 
+-- The reload offer the last spec change made, so a swap back that leaves nothing to apply can withdraw it.
+local specOffer
+
+-- Takes back the reload offered for an earlier spec change when the swap back leaves nothing to apply.
+local function withdrawSpecOffer()
+  if specOffer and not ns.ProfileAfterReload() then ns.WithdrawReload(specOffer) end
+end
+
 -- On a spec change mid-session, switch to the spec's profile: at once when nothing waits for a reload (chat says so),
 -- else staged, with the reload that applies it offered (naming what differs, ns.SwitchWaitText, when that alone waits).
 local function onSpecChanged()
-  if not followSpec(false) then return end
+  if not followSpec(false) then return withdrawSpecOffer() end
   local profile = ns.SelectedProfileName()
   local why = ns.Format(L["Your specialization uses profile {profile}."], { profile = profile })
-  if not ns.PendingProfileName() then return ns.Chat(why) end
+  if not ns.PendingProfileName() then withdrawSpecOffer() return ns.Chat(why) end
   local wait = ns.SwitchWaitText(profile)
-  ns.OfferReload(wait and why .. " " .. wait or why)
+  specOffer = wait and why .. " " .. wait or why
+  ns.OfferReload(specOffer)
 end
 
 -- PLAYER_SPECIALIZATION_CHANGED names the unit that changed; only the player's matters.

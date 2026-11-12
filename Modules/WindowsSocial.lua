@@ -494,6 +494,12 @@ local function dressGuildDetails(details)
   dressGuildNews(details.News)
 end
 
+-- The Guild Info page's first header as a section head again: the game's HideChallenges (no challenges to show) sets its text
+-- to the Message of the Day label after the skin capitalised it.
+local function resectionHeader(info)
+  if type(info) == "table" then GW.SkinSection(info.Header1Label) end
+end
+
 -- The guild window's pages beyond their panels: the lists and the roster's parts and hooks, the Guild Information box's note
 -- (now and after each game fill), the Preferred Play Settings buttons.
 local function dressGuildPages(frame)
@@ -502,7 +508,8 @@ local function dressGuildPages(frame)
   dressCommunitiesList(frame.CommunitiesList)
   dressBenefits(frame.GuildBenefitsFrame)
   dressGuildDetails(frame.GuildDetailsFrame)
-  GW.HookAfter(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
+  GW.HookGlobalOnce("CommunitiesGuildInfoFrame_UpdateText", "guild info text", noteGuildInfo)
+  GW.HookGlobalOnce("CommunitiesGuildInfoFrame_HideChallenges", "guild info header", resectionHeader)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end
 

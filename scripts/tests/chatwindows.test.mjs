@@ -83,6 +83,50 @@ it("chat windows: a floating window the player drags into the dock lets go of it
   expect(addon.eval("return #ns.errors"), "docking the main window, or one with no handle, raises nothing").toBe(0);
 });
 
+// TEST-ONLY model of the tab drop and the resize grip's release: both end in FCF_SavePositionAndDimensions, and the engine
+// (StartMoving / StartSizing) has re-anchored the window without a Lua SetPoint (forever Blizzard_ChatFrameBase/Mainline/
+// FloatingChatFrame.lua FCF_StopDragging :1402-1420; FloatingChatFrame.xml resize grip OnMouseUp :478-497).
+const DROP = (x, y) => `ChatFrame2.__points = { TOPLEFT = { point = 'TOPLEFT', rel = UIParent, relPoint = 'TOPLEFT', x = ${x}, y = ${y} } } FCF_SavePositionAndDimensions(ChatFrame2)`;
+// The floating window's first anchor after Edit Mode closes (every pin runs again).
+const AFTER_EDIT_MODE = "ns.PausePins(true) ns.PausePins(false) local p, _, r, x, y = ChatFrame2:GetPoint(1) return { p, x, y }";
+const MOVERS_ON = { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' };
+it("H45-29-1 chat windows: a floating window dragged by its tab or sized by its grip stays put when Edit Mode closes", () => {
+  const addon = loggedIn(ENV, MOVERS_ON);
+  addon.eval(DROP(400, -300));
+  expect(addon.eval(AFTER_EDIT_MODE), "the dropped spot, not the handle's old one").toEqual(["TOPLEFT", 400, -300]);
+  expect(addon.eval("return { ns.MoverPoint('chat2') }"), "the handle took the dropped spot").toEqual(["TOPLEFT", "TOPLEFT", 400, -300]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H45-29-1 chat windows: a scaled floating window's dropped spot is saved in the handle's units", () => {
+  const addon = loggedIn(ENV, MOVERS_ON);
+  addon.eval("ns.SetMoverScale('chat2', 2) " + DROP(200, -150));
+  expect(addon.eval("return { ns.MoverPoint('chat2') }"), "offsets times the scale").toEqual(["TOPLEFT", "TOPLEFT", 400, -300]);
+  expect(addon.eval(AFTER_EDIT_MODE), "and the pin puts the window back where it was dropped").toEqual(["TOPLEFT", 200, -150]);
+});
+
+it("H45-29-1 chat windows: a window dropped on the dock keeps nothing, and a window whose spot the client hides is left alone", () => {
+  const addon = loggedIn(ENV + DOCKING, MOVERS_ON);
+  addon.eval("FCF_DockFrame(ChatFrame2) ChatFrame1.__points = nil " + DROP(400, -300));
+  expect(addon.eval("return { ns.MoverSaved('chat2'), ns.MoverPoint('chat2') }"), "docked: the handle is gone and nothing was saved").toEqual([false]);
+  const hidden = loggedIn(ENV, MOVERS_ON);
+  hidden.eval(`__wfgWorld.holdSecret(ChatFrame2, "Anchoring") FCF_SavePositionAndDimensions(ChatFrame2)`);
+  expect(hidden.eval("return ns.MoverSaved('chat2')"), "secret anchoring: no save").toBe(false);
+  expect(addon.eval("return #ns.errors") + hidden.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// TEST-ONLY model of FCF_Close for a floating window: FCF_UnDockFrame returns at once (not docked), then HideUIPanel and the tab goes;
+// FCF_DockFrame never runs (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCF_Close :1766 on).
+it("H45-29-R1 chat windows: a floating window closed from its tab menu gives up its handle", () => {
+  const addon = loggedIn(ENV + "FCF_Close = function(frame) frame:Hide() end", MOVERS_ON);
+  const keys = "local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out";
+  expect(addon.eval(keys), "open: a handle").toContain("chat2");
+  addon.eval("FCF_Close(ChatFrame1, ChatFrame2)");
+  expect(addon.eval(keys), "closed: the handle is gone from /vg unlock").not.toContain("chat2");
+  addon.eval("FCF_Close(ChatFrame1)");
+  expect(addon.eval("return #ns.errors"), "a window with no handle, or the main one, raises nothing").toBe(0);
+});
+
 it("chat windows: a floating window's unlock handle has the main chat's clamp insets, with the Combat Log's filter strip above", () => {
   const strip = "ChatFrame2.CombatLogQuickButtonFrame = CreateFrame('Frame') ChatFrame2.CombatLogQuickButtonFrame:SetHeight(24)";
   const addon = loggedIn(ENV + strip, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
@@ -201,8 +245,12 @@ it("chat tabs: New chat tab makes nothing and points to the game's tab menu; the
   addon.eval(`${chatRow("New chat tab")} r[3]()`);
   expect(addon.eval("return { __opened, __wfgWorld.chatWindows[3] == nil }"), "Vanguard opened no window").toEqual([0, true]);
   expect(chatHas(addon, /right-click the main chat tab and choose Create New Window/), "chat says how").toBe(true);
+  addon.eval(`ns.Options.Show("chat")`);
   addon.eval(`FCF_OpenNewWindow("Trade")`);
+  addon.advance(0.1);
   expect(addon.eval(`local out = {} for _, c in ipairs(ns.GetModule("ChatWindows").TabChoices()) do out[#out + 1] = c[2] end return out`), "the game's new tab is a choice").toEqual(["General", "Loot", "Trade"]);
+  expect(addon.eval(`local out for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "Tab" and w.choices then
+    out = {} for _, c in ipairs(w.choices) do out[#out + 1] = c[2] end end end return out`), "and the Chat page's own Tab choice lists it with the window still open (H45-23-51)").toEqual(["General", "Loot", "Trade"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
@@ -276,9 +324,9 @@ it("chat find: the Find button opens the find box with the word field at the top
   expect(addon.eval(FIND).slice(1), "Enter finds: the title says how many, the field keeps the word, and the lines show as words with each match lit (case does not matter)")
     .toEqual(['Chat: 2 lines with "sword"', "  SWORD ", true, `[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`]);
   addon.eval("Vanguard_FindDialog.query:SetText('WORLD') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
-  expect(addon.eval(FIND).slice(1, 2).concat(addon.eval(FIND).slice(4)), "a second search from the same box, by the Find button").toEqual(['Chat: 1 lines with "world"', `[General] Hello Sword ${lit(addon, "world")}`]);
+  expect(addon.eval(FIND).slice(1, 2).concat(addon.eval(FIND).slice(4)), "a second search from the same box, by the Find button").toEqual(['Chat: 1 line with "world"', `[General] Hello Sword ${lit(addon, "world")}`]);
   addon.eval("Vanguard_FindDialog.query:SetText('  ') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
-  expect([addon.eval(FIND)[1], chatHas(addon, /Type something to find\./)], "an empty word says so in chat and leaves the last lines").toEqual(['Chat: 1 lines with "world"', true]);
+  expect([addon.eval(FIND)[1], chatHas(addon, /Type something to find\./)], "an empty word says so in chat and leaves the last lines").toEqual(['Chat: 1 line with "world"', true]);
   addon.eval("local b = Vanguard_FindDialog.close b.__scripts.OnClick(b)");
   expect(addon.eval(FIND)[0], "Close shuts it").toBe(false);
   addon.eval("ns.GetModule('ChatWindows').AskFind()");
@@ -304,20 +352,35 @@ it("chat find: the find box and the copy box never stack; the one opening takes 
 });
 
 it("chat find: saved history that no window shows is searched too, and only the newest lines are listed", () => {
-  const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
+  const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
   const sword = lit(addon, "Sword");
   expect(addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))"), "the old saved line first, the duplicate of a showing line once").toBe(`old ${sword} talk\n[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`);
   addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1");
-  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
+  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 line with "sword"');
+});
+
+it("H45-29-2 chat find: saved lines are listed only while Chat history is on and its module runs", () => {
+  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk" } } }';
+  // The lines Find lists for "sword".
+  const lines = (addon) => addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))");
+  const off = loggedIn(ENV + LINES, { savedVariables: saved });
+  expect(lines(off), "history off (the default): only the window's own lines").not.toContain("old");
+  const on = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } ' + saved });
+  expect(lines(on), "history on: the saved line too").toContain("old");
+  on.eval("ns.SetModuleEnabled('ChatHistory', false)");
+  expect(lines(on), "the module off: the saved line is not listed").not.toContain("old");
+  const never = loggedIn(ENV + LINES, { savedVariables: 'VanguardDB.profiles = { Default = { ChatHistory = { on = true }, modules = { ChatHistory = false } } } ' + saved });
+  expect(lines(never), "the module off at login: nothing raised").not.toContain("old");
+  expect(off.eval("return #ns.errors") + never.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("chat find: a saved channel line that a window shows shortened is listed once, with Chat extras on or off", () => {
-  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
+  const saved = 'VanguardDB.profiles = { Default = { ChatHistory = { on = true } } } VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
   // The Find result of "wts" in a loaded client.
   const find = (addon) => addon.eval("return { ns.GetModule('ChatWindows').Find('wts') }");
   const lines = '__lines1 = { "|Hchannel:CHANNEL:2|h[2]|h Bob: wts sword" } ChatFrame1.GetNumMessages = function() return 1 end ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end';
   const on = loggedIn(ENV + lines, { savedVariables: saved });
-  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 lines with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
+  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 line with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
   const off = loggedIn(ENV + lines, { savedVariables: saved });
   off.eval("ns.SetModuleEnabled('ChatExtras', false)");
   expect(find(off)[0], "with the module off nothing is rewritten, so both lines are listed").toBe('Chat: 2 lines with "wts"');
@@ -354,7 +417,7 @@ const DOCKED_ENV = `
 `;
 it("chat windows: a docked tab behind the selected one is still a window: Find reads the hidden docked tab's lines", () => {
   const addon = loggedIn(DOCKED_ENV);
-  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))")).toBe('Chat: 1 lines with "sword"');
+  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))")).toBe('Chat: 1 line with "sword"');
 });
 
 it("chat windows: a docked tab behind the selected one is still a window: the Tab choice offers every docked tab, and Lock locks them all", () => {
@@ -401,6 +464,6 @@ it("chat windows: Find lists a restored player line once, though the window show
   next.eval(history);
   next.login();
   const found = next.eval("return { ns.GetModule('ChatWindows').Find('sword') }");
-  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 lines with "sword"');
+  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 line with "sword"');
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });

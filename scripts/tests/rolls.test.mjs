@@ -269,3 +269,18 @@ it("the roll tracker: T.SPACE.gap in from the panel's edge on every side (a HUD 
   expect([name.left - panelRect.left, panelRect.top - name.top, figure[0], figure[1]], "the first line a gap in from the left and top, its figure a gap in from the right").toEqual([gap, gap, -gap, true]);
   expect(panel(addon)[1] - 3 * addon.eval("return ns.GetModule('Rolls').LINE"), "three lines (the heading and two rolls) and two gaps").toBe(2 * gap);
 });
+
+// A drop already rolling when the module starts (a /reload mid-raid, or Rolls switched on) is read at once, with no loot event first.
+it("reads the loot history it already has at start, and flags a /roll for the item", () => {
+  const loot = `
+  C_LootHistory = {
+    GetAllEncounterInfos = function() return { { encounterID = 7, startTime = 100 } } end,
+    GetSortedDropsForEncounter = function() return { {
+      lootListKey = 1, itemHyperlink = "|cff0070dd|Hitem:1234:0|h[Boots]|h|r", startTime = 100,
+      rollInfos = { { playerName = "Thrall", state = 0, roll = 40, isWinner = false } },
+    } } end,
+  }`;
+  const addon = loggedIn(ROLL_ENV + loot);
+  addon.advance(0.1);
+  expect(addon.eval("return #ns.GetModule('Rolls').items")).toBe(1);
+});
