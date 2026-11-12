@@ -26,6 +26,8 @@
     "scripts/tests/auctionshop.test.mjs": [],
     "scripts/tests/auctionupgrades.test.mjs": [],
     "scripts/tests/auras.test.mjs": [
+      "H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on whole pixels after a scale change",
+      "H44-5-50 your buffs: an enchant that runs out and is put on again in one fight leaves the buffs one cell over",
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
@@ -80,6 +82,7 @@
       "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
       "hotkey text stays on one line inside the button, right-aligned",
+      "hunt H44-13-52: the Keybind mode button keeps the options window open when keybind mode refuses to start",
       "in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning",
       "keybind mode: Cmd on a Mac is part of the key, after Shift in the game's order",
       "keybind mode: a drag that ends keeps the empty slots shown",
@@ -117,6 +120,12 @@
     "scripts/tests/clickcast-presets.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu",
+      "H44-9-100 import: a rank the spellbook lists under another number for that id reads as the spellbook's",
+      "H44-9-100 import: a rank without a spell id is dropped, so the binding reads and casts by name",
+      "H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row",
+      "H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys",
+      "H44-9-R1 import: a hover key with a brace or the word function is skipped, and the enter snippet stays one the client builds",
+      "H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set",
       "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",
@@ -208,6 +217,9 @@
       "Apply: a spell another row places goes straight there, with no copy on bar 3, and putting back restores both buttons",
       "Apply: places the spells, binds and saves the keys, and the buttons show them",
       "Apply: the record is split, keys with the Account set and slots with the character",
+      "H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back",
+      "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
+      "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
       "Only this character: the plan is worked out in the character's own keys",
       "Only this character: the set switches first, Account keeps its keys, and the key rows go in the character's file",
       "Plan: a bar 2 or 3 entry finds its spell on its own bar first, then the other; a bar 1 entry stays on its own button",
@@ -248,6 +260,8 @@
       "two characters set the same account key: putting it back reaches both"
     ],
     "scripts/tests/keybinds-learn.test.mjs": [
+      "H44-10-1 a new rank learned leaves a rank the player put on the key's button",
+      "H44-10-1 a new rank learned takes the place of the rank Vanguard put on its key, silently, once the fight is over",
       "a bar 3 or bar 2 button the player took over is never moved to, nor bound",
       "a better spell for a key: the old one moves to the next key that lists it, and one chat line says both",
       "a button the player changed is theirs for good: its key's spell goes to the next key",
@@ -405,6 +419,10 @@
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
     "scripts/tests/theme.test.mjs": [
+      "held aura icons (Forever): a theme or scale change in a fight leaves them alone without an error, and keeps them",
+      "held aura icons (Forever): they take the new look once, when aura information is plain again",
+      "held aura icons (Retail): a theme or scale change in a fight leaves them alone without an error, and keeps them",
+      "held aura icons (Retail): they take the new look once, when aura information is plain again",
       "shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square"
     ],
     "scripts/tests/themeparts.test.mjs": [],
@@ -432,6 +450,8 @@
       "class bars: an empty totem cell lets clicks through out of combat, and every cell takes clicks in a fight",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
+      "class bars: the totem row stands over the player frame's crown under every look and layout, anchored to the frame itself, and a look change in a fight moves it when the fight ends",
+      "class bars: while the player frame's top reads hidden, the totem row stands a tab's height up under Tabs, and on the frame without one",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",
       "combo points on retail grow to your maximum, and WoW Forever stays at five",
@@ -459,7 +479,10 @@
       "unit frames",
       "unit frames on WoW Forever: levels, health percent, classification",
       "unit frames: a hidden health text goes to the text as it is, and with health numbers off it is never asked for",
-      "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows"
+      "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows",
+      "unit frames: a party member who goes offline or dies loses the power text, and gets it back on return",
+      "unit frames: after a ding the target's level colour is the one for your new level, without a retarget",
+      "unit frames: with power text on, the target's tag mark sits clear of its health number on the top line"
     ],
     "scripts/tests/unlock.test.mjs": [],
     "scripts/tests/upgrades.test.mjs": [],

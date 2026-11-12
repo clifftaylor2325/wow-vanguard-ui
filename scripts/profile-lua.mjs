@@ -10,6 +10,7 @@
 // coverage/profile/<area>.json. The result of the tests is not changed: the
 // exit status is Vitest's.
 
+import "./lib/engine-fengari.mjs";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";

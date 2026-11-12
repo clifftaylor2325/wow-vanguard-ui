@@ -35,7 +35,7 @@ it("cooldowns page: the settings moved off Combat tools, which points here; the 
   expect(tools.includes("on the Cooldowns page"), "and says where they went").toBe(true);
   expect(labels(index("cooldowns")), "the page: setup, the manager, the gaps row, the glow").toEqual([
     "Set up cooldowns", "The game's manager", "Show the game's manager", "Vanguard look (reload)", "Gaps row", "Gaps row (reload)",
-    "Add the manager's cooldowns (reload)", "The gaps row is off. Tick Gaps row and reload to choose its items and spells.", "Buff glow",
+    "Add the manager's cooldowns (reload)", "The gaps row is off. Tick Gaps row above to choose its items and spells.", "Buff glow",
     "Glow a buff near its end", "Glow when this much is left", "Key text", "Key text on the manager's icons"]);
   expect(saved(addon), "nothing is saved until you change it").toEqual([false, true, false, false, false, 30]);
 });
@@ -65,7 +65,7 @@ it("cooldowns wizard: three steps, the same switches, Back and Done, nothing cha
   expect(addon.frame(`${WZ}.frame.caption`).text, "step 1 of 3").toBe("Step 1 of 3 · Show it");
   expect(shown(addon), "step 1: the manager's two switches").toEqual(["Show the game's manager", "Vanguard look (reload)"]);
   addon.eval(`${WZ}.frame.next:GetScript("OnClick")(${WZ}.frame.next)`);
-  expect(shown(addon), "step 2: the gaps row's two").toEqual(["Gaps row (reload)", "Add the manager's cooldowns (reload)"]);
+  expect(shown(addon), "step 2: the gaps row's two").toEqual(["Gaps row", "Add the manager's cooldowns"]);
   addon.eval(`${WZ}.frame.back:GetScript("OnClick")(${WZ}.frame.back)`);
   addon.eval(`${WZ}.frame.back:GetScript("OnClick")(${WZ}.frame.back)`);
   expect(addon.eval(`return ${WZ}.step`), "Back stops at the first step").toBe(1);

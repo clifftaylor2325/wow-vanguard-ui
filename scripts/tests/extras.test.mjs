@@ -65,6 +65,15 @@ it("main tank tiles: a new holder scale pins each tile's bar one pixel inside it
   addon.update(0);
   expect([addon.eval("return Vanguard_MainTanks:GetScale()"), inset()], "at twice the size: still one pixel").toEqual([2, 1]);
 });
+it("party pets and targets: a tile's bar stays one pixel inside its panel at a saved handle scale and after a new one", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true }, positions = { partyextras = { scale = 2 } } } }" });
+  // The column's scale and the bar's inset in screen pixels.
+  const at = () => addon.eval("local b = Vanguard_partypet1 return { Vanguard_PartyExtras:GetScale(), math.floor(b.bar.__points.TOPLEFT.x / ns.Theme.Pixel(b) * 100 + 0.5) / 100 }");
+  expect(at(), "logged in at a saved scale of 2: one pixel").toEqual([2, 1]);
+  addon.eval('ns.SetMoverScale("partyextras", 0.5)');
+  addon.update(0);
+  expect(at(), "the handle scaled to 0.5: still one pixel").toEqual([0.5, 1]);
+});
 it("main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end');
   expect(addon.eval("local h = Vanguard_MainTanks return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames') }"),
@@ -118,6 +127,14 @@ it("/vg factionart: which of the game's own faction pictures the client has", ()
   expect(addon.eval("return ns.FactionArt.Faction()"), "a hidden answer counts as none").toBe("none");
   const bare = loggedIn("C_Texture = nil UnitFactionGroup = nil");
   expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);
+});
+it("/vg factionart: its words come from the string table, the neutral faction too", () => {
+  const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }
+    UnitFactionGroup = function() return "Neutral" end`, { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval('ns.L["atlas"], ns.L["file"], ns.L["yes"] = "TEST-ONLY Atlas", "TEST-ONLY Datei", "TEST-ONLY ja"');
+  addon.slash("factionart");
+  const lines = addon.chat().join("\n");
+  expect([/du bist keine\)/.test(lines), /TEST-ONLY Atlas MountJournalIcons-Horde\s+\|c\w+TEST-ONLY ja/.test(lines), /TEST-ONLY Atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+fehlt/.test(lines), /TEST-ONLY Datei /.test(lines)], "no faction, found, missing and file, each in the client's words").toEqual([true, true, true, true]);
 });
 it("the faction look: the crest only by default, the crest and heading font, and Off", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');

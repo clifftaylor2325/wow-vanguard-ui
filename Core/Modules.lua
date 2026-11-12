@@ -265,6 +265,14 @@ function ns.SettleModules()
   ns.OutOfCombat(settle, life.KEY)
 end
 
+-- Switches a reload-only module off: runs its Disable at once. A module with a Disable that was built is then not as
+-- the login pass left it, so it waits for the reload even when switched back on (ns.ModulesWaiting).
+local function undo(def)
+  local built = running(def)
+  runDisable(def)
+  def.undone = def.undone or (def.Disable ~= nil and built)
+end
+
 -- Turns a module on or off for this profile. A live module (and the live modules that need it) goes on or off at
 -- once, or when the fight ends; any other waits for the reload, except that one with a Disable(settings) gives
 -- back what it changed at once.
@@ -274,7 +282,7 @@ function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
   local def = modules[name]
   if def then def.failed = nil end
-  if not on and def and not def.live then runDisable(def) end
+  if not on and def and not def.live then undo(def) end
   ns.SettleModules()
 end
 
@@ -300,11 +308,12 @@ function ns.ModuleAwaitsFight(name)
   return startable(def)
 end
 
--- Whether a module waits for a reload: a reload-only one whose wanted state changed since login, or a live one kept
--- running by a reload-only parent that was switched off.
+-- Whether a module waits for a reload: a reload-only one whose wanted state changed since login or whose Disable
+-- undid it this session, or a live one kept running by a reload-only parent that was switched off.
 local function waiting(def)
   if def.live then return not life.queued and running(def) and not ns.ModuleWanted(def.name) end
-  return def.Enable ~= nil and def.wantedAtLogin ~= nil and def.wantedAtLogin ~= ns.ModuleWanted(def.name)
+  if def.Enable == nil then return false end
+  return def.undone == true or (def.wantedAtLogin ~= nil and def.wantedAtLogin ~= ns.ModuleWanted(def.name))
 end
 
 -- The modules whose switch waits for a reload, in load order (the options window's reload notice names them).
@@ -324,10 +333,12 @@ function ns.ModulesBuilt()
 end
 
 -- Takes every running live module down, dependents first (a live profile switch, Core/ProfileSwitch.lua, then
--- settles to the new profile's switches; no after-off line, as most start again at once).
+-- settles to the new profile's switches; no after-off line, as most start again at once). A module whose start failed
+-- on the old profile is tried again by that settle, since the new profile changes every one of its settings.
 function ns.StopLiveModules()
   for i = #order, 1, -1 do
     local def = modules[order[i]]
+    def.failed = nil
     if def.live and running(def) then takeDown(def) end
   end
 end

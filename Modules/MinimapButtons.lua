@@ -71,6 +71,15 @@ local function arrangeSoon()
   ns.Soon("minimapbuttons", arrange)
 end
 
+-- Lays the drawer out again when an addon shows or hides one of its buttons. OnShow and OnHide would not do: the
+-- buttons sit under the drawer, so while it is shut the client runs neither (a frame under a hidden parent gets them only
+-- when the parent comes into view); a hook on the calls an addon makes sees every change.
+local function watchShown(b)
+  for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+    hooksecurefunc(b, method, ns.Guard("minimap drawer button " .. method, arrangeSoon))
+  end
+end
+
 -- Takes one addon button into the drawer, keeping its place in the name order (its addon's name without
 -- the library's prefix, in lower case); true when it was new.
 local function gather(b)
@@ -78,8 +87,7 @@ local function gather(b)
   vgGathered[b] = (b:GetName():gsub(MB.NAME, "")):lower()
   MB.buttons[#MB.buttons + 1] = b
   b:SetParent(MB.drawer)
-  b:HookScript("OnShow", ns.Guard("minimap drawer button shown", arrangeSoon))
-  b:HookScript("OnHide", ns.Guard("minimap drawer button hidden", arrangeSoon))
+  watchShown(b)
   return true
 end
 

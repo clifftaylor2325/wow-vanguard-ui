@@ -2049,8 +2049,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6e Chat tabs
 
-- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Click General in the chat so Drops is hidden, reopen the page and pick Drops from the Tab choice, then Close this tab. Do the same in combat, making two new tabs in the one fight, then closing both in another.
-- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops is in the Tab choice while General's tab is the one shown, and closes; in combat a new tab or close waits until the fight ends, both tabs made in one fight appear, and both closed in one fight close. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click a chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
+- Expect: New chat tab says in chat to right-click a tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
 ### 15.6f Chat search
@@ -2445,19 +2445,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 29.1 The gap row
 
-- Do: under `/vg` > Cooldowns tick **Gaps row**, reload. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
+- Do: under `/vg` > Cooldowns tick **Gaps row**. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
 - Expect: a row of square icons in thin borders appears above the game's Cooldown Manager, each with a sweep and numbers in the theme font while its cooldown runs; `/vg unlock` lets you move it. Where the client hides cooldown values in combat, that icon is simply missing or sweeps from the client's own timer; never a wrong number. `/vg gaps` lists the chosen items, `/vg gaps remove <item>` takes one off. The row is never clickable and `/vg errors` stays empty. [Needs in game: whether the client has C_Item.GetItemCooldown (or C_Container.GetItemCooldown), C_Item.GetItemSpell, C_Spell.GetSpellCooldownDuration and GetPetActionInfo, and what each returns in instanced combat.]
 - If it fails, paste: `/vg gaps`, `/vg status` and `/vg errors`.
 
 ### 29.1a Choosing the gap row's items and spells in the window
 
-- Do: with **Gaps row** on (and reloaded), open `/vg` > Cooldowns. Drag an on-use trinket from your bags onto the "Drag here, or type" row under the Gaps card, then drag a spell from your spellbook onto it. Type `Healthstone` in its box and press **Add item**; type a spell's name and press **Add spell**. Press × on one of the rows.
-- Expect: before anything is chosen the card reads "Nothing chosen yet. Drag an item or spell here, or type its name." Each drop or Add puts a row with the item's or spell's icon and name on the card at once (and a chat line), the dragged thing leaves the cursor, and the gap row shows it (an item only while you carry it). × takes its row off the card and the icon off the gap row. With Gaps row off the card says to tick it and reload. [Needs in game: that a spell dragged from the spellbook gives its spell ID as GetCursorInfo's fourth value on Forever, and that a drop with a click (picking up, then clicking the row) works like a drag.]
+- Do: with **Gaps row** on, open `/vg` > Cooldowns. Drag an on-use trinket from your bags onto the "Drag here, or type" row under the Gaps card, then drag a spell from your spellbook onto it. Type `Healthstone` in its box and press **Add item**; type a spell's name and press **Add spell**. Press × on one of the rows.
+- Expect: before anything is chosen the card reads "Nothing chosen yet. Drag an item or spell here, or type its name." Each drop or Add puts a row with the item's or spell's icon and name on the card at once (and a chat line), the dragged thing leaves the cursor, and the gap row shows it (an item only while you carry it). × takes its row off the card and the icon off the gap row. With Gaps row off the card says to tick it. [Needs in game: that a spell dragged from the spellbook gives its spell ID as GetCursorInfo's fourth value on Forever, and that a drop with a click (picking up, then clicking the row) works like a drag.]
 - If it fails, paste: `/vg gaps`, a screenshot of the card and `/vg errors`.
 
 ### 29.2 Spells in the gap row (the Vanguard cooldown row)
 
-- Do: with the row on, type `/vg gaps spell add <a spell of yours>`, then tick "Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns", reload, and turn the game's Cooldown Manager on (Options > Gameplay Enhancements). Use some of those spells, in and out of combat, and in an instance.
+- Do: with the row on, type `/vg gaps spell add <a spell of yours>`, then tick "Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns", and turn the game's Cooldown Manager on (Options > Gameplay Enhancements). Use some of those spells, in and out of combat, and in an instance.
 - Expect: an icon for the chosen spell and for each spell in the manager's essential and utility rows, in the manager's order, each sweeping while its cooldown runs and plain when it is ready; the manager itself is unchanged. Spells you have not learned are left out. Inside an instance in combat the sweeps still run; an icon with nothing readable is left out, never guessed; `/vg errors` stays empty and nothing taints. [Needs in game: that Enum.CooldownViewerCategory, C_CooldownViewer.GetCooldownViewerCategorySet and GetCooldownViewerCooldownInfo exist and are readable from addon code, that C_Spell.GetSpellCooldownDuration returns nothing (not a zero-length object) for a ready spell, that its ignoreGCD argument leaves the global cooldown out, and that a ready spell still shows in instanced combat (an icon missing there means the call gives nothing for a ready spell while its numbers are hidden).]
 - If it fails, paste: `/vg gaps`, `/run print(C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCategorySet and #C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential))` and `/vg errors`.
 
@@ -4922,10 +4922,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with `type:key` the key ring button stays lit; with `q:epic` (no epic key) it dims.
 - If it fails, paste: a screenshot of the bag bar, and the output of `/dump C_Container.GetContainerNumSlots(-1)` and `/dump KeyRingButton:GetBagID()`.
 
-### 33.386 Close this tab on a Trade tab leaves it to the game's menu (Forever)
+### 33.386 Close this tab points to the game's menu, which gives the tab's chat back to General (Forever)
 
-- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab.
-- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." After you right-click the tab and choose Close Chat Window, Trade lines show in General again.
+- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab; then right-click the tab and choose Close Chat Window.
+- Expect: Close this tab changes nothing and chat says to right-click the tab and choose Close Chat Window; the game's menu closes the tab and Trade lines show in General again.
 - If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
 
 ### 33.387 Quest item buttons in a fight (Forever)
@@ -4997,7 +4997,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.397 Close this tab leaves channel tabs to the game's menu (Forever)
 
 - Do: make a chat tab that shows Trade or LookingForGroup (right-click the tab, Settings, tick the channel). Open the Vanguard options, Chat page, Chat tabs, pick that tab and press Close this tab. Then right-click the tab and choose Close Chat Window. Repeat Close this tab on a floating (undocked) channel window. Next, make a second tab that shows no channel and close it with Close this tab. Without reloading, enter `/console taintLog 1`, go into a dungeon and watch LookingForGroup or a custom channel in the main window for a few minutes.
-- Expect: the channel tab stays open (Vanguard does not select it), and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel closes from Vanguard's button. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
+- Expect: the channel tab stays open (Vanguard does not select it), and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel stays open too, and closes from the game's menu. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: the chat line shown, any Lua error, and the lines naming Vanguard in Logs/taint.log.
 
 ### 33.398 Restored Discord guild lines offer no Report Chat (Forever)
@@ -5075,7 +5075,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.410 Close this tab in a fight skips a tab that gained a channel (Forever)
 
 - Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
-- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
+- Expect: The tab stays open and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window." Nothing is closed when the fight ends. No error appears.
 - If it fails, paste: the chat lines and any Lua error text.
 
 ### 33.420 Action bar cooldown sweeps after the sweep change (Forever)
@@ -5366,6 +5366,186 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: (1) no flash at the end of a global cooldown, one flash when a real cooldown ends. (2) Auto Shot shows its ammo count. (3) the game's own tracker text does not show over Vanguard's tracker after the loot, and the tracker's rows still take clicks. (4) the name matches in any case; a name that matches no profile asks before making an empty one; copy and delete ask first. (5) Undo setup puts back the profile it backed up; a backup never replaces a profile that was not made by that backup. (6) Confirm posts the item the sale was set up for, not whatever now sits in the slot. (7) the two windows overlap by about 15 units (known, not fixed). (8) the list is empty. [Needs in-game check: all eight; none was seen in the game.]
 - If it fails, paste: which part, a screenshot where there is one, and `/vg errors`.
 
+### 33.485 The Vanguard button stays first in the game menu
+
+- Do: log in and press Escape. Close the menu and open it again.
+- Expect: the Vanguard button is at the top of the game menu, above Options, with the usual gap under it, both times, and chat shows no "Interface action failed" message. [Needs in-game check: the button's place after login without the addon refreshing the menu's layout itself.]
+- If it fails, paste: a screenshot of the menu, and `/vg errors`.
+
+### 33.486 The target's tag mark clears its health number with power text on
+
+- Do: on either client, set Unit frames → Show power as to Value, then target a mob another player has tagged (its bar turns grey) and one you have tagged.
+- Expect: the grey X (and your green check) sits by the diamond at the target frame's inner top corner, clear of the health number on the bar's top line; the number does not move when the mark comes or goes. [Needs in-game check: the gap at your text size.]
+- If it fails, paste: a screenshot of the target frame, your text size, and `/vg errors`.
+
+### 33.487 Incoming heals and shields stop at the Shield look's point
+
+- Do: on either client, with General → HUD look on Shield and Unit frames → heal prediction and shields on, drop to about 90% health and have a healer cast a large heal on you (or take a shield); look at your frame's pointed end, then a party member's.
+- Expect: the green heal bar and the striped shield bar end on the shield's diagonal edge like the health fill, with nothing square poking past the point. [Needs in-game check: whether the health bar's masks cut the heal bars, which are textures of other frames.]
+- If it fails, paste: a screenshot of the frame with the heal showing, and `/vg errors`.
+
+### 33.488 Hairline banners under Standards show one brass V, no dark wedges
+
+- Do: on either client, set General → HUD look to Hairline and HUD layout → Where the frames stand to Standards; look at the foot of your banner and your target's, then switch the look to Rimmed and back.
+- Expect: under Hairline each banner shows no plate: one brass line along its pointed hem (the V) and no plate-coloured wedges or doubled line at its foot; under Rimmed the plate and its hem come back. [Needs in-game check: the V at UI scale 0.7 and Pixel-perfect.]
+- If it fails, paste: a screenshot of both banners, the UI scale, and `/vg errors`.
+
+### 33.489 Under Standards the focus target stands beside the focus
+
+- Do: on either client, set HUD layout → Where the frames stand to Standards, focus a mob that has a target (or a friend targeting something), at your usual UI scale; then switch back to Centered.
+- Expect: the focus target is a 24 x 100 banner with bars alone, standing just outside the focus banner (the next step left of it), clear of your banner, the focus and the pet; back on Centered it lies across at its own size and spot. [Needs in-game check: whether it meets the chat window's corner on a narrow canvas.]
+- If it fails, paste: a screenshot of the left side of the HUD, the canvas size (`/vg probe`), and `/vg errors`.
+
+### 33.490 Tabs: the party and boss stacks leave room for each tab
+
+- Do: on either client, in a party of five (raid frames not showing the party), set General → HUD look to Tabs, then use `/vg unlock` to show the boss column; switch the look to Plain and back, once in a fight.
+- Expect: each party and boss frame's name tab stands in the gap under the frame above, covering none of its bars; the party column's foot stays just above your frame whichever look is on, and the boss column grows down from the top-left; a look change in a fight moves the stacks when it ends, with no "Interface action failed" line. [Needs in-game check: whether the longer boss column meets the quest tracker or the raid tools.]
+- If it fails, paste: a screenshot of the party and boss columns, and `/vg errors`.
+
+### 33.491 The keep under Tabs: no tab over your frame or the target's cast bar
+
+- Do: on either client, set HUD layout → Where the frames stand to The keep and General → HUD look to Tabs, with a pet, a focus and a target that has a target; let the target cast.
+- Expect: your frame and your target's wear their name tabs; the focus, pet and target of target wear none, their names on their bars, so nothing covers the foot of your frame or the target's cast bar. [Needs in-game check: whether the small frames' names read on the 24-unit bars.]
+- If it fails, paste: a screenshot of the wall, and `/vg errors`.
+
+### 33.492 A shaman's totem row is not blocked when the name tab changes in a fight
+
+- Do: on WoW Forever as a shaman, set General → HUD look to Tabs, drop two totems, start a fight and, in it, type `/run Vanguard_player.tab:SetWidth(60)`; right-click a totem to destroy it; after the fight switch the look to Shield and back to Tabs.
+- Expect: no "Interface action failed because of an AddOn" line and nothing new in `/vg errors`; the totem row stays 3 units over the name tab (over the frame under Shield) and destroys the totem on a right-click. [Needs in-game check: all of it; the client's rule on anchors of protected frames is not in Blizzard's code.]
+- If it fails, paste: `/vg errors`, and a screenshot of the totem row over your frame.
+
+### 33.493 A look change in a fight leaves held plate aura icons alone, and they catch up after
+
+- Do: on either client, in the open world with enemy nameplates showing your debuffs, pull a mob; during the fight pick another accent under General → Look; let the fight end. Then fight again and press Alt+Enter (a window size change) in the fight.
+- Expect: no new "forbidden object" line in `/vg errors` and the error badge stays clear; within a moment of the fight ending the plates' aura icon edges take the new accent. [Needs in-game check: whether the game's hold reaches Vanguard's own parts on an aura button, and whether its restriction event comes after it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a screenshot of a plate's icons after the fight (the old accent still on them means the event came too early).
+
+### 33.494 Raid aura icons follow the tiles' new size
+
+- Do: on either client, in a party or raid out of combat, open `/vg` → Raid frames and drag Width down to 72 and Height down to 36, then let go.
+- Expect: within a moment of letting go each tile's debuff and HoT icons shrink to fit the smaller tile, stay in their bottom corners and draw over neither the name nor each other; on WoW Retail the private aura spot in the middle shrinks with them. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of a tile after the drag.
+
+### 33.495 Your buffs' and the target's aura icons keep thin edges after a scale change
+
+- Do: on either client, with a few buffs up and a target with your debuffs on it, type `/vg unlock`, click the buffs' handle and the target frame's handle, set each one's Scale % to 160 and lock again; then in a dungeon fight with debuffs on a raid tile, press Alt+Enter (a window size change) and let the fight end.
+- Expect: the buff and target debuff icons keep a one-pixel dark edge and inset (no soft or doubled edge), and within a moment of the fight ending the raid tile's icons have them too. [Needs in-game check: all of it, and whether the game's restriction event comes once it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a close screenshot of a buff icon and a raid tile's debuff icon.
+
+### 33.496 Edit Mode leaves Vanguard's aura icons on your real auras
+
+- Do: on either client, with a buff or two up and a target with your debuff on it, open the game's Edit Mode (Esc → Edit Mode), look at your buffs and the target's debuffs, then close it.
+- Expect: while Edit Mode is open your buffs and the target's debuffs show the same icons as before (no row of the game's sample auras), and nothing new in `/vg errors`. [Needs in-game check: all of it; the harness has no Edit Mode of its own.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs with Edit Mode open.
+
+### 33.497 With Debuff icons at none, a debuff you can dispel keeps its icon and says why
+
+- Do: on either client, in a party or raid, set `/vg` → Raid frames → Debuff icons to none with Highlight debuffs you can dispel on, and point at that switch; then let a debuff you can dispel land on a group member.
+- Expect: the switch's tooltip says a debuff you can dispel still shows its icon; on the tile that one icon shows bottom left with the type wash and edge, and no other debuff icon shows. [Needs in-game check: the tile's look.]
+- If it fails, paste: `/vg errors`, and a screenshot of the tile and the tooltip.
+
+### 33.498 A weapon enchant put on again in one fight keeps its cell clear of the buffs
+
+- Do: on WoW Forever, as a rogue or shaman with a poison or imbue on your main hand that is about to run out, start a fight, let the enchant run out and put it on again before the fight ends (or swap the weapon off and back on).
+- Expect: once the fight ends the enchant cell sits in front of your buffs and no buff is under it, with nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs after the fight.
+
+### 33.499 On a plate first drawn in a fight, your crowd control shows once
+
+- Do: on WoW Forever, as a mage, start a fight with one mob, then turn to a second mob whose plate was not on screen before the fight and Polymorph it (or, as another class, put your own crowd control on a mob first seen in the fight).
+- Expect: on that mob's plate the sheep icon shows once, in the crowd-control spot, not again in the row of your debuffs; nothing new in `/vg errors`. [Needs in-game check: whether the game's by-index aura read takes a "!" word; Vanguard drops it and reports it once in `/vg errors` if not.]
+- If it fails, paste: `/vg errors`, and a screenshot of the plate.
+
+### 33.500 The target's private aura spot follows the Aura icon size slider
+
+- Do: on WoW Retail, open `/vg` → Unit frames and drag Aura icon size under Target and focus auras from 20 to 30, let go, then in a boss fight that puts a private aura on your target (or a dungeon boss with one) look right of the target frame.
+- Expect: the private aura's icon there is about as large as the target's own debuff icons at the new size (34 across, not 24), and nothing new in `/vg errors`. [Needs in-game check: all of it; the game draws the icon itself.]
+- If it fails, paste: `/vg errors`, and a screenshot of the target frame with the private aura showing.
+
+### 33.501 Cast bars keep working where the game hides cast timing
+
+- Do: on either client, in a dungeon or battleground fight, target an enemy that casts and watch its cast on its nameplate and on the target cast bar, and cast a spell yourself.
+- Expect: each bar shows and fills (or shows full with the spell's name), and nothing new in `/vg errors` mentions CastBars. [Needs in-game check: whether the game hides a cast's duration object from addons there.]
+- If it fails, paste: `/vg errors`.
+
+### 33.502 A Brewmaster's stagger bar keeps following stagger after Class bars off and on
+
+- Do: on WoW Retail, as a Brewmaster at full energy, take hits, then in `/vg` → Modules switch Class bars off and on again out of combat, and take hits again.
+- Expect: the stagger bar under the player frame keeps rising and falling with your stagger while your energy stays full, and nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`.
+
+### 33.503 On Retail the Versus deck wraps the class resource pips and the stagger bar
+
+- Do: on WoW Retail, as a Paladin, switch on Versus deck under `/vg` → Unit frames; then on a Brewmaster monk do the same.
+- Expect: the holy power pips sit inside the deck's border above your frame, not on it, and the Brewmaster's stagger bar sits inside its border under your frame. [Needs in-game check: the look.]
+- If it fails, paste: a screenshot of the deck.
+
+### 33.504 Your interrupt leaves no diamond beside the red Interrupted flash
+
+- Do: on either client, as a mage with Interrupt mark on cast bars on (the default), Counterspell your target's cast.
+- Expect: the target cast bar flashes red "Interrupted" and fades with no diamond beside it, though your Counterspell's cooldown starts during the flash. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the cast bar while it flashes.
+
+### 33.505 The raid grid stays on its spot when the tiles' Width changes
+
+- Do: on either client, in a raid of 6 or more (two columns) out of combat, set Width to 120 under `/vg` → Raid frames, then press its reset arrow.
+- Expect: each time the grid stays centred on its spot at once, and does not jump when someone next joins or leaves. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and a screenshot before and after someone joins.
+
+### 33.506 One Cooldown Manager icon's buff does not put out the others' glow
+
+- Do: on either client, turn on "Glow a buff near its end" under `/vg` → Cooldowns, keep a target debuff and a self heal-over-time in the Buff row, then fight in an instance and swap targets often.
+- Expect: the heal-over-time's icon still lights near the end of its time, and `/vg errors` has no CooldownGlow line. [Needs in-game check: all of it; whether the game ever refuses the read is unknown.]
+- If it fails, paste: `/vg errors`.
+
+### 33.507 An imported hover key with a brace is skipped and the other hover keys still work
+
+- Do: on either client, open `/vg` → Click casting, click Import and paste `VG1:clickcast:14ec:e1siYmluZGluZ3MiXT17WzFdPXtbImFjdGlvbiJdPSJzcGVsbCIsWyJrZXkiXT0iU0hJRlQtUSIsWyJ2YWx1ZSJdPSJSZW5ldyJ9LFsyXT17WyJhY3Rpb24iXT0ic3BlbGwiLFsia2V5Il09IlNISUZULXsiLFsidmFsdWUiXT0iRmxhc2ggSGVhbCJ9fX0=` (say Replace if asked), then rest the pointer on a raid or party tile and press Shift + Q.
+- Expect: chat says 1 binding was imported, no Lua error comes up, the tile's tooltip shows and Shift + Q casts Renew on that player. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and `/vg binds`.
+
+### 33.508 A Click casting question answered after a talent group switch changes nothing
+
+- Do: on WoW Forever, on a character with dual spec and different Primary and Secondary click-casting lists, click Activate on the other talent group, and during its cast open `/vg` → Click casting and click Clear all; wait for the cast to end, then click Clear.
+- Expect: nothing is cleared, chat says "Nothing changed: the list this asked about is no longer the one shown. Ask again.", and both lists are as before. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg binds` on each talent group.
+
+### 33.509 A hover key the game also binds names that binding as the game does
+
+- Do: on either client, open `/vg` → Click casting → Keys while hovering a frame, click Add key, press M and pick Renew.
+- Expect: the row says "also" and the game's own name for the world map key, as in the game's Keybindings settings, not "toggleworldmap". [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the row and `/vg binds`.
+
+### 33.510 Every hover key has its row, past the eighth too
+
+- Do: on either client, open `/vg` → Click casting → Keys while hovering a frame and add nine hover keys (F1 to F9, any spell), then roll the mouse wheel over the list and click Remove on F9's row.
+- Expect: eight rows show, the wheel scrolls the list to F9's row (the thumb shows at the list's right edge), there is no "+1 more" line, and Remove takes F9 away. With eight keys or fewer the wheel over the list scrolls the page. [Needs in-game check: all of it, the thumb's place and the rows' clipping at the list's bottom edge too.]
+- If it fails, paste: a screenshot of the list and `/vg binds`.
+
+### 33.511 A change unticked on key setup's Ready step stays unticked after a fight
+
+- Do: on a WoW Forever character with at least two proposed keys, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick one change, then attack a training dummy and leave combat.
+- Expect: the window comes back on Ready with that change still unticked, and Apply leaves that key as it was. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of Ready after the fight and `/vg errors`.
+
+### 33.512 Key setup's Ready list shows what Apply will do, after an untick and after a bar change
+
+- Do: on a WoW Forever warrior, put Shield Bash on bar 2 button 2, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "F: your Shield Bash on bar 2" and read the T line; then drag a macro onto an empty button the list names (or off the one it says it leaves alone) and press Apply.
+- Expect: after the untick the T line has its own tick box and says "T: Hamstring, and Shield Bash moves to bar 3"; after the bar change Apply changes nothing, chat says "Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again.", and the list shows the new plan; Apply then does exactly what it lists. [Needs in-game check: all of it, and with Only this character on a character that had its own keys before.]
+- If it fails, paste: the Ready list before and after, the chat lines, and `/vg errors`.
+
+### 33.513 A new rank of a spell reaches its key
+
+- Do: on a WoW Forever mage with Place new spells as I learn them on (set up keys, tick it on Ready, Apply), train a new rank of Frostbolt at the trainer, then hover Frostbolt's key's button; then put Rank 1 of Frostbolt on that button from the spellbook, open key setup again to Ready and read Frostbolt's line.
+- Expect: after training, the button shows the new rank (if the game already upgraded the button by itself, note that); on Ready the line reads like "2: Frostbolt (Rank 3), in place of Rank 1" with a tick box, and unticking it keeps Rank 1 on Apply. [Needs in-game check: all of it, and whether the game upgrades a button to a new rank by itself.]
+- If it fails, paste: the rank the button shows, the Ready line, the chat lines and `/vg errors`.
+
+### 33.514 Unticking key 1 on one stance page leaves key 1 alone
+
+- Do: on a WoW Forever warrior with Battle and Defensive Stance, bind key 1 to Open All Bags in the game's key bindings, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "1 in Battle Stance", press Apply, then press 1 in Battle Stance and in Defensive Stance.
+- Expect: unticking "1 in Battle Stance" also unticks "1 in Defensive Stance"; after Apply key 1 opens your bags in both stances. [Needs in-game check: all of it.]
+- If it fails, paste: the step 3 list before and after the untick, what key 1 did, and `/vg errors`.
+
 ### 33.605 A per-stack price is for the stack that goes up next
 
 - Do: at the auction house, drop a stack of 7 of a commodity on the Posting sell card, set Stack to 20, press the per-unit button so it reads per stack, type 7g in Price, then click Post once. Look at the Price box before the click and at the chat line after it. [Client: Forever and Retail.]
@@ -5475,6 +5655,186 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: with Enemy nameplates off in the game (press V until plates hide), type `/vg setup`, Next to Game settings, press **Use recommended**, Next, then on Helpers switch Accept and turn in quests on and press **Use recommended**; Next through to All set and read it. Press **Undo setup** and answer Undo; answer No to the export question if asked; reload when offered. Then `/vg setup` again and Next through to All set.
 - Expect: Use recommended on Game settings switches all three rows on; leaving the step turns the game's enemy plates on at once (the V key state) and zooms the camera out further. On Helpers, Use recommended turns the recommended rows on and leaves your quest-automation pick on. All set lists each change with On, and Undo setup's question reads `Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it.`; after Undo the enemy plates are off again and the camera zoom back as it was, setup is closed, chat shows no error, and the reload dialog reads `Setup was undone: the profile as it was is back. Reload the UI now to apply it?`. The second run's All set says `This run changed nothing` and shows no Undo setup. [Needs in-game check: all of it.]
 - If it fails, paste: the All set lines, the question text, the V key state before and after, and `/vg errors`.
+
+### 33.545 A profile that switches at once brings its Edit Mode layout (H44-12-2)
+
+- Do: for Forever and Retail: with every module that needs a reload switched off under `/vg` → Modules (the ones tagged for a reload), have two profiles that remember different Edit Mode layouts. Under Profiles, press Use on the other one, then open and close Edit Mode, then `/reload`.
+- Expect: right after Use, Edit Mode is on that profile's layout and chat says `Edit Mode layout X, from profile Y.`; after opening and closing Edit Mode and the reload, the profile is still on its own layout.
+- If it fails, paste: the chat lines, the two profiles' names and layouts, and `/vg errors`.
+
+### 33.546 Undo setup puts the game's UI scale back (H44-14-R1)
+
+- Do: for Forever and Retail: note Options, Graphics, UI Scale (the checkbox and the slider). `/vg setup`, on the screen step pick 1440p, Next to All set, press Undo setup and Yes, then reload.
+- Expect: the game's UI Scale checkbox and slider are as you noted, and the whole UI is at the scale it had before.
+- If it fails, paste: the UI Scale checkbox and slider values before and after, and `/vg errors`.
+
+### 33.547 A chat window's opacity ends when Chat windows is switched off (H44-11-R1)
+
+- Do: for Forever and Retail: `/vg unlock`, right-click a floating chat window's handle, set Opacity to 50, Save and lock, then switch Chat windows off under `/vg` → Modules.
+- Expect: the chat window is back at full opacity, and fading in and out with the mouse is the game's own again.
+- If it fails, paste: the window's look before and after, and `/vg errors`.
+
+### 33.548 All set still names a layout after Back and Keep (H44-14-20)
+
+- Do: for Forever and Retail: `/vg setup`, pick Centered: healing, Next, Back, pick Keep my current layout, Next through to All set and read it.
+- Expect: All set says the run changed something, lists `Layout: Centered: healing`, and shows Undo setup; Undo setup puts the profile as it was back.
+- If it fails, paste: the All set text and `/vg errors`.
+
+### 33.549 All set names frames moved, and offers Undo only with a backup (H44-14-21)
+
+- Do: for Forever and Retail: with setup already finished, `/vg setup`, Next to Move things, drag a frame, Next to All set and read it, then Done.
+- Expect: All set says the run changed something and lists `Frames moved`, with no Undo setup; Done offers the reload.
+- If it fails, paste: the All set text and `/vg errors`.
+
+### 33.550 Skip setup goes once the run has changed something (H44-14-22)
+
+- Do: for Forever and Retail: on a first run, pick Centered: healing, Next, then Back to the first step.
+- Expect: the first step shows Next and no Skip setup.
+- If it fails, paste: a screenshot of the first step's buttons and `/vg errors`.
+
+### 33.551 Reload settings wear the grey reload tag (H44-13-50)
+
+- Do: for Forever and Retail: `/vg` > Action bars, untick Hide the default bars; Raid frames, tick Sort by role; hover each row.
+- Expect: each row shows the small grey `reload` tag after its name, its tooltip says `Takes effect after /reload.`, and the footer names the module as waiting for a reload.
+- If it fails, paste: a screenshot of both rows and `/vg errors`.
+
+### 33.552 The Set up cooldowns window no longer asks for a reload it does not need (H44-13-R1)
+
+- Do: for Forever and Retail: `/vg cooldowns setup`, Next to the Gaps row step, read the two switches, tick Gaps row.
+- Expect: the switches read `Gaps row` and `Add the manager's cooldowns` with no `(reload)`, and the gaps row appears at once.
+- If it fails, paste: a screenshot of the step and `/vg errors`.
+
+### 33.553 A window's tabs are dressed even where the game hides their anchoring (H44-15-R1)
+
+- Do: for Forever and Retail: open the character window, the spellbook, the social window and the guild window, and click through each one's tabs.
+- Expect: every tab sits just outside its window's panel edge in Vanguard's tab look, and `/vg errors` has no `attempt to compare a secret value` line from `WindowsTabs.lua`.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 33.554 Toggle Minimap in a fight with another addon's secure button on the map (H44-18-1)
+
+- Do: for Forever and Retail: with an addon that puts a secure button on the minimap (skip if you have none), enter a fight, press the Toggle Minimap key twice, then once more and leave the fight.
+- Expect: no `blocked` line in `/vg errors`; the map's box follows the map at once, or at the latest when the fight ends, and then matches whether the map is shown.
+- If it fails, paste: `/vg errors` and the name of the addon with the button.
+
+### 33.555 A Shift-click waypoint wins over the quest the game tracked by itself (H44-18-50)
+
+- Do: for Forever: under Quests → Finding your way set Shift-click points to A map waypoint. Accept a new quest A (the game's marker follows it), then Shift-click another watched quest B in Vanguard's tracker.
+- Expect: chat says `Arrow: B.`, Vanguard's arrow names B, and the tracker's `>` step line sits under B, not A.
+- If it fails, paste: the arrow's title, which quest has the `>` line, and `/run print(C_SuperTrack.GetSuperTrackedQuestID(), C_SuperTrack.IsSuperTrackingUserWaypoint())`.
+
+### 33.556 The game's own quest and gossip windows keep readable text while the quest dialog is handed back (H44-15-1)
+
+- Do: for Forever and Retail: with Vanguard's quest dialog on, tick Use the game's quest windows for now under Quests, then talk to a quest giver with a quest to hand in and to a gossip NPC.
+- Expect: the game's windows on their parchment with the game's own dark text, never light text on the parchment.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 33.557 The loot history reopens where its own drag dropped it (H44-15-50)
+
+- Do: for Forever and Retail: open the loot history (the group loot window's history button), drag it by its top edge, close and reopen it; then drag it by the middle of its list, close and reopen it.
+- Expect: each time it reopens where you last let go, and `/vg errors` is empty.
+- If it fails, paste: where it reopened after each drag and `/vg errors`.
+
+### 33.558 Retail dropdowns in the second menu style take Vanguard's panel (H44-15-51)
+
+- Do: for Retail: open a dropdown in the game's settings (Options → Graphics, Display Mode), change its value, then at the barber shop open a customisation option's dropdown.
+- Expect: each list on a flat Vanguard panel with its rows inside the panel, and the new setting takes effect with no `blocked` line in `/vg errors`.
+- If it fails, paste: a screenshot of each open list and `/vg errors`.
+
+### 33.560 Quiet the game declines a stranger's group invite on Forever (H44-20-50)
+
+- Do: on Forever, with Quiet the game > Decline group invites from strangers on, have a character who is not a friend, Battle.net friend or guildmate, and whom you have not whispered, invite you; then have a friend invite you.
+- Expect: the stranger's invite is declined at once with one line `Declined a group invite from <name>.`; the friend's popup stays.
+- If it fails, paste: the chat line, and `/vg errors`.
+
+### 33.561 A long meter report goes out as whole lines (H44-20-1)
+
+- Do: for Forever and Retail: in a party after a fight with 6 or more members (cross-realm names if you can), `/vg meter report party 10`.
+- Expect: one or more party lines, every listed name whole, none cut off; the first line starts with the meter title.
+- If it fails, paste: the party lines, and `/vg errors`.
+
+### 33.562 The Delve layout follows a delve starting or ending in place (H44-20-2)
+
+- Do: on Retail with a Delve layout recorded (`/vg situation record delve`), start a delve from inside its instance, or finish one and stay inside.
+- Expect: the Delve layout comes on (or off) within a second without a zone change, and opening `/vg` on Situations does not hitch.
+- If it fails, paste: `/vg situation list`.
+
+### 33.563 Quest dialog hand-back after a module restart (H44-17-50)
+
+- Do: for Forever and Retail: `/vg` > Quests: switch on Use the game's quest windows for now; Modules: Quest dialog off, then on; Quests: switch the hand-back off; talk to a quest giver. Also try: Quest dialog off, hand-back on, Quest dialog on, hand-back off, talk again.
+- Expect: only Vanguard's quest dialog opens each time; the game's quest window does not open with it.
+- If it fails, paste: whether the game's quest window also opened, and `/vg errors`.
+
+### 33.564 A Legacy challenge you earn leaves the tracker (H44-17-2)
+
+- Do: on Forever, track a Legacy challenge one step from done and finish it on this character.
+- Expect: it leaves Vanguard's tracker, as it leaves the game's; the Legacy challenges heading goes when it was the last.
+- If it fails, paste: the tracker's Legacy challenges heading before and after.
+
+### 33.565 A gossip with a game window of its own opens the game's window (H8-8-2)
+
+- Do: on Retail, with the Quest dialog on and no key held, talk to the Torghast entrance NPC, or to the new-player guide (Exile's Reach).
+- Expect: the game's own picker or guide window opens, not Vanguard's plain gossip list; an ordinary quest giver still opens Vanguard's dialog.
+- If it fails, paste: which window opened, and `/vg errors`.
+
+### 33.566 An item-started quest is not accepted by a key or automation (H20-7-1)
+
+- Do: for Forever and Retail: with the Quest dialog on and Quests > Accept quests on, loot an item that starts a quest while holding Space (or tapping Enter).
+- Expect: Vanguard's dialog opens on the offer and stays open, nothing is accepted until you click Accept; an ordinary quest giver is still accepted by Space and by automation as before.
+- If it fails, paste: whether the quest was accepted, and `/vg errors`.
+
+### 33.567 A chat window dragged back into the dock stays in the dock (H44-19-1)
+
+- Do: for Forever and Retail: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
+- Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
+- If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
+
+### 33.568 A tab made and closed from the game's menu stays clean for channels (H44-19-2, H44-19-R1)
+
+- Do: for Forever and Retail: make a tab from the game's tab menu (Create New Window); in `/vg` > Chat > Chat tabs pick it and click Close this tab; close it from its own menu, make another, tick LookingForGroup on it in its Settings, enter a dungeon and wait for a channel line (`/console taintLog 1` first). Also click New chat tab.
+- Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
+- If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
+
+### 33.569 A closed Filtered tab's number is not fed to the next tab (H44-19-52)
+
+- Do: for Forever and Retail: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
+- Expect: the spam goes to a new Filtered tab, and the Loot tab keeps its name and holds no spam.
+- If it fails, paste: `/vg filter` and the tab names.
+
+### 33.570 A community invitation toast keeps the community's colour (H44-16-1)
+
+- Do: for Forever and Retail: have a friend invite you to a Battle.net community (or a club finder invitation) while the toast skin is on.
+- Expect: the community name in the toast stands out (blue or gold) from the grey sentence; a friend coming online still reads in secondary text.
+- If it fails, paste: a screenshot, or `name coloured: yes/no`.
+
+### 33.571 The guild news filters flyout sits clear of the side tabs and stays put (H44-16-2, H44-16-3)
+
+- Do: for Forever and Retail: open the guild window, Guild Info, Set filters; then open and close the character pane (or another side window) while the flyout is up.
+- Expect: the flyout sits beside the guild window without covering the Chat, Roster, Benefits or Info tabs, and stays beside it after the other window opens and closes.
+- If it fails, paste: a screenshot, and where the flyout ends up.
+
+### 33.572 Combat log filter buttons (H44-16-50)
+
+- Do: for Forever and Retail: open Chat Settings, Combat, add a filter with Show Quick Button ticked.
+- Expect: The new quick button on the combat log bar is a flat theme button, not the game's art.
+- If it fails, paste: A screenshot of the bar.
+
+### 33.573 Retail group finder page titles (H44-16-51)
+
+- Do: On Retail, open the group finder, Premade Groups, then Start a Group.
+- Expect: Both page titles read in the light heading text, not the game's gold.
+- If it fails, paste: A screenshot of each page.
+
+### 33.574 Retail keystone window after taking a key out (H32-4-1)
+
+- Do: On Retail, open the Mythic+ keystone window, put a keystone in the slot, then drag it out.
+- Expect: The panel stays flat; the game's backdrop and divider do not come back.
+- If it fails, paste: A screenshot after taking it out.
+
+### 33.575 The minimap drawer's "..." button follows the addon buttons (H44-18-A1; Forever and Retail)
+
+- Do: With the drawer shut and one addon minimap button in it, hide that button in its addon's settings (its "Hide minimap button" switch), then show it again.
+- Expect: The "..." button on the map's left edge goes when the last button is hidden and comes back when one is shown, without opening the drawer or reloading.
+- If it fails, paste: The addon's name and what the "..." button did.
 
 ## 34. Retail
 

@@ -228,3 +228,85 @@ it("options: the Info strip's Ammo and Soul shards switches show on Forever only
   expect(labels.map((label) => mapHas(undefined, label)), "Forever has both").toEqual([true, true]);
   expect(labels.map((label) => mapHas(RETAIL_CLIENT, label)), "Retail has neither").toEqual([false, false]);
 });
+
+// Every row whose setter makes the options window wait for a reload but has no reload tag (page key | caption), found by
+// flipping each setting and putting it back. Theme variant is tagged by its change, not by its row: only Safer colours needs a reload.
+const UNTAGGED_RELOAD_ROWS = `
+local O, out = ns.Options, {}
+local flagged, real = false, O.NeedReload
+O.NeedReload = function(...) flagged = true return real(...) end
+local function waiting() return #O.ReloadWaiting() end
+local function flipped(row, v)
+  if row[1] == "check" then return not v end
+  if row[1] == "slider" and type(row[3]) == "table" and row[3].min then return v == row[3].min and row[3].max or row[3].min end
+  if row[1] == "cycle" and type(row[3]) == "table" then for _, c in ipairs(row[3]) do if c[1] ~= v then return c[1] end end end
+end
+for _, page in ipairs(O.PAGES) do
+  for _, row in ipairs(O.RowsOf(page)) do
+    local get, set
+    if row[1] == "check" then get, set = row[3], row[4] elseif row[1] == "cycle" or row[1] == "slider" then get, set = row[4], row[5] end
+    if set and type(get) == "function" and type(row[2]) == "string" and row.english ~= "Theme variant" then
+      local ok, v = pcall(get)
+      local nv = ok and flipped(row, v)
+      if nv ~= nil and nv ~= false or (ok and row[1] == "check") then
+        flagged = false
+        local before = waiting()
+        pcall(set, nv)
+        local waits = flagged or waiting() > before
+        pcall(set, v)
+        if waits and not row.reload then out[#out + 1] = page.key .. " | " .. row.english end
+      end
+    end
+  end
+end
+return table.concat(out, ", ")`;
+
+it("hunt H44-13-50: every options row that waits for a reload wears the reload tag, on both clients", () => {
+  for (const options of [undefined, { client: RETAIL_CLIENT }]) {
+    const addon = loggedIn(CLICK_LUA, options);
+    expect(addon.eval(UNTAGGED_RELOAD_ROWS), "no row waits for a reload without its tag").toBe("");
+  }
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("raid")');
+  expect(addon.eval(`${FIND("Sort by role (tanks, healers, damage)")} return { w ~= nil, w.tag and w.tag.__text }`), "Sort by role wears the tag the window gives a marked row").toEqual([true, "reload"]);
+});
+
+it("hunt H44-13-1 and H44-13-R2: searching 'changed' lights the pages that hold a changed setting and dims the rest, with or without a space", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") __click("AFK scene")');
+  // The nav's alpha for General (holds the change), Chat (does not) and Action bars (a text row there holds the word), and the number of hits.
+  const search = (text) => addon.eval(`ns.Options.Search("${text}") local n = Vanguard_Options.nav
+    return { n.general:GetAlpha(), n.chat:GetAlpha(), n.actionbars:GetAlpha(), #ns.Options.hits }`);
+  for (const text of ["changed", "changed ", "  Changed "]) expect(search(text), `'${text}': General lit, the others dimmed, one hit`).toEqual([1, 0.35, 0.35, 1]);
+});
+
+it("hunt H44-13-2: on a translated client the English keywords of Safer colours still find it", () => {
+  const addon = loggedIn(CLICK_LUA, { client: 'GetLocale = function() return "zhCN" end' });
+  addon.eval('ns.Options.Show("general")');
+  // The English captions of the settings the search lists for the text.
+  const find = (text) => addon.eval(`local out = {} for _, h in ipairs((ns.Options.FindSettings(${JSON.stringify(text)}))) do out[#out + 1] = h.row.english end return out`);
+  expect(Object.values(find("deuteranopia")), "an English word the translation dropped").toContain("Safer colours");
+  expect(Object.values(find("animations")), "other settings' English keywords still work").toContain("Reduce motion (no fades or flashes)");
+});
+
+it("hunt H44-13-53: Restyle pet, stance and extra buttons counts as changed when unticked, resets with the page, and names its module in the footer", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const row = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "actionbars" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Restyle pet, stance and extra buttons" then row = r end end end end`;
+  addon.eval(`${row} row[4](false)`);
+  expect(addon.eval(`${row} return { ns.Options.RowChanged(row), ns.Settings("SpecialBars").skinStance, table.concat(ns.Options.ReloadWaiting(), ",") }`), "unticked: changed, all four off, the module waits").toEqual([true, false, "Pet, stance and extra buttons"]);
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval(`${row} local s = ns.Settings("SpecialBars") return { ns.Options.RowChanged(row), s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }`), "Reset this page puts all four back").toEqual([false, true, true, true, true]);
+});
+
+it("hunt H44-13-81: searching for reset lists the real reset buttons, not every page's Reset this page", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The captions the search lists for the text, "isReset" for a page's Reset this page.
+  const found = (text) => addon.eval(`local out = {} for _, h in ipairs((ns.Options.FindSettings("${text}"))) do out[#out + 1] = h.row.isReset and "isReset" or h.caption end return out`);
+  const reset = Object.values(found("reset"));
+  expect(reset, "the page buttons are left out").not.toContain("isReset");
+  expect(reset, "the settings stay").toEqual(expect.arrayContaining(["Reset theme", "Reset all positions"]));
+  expect(Object.values(found("this page")), "and 'this page' lists nothing").toEqual([]);
+});

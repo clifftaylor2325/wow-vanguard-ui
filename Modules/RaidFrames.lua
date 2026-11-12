@@ -75,7 +75,8 @@ RF.buttons = {}
 -- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
 -- healthHooks(b, unit) after a health event (only what follows health).
 -- emptyHooks(b) when a tile's unit goes away (the group shrank).
-RF.setupHooks, RF.updateHooks, RF.healthHooks, RF.emptyHooks = {}, {}, {}, {}
+-- sizeHooks() after the tiles take a new width and height (RF.ApplySize, out of combat).
+RF.setupHooks, RF.updateHooks, RF.healthHooks, RF.emptyHooks, RF.sizeHooks = {}, {}, {}, {}, {}
 -- Tiles by the unit token the group header gave them (see RF.ForUnit).
 RF.byUnit = {}
 
@@ -331,19 +332,36 @@ function RF.PaintEdge(b, unit)
   T.SetBorder(b, on and ACCENT or nil)
 end
 
+-- One tile of a walk over the tiles: fn(b, ...) under pcall, so a tile that fails leaves the later ones refreshed.
+-- Gives back the walk's first error so far (`failed`, or this tile's), or nil.
+function RF.TryTile(failed, fn, b, ...)
+  local ok, err = pcall(fn, b, ...)
+  return failed or (not ok and err) or nil
+end
+
+-- Ends a walk over the tiles: its first error goes on to the guard around the walk (same site, same error budget),
+-- once, after every tile had its turn.
+function RF.EndWalk(failed)
+  if failed then error(failed, 0) end
+end
+
 -- Every button currently showing a unit.
 function RF.UpdateAll()
+  local failed
   for _, b in ipairs(RF.buttons) do
-    if b:IsShown() then RF.Update(b) end
+    if b:IsShown() then failed = RF.TryTile(failed, RF.Update, b) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Runs fn(tile, unit) on every shown tile with an existing unit.
 function RF.EachTile(fn)
+  local failed
   for _, b in ipairs(RF.buttons) do
     local unit = b:IsShown() and tileUnit(b)
-    if unit then fn(b, unit) end
+    if unit then failed = RF.TryTile(failed, fn, b, unit) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Runs fn(tile, unit) for the shown tile showing this unit token, if any.
@@ -504,8 +522,13 @@ local function placeTexts(b, z)
   T.TextSize(b.status, z.statusSize)
   b.topLine:SetHeight(T.Pixel(b))
 end
--- Shared with the preview tiles (Modules/RaidPreview.lua).
-RF.PlaceTexts = placeTexts
+-- Lays one tile out for its zones `z` and one screen pixel `px` at its scale now: the health inset, the role mark and
+-- the texts. Shared with the preview tiles (Modules/RaidPreview.lua), whose scale changes with the size previewed.
+function RF.PlaceTile(b, z, px)
+  placeInset(b, px)
+  placeRoleMark(b, z, px)
+  placeTexts(b, z)
+end
 
 -- The tile's texts: the top row, the status line (Dead / Offline or the
 -- missing health) and the top line, laid out in their zones.
@@ -522,11 +545,7 @@ end
 function RF.PlaceAllTexts()
   if not RF.header then return end
   local z, px = RF.TileZones(), T.PixelAtScale(RF.header:GetEffectiveScale())
-  for _, b in ipairs(RF.buttons) do
-    placeInset(b, px)
-    placeRoleMark(b, z, px)
-    placeTexts(b, z)
-  end
+  for _, b in ipairs(RF.buttons) do RF.PlaceTile(b, z, px) end
 end
 
 -- The layer above everything on the tile (auras included) for marks, and a
@@ -875,19 +894,25 @@ local function holder(s)
   return f
 end
 
--- Gives the header, its tiles and the holder the width and height now set, out of combat (the tiles and the
--- header are secure), and lays the grid out again; a tile's icons stay at the size they were built with.
+-- Gives the header, its tiles and the holder the width and height now set (the tiles and the header are secure:
+-- out of combat only), lays the grid out again, then tells the tile modules (RF.sizeHooks), each under ns.Try.
+-- The tiles are sized before the header's attributes: each attribute change has the client's header measure its
+-- first tile to size itself (SecureGroupHeaders.lua, configureChildren), so it must see the new size.
+local function resize()
+  local s = RF.settings
+  RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
+  for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
+  RF.header:SetAttribute("vg-width", s.width)
+  RF.header:SetAttribute("vg-height", s.height)
+  RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
+  RF.Fit()
+  for _, hook in ipairs(RF.sizeHooks) do ns.Try("raid tile size", hook) end
+end
+
+-- Applies the width and height now set, out of combat (resize); the tiles' icons follow through RF.sizeHooks.
 function RF.ApplySize()
   if not RF.header then return end
-  ns.OutOfCombat(function()
-    local s = RF.settings
-    RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
-    RF.header:SetAttribute("vg-width", s.width)
-    RF.header:SetAttribute("vg-height", s.height)
-    for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
-    RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
-    RF.Fit()
-  end, "raidsize")
+  ns.OutOfCombat(resize, "raidsize")
 end
 
 -- Builds the header, precreates its buttons and replaces the default frames.

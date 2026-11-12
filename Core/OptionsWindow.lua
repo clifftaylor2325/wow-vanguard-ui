@@ -604,6 +604,7 @@ local function withoutReload(caption)
   end
   return caption
 end
+O.WithoutReload = withoutReload
 
 -- Notes a row's English caption (row.english, for the search), moves a setting row's reload bracket from its
 -- caption to row.reload (the tag), and names the row (O.NameRow: a renamed row's old caption is its tip, without the
@@ -1294,8 +1295,9 @@ end
 
 -- Whether a page's title (or its English) or any row's caption (a card title is no row's) contains the (lower-case)
 -- text, or the search lists one of its rows (O.RowMatches: keywords, choice names, a note), so the nav never dims a
--- hit's page.
+-- hit's page. The word "changed" lists the changed settings, so it lights the pages that hold one (and no other).
 local function pageMatches(page, text)
+  if O.WantsChanged(text) then return pageChanged(page) end
   if ns.Lower(O.BothTongues(page.title)):find(text, 1, true) then return true end
   local rows = rowsOf(page)
   for i, row in ipairs(rows) do

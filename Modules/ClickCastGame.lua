@@ -193,11 +193,13 @@ local function gameReason(b)
 end
 
 -- Whether a binding names a spell rank the spellbook no longer holds (a spell unlearned, or a rank a newer one
--- replaced). A client that gives no spellbook has an empty catalog and cannot say, so that is no.
+-- replaced). A client that gives no spellbook has an empty catalog and cannot say, so that is no. A saved name this
+-- client doesn't use (made in another client language) is looked up under the client's name for the rank's id, the
+-- name it casts by; an id the client has no name for is gone (a false key reads nil).
 local function rankGone(b)
   if b.action ~= "spell" or not b.rank or not b.spellID then return false end
   local catalog = ns.ClickCastSpells.Catalog()
-  local spell = catalog.byName[b.value]
+  local spell = catalog.byName[b.value] or catalog.byName[ns.SpellName(b.spellID) or false]
   if #catalog.spells == 0 then return false end
   for _, r in ipairs(spell and spell.ranks or {}) do
     if r.spellID == b.spellID then return false end

@@ -330,7 +330,7 @@ end
 -- /vg gaps [add <item> | remove <item> | spell ... | list | clear].
 function CG.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if not CG.settings then return ns.Chat(L["The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns, then /reload."]) end
+  if not CG.settings then return ns.Chat(L["The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns."]) end
   if verb == "add" then return CG.Add(arg) end
   if verb == "remove" then return CG.Remove(arg) end
   if verb == "spell" then return spellCommand(arg) end
@@ -386,7 +386,7 @@ end
 
 -- The card's note with nothing chosen, and its note while the row is off (its settings load only then).
 CG.EMPTY = L["Nothing chosen yet. Drag an item or spell here, or type its name."]
-CG.OFF = L["The gaps row is off. Tick Gaps row and reload to choose its items and spells."]
+CG.OFF = L["The gaps row is off. Tick Gaps row above to choose its items and spells."]
 -- A chosen entry's icon size and the add buttons' width before they widen to their labels on the card's rows.
 CG.ROW_ICON, CG.ROW_BUTTON = 20, 84
 

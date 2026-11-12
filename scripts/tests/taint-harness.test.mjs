@@ -90,7 +90,7 @@ it("world.holdAccess holds a frame and what hangs from it back from addon code w
   asAddon(addon, "TestEdge = CreateFrame('Frame', nil, TestRow)");
   addon.eval("__wfgWorld.holdAccess(TestRow)");
   // Whether an addon call raised, and what it returned or raised with.
-  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
   expect(tryAddon("local parent = TestRow:GetParent() return parent"), "the row refuses, GetParent too").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
   expect([tryAddon("TestIcon:SetAlpha(1)")[0], tryAddon("TestEdge:SetAlpha(1)")[0]], "its texture and the addon's own frame on it refuse").toEqual([false, false]);
   expect(tryAddon("return TestRow:IsForbidden() or TestRow:CanBeAccessedInContext()"), "not forbidden, and not reachable").toEqual([true, false]);
@@ -105,4 +105,75 @@ it("a secret answers type() as the value it hides, to the addon and to test code
     return { type(s), type(t), type(__wfgWorld.secret(nil)), __wfgRawType(s), issecretvalue(s), type({}), type(3) }`))
     .toEqual(["number", "string", "number", "table", true, "table", "number"]);
   expect(addon.eval("local ok = pcall(function() local s = __wfgWorld.secret(5) return type(s) == 'number' and s > 0 end) return ok"), "a type gate lets it through to the compare, which errors").toBe(false);
+});
+
+// The addon's chunks compile without tail calls (scripts/lib/lua-keep-frames.mjs), so `return frame:Method()` keeps the
+// addon's stack entry and the guards still see whose line it is (Lua 5.1 manual 2.5.8 drops it otherwise).
+it("a guarded call in tail position from addon code is still the addon's: blocked in combat, from test Lua and from an event", () => {
+  const addon = createAddon();
+  addon.eval('CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate") TestSecure:SetFrameLevel(5)');
+  asAddon(addon, `function TestTailCall() return TestSecure:SetFrameLevel(8) end
+    TestEvents = CreateFrame("Frame")
+    TestEvents:SetScript("OnEvent", function() return TestSecure:Hide() end)
+    TestEvents:RegisterEvent("PLAYER_TARGET_CHANGED")`);
+  addon.world.combat(true);
+  addon.eval("TestTailCall()");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(violations(addon)).toEqual([
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetFrameLevel on the protected frame TestSecure",
+    "blocked in combat: Modules/TEST-ONLY.lua:3 called Hide on the protected frame TestSecure",
+  ]);
+  expect(addon.eval("return { TestSecure:GetFrameLevel(), TestSecure:IsShown() }"), "neither landed").toEqual([5, true]);
+});
+
+it("a secret getter and a refused secret setter in tail position from addon code answer the addon as a plain call does", () => {
+  const addon = createAddon();
+  addon.eval(`TestGame = CreateFrame("Frame", "TestGame", UIParent) __wfgWorld.holdSecret(TestGame, "Shown") TestTrue = __wfgWorld.secret(true)`);
+  asAddon(addon, `function TestGetTail() return TestGame:IsShown() end
+    function TestSetTail() return TestGame:SetShown(TestTrue) end`);
+  expect(addon.eval("return issecretvalue(TestGetTail())"), "the getter hands the addon a secret").toBe(true);
+  expect(addon.eval("local ok, e = pcall(TestSetTail) return { ok, tostring(e) }")).toEqual([false,
+    "Modules/TEST-ONLY.lua:2: bad argument #1 to 'SetShown' (Secret values are only allowed during untainted execution for this argument.)"]);
+});
+
+// The client judges the run, not the line that makes the call: game Lua the addon calls in combat is tainted by it
+// (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua CheckProtectedFunctionsAllowed,
+// `InCombatLockdown() and not issecure()`, both clients). Test Lua stands in for the game's.
+it("a protected call or a binding write that game code makes for the addon in combat is blocked, and the addon's line named", () => {
+  const addon = createAddon();
+  addon.eval(`CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate") TestSecure:SetFrameLevel(5)
+    function TestGameHelper() TestSecure:SetFrameLevel(9) SetBinding("F", "JUMP") end`);
+  addon.world.combat(true);
+  asAddon(addon, "TestGameHelper()");
+  expect(violations(addon)).toEqual([
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetFrameLevel on the protected frame TestSecure",
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetBinding(), which the client refuses addon code in a fight",
+  ]);
+  addon.eval("TestGameHelper()");
+  expect(addon.eval("return #__wfgStub.violations"), "the game's own run is not blocked").toBe(0);
+  expect(addon.eval("return TestSecure:GetFrameLevel()")).toBe(9);
+});
+
+// Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks Clear, SetCooldown, SetCooldownDuration and
+// SetCooldownFromDurationObject IsProtectedFunction (both clients); a chat frame's Clear is a plain method.
+it("a protected cooldown's Clear and SetCooldown calls are blocked in combat; a message frame's Clear is not", () => {
+  const addon = createAddon();
+  addon.eval(`TestHolder = CreateFrame("Frame", "TestHolder", UIParent) __wfgStub.protect(TestHolder)
+    TestSwipe = CreateFrame("Cooldown", "TestSwipe", TestHolder) __wfgStub.protect(TestSwipe)
+    TestLog = CreateFrame("ScrollingMessageFrame", "TestLog", TestHolder) __wfgStub.protect(TestLog)`);
+  addon.world.combat(true);
+  asAddon(addon, "TestSwipe:SetCooldown(1, 2) TestSwipe:Clear() TestSwipe:SetCooldownDuration(3) TestLog:Clear()");
+  expect(violations(addon)).toEqual(["SetCooldown", "Clear", "SetCooldownDuration"].map((n) => `blocked in combat: Modules/TEST-ONLY.lua:1 called ${n} on the protected frame TestSwipe`));
+});
+
+// The game's secure frames by name (wow-taint.lua's GAME_PROTECTED cites each source): Blizzard_RaidUI.xml's
+// RaidGroupButtonTemplate, TargetFrame.lua's <frame>ToT, SpellFlyout.xml's SecureFrameTemplate frames.
+it("the raid window's group buttons, the target-of-target frames and the spell flyout are protected game frames", () => {
+  const addon = createAddon();
+  const names = ["RaidGroupButton12", "TargetFrameToT", "FocusFrameToT", "SpellFlyout", "SpellFlyoutPopupButton3"];
+  addon.eval(names.map((n) => `CreateFrame("Button", "${n}", UIParent)`).join(" "));
+  expect(addon.eval(`return { ${names.map((n) => `(${n}:IsProtected())`).join(", ")} }`)).toEqual(names.map(() => true));
+  addon.world.combat(true);
+  asAddon(addon, "RaidGroupButton12:SetPoint('CENTER')");
+  expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame RaidGroupButton12"]);
 });

@@ -155,9 +155,10 @@ it("S8.1 scoreboards: loaded later (on demand), switched off, or bare", () => {
   later.fire("ADDON_LOADED", "Blizzard_PVPMatch");
   later.eval("PVPMatchResults:Show()");
   expect(windowState(later, "PVPMatchResults"), "a client that loads Blizzard_PVPMatch later").toMatchObject({ art: 0, panel: true });
+  expect(later.eval("return ns.FrameState('vgWindow')[PVPMatchResults] == true"), "a watched window is marked in the side table the off checks read").toBe(true);
   const off = loggedIn(MATCH_ENV + "__matches()", OFF);
   off.eval("PVPMatchScoreboard:Show()");
-  expect([windowState(off, "PVPMatchScoreboard").art !== 0, off.eval("return PVPMatchScoreboard.vgWindow == nil")], "with the group off").toEqual([true, true]);
+  expect([windowState(off, "PVPMatchScoreboard").art !== 0, off.eval("return ns.FrameState('vgWindow')[PVPMatchScoreboard] == nil")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(PVP_ENV + '__window("PVPMatchScoreboard") __window("PVPMatchResults")');
   bare.eval("PVPMatchScoreboard:Show() PVPMatchResults:Show()");
   expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare), bare.eval("return #ns.notes")], "windows without a table, bar or buttons, or Forever's without SetupArtwork: skinned, nothing left off").toEqual([true, "none", 0]);
@@ -233,7 +234,7 @@ it("S8.2 the ready popup is drawn on its ReadyStatus child; the group off leaves
     "the child: border faded, a panel, its close button themed; the popup itself painted nothing").toEqual([0, true, true, false]);
   const off = loggedIn(DIALOG_ENV, OFF);
   off.eval("PVPReadyDialog:Show() PVPReadyPopup:Show()");
-  expect(off.eval("return { PVPReadyDialog.Border:GetAlpha(), __panel(PVPReadyDialog), ReadyStatus.Border:GetAlpha(), PVPReadyDialog.vgWindow == nil }"), "with the group off").toEqual([1, false, 1, true]);
+  expect(off.eval("return { PVPReadyDialog.Border:GetAlpha(), __panel(PVPReadyDialog), ReadyStatus.Border:GetAlpha(), ns.FrameState('vgWindow')[PVPReadyDialog] == nil }"), "with the group off").toEqual([1, false, 1, true]);
 });
 
 // Objectives and the match timer -------------------------------------------------------------------

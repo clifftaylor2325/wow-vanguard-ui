@@ -157,6 +157,21 @@ it("first-run setup: closing it early asks again at the next login; Skip setup e
   expect(chatHas(next, /Run setup again any time/), "and says how to run it again").toBe(true);
   expect(next.eval("return (VanguardDB.profiles.Default.positions or {}).raid == nil"), "Skip applies nothing").toBe(true);
 });
+it("hunt H44-14-22: Back to the first step offers Skip setup only while the run has changed nothing", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true });
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  expect(addon.eval("return Vanguard_Setup.skip:IsShown()"), "Keep and Keep changed nothing, so Skip still shows").toBe(true);
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  expect(addon.eval("return Vanguard_Setup.skip:IsShown()"), "a layout applied by Next takes Skip away").toBe(false);
+  addon.slash("setup");
+  expect(addon.eval("return Vanguard_Setup.skip:IsShown()"), "an open setup is left as it is").toBe(false);
+  setupClick(addon, "close");
+  addon.slash("setup");
+  expect(addon.eval("return Vanguard_Setup.skip:IsShown()"), "a new run starts with Skip again").toBe(true);
+});
 it("first-run setup: a new character on a set-up account picks its profile first; old characters aren't asked", () => {
   const known = loggedIn("", { firstRun: true, savedVariables: SET_UP_ACCOUNT + "VanguardCharDB = { profile = 'Default' }" });
   expect(setupState(known).step, "a character that played before isn't asked").toBe(0);

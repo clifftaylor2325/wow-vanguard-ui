@@ -1,8 +1,8 @@
 # Testing Vanguard without the game
 
 `npm test` runs the addon's real Lua (every file `Vanguard.toc` loads) inside a
-headless WoW client written for the tests: a Lua 5.1-faithful VM (fengari with
-5.1 shims), the frame API with real layout, a world model behind the game API,
+headless WoW client written for the tests: the game's Lua, 5.1.5, compiled to
+WebAssembly (fengari, Lua 5.3 in JS, is the other engine), the frame API with real layout, a world model behind the game API,
 and input. Each `scripts/tests/<area>.test.mjs` file is one area of the addon
 and runs in parallel with the others under Vitest, one worker per core
 (`VITEST_MAX_WORKERS=n` caps it); a worker compiles each Lua file once and
@@ -16,11 +16,13 @@ times) and move its entry in `login-scope.json` with it.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 
-**Two engines.** `VG_LUA_ENGINE=wasm` runs the same tests on real Lua 5.1.5, the game's Lua, compiled to
-WebAssembly (`scripts/lib/lua-wasm.mjs`; the sources, the C shim and the build in `tools/lua51/`, built by
-`node tools/lua51/build.mjs`); unset, the harness runs on fengari, which is the default. A client builds and logs in
-about ten times faster on the 5.1 engine and takes about a quarter of the memory. Line coverage works on both (on
-the 5.1 engine the executable lines come from the 5.1 compiler); the profiler and `npm run bench` run on fengari only.
+**Two engines.** The default is real Lua 5.1.5, the game's Lua, compiled to WebAssembly
+(`scripts/lib/lua-wasm.mjs`; the sources, the C shim and the build in `tools/lua51/`, built by
+`node tools/lua51/build.mjs`; Cliff, 2026-11-11). `VG_LUA_ENGINE=fengari` runs the same tests on fengari (Lua 5.3 in
+JS with 5.1 shims) instead. A client builds and logs in about ten times faster on the 5.1 engine and takes about a
+quarter of the memory. Line coverage works on both (on the 5.1 engine the executable lines come from the 5.1
+compiler); the profiler and `npm run bench` run on fengari only and put themselves on it
+(`scripts/lib/engine-fengari.mjs`).
 Write tests that read the same on both: fengari's `pairs` walks a table in insertion order and the game's walks it
 in hash order, so don't depend on it (sort, or keep a list); `#` on a table with a gap may give either end; join Lua
 chunks with a newline (5.1 reads `99ns` as a malformed number); and 5.1 words some errors differently
@@ -398,7 +400,7 @@ ButtonFrameTemplate (an art texture marked `TEST-ONLY-ART`, `NineSlice`, `Inset`
 that gives the i-th the game's bar texture back). `windowState(addon, name)` reads one back: `{ art, nine, portrait,
 insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
-files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
+files build on them; see `WINDOWS_ENV` and `windowState` in `helpers.mjs`, and [Writing a scenario](#writing-a-scenario) above.
 
 ### The frozen surface
 

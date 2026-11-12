@@ -8,7 +8,7 @@ local L = ns.L
 
 local O = ns.Options
 local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
-local essential = O.Essential
+local essential, reloadRow = O.Essential, O.ReloadRow
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
@@ -177,7 +177,7 @@ end
 local function unitFrameRows()
   return append({
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
+    reloadRow(check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard"))), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
@@ -191,8 +191,8 @@ end
 local function castRows()
   return append({
     { "header", L["Cast bars"] },
-    check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player")),
-    check(L["Target cast bar"], reloadSetting("CastBars", "target")), check(L["Focus cast bar"], reloadSetting("CastBars", "focus")),
+    reloadRow(check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player"))),
+    reloadRow(check(L["Target cast bar"], reloadSetting("CastBars", "target"))), reloadRow(check(L["Focus cast bar"], reloadSetting("CastBars", "focus"))),
     check(L["Cast ring at the cursor"], liveMethod("CastBars", "ring", "ApplyRing")),
     check(L["Interrupt mark on cast bars"], liveMethod("CastBars", "interruptMark", "RefreshMarks")),
     { "header", L["Target and focus auras"] },
@@ -269,9 +269,9 @@ end
 local RAID_WIDTHS = { min = 72, max = 120, step = 2 }
 local RAID_HEIGHTS = { min = 36, max = 56, step = 2 }
 
--- get/set for Stack big raids: the real frames and the preview follow at once.
+-- get/set for Stack big raids: the real frames and the preview follow at once, so no reload is waited for.
 local function stackSetting()
-  local get, set, initial = reloadSetting("RaidFrames", "stackBig")
+  local get, set, initial = setting("RaidFrames", "stackBig")
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
 end
 
@@ -280,10 +280,10 @@ end
 local function raidRows()
   return {
     { "header", L["Raid frames"] },
-    check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer")),
-    essential(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole"))),
+    reloadRow(check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty"))), reloadRow(check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer"))),
+    essential(reloadRow(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole")))),
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
-    essential(check(L["Stack big raids at the left"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
+    essential(check(L["Stack big raids at the left"], stackSetting())), essential(reloadRow(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
     essential({ "slider", L["Width"], RAID_WIDTHS, sizeSetting("width") }),
     essential({ "slider", L["Height"], RAID_HEIGHTS, sizeSetting("height") }),
@@ -300,10 +300,18 @@ local function raidPreviewRows()
   }
 end
 
+-- The dispel highlight's switch. Its tip says that the debuff you can dispel keeps its icon with Debuff icons at none:
+-- on the client's engine the wash and edge are parts of that icon's button.
+local function dispelRow()
+  local row = check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel"))
+  row.tip = L["With Debuff icons at none, a debuff you can dispel still shows its icon, which carries the highlight."]
+  return row
+end
+
 -- The raid frames' auras: debuffs, the dispel highlight and your HoTs (the tiles' rows are made again at once, out of combat).
 local function raidAuraRows()
   return {
-    check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel")),
+    dispelRow(),
     { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
     check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."], "note" },

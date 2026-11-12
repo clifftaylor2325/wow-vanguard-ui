@@ -5,8 +5,8 @@
 -- addons read threat: when it hides threat values (C_Secrets says so, or a
 -- value comes back secret) the panel hides itself, and a hidden value is never
 -- compared or added up. Nothing here is protected, so it updates in combat.
--- UNVERIFIED: whether Forever hides threat in combat is not known (issue #215);
--- the in-game test decides whether this ever shows during a fight.
+-- UNVERIFIED: whether Forever hides threat in combat is not known; the in-game
+-- test (docs/SMOKE-TEST.md step 6.6) decides whether this ever shows during a fight.
 
 local ADDON, ns = ...
 

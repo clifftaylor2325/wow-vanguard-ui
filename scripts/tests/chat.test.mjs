@@ -317,6 +317,28 @@ it("minimap: the box goes with the map when the game hides it (Toggle Minimap, t
   const unhooked = loggedIn(UI_ENV + "Minimap:Hide() hooksecurefunc = nil");
   expect(unhooked.eval("return { Vanguard_Minimap:IsShown(), #ns.errors }"), "a client without hooksecurefunc: the box is still built to the map's state, with no error").toEqual([false, 0]);
 });
+// TEST-ONLY: another addon's secure button left on the map makes the box protected through its child (the harness's
+// model, scripts/lib/wow-taint.lua isProtected; the client shows it as IsProtected's two returns, live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua IsProtected), and the
+// game's Toggle Minimap calls Minimap:Hide() in a fight too (Interface/AddOns/Blizzard_Minimap/Mainline/Minimap.lua
+// ToggleMinimap, both clients).
+const SECURE_ON_MAP = `__wfgStub.protect(CreateFrame("Button", "TestOnlySecureMinimapButton", Minimap))`;
+it("minimap: in a fight, a box holding a protected button follows the map when the fight ends, with no blocked call", () => {
+  const addon = loggedIn(UI_ENV + SECURE_ON_MAP);
+  setCombat(addon, true);
+  addon.eval("Minimap:Hide() Minimap:Show() Minimap:Hide()");
+  expect(addon.eval("return { Vanguard_Minimap:IsShown(), #(__wfgStub.violations or {}) }"), "the box waits, nothing blocked").toEqual([true, 0]);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "the fight over: the box follows the map's last state").toBe(false);
+});
+it("minimap: in a fight, a box with nothing protected inside follows the map at once", () => {
+  const addon = loggedIn(UI_ENV);
+  setCombat(addon, true);
+  addon.eval("Minimap:Hide()");
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "hidden with the map").toBe(false);
+  addon.eval("Minimap:Show()");
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "back with it").toBe(true);
+});
 it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
     MinimapCluster.MinimapContainer.PlayerCoords = CreateFrame("Frame", nil, MinimapCluster.MinimapContainer)`);
@@ -1289,6 +1311,22 @@ it("minimap drawer: a button its addon has hidden takes no cell and is not count
   addon.eval("LibDBIcon10_TestOnlyOne:Show() Vanguard_MinimapDrawerToggle.__scripts.OnClick(Vanguard_MinimapDrawerToggle)");
   expect(addon.eval("return Vanguard_MinimapDrawer:GetWidth()"), "opening lays it out at once").toBe(39);
 });
+// The client runs a button's OnShow and OnHide only when it comes into or leaves view, and the gathered buttons sit under the
+// shut drawer (Blizzard_EncounterTimeline/EncounterTimelineView.lua:192-203 relies on it), so the test drops those scripts.
+it("H44-18-A1 minimap drawer: a button its addon shows or hides while the drawer is shut still moves the toggle", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  addon.eval("LibDBIcon10_TestOnlyOne.__scripts.OnShow, LibDBIcon10_TestOnlyOne.__scripts.OnHide = nil, nil");
+  // Whether the toggle shows once the drawer has laid out.
+  const toggle = () => { addon.update(0); return addon.eval("return Vanguard_MinimapDrawerToggle:IsShown()"); };
+  addon.eval("LibDBIcon10_TestOnlyOne:Hide()");
+  expect(toggle(), "every button hidden: nothing to open").toBe(false);
+  addon.eval("LibDBIcon10_TestOnlyOne:SetShown(true)");
+  expect(toggle(), "its addon shows it again: the toggle is back").toBe(true);
+  addon.eval("LibDBIcon10_TestOnlyOne:SetShown(false)");
+  expect(toggle(), "SetShown(false) counts as a hide").toBe(false);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show()");
+  expect(toggle(), "and Show as a show").toBe(true);
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");
@@ -1454,15 +1492,16 @@ const INVITE_ENV = `
   C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
   IsGuildMember = function(guid) return __friends[guid] == "guild" end
 `;
-// PARTY_INVITE_REQUEST with the client's payload (PartyInfoDocumentation): name, isTank, isHealer, isDamage,
-// isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
-const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
+// PARTY_INVITE_REQUEST with Forever's payload (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// PartyInfoDocumentation.lua, PartyInviteRequest): name, isTank, isHealer, isDamage, isNativeRealm, isCrossShard,
+// allowMultipleRoles, inviterGUID, questSessionActive.
+const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, guid, false);
 const INVITES_ON = "VanguardDB.profiles = { Default = { Quiet = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
 // A1-9 (M4): a stranger you whispered in the last ten minutes may invite you.
 it("A1-9 quiet the game: a group invite from someone you just whispered is not declined; after ten minutes it is again", () => {
   const addon = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
   // An invite from a named stranger, answered on the next frame; how many answers the game got.
-  const invited = (name) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", name, false, false, false, false, false, "stranger", false); addon.update(0); return addon.eval("return #__answers"); };
+  const invited = (name) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", name, false, false, false, false, false, false, "stranger", false); addon.update(0); return addon.eval("return #__answers"); };
   expect(invited("Thrall"), "a stranger: declined, its prompt closed").toBe(2);
   addon.fire("CHAT_MSG_WHISPER_INFORM", "inv pls", "Thrall-ForeverTest");
   addon.fire("CHAT_MSG_WHISPER_INFORM", "hidden", { __secret: true });
@@ -1474,7 +1513,7 @@ it("A1-9 quiet the game: a group invite from someone you just whispered is not d
   const off = loggedIn(INVITE_ENV);
   off.fire("CHAT_MSG_WHISPER_INFORM", "hi", "Thrall");
   off.eval("ns.GetModule('Quiet').settings.strangerGroups = true __answers = {}");
-  off.fire("PARTY_INVITE_REQUEST", "Thrall", false, false, false, false, false, "stranger", false);
+  off.fire("PARTY_INVITE_REQUEST", "Thrall", false, false, false, false, false, false, "stranger", false);
   off.update(0);
   expect(off.eval("return #__answers"), "a whisper sent while the switch was off is not noted").toBe(2);
 });
@@ -2614,23 +2653,33 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
 it("auto-accept: Forever's own invite windows and the teleport check: a declined stranger's role invite closes Forever's role popup", () => {
   const addon = loggedIn(FOREVER_INVITES + "StaticPopupSpecial_Hide = nil", { savedVariables: INVITE_SWITCHES_ON });
   addon.eval("LFGInvitePopup:Show()");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, false, "stranger", false);
   addon.update(0);
   expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
 });
 
+// Retail's PartyInviteRequest has no isCrossShard, so inviterGUID is the 7th value
+// (live/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua).
+it("H44-20-50 quiet the game: on Retail the inviter's GUID is the 7th payload value; a stranger is declined and a friend is not", () => {
+  const addon = loggedIn(INVITE_ENV, { client: RETAIL, savedVariables: INVITES_ON });
+  addon.eval('__friends.pal = "friend"');
+  // Fires a Retail invite from the guid and counts the answers sent.
+  const retailInvite = (guid) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false); addon.update(0); return addon.eval("return #__answers"); };
+  expect([retailInvite("stranger"), retailInvite("pal")], "a stranger is declined (group, close), a friend is left").toEqual([2, 0]);
+});
+
 it("auto-accept: declining a stranger's group invite that carries a quest session closes Retail's Party Sync dialog (H19-2-2)", () => {
   const addon = loggedIn(FOREVER_INVITES + "QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm', UIParent) } QuestSessionManager.ConfirmInviteToGroupReceivedDialog:Show()", { savedVariables: INVITE_SWITCHES_ON });
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   expect(addon.eval("return QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown()"), "up until the next frame").toBe(true);
   addon.update(0);
   expect(addon.eval("return { QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown(), __answers }"), "declined and the session dialog hidden").toEqual([false, ["group", "hide QSConfirm", "close PARTY_INVITE"]]);
   addon.eval("QuestSessionManager = nil");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   addon.update(0);
   expect(addon.eval("return #ns.errors"), "a client without the manager raises no error").toBe(0);
   addon.eval("QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm2', UIParent) }");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   addon.update(0);
   expect(addon.eval("return #ns.errors"), "a dialog that is not up is left alone").toBe(0);
 });

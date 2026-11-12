@@ -97,7 +97,17 @@ it("lifecycle: a reload-only parent switched off keeps itself and its live child
   expect(live(addon, "TestReload", "TestKept")).toEqual({ TestReload: true, TestKept: true });
   expect(waiting(addon)).toEqual(["TestReload", "TestKept"]);
   addon.eval('ns.SetModuleEnabled("TestReload", true)');
-  expect(waiting(addon)).toEqual([]);
+  expect(waiting(addon), "its Disable ran, so it waits for the reload even switched back on (H44-1-2, pick A)").toEqual(["TestReload"]);
+});
+
+it("lifecycle: a reload-only module with no Disable stops waiting when switched back on", () => {
+  const addon = lifeAddon("", `${MODULES}
+    local P = ns.Module("TestPlain", { defaults = {}, reload = "It replaces a game frame." })
+    function P.Enable() end`);
+  addon.eval('ns.SetModuleEnabled("TestPlain", false)');
+  expect(waiting(addon), "off: waits").toEqual(["TestPlain"]);
+  addon.eval('ns.SetModuleEnabled("TestPlain", true)');
+  expect(waiting(addon), "on again: nothing was undone, nothing waits").toEqual([]);
 });
 
 it("lifecycle: a live child of a reload-only parent that was off at login does not start before the reload", () => {
@@ -368,8 +378,10 @@ it("lifecycle: the reload notice names what waits, and goes when the switches ar
   expect(notice(addon)).toEqual([true, "Waiting for a reload: TestReload, TestKept"]);
   addon.eval('ns.SetModuleEnabled("Chat", false)');
   expect(notice(addon)).toEqual([true, "Waiting for a reload: Chat, TestReload and 1 more"]);
-  addon.eval('ns.SetModuleEnabled("Chat", true) ns.SetModuleEnabled("TestReload", true)');
-  expect(notice(addon)).toEqual([false, ""]);
+  addon.eval('ns.SetModuleEnabled("Chat", true)');
+  expect(notice(addon), "Chat has no Disable: back on, it stops waiting").toEqual([true, "Waiting for a reload: TestReload, TestKept"]);
+  addon.eval('ns.SetModuleEnabled("TestReload", true)');
+  expect(notice(addon), "TestReload's Disable ran, so it is named until the reload (H44-1-2)").toEqual([true, "Waiting for a reload: TestReload"]);
   addon.eval("ns.Options.NeedReload()");
   expect(notice(addon), "a change marked for the reload keeps the usual notice").toEqual([true, "Some changes need a reload"]);
 });
@@ -440,6 +452,12 @@ function profileAddon(raid = "", extra = "") {
 
 // The rebinding reload-only module: TestReload keeps def.settings and declares rebinds.
 const REBINDS = 'local R = ns.GetModule("TestReload") R.rebinds = true function R.Enable(s) R.settings = s table.insert(__life.log, "on TestReload") end';
+
+it("lifecycle: H44-12-1 a profile whose module settings are not a table is compared as missing, not walked", () => {
+  const addon = profileAddon("", REBINDS);
+  addon.eval("VanguardDB.profiles.Raid.TestReload = 5");
+  expect(addon.eval('local ok, err = pcall(ns.PickProfile, "Raid") return { ok, ns.SelectedProfileName() }'), "no error; staged for the reload").toEqual([true, "Raid"]);
+});
 
 it("lifecycle: a reload-only module that can't take new settings keeps a profile from applying now, unnamed", () => {
   const addon = profileAddon();
@@ -766,4 +784,53 @@ it("lifecycle: with every reload-only module off, a profile that differs in real
   // Frames and installed hooks are left out: the roll panel ran on Default, and the client frees neither.
   expect(footprint(addon), "the footprint of a login on Raid").toEqual(onRaid);
   expect(addon.eval("return VanguardDB.profiles.Default"), "Default untouched").toEqual(before);
+});
+
+// A live module with one scope ticker that raises while __h.fail; M.Pause stops the job as a module does when it has
+// nothing to time (CooldownGlow's CG.Apply, RetailClassBars' fillRunes: scope:Every(key, nil)).
+const STOP_START = `
+  __h = { runs = 0, fail = true }
+  local M = ns.Module("TestStopStart", { defaults = {}, live = true })
+  local function tick() if __h.fail then error("TEST-ONLY tick", 0) end __h.runs = __h.runs + 1 end
+  function M.Enable(_, scope) M.scope = scope scope:Every("test stopstart", 0.1, tick) end
+  function M.Pause() M.scope:Every("test stopstart", nil, tick) end
+  __M = M`;
+
+// The addon with STOP_START logged in and its ticker paused by the error budget, then switched off and on with the
+// job mended: { the job ran, rows left on the paused list }.
+function pausedThenRestarted(stopFirst) {
+  const addon = lifeAddon("", STOP_START);
+  addon.advance(1.5, 0.1);
+  expect(addon.eval("local out = {} for _, p in ipairs(ns.paused) do out[#out + 1] = p.where end return out"), "paused at the job's label").toEqual(["ticker test stopstart"]);
+  if (stopFirst) addon.eval("__M.Pause()");
+  addon.eval('__h.fail = false ns.SetModuleEnabled("TestStopStart", false) ns.SetModuleEnabled("TestStopStart", true)');
+  addon.advance(1, 0.1);
+  return addon.eval("return { __h.runs > 0, #ns.paused }");
+}
+
+it("lifecycle: a paused scope ticker still running at the stop runs again after the module is switched off and on", () => {
+  expectErrors("ticker test stopstart: TEST-ONLY tick");
+  expect(pausedThenRestarted(false)).toEqual([true, 0]);
+});
+
+it("lifecycle: a paused scope ticker the module stopped itself runs again after the module is switched off and on (H44-1-R1)", () => {
+  expectErrors("ticker test stopstart: TEST-ONLY tick");
+  expect(pausedThenRestarted(true), "the close forgot its failures: it runs and the paused list is empty").toEqual([true, 0]);
+});
+
+it("lifecycle: a failed live module is tried again by a live profile switch (H44-1-4)", () => {
+  expectErrors("module TestPicky: TEST-ONLY bad size");
+  const saved = `
+    VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {}, TestPicky = { size = -1 } }, Raid = { modules = {}, TestPicky = { size = 5 } } } }
+    VanguardCharDB = { profile = "Default" }`;
+  const addon = createAddon({ savedVariables: saved });
+  asAddon(addon, `__tries = 0
+    local M = ns.Module("TestPicky", { defaults = { size = 1 }, live = true })
+    function M.Enable(s) __tries = __tries + 1 if s.size < 0 then error("TEST-ONLY bad size", 0) end end
+    for _, name in ipairs(ns.ModuleNames()) do
+      if name ~= "TestPicky" then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+    end`);
+  addon.login();
+  expect(addon.eval('return { ns.PickProfile("Raid"), VanguardCharDB.profile }'), "switched at once").toEqual([true, "Raid"]);
+  expect(addon.eval("return { ns.ModuleLive(\"TestPicky\"), __tries }"), "built on Raid's good settings after one more try").toEqual([true, 2]);
 });

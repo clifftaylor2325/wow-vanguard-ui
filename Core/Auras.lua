@@ -296,7 +296,7 @@ local function shutParts(parts)
 end
 
 -- Puts one icon back on whole pixels. One the client holds for now is left for the next try (the scale poll
--- comes round again). One it has closed for good, or that fails to place, is forgotten, so the poll doesn't
+-- comes round again, or A.CatchUp once the client lets it go). One it has closed for good, or that fails to place, is forgotten, so the poll doesn't
 -- try it every half second. A refusal the checks above missed is kept for /vg errors (with its stack) but
 -- not printed: the icon is the client's now, and nothing is lost but its edge.
 local function refitIcon(icons, f, parts, scale)
@@ -321,6 +321,45 @@ function A.Refit(holder, holds)
   end
 end
 
+-- How near two effective scales must be to count as one (the client rounds scales to 32-bit floats).
+A.SCALE_EPSILON = 0.0001
+
+-- Whether an icon placed at the scale `placed` is still on whole pixels at its holder's scale now (a hidden
+-- scale counts as unchanged).
+---@param scale number
+---@param placed number
+---@return boolean
+function A.SameScale(scale, placed)
+  scale = ns.PlainNumber(scale)
+  return scale == nil or math.abs(scale - placed) < A.SCALE_EPSILON
+end
+
+-- The holders whose icons follow the scale (A.Follow): a set, weak as the frames.
+A.followed = setmetatable({}, { __mode = "k" })
+
+-- Keeps the icons a holder holds (an aura container's frame) on whole pixels from now on: refit after each scale
+-- change, and again once the client lets go of an icon it held back meanwhile (A.CatchUp).
+---@param holder table
+function A.Follow(holder)
+  A.followed[holder] = true
+end
+
+-- Puts the icons of every followed holder back on whole pixels where their scale moved, each holder under ns.Try.
+function A.RefitFollowed()
+  for holder in pairs(A.followed) do ns.Try("aura refit", A.Refit, holder, A.SameScale) end
+end
+
+-- Once aura information is plain again, an icon held back at the last scale change (refitIcon left it) is put right.
+function A.CatchUp()
+  if ns.AurasSecret() then return end
+  A.RefitFollowed()
+end
+
+T.OnScale(A.RefitFollowed)
+-- A restriction on addons changed: looked at on the next frame (during the event the client reports none active,
+-- RestrictedActionsDocumentation.lua IsAddOnRestrictionActive).
+ns.On("ADDON_RESTRICTION_STATE_CHANGED", function() ns.Soon("aura refit", A.CatchUp) end)
+
 -- Containers -------------------------------------------------------------------------------
 
 -- The icon style for one group of a container spec.
@@ -337,7 +376,7 @@ function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
 
--- What of a spec is fixed once its container is made, as one string: the row width, the timer, and each
+-- What of a spec Vanguard keeps fixed once its container is made (it never reshapes a group), as one string: the row width, the timer, and each
 -- group's filter, count and icon size. A container whose signature still reads the same needs no remaking;
 -- where it sits is not part of it (a container can be moved).
 ---@param spec table
@@ -356,6 +395,7 @@ function A.Retire(c)
   if A.ShutFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
+  A.followed[c.frame] = nil
   return true
 end
 

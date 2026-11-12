@@ -385,6 +385,31 @@ it("a report holds plain names and figures only, out of combat, to chat or a cha
   expect([chatHas(addon, /No report to show/), chatHas(addon, /Not in combat/)], "an empty meter, and no report in combat").toEqual([true, true]);
 });
 
+it("H44-20-1 a report to a channel is cut between names into lines of at most 255 bytes; a short one stays one line", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  // The nth test player name, long enough to fill a report line.
+  const name = (i) => `Testplayer${String.fromCharCode(96 + i)}-Argentdawnrealm`;
+  setLines(addon, `{ ${Array.from({ length: 10 }, (_, i) => `{ name = '${name(i + 1)}', amountPerSecond = 1234567 }`).join(", ")} }`);
+  addon.slash("meter report raid 10");
+  const sent = addon.eval("return __wfgWorld.sentChat");
+  expect(sent.length, "ten long cross-realm names do not fit one line").toBeGreaterThan(1);
+  expect(sent.every(([text, to]) => text.length <= 255 && to === "RAID"), "every line is at most 255 bytes, to the raid").toBe(true);
+  const joined = sent.map(([text]) => text).join("  ");
+  expect(Array.from({ length: 10 }, (_, i) => joined.indexOf(`${i + 1}. ${name(i + 1)} 1.23M`)).every((at, i, all) => at >= 0 && (i === 0 || at > all[i - 1])), "every name is whole and in order").toBe(true);
+  expect(sent[0][0].startsWith("Damage per second: 1. "), "the first line starts with the title").toBe(true);
+  addon.eval("__wfgWorld.sentChat = {}");
+  addon.slash("meter report raid");
+  expect(addon.eval("return #__wfgWorld.sentChat"), "the default five lines are one send").toBe(1);
+});
+
+it("H44-20-1 a report to a channel the game restricts says so once, not once per line", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, `{ ${Array.from({ length: 10 }, (_, i) => `{ name = 'Testplayer${i}-Argentdawnrealm', amountPerSecond = 1234567 }`).join(", ")} }`);
+  addon.eval("ns.Restricted = function() return true end");
+  addon.slash("meter report raid 10");
+  expect([addon.eval("return #__wfgWorld.sentChat"), Array.from(addon.chat()).filter((l) => /can't send to chat/.test(l)).length], "nothing sent, one refusal line").toEqual([0, 1]);
+});
+
 it("on the Deaths view a report sends each death's time as the panel shows it, names only for the overall session", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, "{ { name = 'Tess', totalAmount = 5, deathTimeSeconds = 202 }, { name = 'Bo', totalAmount = 1, deathTimeSeconds = -1 } }");

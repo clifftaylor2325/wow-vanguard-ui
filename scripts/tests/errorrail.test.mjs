@@ -84,6 +84,17 @@ it("an entry ns.ClearErrors removed is still judged", () => {
   expectErrors("TEST-ONLY rail: x");
 });
 
+it("an entry pushed out by 20 later errors is still judged", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.Report("TEST-ONLY stray", "x")
+    for i = 1, ns.MAX_ERRORS do ns.Report("TEST-ONLY named " .. i, "y") end`);
+  expect(addon.eval("return ns.errors[1].text"), "the stray entry is no longer kept").toBe("TEST-ONLY named 1: y");
+  expect(caught(addon)[0].text, "the harvest still lists it").toBe("TEST-ONLY stray: x");
+  const named = Array.from({ length: 20 }, (_, i) => `TEST-ONLY named ${i + 1}: y`);
+  expect(() => check([addon], named), "and naming only the later ones fails").toThrow(/TEST-ONLY stray: x/);
+  expectErrors("TEST-ONLY stray: x", ...named);
+});
+
 it("the aura-container fallback notice is the one AURA_FALLBACK names", () => {
   const addon = loggedIn("__wfgStub.noAuraContainer = true");
   expect(addon.eval("return ns.AuraEngine.Available()"), "the client lacks AuraContainer").toBe(false);

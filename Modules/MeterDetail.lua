@@ -11,9 +11,11 @@ local T = ns.Theme
 local L = ns.L
 local MT = ns.GetModule("Meter")
 
--- The channels /vg meter report sends to, by the word typed; the lines a report holds at most and by default.
+-- The channels /vg meter report sends to, by the word typed; the lines a report holds at most and by default;
+-- the bytes one chat line holds (the chat box's own cap), so a longer report goes out as several lines.
 MT.CHANNELS = { say = "SAY", party = "PARTY", raid = "RAID", instance = "INSTANCE_CHAT", guild = "GUILD" }
 MT.REPORT_MAX, MT.REPORT_DEFAULT = 10, 5
+MT.REPORT_BYTES = 255
 -- The rows the spell panel has.
 MT.DETAIL_ROWS = 8
 -- The gap between the meter and its spell panel.
@@ -210,14 +212,51 @@ local function reportLine(i, src)
   return i .. ". " .. name .. " " .. figure
 end
 
--- The report as one line: the kind and segment, then the top n lines whose figures are plain; nil with none.
-function MT.ReportText(n)
+-- The top n report lines whose names and figures are plain ("1. Tess 12.3K"), in order.
+local function reportParts(n)
   local list, parts = MT.Sources(), {}
   for i = 1, n do
     parts[#parts + 1] = reportLine(i, MT.LineAt(list, i))
   end
+  return parts
+end
+
+-- The report as one line for your own chat: the kind and segment, then the parts; nil with none.
+function MT.ReportText(n)
+  local parts = reportParts(n)
   if #parts == 0 then return nil end
   return MT.TitleText() .. ": " .. table.concat(parts, "  ")
+end
+
+-- Adds a part to the line being built, or starts the next line (nil when it fits): returns the line to carry on
+-- with and the finished one.
+local function addPart(now, head, part)
+  if not now then return head .. part end
+  local joined = now .. "  " .. part
+  if #joined <= MT.REPORT_BYTES then return joined end
+  return part, now
+end
+
+-- The report cut between parts into lines of at most MT.REPORT_BYTES for a channel, the first starting with the
+-- title; nil with no plain line. A byte count is safe here: every part passed reportLine's secret check.
+function MT.ReportLines(n)
+  local parts = reportParts(n)
+  if #parts == 0 then return nil end
+  local lines, now, head = {}, nil, MT.TitleText() .. ": "
+  for _, part in ipairs(parts) do
+    local carry, done = addPart(now, head, part)
+    if done then lines[#lines + 1] = done end
+    now = carry
+  end
+  lines[#lines + 1] = now
+  return lines
+end
+
+-- Sends each line to a channel, stopping at the first the game refuses (the Chat restriction says why once).
+local function sendLines(lines, chatType)
+  for _, line in ipairs(lines) do
+    if not ns.SendChat(line, chatType) then return end
+  end
 end
 
 -- The Report button: your chat, or the channel picked under Combat tools (say, party, raid, instance, guild).
@@ -235,5 +274,5 @@ function MT.Report(arg)
   if not text then return ns.Chat(L["No report to show: the meter has no plain figures yet."]) end
   if word == "" then return ns.Chat(text) end
   if not MT.CHANNELS[word] then return ns.Chat(L["Send the report to say, party, raid, instance or guild."]) end
-  ns.SendChat(text, MT.CHANNELS[word])
+  sendLines(MT.ReportLines(n), MT.CHANNELS[word])
 end

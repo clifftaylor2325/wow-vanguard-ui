@@ -403,6 +403,14 @@ local function addRows(f)
   end
 end
 
+-- A plate's own unit-event handler: the error budget counts a site by its function (Core/Events.lua), so a plate
+-- that keeps failing is paused alone, and the others keep their updates. It holds its plate, so each is a closure
+-- of its own on any Lua (5.2 and 5.3, the harness's, may hand back one closure for calls whose upvalues all match).
+local function plateHandler(f)
+  -- Hands the plate's unit event on to the shared handler.
+  return function(event, unit) NP.OnUnitEvent(event, unit, f) end
+end
+
 -- Our frame for a client nameplate: health bar, texts, click area, mouseover
 -- wash, debuffs, a player's buffs, cast bar, and its own unit events
 -- (ns.SetUnits points them at the plate's unit), at the layout now. `parent` is the plate, or the
@@ -415,7 +423,7 @@ local function build(parent)
   addOverlays(f)
   addRows(f)
   sizePlate(f, NP.layout)
-  f.events, f.version, NP.built[#NP.built + 1] = ns.OnUnit(NP.UNIT_EVENTS, NP.OnUnitEvent), NP.version, f
+  f.events, f.version, NP.built[#NP.built + 1] = ns.OnUnit(NP.UNIT_EVENTS, plateHandler(f)), NP.version, f
   return f
 end
 
@@ -1157,8 +1165,8 @@ local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
   PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
-  -- Your new level changes how hard every unit is for you.
-  PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
+  -- Your new level changes how hard every unit is for you (after it applies: PLAYER_LEVEL_UP comes before).
+  PLAYER_LEVEL_CHANGED = function() each(NP.UpdateName) end,
   -- After a fight: the client's containers for plates first drawn in it, then any plate still behind the layout.
   PLAYER_REGEN_ENABLED = function() upgradeRows() NP.CatchUp() end, UPDATE_MOUSEOVER_UNIT = onMouseover,
   -- Joining or leaving the tagger's group changes who tagged each mob.

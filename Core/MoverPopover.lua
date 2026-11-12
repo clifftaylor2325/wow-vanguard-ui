@@ -254,6 +254,12 @@ function ns.CloseMoverPopover()
   if popover and popover:IsShown() then T.FadeOut(popover) end
 end
 
+-- Puts the popover away at once when it is open for this key (its mover was let go: its module stopped).
+---@param key string
+function ns.CloseMoverPopoverFor(key)
+  if popover and popover.key == key then popover:Hide() end
+end
+
 -- Keeps the numbers current while the frame is dragged or nudged.
 function ns.OnMoverMoved(key)
   if popover and popover:IsShown() and popover.key == key then refresh() end

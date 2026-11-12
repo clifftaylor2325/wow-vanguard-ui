@@ -132,6 +132,21 @@ it("heal prediction and shields: bars on the player, target and party frames fro
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("heal prediction and shields: under the Shield look both bars are cut with the health fill's own masks, and square frames take them off", () => {
+  const addon = loggedIn(PREDICTION_ENV, NO_RAID);
+  // Each bar's mask count, and whether its masks are the health fill's own.
+  const masks = () => addon.eval(`local f, out = Vanguard_player, {}
+    local fill = f.health:GetStatusBarTexture().__masks or {}
+    for _, t in ipairs({ f.heal:GetStatusBarTexture(), f.shield:GetStatusBarTexture() }) do
+      local m = t.__masks or {}
+      out[#out + 1] = { #m, m[1] == fill[1] and m[2] == fill[2] }
+    end
+    return out`);
+  expect(masks(), "the Shield look: the heal and shield bars carry the fill's two masks").toEqual([[2, true], [2, true]]);
+  addon.eval('ns.Theme.Settings().hudLook = "hairline" ns.Theme.Refresh()');
+  expect(masks().map((m) => m[0]), "a square look: no masks").toEqual([0, 0]);
+});
+
 it("heal prediction and shields: each has a switch that applies at once, and the bars follow the fill's side", () => {
   const addon = loggedIn(PREDICTION_ENV, NO_RAID);
   addon.eval('local _, set = ns.Options.LiveMethod("UnitFrames", "healPrediction", "ApplyPrediction") set(false)');

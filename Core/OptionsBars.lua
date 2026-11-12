@@ -9,7 +9,7 @@ local L = ns.L
 
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
-local essential = O.Essential
+local essential, reloadRow = O.Essential, O.ReloadRow
 
 -- Action bar n's default for key (Modules/ActionBars.lua defaults.bars), nil without the module.
 local function barDefault(n, key)
@@ -48,17 +48,20 @@ end
 
 -- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
 local function skinSpecial()
-  return function() return moduleSettings("SpecialBars").skinPet end, function(v)
+  local get, set, initial = reloadSetting("SpecialBars", "skinPet")
+  return get, function(v)
     local s = moduleSettings("SpecialBars")
-    s.skinPet, s.skinStance, s.skinPossess, s.skinExtra = v, v, v, v
-    O.NeedReload()
-  end
+    s.skinStance, s.skinPossess, s.skinExtra = v, v, v
+    set(v)
+  end, initial
 end
 
--- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it.
+-- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it, once it has started (it
+-- refuses in a fight or with no Vanguard bars, and then the window stays).
 local function keybindMode()
-  O.Hide()
-  ns.GetModule("ActionBars").KeybindMode(true)
+  local AB = ns.GetModule("ActionBars")
+  AB.KeybindMode(true)
+  if AB.binding then O.Hide() end
 end
 
 -- get/set for the bar backing, which shows or hides at once (out of combat).
@@ -66,8 +69,10 @@ local function backingSetting()
   return liveSetting("ActionBars", "backing", function() ns.OutOfCombat(ns.GetModule("ActionBars").UpdateBackings) end)
 end
 
--- Space between buttons: 0 to 10 px.
-local BAR_SPACING = { min = 0, max = 10, step = 1, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+-- A px slider over the action bars' limits (Modules/ActionBars.lua AB.LIMITS), read when the rows are built.
+local function pxSlider(limits, step)
+  return { min = limits[1], max = limits[2], step = step, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+end
 
 -- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat); kept in view
 -- when the card is folded.
@@ -75,14 +80,14 @@ local function buttonRows()
   return {
     essential(check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels"))),
     essential(check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels"))),
-    essential({ "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") }),
+    essential({ "slider", L["Button spacing"], pxSlider(ns.GetModule("ActionBars").LIMITS.spacing, 1), liveMethod("ActionBars", "spacing", "SpacingChanged") }),
   }
 end
 
 -- The game's own bars and buttons: hidden, restyled, movable; the vehicle exit button.
 local function gameBarRows()
   return {
-    check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard")),
+    reloadRow(check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard"))),
     check(L["Restyle pet, stance and extra buttons (reload)"], skinSpecial()),
     check(L["Movable pet and stance bars (reload)"], reloadSetting("SpecialBars", "place")),
     check(L["Vehicle exit button (reload)"], reloadSetting("SpecialBars", "vehicleExit")),
@@ -144,10 +149,10 @@ local function yourKeysRows()
   return append(append(rows, keySetupRows()), newSpellsRows())
 end
 
--- Buttons on a bar, and per row: 1 to 12.
-local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
--- Button size: 24 to 48 px in steps of 2.
-local BAR_SIZES = { min = 24, max = 48, step = 2, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+-- Buttons on a bar, and per row: 1 to the most a bar has.
+local function barButtons()
+  return { min = 1, max = ns.GetModule("ActionBars").MAX_BUTTONS, step = 1 }
+end
 
 -- Bar n's card title ("Bar 4, right edge" for the bars on the right edge).
 local function barTitle(n)
@@ -177,13 +182,13 @@ end
 local function oneBarRows(n)
   local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) }, check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n)),
+    { "header", barTitle(n) }, reloadRow(check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n))),
     visibility,
     { "text", L["Hidden bars keep their keys: a bound key still casts."] },
     showWhen,
-    { "slider", L["Buttons"], BAR_BUTTONS, barOption(n, "buttons") },
-    { "slider", L["Buttons per row"], BAR_BUTTONS, barOption(n, "perRow") },
-    { "slider", L["Button size"], BAR_SIZES, barSizeOption(n) },
+    { "slider", L["Buttons"], barButtons(), barOption(n, "buttons") },
+    { "slider", L["Buttons per row"], barButtons(), barOption(n, "perRow") },
+    { "slider", L["Button size"], pxSlider(ns.GetModule("ActionBars").LIMITS.size, 2), barSizeOption(n) },
   }
 end
 

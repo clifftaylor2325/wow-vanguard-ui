@@ -62,9 +62,9 @@ end
 -- The bar's two buttons, at its right: Save and lock, and Exit without saving left of it.
 local function addButtons()
   local u = BAR
-  bar.save = W.Primary(bar, L["Save and lock"], thenBack(function() ns.Lock() end), u.save)
+  bar.save = ns.WidenToLabel(W.Primary(bar, L["Save and lock"], thenBack(function() ns.Lock() end), u.save))
   bar.save:SetPoint("RIGHT", -u.edge, 0)
-  bar.exit = W.Button(bar, L["Exit without saving"], thenBack(function() ns.ExitWithoutSaving() end), u.exit)
+  bar.exit = ns.WidenToLabel(W.Button(bar, L["Exit without saving"], thenBack(function() ns.ExitWithoutSaving() end), u.exit))
   bar.exit:SetPoint("RIGHT", bar.save, "LEFT", -u.gap, 0)
 end
 

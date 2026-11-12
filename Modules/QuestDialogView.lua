@@ -346,7 +346,8 @@ end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
 -- Enter, but only out of combat (a key caught in combat could not be handed on again). A key with Shift, Ctrl or
--- Alt held goes on to the game (your bars). True when the key was used.
+-- Alt held goes on to the game (your bars); neither answers an offer an item started (QD.itemOffer): the key goes on
+-- to the game, so a jump pressed as the offer opens does not accept it. True when the key was used.
 local function useKey(key)
   if ns.Widgets.Modifiers() ~= "" then return false end
   local n = tonumber(key)
@@ -354,6 +355,7 @@ local function useKey(key)
     if QD.page.pick then return QD.Pick(n) end
     return QD.SelectLine(n)
   end
+  if QD.itemOffer then return false end
   if key == "SPACE" or ((key == "ENTER" or key == "NUMPADENTER") and not ns.InCombat()) then QD.Press() return true end
   return false
 end

@@ -1,9 +1,10 @@
 -- Four themed dialogs: a text box for export/import strings (chat can't hold
 -- them), a find box (a query field over the lines found), a yes/no question, and a reload
 -- prompt. One of each is built on first use and reused.
--- Also the reload button itself: the WoW Forever client blocks ReloadUI()
--- from addon code, even inside a click, so a reload button carries a secure
--- action button overlay that runs a /reload macro (see ns.ReloadButton).
+-- Also the reload button itself: the WoW Forever client may block ReloadUI()
+-- from addon code, even inside a click (not confirmed in game: Blizzard's
+-- ReloadUI is plain Lua calling C_UI.Reload()), so a reload button carries a
+-- secure action button overlay that runs a /reload macro (see ns.ReloadButton).
 
 local ADDON, ns = ...
 local L = ns.L

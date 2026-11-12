@@ -1,6 +1,6 @@
 // The harness's second Lua engine: PUC-Rio Lua 5.1.5, the game's Lua, compiled to WebAssembly
-// (tools/lua51: the sources, the C shim and the build). VG_LUA_ENGINE=wasm picks it (lua-harness.mjs);
-// fengari (Lua 5.3 in JS) stays the default.
+// (tools/lua51: the sources, the C shim and the build). It is the harness's default (Cliff, 2026-11-11);
+// VG_LUA_ENGINE=fengari picks fengari (Lua 5.3 in JS) instead (lua-harness.mjs).
 //
 // Each Lua state gets its own WebAssembly instance (one compiled module per worker), so a client's
 // memory is its own and goes when the client does. A call is one crossing into the instance: the
@@ -12,8 +12,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// The engine the harness runs on: VG_LUA_ENGINE=wasm picks this one; anything else, fengari (lua-harness.mjs).
-export const ENGINE = process.env.VG_LUA_ENGINE === "wasm" ? "wasm" : "fengari";
+// The engine the harness runs on: VG_LUA_ENGINE=fengari picks fengari; anything else, this one (lua-harness.mjs).
+export const ENGINE = process.env.VG_LUA_ENGINE === "fengari" ? "fengari" : "wasm";
 
 const WASM = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../tools/lua51/vg-lua51.wasm");
 

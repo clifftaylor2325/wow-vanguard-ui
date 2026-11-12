@@ -15,7 +15,7 @@ UF.Status = ST
 -- The frames that carry it.
 ST.KEYS = { player = true, target = true, party1 = true, party2 = true, party3 = true, party4 = true }
 -- The marks' size and the gap between them (units), and how far the row stands over the frame's top edge (the party
--- frames stack 10 apart, so the row stays inside that gap).
+-- frames stack 10 apart, and under Tabs a tab's height more with the row over the tab, so the row stays inside that gap).
 ST.SIZE, ST.GAP, ST.LIFT = 8, 2, 1
 -- The marks in the order they read from the outer corner in.
 ST.ORDER = { "leader", "role", "rest", "pvp" }

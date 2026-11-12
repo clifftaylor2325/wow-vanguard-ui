@@ -79,7 +79,8 @@ local restartSetters = setmetatable({}, { __mode = "k" })
 
 -- get/set for a setting that changes a live module's shape: the module is built again, out of combat
 -- (ns.RestartModule). On a module that is not live it is a reload setting, so a row can move to it before its
--- module is converted. The caption keeps its " (reload)" words; the window tags the row only while it waits.
+-- module is converted. The caption keeps its " (reload)" words; the window tags the row only where the module is not
+-- live (it then waits for a reload). A live rebuild queued by a fight shows no sign on the row.
 ---@param module string
 ---@param key string
 function O.RestartSetting(module, key)
@@ -97,6 +98,13 @@ end
 ---@return boolean
 function O.AppliesLive(set)
   return set ~= nil and restartSetters[set] ~= nil
+end
+
+-- Marks a row whose setting applies on reload though its caption does not say so: the window gives it the reload tag
+-- (and its tip, and a hit for the word "reload" in the search). Returns the row.
+function O.ReloadRow(row)
+  row.reload = true
+  return row
 end
 
 -- True when a module was built this session and is still switched on, so its live callbacks have its settings to read.
@@ -392,7 +400,7 @@ end
 local function barRows()
   return {
     { "header", L["Bars"] },
-    { "cycle", L["Bar texture"], T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") },
+    O.ReloadRow({ "cycle", L["Bar texture"], T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") }),
     check(L["Smooth health and power bars"], function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check(L["Soft shadows under frames (reload)"], themeSetting("hudShadow")),
   }

@@ -48,9 +48,9 @@ function GW.SkinContextMenu(_, menu)
   menuPanel(menu)
 end
 
--- A Retail menu frame being opened, its background just attached by the default style (MenuStyle1Mixin:Generate,
--- copied onto the pooled frame by Blizzard_Menu's SecureGenerate on every open, submenus too): the same skin. Retail
--- sets the menu's strata and level after Generate, so the panel behind it is put level with the menu next frame.
+-- A Retail menu frame being opened, its background just attached by its style's Generate (GW.MENU_STYLES, copied
+-- onto the pooled frame by Blizzard_Menu's SecureGenerate on every open, submenus too): the same skin. Retail sets
+-- the menu's strata and level after Generate, so the panel behind it is put level with the menu next frame.
 local function skinGeneratedMenu(menu)
   GW.SkinContextMenu(nil, menu)
   ns.Soon("menu panels", GW.LevelMenuPanels)
@@ -64,12 +64,19 @@ function GW.LevelMenuPanels()
   end
 end
 
--- Retail's menus fire no event when they open (its MenuProxyMixin has no OnShow), so the default menu style's
--- Generate is hooked instead: a secure post-hook, nothing written on the menu.
+-- Retail's menu styles with a Generate of their own (Blizzard_Menu/MenuTemplates.lua): the default one, and the
+-- second, which the settings panel's dropdowns and the character customisation options use.
+GW.MENU_STYLES = { "MenuStyle1Mixin", "MenuStyle2Mixin" }
+
+-- Retail's menus fire no event when they open (its MenuProxyMixin has no OnShow), so each menu style's Generate is
+-- hooked instead: a secure post-hook, nothing written on the menu. A style the client lacks is skipped.
 function GW.WatchMenuStyle()
-  local style = _G.MenuStyle1Mixin
-  if type(style) ~= "table" or type(style.Generate) ~= "function" then return end
-  hooksecurefunc(style, "Generate", ns.Guard("skin context menu", skinGeneratedMenu))
+  for _, name in ipairs(GW.MENU_STYLES) do
+    local style = _G[name]
+    if type(style) == "table" and type(style.Generate) == "function" then
+      hooksecurefunc(style, "Generate", ns.Guard("skin context menu", skinGeneratedMenu))
+    end
+  end
 end
 
 -- Forever's menus fire EventRegistry "MenuProxy.OnShow" (its MenuProxyMixin:OnShow) as they open.

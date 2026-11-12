@@ -319,7 +319,7 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   expect(addon.texts("That's a mouse button: it lives in the Click casting grid.").length).toBe(1);
   for (let i = 1; i <= 9; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
   addon.eval("ns.Options.Refresh()");
-  expect(addon.texts("+3 more (/vg binds)").length, "rows past the list are counted").toBe(1);
+  expect(addon.frames("w.keyText ~= nil and w.remove ~= nil and w:IsShown()").length, "H44-9-53: every key has its row, past the eight in view too").toBe(11);
   addon.eval(`${CC}.Remove("SHIFT-Q")`);
   const q = widget(addon, 'w.key == "1" and w.remove ~= nil and w.keyText ~= nil');
   addon.eval(`__wfgStub.frames[${q}].remove:GetScript("OnClick")()`);
@@ -496,7 +496,7 @@ it("the picker's rows are list rows (T.ROW.height) and a group's name shows in a
   expect([section.slice(0, 5).filter((_, i) => i !== 4), isTok(addon, section[4], "muted"), section[5]], "a group's row holds an 18 high section header in small muted capitals and no text of its own").toEqual([[true, 18, "HEALS", small], true, ""]);
 });
 
-it("the hover keys card: its key rows are list rows; the empty line is label text2, the count small text2, the off note small muted; an empty cell's mark is label disabled", () => {
+it("the hover keys card: its key rows are list rows; the empty line is label text2, the mouse-button note small text2, the off note small muted; an empty cell's mark is label disabled", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
   const [height, label, small] = addon.eval("return { ns.Theme.ROW.height, ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
@@ -507,10 +507,11 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
   addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
   const row = addon.eval(`local r = __wfgStub.frames[${widget(addon, 'w.key == "SHIFT-Q" and w.remove ~= nil and w.keyText ~= nil')}] return { r.__kind, r:GetHeight(), r.SetSelected ~= nil, r.wash ~= nil }`);
   expect(row, "a key row is a Button of the list row's height with the selected look").toEqual(["Button", height, true, true]);
-  for (let i = 1; i <= 10; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
-  addon.eval("ns.Options.Refresh()");
-  const count = fontOf(addon, "+3 more (/vg binds)");
-  expect([count[0], isTok(addon, count[1], "text2")], "the count: small, text2").toEqual([small, true]);
+  const add = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
+  addon.click(add);
+  addon.eval(`local a = __wfgStub.frames[${add}] a:GetScript("OnMouseDown")(a, "RightButton")`);
+  const note = fontOf(addon, "That's a mouse button: it lives in the Click casting grid.");
+  expect([note[0], isTok(addon, note[1], "text2")], "the mouse-button note: small, text2").toEqual([small, true]);
   addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
   const off = fontOf(addon, "This client can't compile the secure code hover keys need; mouse bindings still work.");
   expect([off[0], isTok(addon, off[1], "muted")], "the no-snippets note: small, muted").toEqual([small, true]);
@@ -616,7 +617,7 @@ it("import: the limits themselves are fine (200 bindings, a 255 character macro)
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "200 bindings, one with 255 characters").toBe(200);
   const odd = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Renew", spellID = 1.5, rank = "x" }, { key = "BUTTON5", action = "spell", value = "Renew", spellID = "139", rank = 2 } }');
   addon.eval(`${CC}.Import(${JSON.stringify(odd)})`);
-  expect([bindings(addon).BUTTON4, bindings(addon).BUTTON5], "a fraction and text are no spell id or rank; a number in text is one").toEqual(["spell:Renew:139:nil", "spell:Renew:139:2"]);
+  expect([bindings(addon).BUTTON4, bindings(addon).BUTTON5], "a fraction and text are no spell id or rank; a number in text is one (H44-9-100: its rank is the spellbook's for 139)").toEqual(["spell:Renew:139:nil", "spell:Renew:139:1"]);
 });
 
 it("import: the options window says why a string was refused, and the layout applies in one pass", () => {
@@ -791,4 +792,127 @@ it("H29-6-R2 a spell picker row lights under the mouse and clears when it leaves
   expect(hover(), "hover wash on").toBe(true);
   addon.eval('local r = Vanguard_SpellPicker.rows[1] r:GetScript("OnLeave")(r)');
   expect(hover(), "left: the wash is off").toBe(false);
+});
+
+// Client rule (forever and live trees identical): Blizzard_RestrictedAddOnEnvironment/RestrictedExecution.lua
+// BuildRestrictedClosure refuses a body when body:match("function") or body:match("[{}]"), over the whole text, quoted
+// strings included, so one such key would make the whole enter snippet one the client won't run.
+const refusedSnippet = (body) => /function/.test(body) || /[{}]/.test(body);
+
+it("H44-9-R1 import: a hover key with a brace or the word function is skipped, and the enter snippet stays one the client builds", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  for (const key of ["SHIFT-{", "function", "SHIFT-}", "F\n1"]) {
+    const text = encoded(addon, `{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = ${JSON.stringify(key)}, action = "spell", value = "Flash Heal" } }`);
+    expect([JSON.stringify(key), addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)], "only the good key is imported").toEqual([JSON.stringify(key), 1]);
+    expect(refusedSnippet(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)), "the snippet holds nothing the client refuses").toBe(false);
+  }
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+});
+
+it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row", () => {
+  const addon = priest("", {
+    // TEST-ONLY saved bindings imported before the fix: one hover key the client can't take.
+    savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [0] = { { key = "SHIFT-{", action = "spell", value = "Renew" }, { key = "SHIFT-Q", action = "spell", value = "Renew" } } } }',
+  });
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg2")');
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
+  expect(addon.frames('w.keyText ~= nil and w.remove ~= nil and w:IsShown()').length, "both keys keep a row with Remove").toBe(2);
+});
+
+it("H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("F1", "target")`);
+  const before = addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`);
+  addon.world.combat(true);
+  const text = encoded(addon, '{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = "SHIFT-{", action = "spell", value = "Renew" } }');
+  expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)).toBe(1);
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "in a fight the frames keep the old snippet").toBe(before);
+  addon.world.combat(false);
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "the fight ends: the new one, without the brace").toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+});
+
+it("H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "alt-ctrl-shift-BUTTON1", action = "target" }, { key = "shift-ctrl-BUTTON1", action = "target" }, { key = "alt-ctrl-BUTTON1", action = "target" } }');
+  expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`), "only the click the grid has a column for").toBe(1);
+  expect(addon.eval(`local f = ${CC}.frames[1] return { f:GetAttribute("alt-ctrl-shift-type1") or false, f:GetAttribute("alt-ctrl-type1") }`)).toEqual([false, "target"]);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
+  const columns = addon.eval('local out = {} for _, w in ipairs(__wfgStub.frames) do if w.key ~= nil and w.iconFrame ~= nil and w.empty ~= nil and w:IsShown() then local p, n = ns.GetModule("ClickCast").MouseParts(w.key) if n == 1 then out[#out + 1] = p end end end table.sort(out) return out');
+  const prefixes = addon.eval(`local out = {} for p in pairs(${CC}.MOUSE_PREFIXES) do out[#out + 1] = p end table.sort(out) return out`);
+  expect(columns, "every grid column is a bindable prefix, and every bindable prefix has a column").toEqual(prefixes);
+});
+
+it("H44-9-1 a picked rank saved under a name the client no longer uses still counts as held, found by the rank's id", () => {
+  const addon = priest("__wfgWorld.spec = 1", {
+    // TEST-ONLY a rank bound on an English client.
+    savedVariables: 'VanguardCharDB = { clickcast = { [1] = { { key = "ctrl-BUTTON2", action = "spell", value = "Flash Heal", spellID = 2061, rank = 1 } } } }',
+  });
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "before the language change").toBe(null);
+  addon.eval(`__wfgWorld.spells[2061].name = "Blitzheilung" __wfgWorld.spells[9472].name = "Blitzheilung" ${CS}.Invalidate()`);
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "after it: the rank is under the client's name").toBe(null);
+  addon.eval(`__wfgWorld.spells[2061] = nil ${CS}.Invalidate()`);
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "a rank the spellbook dropped is still gone").toBe("you no longer have that spell rank");
+});
+
+// The game names a binding command through the global BINDING_NAME_<command>, falling back to the command
+// (GetBindingName, /home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_SharedXML/BindingUtil.lua).
+it("H44-9-2 a hover key the game binds to a command is named as the game names that command", () => {
+  const addon = priest();
+  addon.eval('__wfgWorld.bindings.TOGGLEGAMEMENU = { "ESCAPE" } __wfgWorld.bindings.TOGGLEWORLDMAP = { "M" } BINDING_NAME_TOGGLEGAMEMENU = "TEST-ONLY Spielmenü"');
+  expect(addon.eval(`return { ${CC}.Collision("ESCAPE"), ${CC}.Collision("M") }`), "the command's name; one with no name keeps the command").toEqual(["TEST-ONLY Spielmenü", "toggleworldmap"]);
+});
+
+it("H44-9-52 import: a string with three entries for one click asks about the one binding it puts in place", () => {
+  const addon = priest();
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061)`);
+  const text = encoded(addon, '{ { key = "BUTTON1", action = "target" }, { key = "BUTTON1", action = "menu" }, { key = "BUTTON1", action = "focus" }, { key = "BUTTON2", action = "menu" } }');
+  addon.eval('ns.Options.Show("clickcast") __click("Import")');
+  addon.type("Vanguard_TextEdit", text);
+  confirm(addon);
+  expect(addon.texts("Replace your 1 click-casting bindings with the 2 from this string?").length, "two keys, two bindings").toBe(1);
+  addon.click("Vanguard_Question.confirm");
+  expect(chatHas(addon, /Imported 2 click-casting bindings\./), "the count the question gave").toBe(true);
+});
+
+it("H44-9-53 the hover-key list scrolls: a ninth key has its row and Remove, and the wheel scrolls the list only while it overflows", () => {
+  const addon = priest();
+  for (let i = 1; i <= 8; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
+  // The scroll view holding the hover-key rows: whether the wheel is its own, and how tall its content is.
+  const view = () => addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.rows ~= nil and w.view ~= nil and w.add ~= nil then return { w.view:IsMouseWheelEnabled(), w.view.child:GetHeight() } end end');
+  const height = addon.eval("return ns.Theme.ROW.height");
+  expect(view(), "eight keys fit: the wheel is the page's").toEqual([false, 8 * height]);
+  addon.eval(`${CC}.Add("F9", "target") ns.Options.Refresh()`);
+  expect(view(), "a ninth: the list scrolls").toEqual([true, 9 * height]);
+  const list = widget(addon, "w.rows ~= nil and w.view ~= nil and w.add ~= nil");
+  addon.wheel(widget(addon, `w == __wfgStub.frames[${list}].view`), -1);
+  expect(addon.eval(`return __wfgStub.frames[${list}].view:GetVerticalScroll()`), "the wheel brings the ninth row into view").toBe(height);
+  const nine = widget(addon, 'w.key == "F9" and w.remove ~= nil and w.keyText ~= nil and w:IsShown()');
+  addon.eval(`__wfgStub.frames[${nine}].remove:GetScript("OnClick")()`);
+  expect([bindings(addon).F9, addon.texts("+1 more (/vg binds)").length], "its Remove removes it; no count line").toEqual([undefined, 0]);
+});
+
+it("H44-9-100 import: a rank without a spell id is dropped, so the binding reads and casts by name", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Renew", rank = 3 } }');
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`)).toBe(1);
+  expect(addon.eval(`local b = ${CC}.Binding("BUTTON4") return { ${CC}.ActionText(b), ${CC}.frames[1]:GetAttribute("spell4"), b.rank == nil }`), "no rank named, the name cast").toEqual(["Renew", "Renew", true]);
+});
+
+it("H44-9-100 import: a rank the spellbook lists under another number for that id reads as the spellbook's", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Flash Heal", spellID = 9472, rank = 1 }, { key = "BUTTON5", action = "spell", value = "Flash Heal", spellID = 424242, rank = 4 }, { key = "SHIFT-Q", action = "spell", value = "Flash Heal", spellID = 9472 } }');
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`)).toBe(3);
+  expect(addon.eval(`return { ${CC}.ActionText(${CC}.Binding("BUTTON4")), ${CC}.frames[1]:GetAttribute("spell4") }`), "the rank it casts").toEqual(["Flash Heal (Rank 2)", 9472]);
+  expect([bindings(addon).BUTTON5, bindings(addon)["SHIFT-Q"]], "a rank the book doesn't list stays as given; an id with no rank gets none").toEqual(["spell:Flash Heal:424242:4", "spell:Flash Heal:9472:nil"]);
+});
+
+it("H44-9-100 an exported rank binding imports back unchanged", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "Flash Heal", 2061, 1) ${CC}.Add("BUTTON3", "spell", "Flash Heal", 9472, 2)`);
+  const before = JSON.stringify(bindings(addon));
+  const text = addon.eval(`return ${CC}.Export()`);
+  addon.eval(`${CC}.Clear()`);
+  addon.eval(`${CC}.Import(${JSON.stringify(text)})`);
+  expect(JSON.stringify(bindings(addon))).toBe(before);
 });

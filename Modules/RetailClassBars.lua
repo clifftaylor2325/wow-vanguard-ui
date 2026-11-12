@@ -43,8 +43,9 @@ CB.RESOURCES = {
   stagger = { stagger = true },
 }
 
--- Sizes in units: a pip (as wide as a combo point), the gap between pips, the stagger bar's height.
-CB.PIP = { size = 14, gap = 3, staggerHeight = 6 }
+-- Sizes in units: a pip (as wide as a combo point), the gap between pips, the stagger bar's height, and how far
+-- the pip row sits above the player frame (its tab) and the thin bar under it.
+CB.PIP = { size = 14, gap = 3, staggerHeight = 6, rowOffset = 2, barOffset = 3 }
 -- Stagger past these shares of your health turns the bar amber, then vermilion (the game's own steps).
 CB.STAGGER_STEPS = { warn = 0.3, bad = 0.6 }
 -- How often the stagger bar is read (the client sends no event for it), in seconds.
@@ -94,13 +95,15 @@ local function fitPips(row)
   row:SetWidth(most * (CB.PIP.size + CB.PIP.gap))
 end
 
--- A row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown), as the combo points sit.
+-- A row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown), as the combo points
+-- sit; the Versus deck's panel grows over it.
 local function buildPips(player, def)
   local row = CreateFrame("Frame", nil, player)
   row:SetHeight(CB.PIP.size)
-  row:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, 2)
+  row:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CB.PIP.rowOffset)
   row.def, row.pips = def, {}
   fitPips(row)
+  UF.RaiseDeckReach("ClassBars", "top", CB.PIP.rowOffset + CB.PIP.size)
   return row
 end
 
@@ -189,22 +192,17 @@ end
 
 -- Stagger ----------------------------------------------------------------------------------
 
--- A thin bar just under the player frame, as thin as the druid mana bar, in a theme colour.
+-- A thin bar just under the player frame, as thin as the druid mana bar, in a theme colour; the Versus deck's panel
+-- grows over it.
 local function thinBar(player, token)
   local holder = T.HudPanel(CreateFrame("Frame", nil, player), { inset = true })
-  holder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -3)
-  holder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -3)
+  holder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -CB.PIP.barOffset)
+  holder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -CB.PIP.barOffset)
   holder:SetHeight(CB.PIP.staggerHeight)
   local px = T.Pixel(holder)
   holder.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, holder)), token)
   holder.bar:SetPoint("TOPLEFT", px, -px); holder.bar:SetPoint("BOTTOMRIGHT", -px, px)
-  return holder
-end
-
--- The stagger bar just under the player frame, read on a timer (the client sends no event for it).
-local function buildStagger(player)
-  local holder = thinBar(player, "good")
-  CB.scope:Every("class stagger", CB.STAGGER_PERIOD, CB.UpdateStagger, holder)
+  UF.RaiseDeckReach("ClassBars", "bottom", CB.PIP.barOffset + CB.PIP.staggerHeight)
   return holder
 end
 
@@ -303,7 +301,7 @@ end
 
 -- Builds a resource's frame on the player frame: the stagger bar, or a row of pips.
 local function buildResource(player, def)
-  if def.stagger then return buildStagger(player) end
+  if def.stagger then return thinBar(player, "good") end
   return buildPips(player, def)
 end
 
@@ -336,7 +334,8 @@ local function levelled(def, level)
 end
 
 -- Shows the resource of your spec now (building it the first time) and hides the others; none below its level
--- (`level`: the new one, from a level-up).
+-- (`level`: the new one, from a level-up). The stagger bar is read on a timer (the client sends no event for it)
+-- while it shows, started here so it follows a spec change and a restart of the module.
 function CB.ShowResource(level)
   local player = UF.frames.player
   if not (player and CB.scope:Running()) then return end
@@ -345,6 +344,7 @@ function CB.ShowResource(level)
   if def and not levelled(def, level) then CB.kind, def = nil, nil end
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
   for kind, frame in pairs(CB.resourceFrames) do CB.scope:Frame(frame):SetShown(kind == CB.kind) end
+  CB.scope:Every("class stagger", CB.kind == "stagger" and CB.STAGGER_PERIOD or nil, CB.UpdateStagger, CB.resourceFrames.stagger)
   CB.UpdateResource()
   CB.ShowAlt(player)
 end

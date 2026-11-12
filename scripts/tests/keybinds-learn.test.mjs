@@ -520,3 +520,44 @@ it("keys learn: a fresh character's logins and load screens write no learner sta
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(addon.eval("return VanguardCharDB.keysLearn == nil")).toBe(true);
 });
+
+// The mage preset the real resolver (Modules/KeybindsLayouts.lua) takes.
+const MAGE = '{ class = "MAGE", role = "frost", sides = true }';
+
+// A logged-in level-20 mage (Ilsa) with Frostbolt ranks 1 and 2 and Fireball, the real resolver, and login settled.
+function mage() {
+  const addon = loggedIn("");
+  addon.eval('__wfgWorld.setUnit("player", { name = "Ilsa", level = 20, class = "MAGE" })');
+  for (const [id, rank] of [[116, 1], [205, 2]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.world.learn(133, { name: "Fireball" });
+  addon.advance(4);
+  expect(addon.eval(`local e = ns.KeybindsLayouts.Resolve(${MAGE}, {}) local ok = ns.KeybindsApply.Apply(e)
+    if ok then ns.KeybindsLearn.Applied(${MAGE}, true) end return ok`)).toBe(true);
+  addon.clearChat();
+  return addon;
+}
+
+// Learns Frostbolt rank 3 as a trainer teaches it, then lets the next frames run.
+function learnRank3(addon) {
+  addon.world.learn(837, { name: "Frostbolt", rank: 3 });
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE", 837, 1, false);
+  addon.advance(1);
+}
+
+it("H44-10-1 a new rank learned takes the place of the rank Vanguard put on its key, silently, once the fight is over", () => {
+  const addon = mage();
+  expect(slots(addon, [1]), "Apply put rank 2 on key 1").toEqual([205]);
+  setCombat(addon, true);
+  learnRank3(addon);
+  expect(slots(addon, [1]), "nothing changes in the fight").toEqual([205]);
+  setCombat(addon, false);
+  addon.advance(1);
+  expect([slots(addon, [1]), keys(addon, ["1"]), spare(addon), said(addon)]).toEqual([[837], ["ACTIONBUTTON1"], [], ""]);
+});
+
+it("H44-10-1 a new rank learned leaves a rank the player put on the key's button", () => {
+  const addon = mage();
+  addon.eval("__wfgWorld.setAction(1, { id = 116 })");
+  learnRank3(addon);
+  expect(slots(addon, [1])).toEqual([116]);
+});

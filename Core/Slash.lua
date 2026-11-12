@@ -31,7 +31,7 @@ local HELP = {
   { "gradient [on|off]", L["windows a shade lighter toward the top (off by default)"] },
   { "accent <rrggbb|name|class>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
   { "theme reset", L["every theme setting back to default"] },
-  { "modules", L["list modules; enable|disable <module> (then /reload)"] },
+  { "modules", L["list modules; enable|disable <module> (some need a /reload)"] },
   { "skins", L["addons skinned through Vanguard.RegisterSkin; skins <addon> on|off"] },
   { "profile [name]", L["show profiles, or switch this character to one"] },
   { "profile new|copy|delete <name>, profile reset", L["manage profiles"] },
@@ -63,13 +63,13 @@ local HELP = {
   { "recap [say|party|raid|instance|guild]", L["the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel"] },
   { "vendors [clear]", L["how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them"] },
   { "ranks [swap]", L["spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on"] },
-  { "trainers [next|clear]", L["what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)"] },
+  { "trainers [next|clear]", L["what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Remember what trainers teach off until switched on)"] },
   { "gear", L["your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)"] },
   { "alts [<name>]", L["every character's level, money, rested XP and time played; with a name, that character's bags and bank"] },
   { "inventory [forget <name>|clear]", L["your characters remembered here and when their bags were read; forget drops one, clear forgets them all"] },
   { "weights [wizard|set <stat> <n>|reset|export|import]", L["the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them"] },
   { "prep [want <kind> <n>|setup|buffs]", L["the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for"] },
-  { "talents [plan|spend|clear|export|import]", L["Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string"] },
+  { "talents [plan|spend|clear|order|export|import]", L["Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string"] },
   { "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]", L["shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched; restock: the list of what you're short of); scan the auction house (while it's open); forget the prices"] },
   { "way [zone] x y [title]", L["a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it; way recent lists the last eight and way recent <n> goes back to one"] },
   { "preview [party|10|25|40|off]", L["the raid frames filled with sample players, to check them without a group (not saved)"] },
@@ -365,7 +365,7 @@ end
 -- /vg modules
 local function modulesCommand()
   local names = ns.ModuleNames()
-  chat(#names == 0 and L["No modules yet."] or ns.Literal(L["Modules (enable|disable <module>, then /reload):"]))
+  chat(#names == 0 and L["No modules yet."] or ns.Literal(L["Modules (enable|disable <module>; some need a /reload):"]))
   for _, name in ipairs(names) do
     chat(string.format("  %s  %s", name, onOff(ns.ModuleEnabled(name))))
   end
@@ -378,6 +378,17 @@ local function matchName(names, text)
   end
 end
 
+-- The line after a module's switch moved: a live module has gone on or off (or will when the fight ends); any
+-- other waits for the reload.
+local function switchedLine(name, on)
+  local def = ns.GetModule(name)
+  if ns.ModuleAwaitsFight(name) then
+    return on and L["{module} enabled after the fight."] or L["{module} disabled after the fight."]
+  end
+  if def and def.live then return on and L["{module} enabled."] or L["{module} disabled."] end
+  return on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."]
+end
+
 -- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
 local function setModule(on)
   return function(rest)
@@ -387,7 +398,7 @@ local function setModule(on)
       return chat(ns.Format(L["No module called {name}. /vg modules lists them."], { name = rest }))
     end
     ns.SetModuleEnabled(name, on)
-    chat(ns.Format(on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."], { module = name }))
+    chat(ns.Format(switchedLine(name, on), { module = name }))
   end
 end
 

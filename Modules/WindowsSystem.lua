@@ -821,6 +821,17 @@ local function dressLogParts()
   T.BarColor(bar, "accent")
 end
 
+-- Themes the filter buttons again whenever the game shows or refreshes the bar, picks a filter or rebuilds the buttons
+-- (Blizzard_CombatLog.lua:219, 1568 and 1640: its own calls use a file-local copy, so the global hook catches the
+-- calls made through _G, such as the filter dialog's). The bar's own hooks go on once per frame.
+local function watchQuickButtons(frame)
+  GW.HookGlobalOnce("Blizzard_CombatLog_Update_QuickButtons", "combat log quick buttons", dressQuickButtons)
+  GW.HookGlobalOnce("Blizzard_CombatLog_QuickButton_OnClick", "combat log quick button click", dressQuickButtons)
+  if vgQuickButtons[frame] then return end
+  vgQuickButtons[frame] = true
+  for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, ns.Guard("combat log bar " .. script, dressQuickButtons)) end
+end
+
 -- The combat log's filter bar: its black strip faded, an inset panel (a borderless band while the
 -- Chat module's panels are on screen, whose panel seats it under the bar's rule; with Chat off the game's
 -- own layout stands and the strip keeps its border), its own parts, its filter buttons themed now and
@@ -831,10 +842,7 @@ function GW.SkinCombatLogBar(frame)
   T.Panel(frame, { inset = true, noBorder = band, noSheen = band })
   dressLogParts()
   dressQuickButtons()
-  if vgQuickButtons[frame] or type(hooksecurefunc) ~= "function" then return end
-  vgQuickButtons[frame] = true
-  for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, ns.Guard("combat log bar " .. script, dressQuickButtons)) end
-  if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
+  watchQuickButtons(frame)
 end
 
 GW.Add("system", { "HelpFrame" }, GW.SkinHelp)

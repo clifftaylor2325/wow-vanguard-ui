@@ -8,6 +8,8 @@ local T = ns.Theme
 
 local grid
 local lines = {}
+-- The size the grid was last shown with, so it can be drawn again for a new screen.
+local shownSize
 
 -- The full-screen frame the lines are drawn on (behind the mover handles).
 local function gridFrame()
@@ -54,6 +56,7 @@ end
 -- saved size of 0 from a hand-edited profile would never finish drawing).
 function ns.ShowGrid(size)
   size = math.max(8, math.min(256, tonumber(size) or 32))
+  shownSize = size
   local f = gridFrame()
   local i = placeAxis(1, true, size, (UIParent:GetWidth() or 0) / 2)
   i = placeAxis(i, false, size, (UIParent:GetHeight() or 0) / 2)
@@ -69,3 +72,8 @@ function ns.HideGrid()
     grid:Hide()
   end
 end
+
+-- A UI scale or screen change while the grid shows: its lines are drawn again for the new canvas and pixel size.
+T.OnScale(function()
+  if grid and grid:IsShown() then ns.ShowGrid(shownSize) end
+end)

@@ -194,3 +194,27 @@ it("cooldown glow: a client without timers or without the Cooldown Manager loads
   const noTools = loggedIn("", { savedVariables: ON });
   expect(noTools.eval("return #ns.GetModule('CooldownGlow').Items()"), "no rows, no items").toBe(0);
 });
+
+// The client raises when aura access is refused: GetAuraDataByAuraInstanceID carries RequiresUnitAuraAccess, whose
+// FailureMode is "Error" (/home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// UnitAuraDocumentation.lua and SecretPredicatesDocumentation.lua; the same on the live tree).
+it("H44-8-50 glow: one icon's refused aura read leaves the other icons' glow on and raises no error", () => {
+  const env = `
+    __item(BuffIconCooldownViewer)
+    BuffIconCooldownViewer.items[1].auraInstanceID = 66
+    BuffIconCooldownViewer.items[1].auraDataUnit = "target"
+    BuffIconCooldownViewer.items[2].auraInstanceID = 77
+    C_CurveUtil = nil
+    C_Secrets.ShouldUnitAuraInstanceBeSecret = function() return false end
+    local read = C_UnitAuras.GetAuraDataByAuraInstanceID
+    C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, id)
+      if unit == "target" then error("TEST-ONLY RequiresUnitAuraAccess refused", 0) end
+      return read(unit, id)
+    end
+  `;
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + env, { savedVariables: ON });
+  addon.world.addAura("player", { name: "TEST-ONLY Rejuvenation", duration: 20, auraInstanceID: 77 });
+  addon.advance(18);
+  const second = addon.eval("local g = ns.FrameState('vgGlow')[BuffIconCooldownViewer.items[2]] return g and g[1]:IsShown() or false");
+  expect([second, addon.eval("return #ns.errors")], "item 2 lit, no error").toEqual([true, 0]);
+});

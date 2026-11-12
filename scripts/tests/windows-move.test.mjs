@@ -284,6 +284,44 @@ it("a click on a window's top edge saves nothing, a right press does nothing, an
 
 // A game window's geometry is secret while its anchoring is (SecretWhenAnchoringSecret), and its scale once the game set
 // it from a secret: a drag on such a window does nothing rather than raise, and nothing secret is saved or put back.
+// TEST-ONLY loot history: its own whole-body drag, as the game gives it (Blizzard_FrameXML/Mainline/LootHistory.xml:193,
+// :215-216, movable with registerForDrag LeftButton, and LootHistory.lua:391-397 LootHistoryFrameMixin:OnDragStart
+// StartMoving, OnDragStop StopMovingOrSizing, /home/user/blizz/forever/Interface/AddOns).
+const LOOT_HISTORY_ENV = `
+  local f = CreateFrame("Frame", "GroupLootHistoryFrame", UIParent) f:SetSize(261, 590) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 150, -150) f:Hide()
+  f.SetUserPlaced = function() end
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+  f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)`;
+it("the loot history's own drag is saved too: it reopens where the player last let go, by its top edge or its body", () => {
+  const addon = loggedIn(LOOT_HISTORY_ENV);
+  addon.eval("GroupLootHistoryFrame:Show()");
+  addon.eval(`local f = GroupLootHistoryFrame __wfgStub.world.mouse.x, __wfgStub.world.mouse.y = 300, ${1080 - 150 - 5}
+    f:GetScript("OnMouseDown")(f, "LeftButton") f:ClearAllPoints() f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 400, 500)
+    f:GetScript("OnMouseUp")(f, "LeftButton")`);
+  addon.eval(`local f = GroupLootHistoryFrame __wfgStub.world.mouse.y = 300
+    f:GetScript("OnMouseDown")(f, "LeftButton") f:GetScript("OnDragStart")(f) f:ClearAllPoints() f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 900, 700)
+    f:GetScript("OnDragStop")(f) f:GetScript("OnMouseUp")(f, "LeftButton")`);
+  addon.eval("GroupLootHistoryFrame:Hide() GroupLootHistoryFrame:Show()");
+  expect([corner(addon, "GroupLootHistoryFrame"), errors(addon)], "reopened where the game's drag dropped it").toEqual([[900, 700], "none"]);
+});
+it("a top-edge press the game's own drag takes over ends at the game's drop, with its place saved", () => {
+  const addon = loggedIn(LOOT_HISTORY_ENV);
+  addon.eval(`GroupLootHistoryFrame:Show() local f = GroupLootHistoryFrame __wfgStub.world.mouse.x, __wfgStub.world.mouse.y = 300, ${1080 - 150 - 5}
+    f:GetScript("OnMouseDown")(f, "LeftButton") f:GetScript("OnDragStart")(f) f:ClearAllPoints() f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 600, 400)
+    f:GetScript("OnDragStop")(f)`);
+  expect(addon.eval("return { ns.FrameState('vgPress')[GroupLootHistoryFrame] == nil, ns.FrameState('vgDragging')[GroupLootHistoryFrame] == nil }"), "no press left held").toEqual([true, true]);
+  expect(saved(addon).GroupLootHistoryFrame, "saved where it was dropped").toEqual({ x: 600, y: 400 });
+});
+it("a window's own drop during a title-bar drag saves nothing; the title bar's drop saves the place", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval(`__open(CharacterFrame) local h = ns.FrameState('vgMoveHandle')[CharacterFrame]
+    h:GetScript("OnDragStart")(h, "LeftButton") CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 500, 600)
+    CharacterFrame:GetScript("OnDragStop")(CharacterFrame)`);
+  expect(saved(addon).CharacterFrame, "still mid-drag: nothing saved").toBeUndefined();
+  addon.eval("local h = ns.FrameState('vgMoveHandle')[CharacterFrame] h:GetScript('OnDragStop')(h)");
+  expect(saved(addon).CharacterFrame, "the title bar's drop saves it").toEqual({ x: 500, y: 600 });
+});
 it("a window whose top, place or scale the client hides is not dragged, saved or put back, and nothing raises", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("CalendarFrame:Show()");

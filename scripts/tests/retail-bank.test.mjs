@@ -140,6 +140,32 @@ it("retail auras: each raid tile hands the game one private aura spot, moved to 
   expect(spots(addon).filter((s) => s[3] === "Vanguard_RaidUnitButton2"), "an emptied tile's spot is given back").toEqual([]);
 });
 
+it("H44-5-1 retail auras: a new tile size gives each raid tile's spot the new debuff icon's size, handed again", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { client: RETAIL_CLIENT });
+  addon.eval(`__spawn(1, "raid1") __spawn(2, nil)`);
+  addon.eval(`local RF = ns.GetModule("RaidFrames") RF.settings.width, RF.settings.height = 72, 36 RF.ApplySize()`);
+  const size = addon.eval("return ns.GetModule('RaidFrames').TileZones().icon + ns.PrivateAuras.GROW");
+  expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")), "the shown tile's spot is handed at the new size").toEqual([
+    ["raid1", 1, size, "Vanguard_RaidUnitButton1"]]);
+  expect(addon.eval("return { Vanguard_RaidUnitButton1.privateAura:GetWidth(), Vanguard_RaidUnitButton2.privateAura:GetWidth() }"),
+    "and every tile's spot takes that size").toEqual([size, size]);
+});
+
+it("H44-5-54 retail auras: a new Aura icon size hands the target's private aura spot at that size", () => {
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  // The icon width the target's spot was last handed, the spot's own width, and the width the setting asks for.
+  const handed = () => addon.eval(`local FA = ns.GetModule("FrameAuras") local w
+    for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "target" then w = a.iconInfo.iconWidth end end
+    return { w, ns.PrivateAuras.target:GetWidth(), FA.Look(FA.settings).size + ns.PrivateAuras.GROW }`);
+  addon.eval('local FA = ns.GetModule("FrameAuras") FA.settings.size = 30 FA.Apply()');
+  addon.advance(0.4, 0.1);
+  const [now, spot, wanted] = handed();
+  expect([now, spot], "handed again at the new size once the setting holds still").toEqual([wanted, wanted]);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(handed()[0], "and a new target keeps it").toBe(wanted);
+  expect(addon.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'target' then n = n + 1 end end return n"), "one spot, not one per change").toBe(1);
+});
+
 it("retail auras: the raid tiles keep their private aura spot with Raid debuffs and HoTs switched off (H9-4-1)", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidAuras = false } } }" });
   addon.eval(`__spawn(1, "raid1")`);

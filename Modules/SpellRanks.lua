@@ -251,7 +251,7 @@ function SR.TrainersCommand(rest)
   if rest == "clear" then VanguardDB.trainers = nil return ns.Chat(L["Forgot every trainer."]) end
   if rest == "next" then
     local level = ns.PlainNumber(ns.Client.Call("UnitLevel", "player")) or 1
-    return sayUpcoming(level, L["Trainers you've visited teach, in the next levels:"]) or ns.Chat(L["Nothing remembered for the next levels. Visit your trainer with Trainer memory on (/vg > Town and gear)."])
+    return sayUpcoming(level, L["Trainers you've visited teach, in the next levels:"]) or ns.Chat(L["Nothing remembered for the next levels. Visit your trainer with Remember what trainers teach on (/vg > Town and gear)."])
   end
   ns.Chat(ns.Format(L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."], { count = remembered() }))
 end

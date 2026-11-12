@@ -167,28 +167,47 @@ local function centeredSpacing(saved)
   saved.layout = 2
 end
 
--- Whether v is a finite number of 1 or more (NaN and infinity are not).
-local function atLeastOne(v)
-  return type(v) == "number" and v >= 1 and v < math.huge
+-- The most buttons a bar has, and the shared and per-bar limits the options sliders and the migration below
+-- both read: button size and spacing in px, as { lowest, highest }.
+AB.MAX_BUTTONS = 12
+AB.LIMITS = { size = { 24, 48 }, spacing = { 0, 10 } }
+
+-- Whether v is a number from lo to hi (NaN fails both comparisons, so it is out).
+local function within(v, lo, hi)
+  return type(v) == "number" and v >= lo and v <= hi
 end
 
--- A bar's saved size, button count or buttons per row that is not a finite number of 1 or more (a hand-edited
--- file or a crafted string) is dropped, so the defaults fill it in. The settings may have no bars yet (before ns.Fill).
+-- Whether v is a whole number of 1 up to the most buttons a bar has.
+local function whole(v)
+  return within(v, 1, AB.MAX_BUTTONS) and math.floor(v) == v
+end
+
+-- A bar's saved button count or buttons per row that is not a whole number of 1 to 12, or its size outside the
+-- slider's limits (a hand-edited file or a crafted string), is dropped, so the defaults fill it in.
+local function cleanBar(b)
+  if not within(b.size, AB.LIMITS.size[1], AB.LIMITS.size[2]) then b.size = nil end
+  if not whole(b.buttons) then b.buttons = nil end
+  if not whole(b.perRow) then b.perRow = nil end
+end
+
+-- Cleans every saved bar. The settings may have no bars yet (before ns.Fill).
 local function cleanBars(saved)
   for _, b in pairs(type(saved.bars) == "table" and saved.bars or {}) do
-    if type(b) == "table" then
-      for _, field in ipairs({ "size", "buttons", "perRow" }) do
-        if not atLeastOne(b[field]) then b[field] = nil end
-      end
-    end
+    if type(b) == "table" then cleanBar(b) end
   end
 end
 
--- A saved spacing that is not a finite number of 0 or more (a hand-edited file or a crafted string) is dropped,
+-- A saved shared button size outside the slider's limits is dropped, so the default fills it in.
+local function cleanSize(saved)
+  local limits = AB.LIMITS.size
+  if saved.size ~= nil and not within(saved.size, limits[1], limits[2]) then saved.size = nil end
+end
+
+-- A saved spacing outside the slider's limits (a hand-edited file or a crafted string) is dropped,
 -- so the default fills it in.
 local function cleanSpacing(saved)
-  local gap = saved.spacing
-  if gap ~= nil and not (type(gap) == "number" and gap >= 0 and gap < math.huge) then saved.spacing = nil end
+  local limits = AB.LIMITS.spacing
+  if saved.spacing ~= nil and not within(saved.spacing, limits[1], limits[2]) then saved.spacing = nil end
 end
 
 -- Every upgrade of saved action bar settings, oldest first.
@@ -196,6 +215,7 @@ local function migrate(saved)
   keepOldRightBars(saved)
   centeredSpacing(saved)
   cleanBars(saved)
+  cleanSize(saved)
   cleanSpacing(saved)
 end
 ns.Migrate("ActionBars", migrate)
