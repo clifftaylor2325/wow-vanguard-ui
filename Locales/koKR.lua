@@ -1419,7 +1419,7 @@ L["Out of combat each part dims, or hides until the mouse is over it. A fight or
 L["Out of stealth"] = "은신 아닐 때"
 L["Overall"] = "전체"
 L["Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "솔로, 파티, 공격대, PvP, 인스턴스, 휴식 상태별 재정의: 창 위치, 크기, 투명도, 표시 여부, 정보 띠 블록, 이름표 스위치를 비전투 중에 적용합니다. 활성 재정의가 정한 항목을 바꾸면 그 상황을 벗어날 때까지 유지됩니다."
-L["Overrides for Solo, Party, Raid, PvP, Mythic+, Delve, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "솔로, 파티, 공격대, PvP, 신화+, 구렁, 인스턴스, 휴식 중 덮어쓰기: 창 위치, 크기, 불투명도, 표시 여부, 정보 띠 블록, 이름표 스위치를 전투 밖에서 적용. 활성 덮어쓰기가 정한 것을 바꾸면 그 상황을 벗어날 때까지 유지됩니다."
+L["Overrides for Solo, Party, Raid, PvP, Mythic+, Delve, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "솔로, 파티, 공격대, PvP, 신화+, 구렁, 인스턴스, 휴식 상태별 재정의: 창 위치, 크기, 투명도, 표시 여부, 정보 띠 블록, 이름표 스위치를 비전투 중에 적용합니다. 활성 재정의가 정한 항목을 바꾸면 그 상황을 벗어날 때까지 유지됩니다."
 L["Page {n}"] = "{n}페이지"
 L["Panel gradient off."] = "패널 그라데이션 꺼짐."
 L["Panel gradient on: windows run a shade lighter toward the top."] = "패널 그라데이션 켜짐: 창이 위로 갈수록 조금 밝아집니다."
