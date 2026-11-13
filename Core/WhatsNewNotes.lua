@@ -10,6 +10,19 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.7", groups = {
+    { module = "UnitFrames", label = "Frames and HUD", items = {
+      { text = "The keep and Standards fit your screen better: frames stand inside the wall and give way to bigger buttons and the bars beside them." },
+      { text = "Fixes for Tabs, auras, nameplates, cast bars and raid frames, and a HUD layout picked in a fight shows at once." },
+    } },
+    { module = "Other", label = "Options and profiles", items = {
+      { text = "Escape closes the options window, and on an open dropdown only the menu." },
+      { text = "Profile switches, spec swaps and imports keep the profile you picked, and a switch taken back closes its reload offer." },
+    } },
+    { module = "Other", label = "Everything else", items = {
+      { text = "Fixes for key setup and click casting, game windows, the auction house and merchant, quests, the minimap and chat windows." },
+    } },
+  } },
   { version = "0.9.6", groups = {
     { module = "Bags", label = "Bags and town", items = {
       { text = "A profession bag's empty slots get their own section (\"Empty: herb bag\"), so the combined bag no longer counts them as room for anything." },
