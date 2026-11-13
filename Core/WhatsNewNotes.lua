@@ -12,7 +12,7 @@ local ADDON, ns = ...
 ns.WHATS_NEW = {
   { version = "0.9.7", groups = {
     { module = "UnitFrames", label = "Frames and HUD", items = {
-      { text = "The keep and Standards fit your screen better: frames stand inside the wall, move out for bigger buttons and give way to the bars beside them." },
+      { text = "The keep and Standards fit your screen better: frames stand inside the wall and give way to bigger buttons and the bars beside them." },
       { text = "Fixes for Tabs, auras, nameplates, cast bars and raid frames, and a HUD layout picked in a fight shows at once." },
     } },
     { module = "Other", label = "Options and profiles", items = {
