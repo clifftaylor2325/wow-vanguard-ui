@@ -4,6 +4,85 @@ What changed for players in each release, newest first. In game, the What's new 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.7
+
+<!-- SMOKE steps 33.666 to 33.836 -->
+
+Fixes across HUD layouts, frames and auras, raid frames, keys and click casting, options, setup and profiles, game windows, the auction house, quests, the map and chat.
+
+### Unit frames, HUD and auras (0.9.7)
+
+- The keep: a dragged frame comes off the wall edge by edge, the frames stand inside the wall and move out for bigger buttons, the layout holds only where it fits, and it gives way to the bag and menu bar and steps in when bar 1 is dragged away.
+- Standards needs a screen about 1180 wide, a small banner's debuffs wrap in fives, and tall party frames grow up from the foot.
+- Under Tabs, party pets and targets and the focus cast bar keep clear of the party column and the raid grid, and cast bars sit over the untabbed frames.
+- A HUD layout picked in a fight shows at once; a HUD look picked in a fight waits for the fight to end.
+- Portraits stay off on the Versus deck, small Hairline frames keep their health line, the target's health number stays clear of the tag mark, and the status chip clears a small frame near the screen's edge.
+- A class accent follows each character on a shared profile, and window borders redraw after a UI scale change.
+- Auras: the target's debuff edges come back with the aura module, enchant cells are right after a login or a scale change, and a long buff list in a fight draws in full.
+- Nameplates and cast bars: the game's cast bars show while yours is unticked, plate debuff icons follow a target change in a fight, a friend's cast gets no interrupt mark, and a Standards banner shows its power tick spark.
+- Retail: the Cooldown Manager row hides the crest, and private aura spots stay right while an enchant runs out and over a taller target of target.
+
+### Raid frames (0.9.7)
+
+- Groups as and Sort by role apply at once, and raid tiles redraw after a change of direction.
+- Each missing buff you ticked gets its own mark, and raid indicators keep clear of the name and the status.
+- Raid status switched on during a ready check shows each tile's answer, and a raid roster in the middle of the screen keeps its line count.
+
+### Action bars, keys and click casting (0.9.7)
+
+- Pixel-perfect buttons keep their size after a reload, clicks pass through a fading bar, each Calm bar shows its own backing, and a button stays lit until its cast ends.
+- The bag bar keeps its slot sizes after you pick up an item, and hover keys work after the Calm HUD turns on.
+- Key setup leaves a rank you placed by hand, puts no later spell on a key you already filled, and keeps two unticked keys unticked on Ready.
+- Apply stops when the key set changed under it or the gamepad came on, and Put everything back works after Only this character.
+- Click casting knows your ranks at login, and its page, cell tooltips and Try it tile follow a talent switch, a new rank and a click the game's own window binds.
+- Spell ranks: forgetting trainers forgets every class's.
+
+### Options, setup and profiles (0.9.7)
+
+- Escape closes the options window as its close button does, and on an open dropdown closes only the menu.
+- General rows show their reset arrow, a greyed module row under Show: On jumps to its parent, the Modules page note stays above the tabs, and the page keeps its scroll over a profile change.
+- The footer's reload notice and errors line keep clear of the version line when room is short, and clearing the settings search shows every row again.
+- Profiles: the page follows a profile you make or reset, a hand-picked profile survives a spec swap and back, Copy here writes into the profile the reload loads, and taking a staged switch back closes its reload offer.
+- `/vg profile` names the profile the reload loads, an imported UI scale survives the spec's own profile, and leaving unlock without saving keeps the new profile's frames.
+- A matched frame follows the other frame's size after a reload, and the settings-loss question comes back after Use on the profile already in use.
+- Setup: Tab reaches the accent swatches and style tiles, clicking the choice already made changes nothing, and no needless reload is offered after `/vg graphics apply` or for a profile of its own with Keep everywhere.
+- Reset theme in a fight waits for the fight to end, and the accent's usage line names class and reset.
+- `/vg graphics apply` names the value the client kept, `/vg enable` says when a module waits for its parent, `/vg report` carries the paused parts and blocked calls, and a shared font turns up after login.
+
+### Game windows (0.9.7)
+
+- Popups keep their panel where the game hides the UI, on the Trading Post (Retail) and in the report's screenshot mode, and Vanguard's own dialog gives way to the game's window.
+- The coin window has the panel texture, Required money and a pet trainer's training point price use Vanguard's font, and Guild Info's first heading and the trainer's category headings keep their look.
+- Guild News filters stay by the guild window, an unavailable Guild Finder row and a greyed reputation check label read greyed, and Retail lists no pet stable window.
+- A window docked again forgets its old spot.
+
+### Auction house, bags and town (0.9.7)
+
+- Sell card: Cheapest shows a price several sellers share, Up now undercuts it, and an empty card shows no late warning.
+- An auction sale is counted on the second day, the Upgrades list follows a changed stat weight at once, the Lists and Posting tabs switch asks for a reload, and the Crafting costs switch hides and shows its panel at once.
+- Reagents: one the client names late gets its name and icon, banked reagents are not bought again, and on Retail a reagent held at another rank counts as held and warband bank reagents count in the craft queue.
+- The craft queue's Next line says to set the count, and on Retail a shield's upgrade line shows beside a ranged weapon.
+- Merchant: junk sells after a visit to Buyback, the helpers work when switched on at an open merchant, the sell list and vendor words match in any case, and the Buyback word matches the merchant's tab on Chinese clients.
+- The Train all switch works at an open trainer, the combined bag steps aside for the game's plain grid while the gamepad interface is on, and its upgrade arrow follows the weights and its switch.
+- Spend planned buys again after the game refuses one.
+
+### Quests, map and chat (0.9.7)
+
+- Folded zones stay folded with the quest log off, zone headers show their fold chevron, and the quest log switched off hands its button back.
+- An area quest the game accepts opens no dialog, the game's quest window closes after the hand-back toggle, a gossip level picker closes with the talk (Retail), and quest automation leaves adventure map offers alone (Retail).
+- The hand-in page lights a quest line that finishes mid-talk, shows a currency the quest asks for, and hides what the game hides, rewards included.
+- Map: the minimap drawer closes with its last button, the round minimap's buttons sit evenly in from the rim, the square minimap fills its square in a hybrid-map place, and a Shift-click waypoint holds over an auto-tracked quest.
+- Chat: floating windows keep their spot when dragged and give up their handle when closed, the main window keeps its size, and an Edit Mode chat size is kept only when you save it.
+- Find in chat finds lines in a whisper pop-out and shows a tile switched on late, the Filtered tab is translated from the start and closes cleanly with the filter off, and chat history keeps no hidden-message placeholder.
+
+### Combat tools and group (0.9.7)
+
+- Meter: a second click on a line closes its detail, for a pet's line and in a fight too, and the fight recap leaves out Deaths 0.
+- Situations: Record for in a fight says it can't start and records nothing, and with Situations off it refuses to record.
+- The AFK screen comes up when switched on while away, and the roll tracker shows loot already being rolled for.
+- Dungeon card: Last run is right after a long stay and a reload, and a visit ended while the card was off is kept.
+- The reputation bar's percent reads like the XP bar's, and the group board's probe speaks your language.
+
 ## 0.9.6
 
 <!-- SMOKE steps 2.1n, 2.1o, 7.2s, 7.2t, 7.2u, 9.2h, 9.6a, 10.4e, 10.4f, 14.9.5, 14.9.5a, 33.390a, 33.485, 33.486, 33.487, 33.488, 33.489, 33.490, 33.491, 33.492, 33.493, 33.494, 33.495, 33.496, 33.497, 33.498, 33.499, 33.500, 33.501, 33.502, 33.503, 33.504, 33.505, 33.506, 33.507, 33.508, 33.509, 33.510, 33.511, 33.512, 33.513, 33.514, 33.545, 33.546, 33.547, 33.548, 33.549, 33.550, 33.551, 33.552, 33.553, 33.554, 33.555, 33.556, 33.557, 33.558, 33.560, 33.561, 33.562, 33.563, 33.564, 33.565, 33.566, 33.567, 33.568, 33.568a, 33.569, 33.570, 33.571, 33.572, 33.573, 33.574, 33.575, 33.605, 33.606, 33.607, 33.608, 33.615, 33.616, 33.617, 33.625, 33.626, 33.627, 33.628, 33.629, 33.635, 33.636, 33.637, 33.638, 33.639, 33.640, 33.641, 33.642, 33.643, 33.644, 33.645, 33.646, 33.647, 33.648, 33.649, 33.650, 33.651, 33.652, 33.653, 33.654, 33.655, 33.656, 33.657, 33.658, 33.659, 33.660, 33.661, 33.662, 33.663, 33.664, 33.664a, 33.665, 34.16, 34.17, 34.18, 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9, 35.10, 35.11, 35.12 -->
