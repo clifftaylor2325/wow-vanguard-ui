@@ -7045,6 +7045,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The reload offer closes.
 - If it fails, paste: the offer's text if it stayed.
 
+### 33.837 Friendly players' plates in a dungeon show names only (dungeon plates; WoW Forever and Retail)
+
+- Do: Out of combat, tick `/vg` → Nameplates → "Friendly players as names only (the game's setting)" and hover it. Enter a dungeon with a group, Friendly players' nameplates on. [Client: Forever and Retail.]
+- Expect: The tip says the game keeps friendly players' plates in dungeons and raids. Inside, your group's plates show only their names, with no game health bar; enemy plates still have Vanguard's look. Untick it and the game's full plates come back.
+- If it fails, paste: a screenshot inside the dungeon, `/vg plates` and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

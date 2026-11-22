@@ -18,7 +18,9 @@
 -- Vanguard draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
 -- plates. Plates the client keeps from addons (forbidden ones, such as
--- friendly plates in some instances) are left as they are, and so are the
+-- friendly players' plates in dungeons and raids) are left as they are (the
+-- page's names-only row for friendly players is the game's own way to quiet
+-- them), and so are the
 -- plates of units the client shows only a widget for (its own frame draws the
 -- widget). The game's soft-target icon sits on the frame hidden here, so
 -- Vanguard draws it on its own plate, when and as the game would.
@@ -109,6 +111,9 @@ NP.softIcons = {}
 -- value bits Vanguard's enemy plates follow; NP.info holds them as last read.
 NP.INFO_CVAR = "nameplateInfoDisplay"
 NP.info = { percent = false, value = false }
+-- The game's names-only setting for friendly players' plates. Inside dungeons and raids the game draws those plates
+-- itself and keeps them from addons (forbidden plates), so this is the one way to quiet them there.
+NP.FRIEND_NAMES_CVAR = "nameplateShowOnlyNameForFriendlyPlayerUnits"
 -- Plates shorter than this have no room for the health numbers.
 NP.NUMBERS_MIN_HEIGHT = 10
 
@@ -1321,10 +1326,22 @@ function NP.InfoSetting(key)
   return function() return infoBit(key) end, function(v) setInfoBit(key, v) end
 end
 
--- The game's own plate settings Vanguard mirrors: which plates it draws (the V and Shift-V keys)
--- and, where the client has them, the Info display's health numbers.
+-- The row for the game's names-only setting on friendly players, with a tip that says why it matters in dungeons.
+function NP.FriendNamesRow()
+  local row = { "check", L["Friendly players as names only (the game's setting)"], NP.GameSetting(NP.FRIEND_NAMES_CVAR) }
+  row.tip = L["In dungeons and raids the game draws friendly players' plates itself and keeps them from addons. On, they show only the name there."]
+  return row
+end
+
+-- The game's own plate settings Vanguard mirrors: which plates it draws (the V and Shift-V keys), its names-only
+-- mode for friendly players and, where the client has them, the Info display's health numbers.
 function NP.GameRows()
-  local rows = { { "check", L["Enemy nameplates (the game's setting)"], NP.GameSetting("nameplateShowEnemies") }, { "check", L["Friendly players' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", L["Friendly NPCs' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyNPCs") } }
+  local rows = {
+    { "check", L["Enemy nameplates (the game's setting)"], NP.GameSetting("nameplateShowEnemies") },
+    { "check", L["Friendly players' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyPlayers") },
+    NP.FriendNamesRow(),
+    { "check", L["Friendly NPCs' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyNPCs") },
+  }
   if not hasInfoDisplay() then return rows end
   rows[#rows + 1] = { "check", L["Health percent on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthPercent") }
   rows[#rows + 1] = { "check", L["Health value on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthValue") }
