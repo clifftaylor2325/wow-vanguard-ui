@@ -7051,6 +7051,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The tip says the game keeps friendly players' plates in dungeons and raids. Inside, your group's plates show only their names, with no game health bar; enemy plates still have Vanguard's look. Untick it and the game's full plates come back.
 - If it fails, paste: a screenshot inside the dungeon, `/vg plates` and `/vg errors`.
 
+### 33.838 Your HoTs show on the party and raid frames (raid auras; WoW Forever)
+
+- Do: As a druid (or a priest with Renew), in a party with Vanguard's party frames, cast Rejuvenation and Regrowth on a party member, out of combat and then in a fight inside a dungeon. Then give them Mark of the Wild or Thorns too. [Client: Forever.]
+- Expect: Both HoTs show at the bottom right of that player's tile, with a sweep and no timer numbers, and light up near their end; the one ending soonest sits rightmost. A long buff you cast (Mark of the Wild, Thorns) shows only after your HoTs, in a slot they leave free.
+- If it fails, paste: a screenshot of the tile with the HoTs on, whether you were in a fight or a dungeon, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
