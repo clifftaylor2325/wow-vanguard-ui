@@ -179,6 +179,18 @@ it("the Nameplates page switches the game's enemy and friendly plates, out of co
   setCombat(addon, false);
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "once the fight ends").toBe("0");
 });
+it("the Nameplates page switches the game's names-only mode for friendly players, the one look that reaches their plates in dungeons", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + "SetCVar('nameplateShowOnlyNameForFriendlyPlayerUnits', 0)");
+  addon.eval('ns.Options.Show("nameplates")');
+  addon.eval('__click("Friendly players as names only")');
+  expect(addon.eval("return GetCVar('nameplateShowOnlyNameForFriendlyPlayerUnits')"), "ticking the row sets the game's setting").toBe("1");
+  setCombat(addon, true);
+  addon.eval('__click("Friendly players as names only")');
+  expect(addon.eval("return GetCVar('nameplateShowOnlyNameForFriendlyPlayerUnits')"), "not in a fight").toBe("1");
+  setCombat(addon, false);
+  expect(addon.eval("return GetCVar('nameplateShowOnlyNameForFriendlyPlayerUnits')"), "once the fight ends").toBe("0");
+  expect(addon.eval("return ns.GetModule('Nameplates').FriendNamesRow().tip"), "its tip says why: the game keeps those plates in dungeons").toMatch(/^In dungeons and raids the game draws friendly players' plates itself/);
+});
 // The question dialog: whether it shows, and its question.
 const question = (addon) => addon.eval("local f = Vanguard_Question return { f ~= nil and f:IsShown(), f and f.title:GetText() or false }");
 it("enemy plates off: Vanguard offers once per character to turn them on, and only a yes changes the game's setting", () => {
@@ -399,8 +411,8 @@ it("the Nameplates page mirrors the game's health number boxes and writes them o
   expect(addon.eval('return { C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2), __numbers("nameplate1").value[1] }'), "and is written after it").toEqual([true, true]);
   // How many rows the game settings part of the page has, on a client set up by `lua`.
   const rows = (lua) => loggedIn(UNITS_ENV + lua).eval('local n = 0 for _, row in ipairs(ns.GetModule("Nameplates").GameRows()) do n = n + 1 end return n');
-  expect(rows("__wfgWorld.cvarBits.nameplateInfoDisplay = nil"), "a client without the setting gets no rows for it").toBe(3);
-  expect(rows(""), "the full list where it has it").toBe(5);
+  expect(rows("__wfgWorld.cvarBits.nameplateInfoDisplay = nil"), "a client without the setting gets no rows for it").toBe(4);
+  expect(rows(""), "the full list where it has it").toBe(6);
   const unwritable = loggedIn(UNITS_ENV + "C_CVar.SetCVarBitfield = nil");
   unwritable.eval("local _, set = ns.GetModule('Nameplates').InfoSetting('CurrentHealthValue') set(true)");
   expect(unwritable.eval('return C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2)'), "a client that can't write the bit is left as it is").toBe(false);
