@@ -1,7 +1,7 @@
 // auras: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, indexedNil, isTok, key, lacking, loggedIn, putAway, px, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
 // One notice: its label, then the error indexing the missing style enum (its brackets escaped for the pattern).
@@ -19,7 +19,7 @@ const AURA_ENV = `
       ["HARMFUL|RAID"] = { { icon = "TEST-ONLY-CURSE", dispelName = "Magic", auraInstanceID = 21 } },
       ["HARMFUL|!RAID"] = { { icon = "TEST-ONLY-BOSS", auraInstanceID = 22 } },
       HARMFUL = { { icon = "TEST-ONLY-CURSE", dispelName = "Magic", auraInstanceID = 21 }, { icon = "TEST-ONLY-BOSS", auraInstanceID = 22 } },
-      ["HELPFUL|PLAYER|RAID_IN_COMBAT"] = { { icon = "TEST-ONLY-HOT-A", expirationTime = 1030, duration = 12, applications = 2 },
+      ["HELPFUL|PLAYER|RAID"] = { { icon = "TEST-ONLY-HOT-A", expirationTime = 1030, duration = 12, applications = 2 },
         { icon = "TEST-ONLY-HOT-B", expirationTime = { __secret = true }, duration = { __secret = true } } },
     },
   }
@@ -34,7 +34,7 @@ const indicators = (addon) => addon.eval(`local b = Vanguard_RaidUnitButton1
       regs = #first.__dispel, wash = first.__dispel[7].texture.__vertexColor, washAlpha = first.__dispel[7].texture:GetAlpha(), washShown = first.__dispel[7].texture.__shown, edge = first.__dispel[8].texture.__vertexColor },
     others = { filter = d.__groups[2].filter, max = d.__groups[2].opts.maxFrameCount, icon = d.__groups[2].buttons[1].__shown and d.__groups[2].buttons[1].__icon.__texture },
     hots = { filter = h.__groups[1].filter, max = h.__groups[1].opts.maxFrameCount, icon = h.__groups[1].buttons[1].__icon.__texture,
-      count = h.__groups[1].buttons[1].__count:GetText(), pandemic = #h.__groups[1].buttons[1].__pandemic, timer = h.__groups[1].buttons[1].__durationText },
+      count = h.__groups[1].buttons[1].__count:GetText(), sort = h.__groups[1].opts.sortMethod, pandemic = #h.__groups[1].buttons[1].__pandemic, timer = h.__groups[1].buttons[1].__durationText },
     mouse = first.__mouse, unit = d.__unit, rowsShown = d.__shown and h.__shown,
     dPoint = { d.__points.BOTTOMLEFT.x, d.__points.BOTTOMLEFT.y }, hPoint = { h.__points.BOTTOMRIGHT.x, h.__points.BOTTOMRIGHT.y } }
   return out`);
@@ -53,6 +53,15 @@ it("raid auras: a roster change that gives a tile's token to someone else clears
   expect(shown(), "raid1 now names a member with no auras: nothing of the last one stays").toBe(0);
 });
 
+it("raid HoTs: WoW Retail reads the client's raid-frame flag, which WoW Forever's spell ranks lack", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + `
+    __auras.raid1["HELPFUL|PLAYER|RAID_IN_COMBAT"] = { { icon = "TEST-ONLY-RETAIL-HOT" } }`, { client: RETAIL_CLIENT });
+  addon.eval('__spawn(1, "raid1")');
+  const hots = addon.eval(`local g = Vanguard_RaidUnitButton1.hotRow.frame.__groups[1]
+    return { g.filter, g.buttons[1].__icon.__texture }`);
+  expect(hots, "the flagged HoT shows").toEqual(["HELPFUL|PLAYER|RAID_IN_COMBAT", "TEST-ONLY-RETAIL-HOT"]);
+});
+
 it("raid indicators", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
@@ -61,7 +70,8 @@ it("raid indicators", () => {
   expect(i.others.filter === "HARMFUL|!RAID" && i.others.max === 2 && i.others.icon === "TEST-ONLY-BOSS", "then up to two others (a boss debuff shows too)").toBeTruthy();
   expect(i.dispel.regs === 11 && i.dispel.washShown && isTok(addon, i.dispel.wash, "magic") && i.dispel.wash[3] === 1 && i.dispel.washAlpha === 0.35 && isTok(addon, i.dispel.edge, "magic"),
     "the client washes the tile and colors its edge by the debuff's type (after the icon's edge and badge)").toBeTruthy();
-  expect(i.hots.filter === "HELPFUL|PLAYER|RAID_IN_COMBAT" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
+  expect(i.hots.filter === "HELPFUL|PLAYER|RAID" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
+  expect(i.hots.sort, "soonest to end first, so a HoT comes before a long buff you cast").toBe(addon.eval("return AuraContainerSortMethod.ExpirationOnly"));
   expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
   expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
   expect(i.dPoint[0] === 2 && i.dPoint[1] === 5 && i.hPoint[0] === -2 && i.hPoint[1] === 5, "debuffs sit bottom left and HoTs bottom right, above the power bar (5 up from the tile's bottom, so a new height moves them)").toBeTruthy();
@@ -795,7 +805,7 @@ it("aura filters pass through on a client without the aura read", () => {
 });
 
 it("the raid dispel highlight reads through the stripped filter on the fallback", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER",
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID: this client rejects it; reading HELPFUL|PLAYER",
     "aura filter HARMFUL|!RAID: this client rejects it; reading HARMFUL");
   const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.noAuraContainer = true
     __errors = 0

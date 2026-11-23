@@ -9,8 +9,9 @@
 -- wash and edge are handed to the client too, so they keep their color while
 -- the client hides debuff types in instanced combat; on the fallback they are
 -- painted here. The client's filters decide what counts: "HARMFUL|RAID" is
--- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
--- showing on raid frames. Vanguard never reshapes a row's groups once it is made, so a
+-- what YOU can dispel, and your HoTs are read through RA.HOT_FILTERS (on WoW
+-- Forever every buff you cast that you can apply, soonest to end first, as the
+-- client flags none of its spell ranks for raid frames). Vanguard never reshapes a row's groups once it is made, so a
 -- changed setting makes the rows again (the module restarts, out of combat).
 --
 -- Indicators: up to three small icons down the tile's right edge, under the
@@ -145,13 +146,24 @@ function RA.DebuffSpec(b, z, s)
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = debuffGroups(b, z, s) }
 end
 
+-- The client's filter for your HoTs, by client. RAID_IN_COMBAT passes only the auras the client's spell data flags
+-- for raid frames, and WoW Forever's vanilla spell ranks (Rejuvenation, Regrowth, Renew) carry no such flag, so
+-- there it passed none of them. On Forever the row reads every buff you cast that you can apply (RAID), as the
+-- game's own raid frames choose buffs; sorted soonest to end first, your HoTs come before a long buff.
+RA.HOT_FILTERS = { forever = "HELPFUL|PLAYER|RAID", retail = "HELPFUL|PLAYER|RAID_IN_COMBAT" }
+
+-- The HoT row's one group: count icons of the given size through this client's filter, soonest to end first.
+local function hotGroup(count, size)
+  local filter = RA.HOT_FILTERS[ns.IsForever() and "forever" or "retail"]
+  return { filter = filter, max = count, size = size, pandemic = true, sort = "ExpirationOnly" }
+end
+
 -- Your HoTs from the bottom-right corner of the icon strip, growing left (a whole count, as for the debuffs).
 function RA.HotSpec(b, z, s)
   local right, bottom = z.hots[1] + z.hots[3], z.hots[2] + z.icon
   local count = s.hots and math.min(math.floor(s.maxHots + 0.5), z.per) or 0
   return { point = { "BOTTOMRIGHT", b, "BOTTOMRIGHT", right - z.width, z.height - bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
-    gap = 1, mouse = false, level = b:GetFrameLevel() + 10,
-    groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
+    gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = { hotGroup(count, z.icon) } }
 end
 
 -- Adds the aura rows to a raid tile. The fallback highlight follows the debuff

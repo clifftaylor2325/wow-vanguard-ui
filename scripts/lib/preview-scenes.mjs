@@ -180,7 +180,7 @@ const RAID = `
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
     if filter == "HARMFUL|RAID" then return i == 1 and debuffs[unit] and { icon = "TEST-ONLY-DEBUFF", dispelName = debuffs[unit] } or nil end
     if filter == "HARMFUL|!RAID" then return i == 1 and boss[unit] and { icon = "TEST-ONLY-BOSS" } or nil end
-    if filter == "HELPFUL|PLAYER|RAID_IN_COMBAT" and i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
+    if (filter == "HELPFUL|PLAYER|RAID" or filter == "HELPFUL|PLAYER|RAID_IN_COMBAT") and i <= (hots[unit] or 0) then return { icon = "TEST-ONLY-HOT", expirationTime = 0, duration = 0 } end
   end }
   local heals, shields = { raid2 = 9000, raid5 = 12000, raid12 = 6000 }, { raid1 = 8000, raid6 = 5000, raid11 = 7000 }
   CreateUnitHealPredictionCalculator = function()
