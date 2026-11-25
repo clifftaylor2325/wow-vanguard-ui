@@ -123,6 +123,14 @@ function AH.CheckUndercuts()
   AH.PaintOwned()
 end
 
+-- The auction house closed: an undercut mark is a fact about the prices of that visit, so none outlives it (the
+-- rows stay, expired ones too). Cancel next undercut waits for the next Check undercuts, which would otherwise
+-- cancel an auction nobody undercuts any more, with no question when the game charges nothing.
+function AH.ForgetUndercuts()
+  for _, a in ipairs(AH.owned) do a.undercut = nil end
+  AH.checked = nil
+end
+
 -- After a post or a cancel, with "check again" on: your auctions are checked again (a check still
 -- waiting is dropped first, so the searches never pile up).
 function AH.Recheck()
