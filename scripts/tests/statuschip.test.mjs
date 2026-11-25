@@ -141,6 +141,13 @@ it("status chip: in the Like the game's layout the chip sits above the player fr
   const r = addon.eval(`local f, player = Vanguard_StatusChip, Vanguard_player
     return { f:GetBottom() >= player:GetTop(), f:GetLeft() >= 0, player:GetLeft() }`);
   expect(r, "above the frame (its top left is 20 from the screen's edge), on the screen").toEqual([true, true, 20]);
+  // H47-5-102: under the Tabs look, with the crown and the PvP tag up, the chip stands over the name tab and both marks.
+  addon.eval("UnitIsGroupLeader = function(u) return u == 'player' end UnitIsPVP = function(u) return u == 'player' end ns.Theme.Settings().hudLook = 'tabs' ns.Theme.Refresh()");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");
+  const marks = addon.eval(`local f, p = Vanguard_StatusChip, Vanguard_player
+    return { f:GetBottom() >= p.tab:GetTop(), f:GetBottom() >= p.status.leader:GetTop(), f:GetBottom() >= p.status.pvp:GetTop() }`);
+  expect(marks, "the chip clears the name tab, the crown and the PvP tag").toEqual([true, true, true]);
   addon.eval("ns.Setup.ApplyLayout('damage') ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");
   expect(addon.eval("return Vanguard_StatusChip:GetRight() <= Vanguard_player:GetLeft()"), "back in a centered layout it goes left of the frame again").toBe(true);
 });

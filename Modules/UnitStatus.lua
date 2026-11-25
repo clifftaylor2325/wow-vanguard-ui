@@ -109,6 +109,13 @@ local function layout(f)
   end
 end
 
+-- Lays a frame's marks out and tells the readout that stands over the player frame's corner (UnitExtras' chip, which
+-- lifts past the marks) to place itself again.
+local function relayout(f)
+  layout(f)
+  if f.key == "player" and ST.OnLayout then ST.OnLayout() end
+end
+
 -- Shows each mark the unit has (all hidden when `on` is false) and gives the set as a string of 1s and 0s.
 local function showMarks(f, on)
   local sig = ""
@@ -133,7 +140,7 @@ function ST.Update(f)
   if f.status.role:IsShown() then paintRole(f.status.role, f.unit) end
   if sig == f.vgStatusSig then return end
   f.vgStatusSig = sig
-  ns.OutOfCombat(function() layout(f) end, "unit status " .. f.key)
+  ns.OutOfCombat(function() relayout(f) end, "unit status " .. f.key)
 end
 
 -- Lays a frame's marks out again from its tab or edge (the look changed), and paints them.
