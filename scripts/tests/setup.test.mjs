@@ -566,3 +566,11 @@ it("H46-24-3: Tab on the Look step walks the accent swatches and the style tiles
   const total = addon.eval("local p = Vanguard_Setup.pages.look return #p.choices == #p.swatches + #p.styles");
   expect(total, "the style tiles follow the swatches").toBe(true);
 });
+
+it("setup: the Move things page says Next locks the frames, and Next does", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  for (let i = 0; i < 7; i += 1) addon.eval('local b = Vanguard_Setup.next b:GetScript("OnClick")(b, "LeftButton")');
+  expect(addon.eval("return { Vanguard_Setup.pages.move.lines[5]:GetText(), ns.Unlocked() }"), "unlocked on Move things").toEqual(["Next locks them. /vg unlock moves them any time.", true]);
+  addon.eval('local b = Vanguard_Setup.next b:GetScript("OnClick")(b, "LeftButton")');
+  expect(addon.eval("return ns.Unlocked()"), "locked on All set").toBe(false);
+});

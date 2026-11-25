@@ -966,7 +966,7 @@ end
 local function movePage(page)
   local texts = { L["Your frames are unlocked: drag a handle to move that frame."],
     L["Click a handle, then the arrow keys nudge it (Shift ×10)."], L["Right-click a frame for its anchor, scale and opacity."],
-    L["The bar at the top: Save and lock, or Exit without saving."], L["Done locks them. /vg unlock moves them any time."] }
+    L["The bar at the top: Save and lock, or Exit without saving."], L["Next locks them. /vg unlock moves them any time."] }
   page.lines = { pageLabel(page, texts[1], "label", "text") }
   page.lines[1]:SetPoint("TOPLEFT")
   for i = 2, #texts do
