@@ -88,9 +88,21 @@ local function buffGroups(look)
   return groups
 end
 
--- The buff row above a frame (over its tab, where the look gives it one: UF.Crown), wrapping at its width.
+-- What the target's buff row leaves clear at its right end for your threat percent (Modules/UnitExtras.lua), which stands
+-- 12 in from the frame's corner, 3 above it: the text's room ("100%") and that 12.
+FA.THREAT_ROOM = 48
+
+-- The room the buff row leaves for the threat percent: FA.THREAT_ROOM while that readout is on (a reload changes it), else none.
+function FA.ThreatRoom()
+  local UX = ns.GetModule("UnitExtras")
+  if not (UX and ns.ModuleEnabled("UnitExtras")) then return 0 end
+  return ns.Settings("UnitExtras", UX.defaults).threat and FA.THREAT_ROOM or 0
+end
+
+-- The buff row above a frame (over its tab, where the look gives it one: UF.Crown), wrapping at its width, short of
+-- the threat percent at the frame's top right end.
 function FA.BuffSpec(f, look)
-  return { point = { "BOTTOMLEFT", UF.Crown(f), "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = lineWidth(f),
+  return { point = { "BOTTOMLEFT", UF.Crown(f), "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = lineWidth(f) - FA.ThreatRoom(),
     gap = 2, timer = look.timers, masque = FA.MASQUE, groups = buffGroups(look) }
 end
 

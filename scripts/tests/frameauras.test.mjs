@@ -114,3 +114,14 @@ it("target and focus auras: a row woken by switching the module off and on follo
   settle(addon);
   expect([followed(), addon.eval("return __refits > 0")], "shown, followed again, and refit once on waking").toEqual([true, true]);
 });
+
+// Modules/UnitExtras.lua puts your threat percent 12 in from the target frame's top right corner, 3 above it, where the
+// buff row also starts to grow: the row's line stops short of it while the readout is on.
+it("target buffs: the row's line stops short of the threat percent while that readout is on", () => {
+  const spec = (saved) => loggedIn(UNITS_ENV + FRAME_AURAS, saved).eval(`local FA = ns.GetModule("FrameAuras")
+    return { line = FA.BuffSpec(Vanguard_target, FA.Look(FA.settings)).lineSize, width = Vanguard_target:GetWidth() }`);
+  const on = spec(saved("size = 30"));
+  expect(on.line).toBe(on.width - 48);
+  const off = spec({ savedVariables: "VanguardDB.profiles = { Default = { UnitExtras = { threat = false } } }" });
+  expect(off.line).toBe(off.width);
+});
