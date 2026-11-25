@@ -2265,7 +2265,7 @@ it("options tabs: a page of one card has no tabs and keeps its card's title; a h
   expect(addon.eval("return ns.Options.ShowTab(1)"), "so no tab to show").toBe(false);
   addon.eval('ns.Options.Show("healing")');
   const names = tabsOf(addon)[0].map((t) => t[0]);
-  expect([names.includes("Buffs to watch"), names[0], names[1]], "Healing: the Buffs to watch heading over the class cards is no tab of its own").toEqual([false, "On the raid frames", "Mage"]);
+  expect([names.includes("Buffs to watch"), names[0], names[1], names[names.length - 1]], "Healing: a tab per class, the typed list on its own last tab (H47-2-104)").toEqual([true, "On the raid frames", "Mage", "Buffs to watch"]);
 });
 
 it("options tabs: the tabs wrap onto a new line where the next would run past the page, and the page's view starts under them", () => {
@@ -2573,6 +2573,106 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(addon.eval("return { __overlays[1]:IsShown(), __overlays[2]:IsShown() }"), "both overlays are put away").toEqual([false, false]);
   addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
+});
+
+it("options: after Reset profile the nav keeps no changed dot from the old settings (H47-2-2)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat") __click("Copy button in the chat\'s tab bar") ns.Options.Show("profiles")');
+  expect(addon.eval("return Vanguard_Options.nav.chat.changed:IsShown()"), "the changed Chat page has its dot").toBe(true);
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval("return Vanguard_Options.nav.chat.changed:IsShown()"), "the reset profile is all defaults").toBe(false);
+});
+
+it("options: Tab onto the page's Reset this page leaves the scrolled page where it is (H47-2-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("__wfgStub.setScreen(1280, 720)");
+  addon.eval('ns.Options.Show("general") __click("Window ornaments")');
+  const view = "(function() for _, x in ipairs(__wfgStub.frames) do if x.fadeTop and x:IsVisible() then return x end end end)()";
+  addon.eval(`local v = ${view} v:ScrollTo(10000)`);
+  const isReset = "return Vanguard_Options.focusRow and Vanguard_Options.focusRow.source.isReset";
+  let before = 0;
+  for (let i = 0; i < 80 && !addon.eval(isReset); i++) {
+    before = addon.eval(`return ${view}:GetVerticalScroll()`);
+    addon.key("Vanguard_Options", "TAB");
+  }
+  expect([before > 0, addon.eval(`return ${view}:GetVerticalScroll()`)], "the page stays scrolled").toEqual([true, before]);
+});
+
+it("options: the Show a grid while moving switch shows or hides the grid at once while frames are unlocked (H47-2-5)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("unlock");
+  addon.eval('ns.Options.Show("general") ns.ShowGrid = function() __grid = true end ns.HideGrid = function() __grid = false end');
+  addon.eval('ns.MoverOptions().grid = true');
+  addon.eval('__click("Show a grid while moving")');
+  const off = addon.eval("return { ns.MoverOptions().grid, __grid }");
+  addon.eval('__click("Show a grid while moving")');
+  expect([off, addon.eval("return { ns.MoverOptions().grid, __grid }")], "off hides the grid, on shows it").toEqual([[false, false], [true, true]]);
+});
+
+it("options General: a colour the accent box cannot read is put back to the accent in use (H47-2-7)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const box = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.hex and w.swatches then
+      w.hex:SetText("#ZZZZZZ") w.hex:GetScript("OnEnterPressed")(w.hex)
+      return { w.hex:GetText(), "#" .. ns.Theme.Hex("accent"):sub(3):upper() } end end`);
+  expect(box[0], "the box names the accent in use").toBe(box[1]);
+});
+
+it("options: the search list closes when another page opens and when Escape is pressed in the box (H47-2-3, H47-2-103)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  // Types text into the options search box.
+  const type = (text) => addon.eval(`local s = Vanguard_Options.search s:SetText("${text}") s:GetScript("OnTextChanged")(s)`);
+  // Whether the search list shows.
+  const listed = () => addon.eval("return Vanguard_Options.results:IsShown()");
+  type("font");
+  addon.eval('__click("Chat")');
+  const afterNav = listed();
+  type("font");
+  addon.eval('local s = Vanguard_Options.search s:GetScript("OnEscapePressed")(s)');
+  expect([afterNav, listed()], "gone after a page click, and after Escape in the box").toEqual([false, false]);
+  type("fon");
+  expect(listed(), "typing brings it back").toBe(true);
+});
+
+it("options: a search of only spaces lists nothing and dims no page, like an empty box (H47-2-6)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('local s = Vanguard_Options.search s:SetText("  ") s:GetScript("OnTextChanged")(s)');
+  expect(addon.eval("return { Vanguard_Options.results and Vanguard_Options.results:IsShown() or false, ns.Options.matches == nil }"), "no list, no filter").toEqual([false, true]);
+});
+
+it("options: a changed setting's reset arrow sits inside its card, clear of the caption (H47-2-101)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Settings("UnitFrames").healthText = false ns.Options.Show("unitframes")');
+  const r = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w:IsVisible() and w.label then
+    local mark = w.reset.mark return { card = w:GetParent():GetLeft(), markL = mark:GetLeft(), markR = mark:GetRight(), label = w.label:GetLeft() } end end`);
+  expect([r.markL >= r.card + 1, r.label - r.markR >= 1], "the arrow clears the card's edge and the caption").toEqual([true, true]);
+});
+
+it("options: the header's profile picker shows the bare profile name and its tooltip the full one (H47-2-102)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("Raid healing Holy Priest") ns.PickProfile("Raid healing Holy Priest") ns.Options.Show("general")');
+  addon.eval('local p = Vanguard_Options.profile p.__scripts.OnEnter(p)');
+  expect(addon.eval("local p = Vanguard_Options.profile return { p.text:GetText(), GameTooltip:IsShown(), GameTooltip.__lines[1].text }"), "the box has the name, the tooltip the prefixed full name")
+    .toEqual(["Raid healing Holy Priest", true, "Profile: Raid healing Holy Priest"]);
+  addon.eval("local p = Vanguard_Options.profile p.__scripts.OnLeave(p)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+});
+
+it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
+  addon.slash("");
+  const out = addon.eval(`local O = ns.Options
+    O.AddPage({ key = "zzbad", title = "TEST-ONLY page", icon = "NavProfiles", order = 99, rows = function() return {
+      { "header", "TEST-ONLY card" },
+      { "check", "TEST-ONLY bad", function() error("TEST-ONLY getter fails") end, function() end, true } } end })
+    local first = pcall(O.Show, "zzbad")
+    Vanguard_Options:Hide()
+    local second = pcall(O.Show, "general")
+    return { first, second, Vanguard_Options:IsShown(), #ns.errors > 0 }`);
+  expect(out, "both opens work and the failure is kept").toEqual([true, true, true, true]);
+  addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY getter') then table.remove(ns.errors, i) end end");
 });
 
 it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
