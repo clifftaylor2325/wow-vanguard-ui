@@ -985,6 +985,27 @@ local function addTitle(f)
   f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)
 end
 
+-- The strip along the window's top, as tall as the title line, that takes the drag.
+local function dragStrip(f)
+  local strip = CreateFrame("Frame", nil, f)
+  strip:SetPoint("TOPLEFT")
+  strip:SetPoint("TOPRIGHT")
+  strip:SetHeight(ns.DIALOG.head)
+  strip:EnableMouse(true)
+  strip:RegisterForDrag("LeftButton")
+  return strip
+end
+
+-- Lets the window be dragged by its title line on every step, kept on the screen, so the frames under it (the Move
+-- things step unlocks them) can be reached. Made before the title, so the close button sits above the strip.
+local function makeMovable(f)
+  f:SetMovable(true)
+  f:SetClampedToScreen(true)
+  f.drag = dragStrip(f)
+  f.drag:SetScript("OnDragStart", ns.Guard("drag setup", function() f:StartMoving() end))
+  f.drag:SetScript("OnDragStop", ns.Guard("drop setup", function() f:StopMovingOrSizing() end))
+end
+
 -- The window: a floating panel at the dialog alpha with a title and the step caption.
 local function window()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
@@ -992,6 +1013,7 @@ local function window()
   -- Above the unlock handles (DIALOG), so their labels and grid never draw over the steps.
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
+  makeMovable(f)
   addTitle(f)
   return f
 end
@@ -1070,6 +1092,7 @@ end
 -- or the raid tiles changed size.
 -- A hide that comes down from UIParent (Alt-Z, a movie or a cinematic) leaves the wizard shown and is no end.
 local function finished()
+  frame:StopMovingOrSizing()
   if state.paused or frame:IsShown() then return end
   ns.SetupGuide.CancelUndo()
   if ns.Unlocked() then ns.Lock() end
