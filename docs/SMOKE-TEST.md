@@ -7057,6 +7057,318 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: Both HoTs show at the bottom right of that player's tile, with a sweep and no timer numbers, and light up near their end; the one ending soonest sits rightmost. A long buff you cast (Mark of the Wild, Thorns) shows only after your HoTs, in a slot they leave free.
 - If it fails, paste: a screenshot of the tile with the HoTs on, whether you were in a fight or a dungeon, and `/vg errors`.
 
+### 33.839 A settings slider's game thumb stays hidden when its row is enabled or disabled (H47-1-1; WoW Forever and Retail)
+
+- Do: Open the game's Options, Gameplay or any page with a slider row that a switch turns on and off (Edit Mode's Grid Spacing slider too), toggle the switch both ways and look at the slider. [Client: Forever and Retail.]
+- Expect: Only Vanguard's round white knob shows on the slider, the game's own thumb never comes back, enabled or disabled.
+- If it fails, paste: a screenshot of the slider in each state
+
+### 33.840 High contrast keeps a check box's border thin under the mouse (H47-1-2; WoW Forever and Retail)
+
+- Do: Pick Theme variant High contrast under General → Look, turn on Rounded corners, and move the mouse over and off a check box in the options window. [Client: Forever and Retail.]
+- Expect: The check box's border stays one pixel and its corners keep their size while the mouse is over it; the window's own accent border is still thick.
+- If it fails, paste: a screenshot of the check box hovered
+
+### 33.841 The keypad Enter presses the focused dialog button (H47-1-51; WoW Forever and Retail)
+
+- Do: Open a question (General → Reset theme), press Tab to put the ring on No, then press Enter on the number keypad. [Client: Forever and Retail.]
+- Expect: The question closes as No, the same as the main Enter key does; the theme is not reset.
+- If it fails, paste: what happened, and whether the keypad Enter did anything
+
+### 33.842 A question's Yes button holds its whole label in German at Text size 130% (H47-1-101, H47-1-54; WoW Forever and Retail)
+
+- Do: Set the game language to German (or Russian), Text size 130% under General → Look, then ask a long Yes label: Auction house, cancel one of your auctions (it asks 'Auktion abbrechen'). [Client: Forever and Retail.]
+- Expect: The Yes button is wider than 120, shows the label whole, and No stays clear to its left.
+- If it fails, paste: a screenshot of the question
+
+### 33.843 /vg factionart names your faction in the game's language (H47-1-56; WoW Forever and Retail)
+
+- Do: Run the game in German (or Spanish, French) and type /vg factionart. [Client: Forever and Retail.]
+- Expect: The first line names your faction in the game's language (Horde, Allianz...), not the English word.
+- If it fails, paste: the first line
+
+### 33.844 A hovered button takes the variant's own hue (H47-1-103; WoW Forever and Retail)
+
+- Do: Pick Classic look (then Midnight) under General → Look → Theme variant and move the mouse over a button and a selected list row in the options window; look at an item slot's well edge in your bags. [Client: Forever and Retail.]
+- Expect: The hover fill and the bevel line are warm brown in Classic and navy in Midnight, not the default's blue-grey; labels stay readable.
+- If it fails, paste: a screenshot of the hovered button in Classic
+
+### 33.845 The graphics check has buttons on General (H47-1-55; WoW Forever and Retail)
+
+- Do: Open General, find the Layout card, press Check graphics, wait 5 s out of combat, then press Apply graphics, then Undo graphics. [Client: Forever and Retail.]
+- Expect: Chat prints the same lines as /vg graphics, apply and undo; Apply is greyed until the check ends, Undo until Apply has run; the three labels fit their buttons.
+- If it fails, paste: the chat lines and a screenshot of the Layout card
+
+### 33.846 Show a grid while moving shows or hides the grid at once while unlocked (H47-2-5; WoW Forever and Retail)
+
+- Do: /vg unlock, then /vg, General, Layout, switch Show a grid while moving off, then on. [Client: Forever and Retail.]
+- Expect: The grid goes at once, then comes back at once.
+- If it fails, paste: Whether the grid followed the switch.
+
+### 33.847 The search list closes when another page opens or Escape is pressed in the box (H47-2-103, H47-2-3; WoW Forever and Retail)
+
+- Do: /vg, type "show" in the search, click Unit frames in the left list. [Client: Forever and Retail.]
+- Expect: The results list is gone and every Unit frames tab can be clicked; typing again brings the list back.
+- If it fails, paste: A screenshot.
+
+### 33.848 The reset arrow stays inside its card (H47-2-101; WoW Forever and Retail)
+
+- Do: /vg, Unit frames, switch Show health numbers off. [Client: Forever and Retail.]
+- Expect: The small accent arrow left of the caption sits inside the card with a hair of space before the text, not on the card edge.
+- If it fails, paste: A screenshot.
+
+### 33.849 The header's profile picker shows the bare name, with the full name in a tooltip (H47-2-102; WoW Forever and Retail)
+
+- Do: Profiles, make a profile "Raid healing Holy Priest", Use it, reload, /vg. [Client: Forever and Retail.]
+- Expect: The header picker shows the whole bare name and pointing at it says "Profile: Raid healing Holy Priest".
+- If it fails, paste: A screenshot of the header.
+
+### 33.850 Setup's Combat step offers bars 4 and 5 on a translated client (H47-3-1; WoW Forever and Retail)
+
+- Do: On a German client run /vg setup, Next to Combat. [Client: Forever and Retail.]
+- Expect: A bars 4 and 5 row with the recommended mark.
+- If it fails, paste: The step's row captions.
+
+### 33.851 The Calm HUD's Unit frames row lines Dim up with the other rows (H47-3-105; WoW Forever and Retail)
+
+- Do: /vg > General > Calm HUD tab. [Client: Forever and Retail.]
+- Expect: Unit frames' Dim and Leave as is in the same columns as Action bars'.
+- If it fails, paste: The two rows.
+
+### 33.852 The setup window can be dragged by its title on every step (H47-3-2; WoW Forever and Retail)
+
+- Do: First run or /vg setup, Next to Move things, drag the window by its title line to the side. [Client: Forever and Retail.]
+- Expect: It moves and the focus target handle is reachable.
+- If it fails, paste: /vg frame Vanguard_Setup.
+
+### 33.853 Exit without saving restores the HUD layout chosen before unlock (H47-4-1; WoW Forever and Retail)
+
+- Do: /vg unlock, then /vg, General -> HUD layout -> Where the frames stand: The keep, close the window, click Exit without saving. [Client: Forever and Retail.]
+- Expect: Frames back at their Centered spots and sizes with no wall, and HUD layout reading Centered.
+- If it fails, paste: /vg frame uf_player.
+
+### 33.854 A closed window's handle stays on the normal handle strata (H47-4-101; WoW Forever and Retail)
+
+- Do: /vg unlock with no quest dialog open at 1920x1080. [Client: Forever and Retail.]
+- Expect: The Instance prep and Raid frames handles can be dragged and right-clicked without moving the Quest dialog handle.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.855 The reputation handle stands above the XP one while unlocked (H47-4-102; WoW Forever and Retail)
+
+- Do: /vg unlock at the level cap. [Client: Forever and Retail.]
+- Expect: Experience and Reputation handles one above the other, both names readable.
+- If it fails, paste: /vg frame repbar.
+
+### 33.856 Narrow frames' handles keep their width under Standards (H47-4-103; WoW Forever and Retail)
+
+- Do: /vg unlock under the Standards layout. [Client: Forever and Retail.]
+- Expect: The Focus target, Focus and Pet handles side by side without overlapping.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.857 Standards' target cast bar clears the target of target (H47-4-104; WoW Forever and Retail)
+
+- Do: Cast a spell at a target under Standards at 1280x720. [Client: Forever and Retail.]
+- Expect: The cast icon clear of the target of target banner.
+- If it fails, paste: /vg frame cast_target.
+
+### 33.858 A long target name stops short of the power number (H47-5-3; WoW Forever)
+
+- Do: Show power as Both, Health as Missing; target a full-health mob with a long name under the Rimmed look. [Client: Forever.]
+- Expect: The name ends before the power number, on one line in the bar's middle.
+- If it fails, paste: /vg frame Vanguard_target.
+
+### 33.859 A shield at full health shows on the player, target and party frames (H47-5-104; WoW Forever and Retail)
+
+- Do: On a priest, Power Word: Shield yourself at full health. [Client: Forever and Retail.]
+- Expect: A thin bright mark at the end of your player frame's health bar while the shield holds; none once it breaks.
+- If it fails, paste: A screenshot of the player frame.
+
+### 33.860 The status chip clears the crown, role and PvP marks and the name tab (H47-5-102; WoW Forever)
+
+- Do: Unit extras -> Status chip on, layout Like the game's, HUD look Tabs, be group leader and flag PvP, take off your flask buff (Instance prep buff checks on). [Client: Forever.]
+- Expect: The chip clear of the crown, PvP tag and your name tab.
+- If it fails, paste: A screenshot above the player frame.
+
+### 33.861 The status row moves to the inner top corner while a class row is built (H47-5-1; WoW Forever and Retail)
+
+- Do: On a rogue (or druid in cat form) with Status marks on, flag for PvP (/pvp) or form a party as leader, target a mob and build 3 combo points. [Client: Forever and Retail.]
+- Expect: The crown and PvP tag stand at the frame's inner top corner, clear of the combo points.
+- If it fails, paste: A screenshot of the player frame's top.
+
+### 33.862 A narrow frame leaves its level off so the name and number read (H47-5-2; WoW Forever and Retail)
+
+- Do: Unit frames -> Frame sizes, Target width 100, Health as Both, target an elite. [Client: Forever and Retail.]
+- Expect: The level is left off and the name and number are readable, none over another.
+- If it fails, paste: A screenshot of the target frame.
+
+### 33.863 No name tab on the pet and focus frames at Like the game's spots (H47-5-101; WoW Forever and Retail)
+
+- Do: /vg setup, layout Like the game's, General -> HUD look Tabs, summon a pet, set a focus that casts. [Client: Forever and Retail.]
+- Expect: No name tab on the pet or focus frame; the focus name readable while it casts.
+- If it fails, paste: /vg frame Vanguard_pet and /vg frame Vanguard_focus.
+
+### 33.864 A Tabs name tab holds a 10 to 12 letter name (H47-5-103; WoW Forever and Retail)
+
+- Do: HUD look Tabs, join a party with a member named Thunderhoof (or any 10 to 12 letter name). [Client: Forever and Retail.]
+- Expect: The name whole on its tab, the tab not reaching the raid target icon at the frame's inner corner.
+- If it fails, paste: /vg frame Vanguard_party1 if cut.
+
+### 33.865 The target's buff row stops short of the threat percent (H47-5-4; WoW Forever)
+
+- Do: Unit frames page, Aura icon size 32, in a party (or with a pet) target a mob that has several buffs and pull it. [Client: Forever.]
+- Expect: The threat percent above the target frame's right end stays readable, the buff row wraps before it.
+- If it fails, paste: /vg frame on the target frame's top right (or a screenshot).
+
+### 33.866 The weapon enchant cell follows Timer numbers (H47-6-2; WoW Forever and Retail)
+
+- Do: Untick Timer numbers for your buffs (Unit frames page), /reload, put a poison or imbue on a weapon. [Client: Forever and Retail.]
+- Expect: The enchant cell shows its sweep only, no number; with timers on the number sits on the icon's bottom edge.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.867 A narrow plate's cast bar shows more of the spell name (H47-6-101; WoW Forever and Retail)
+
+- Do: Nameplates page, Width 80, Height 10; target a casting mob. [Client: Forever and Retail.]
+- Expect: The plate cast bar shows the first word of the spell, not two letters.
+- If it fails, paste: A screenshot.
+
+### 33.868 A short plate's cast bar keeps its text inside (H47-6-102; WoW Forever and Retail)
+
+- Do: Nameplates page, Height 6; target a casting mob. [Client: Forever and Retail.]
+- Expect: The cast bar's spell name and seconds sit inside the bar, not out over its edges.
+- If it fails, paste: A screenshot.
+
+### 33.869 Stack counts fit the smallest aura icons (H47-6-103; WoW Forever and Retail)
+
+- Do: Nameplates page, Aura icon size 12; target a mob with a stacking debuff at 99 (or fake one). [Client: Forever and Retail.]
+- Expect: The count is small and inside the icon, the type letter in the corner is still readable.
+- If it fails, paste: A screenshot.
+
+### 33.870 A name-only plate's raid icon stands over the name (H47-6-3; WoW Forever and Retail)
+
+- Do: Tick Names only on friendly plates, mark a friendly NPC or player with a raid icon. [Client: Forever and Retail.]
+- Expect: The icon sits centred 10 above the name, not off to its lower left.
+- If it fails, paste: A screenshot.
+
+### 33.871 The target's cast bar lifts with the target's buff rows (H47-6-1; WoW Forever and Retail)
+
+- Do: Unit frames -> Target and focus auras, set Target's buffs shown to 16 (then Aura icon size 40); target a mob with 13+ buffs that is casting. [Client: Forever and Retail.]
+- Expect: The target cast bar sits above every buff icon, none covered, and drops back when the count is lowered.
+- If it fails, paste: /vg frame on the target cast bar.
+
+### 33.872 Narrow raid tiles keep about seven letters of each name (H47-7-1, H47-7-101; WoW Forever and Retail)
+
+- Do: /vg -> Raid frames, Width 72, Height 36, then Preview with sample players: Raid (40). [Client: Forever and Retail.]
+- Expect: Every sample tile shows at least six or seven letters of its name; the missing-health text is short or just '...'.
+- If it fails, paste: One tile's name as shown.
+
+### 33.873 Every raid tools button has a tooltip (H47-7-3; WoW Forever and Retail)
+
+- Do: Lead a party, hover each button on the raid tools bar, including both X buttons. [Client: Forever and Retail.]
+- Expect: A one-line tooltip each; the first X says it clears your target's mark, the last says it clears every world marker; Pull says right-click cancels.
+- If it fails, paste: The two X tooltips.
+
+### 33.874 A 40-player raid clears the Main tanks column on a short screen (H47-7-102; WoW Forever and Retail)
+
+- Do: Set UI scale so the canvas is 1187x668 or 1280x720, then /vg preview 40 with Main tanks shown. [Client: Forever and Retail.]
+- Expect: The 40 grid's top rows sit under the Main tanks column, not behind it.
+- If it fails, paste: A screenshot.
+
+### 33.875 The options window moves clear of the raid preview (H47-7-103; WoW Forever and Retail)
+
+- Do: /vg -> Raid frames, set Preview with sample players to Party (5), then to Off. [Client: Forever and Retail.]
+- Expect: The options window moves to the screen's other side so the sample tiles show, and returns to its place on Off.
+- If it fails, paste: Where the window sat during and after.
+
+### 33.876 A flyout list opens away from its bar (H47-8-1; WoW Forever and Retail)
+
+- Do: Set Action bar 4 on, 12 buttons per row, put a Mage Teleport (or Hero's Path) flyout on its rightmost button and click it. [Client: Forever and Retail.]
+- Expect: The list opens above (or below) the button, not over bar 4's other buttons.
+- If it fails, paste: A screenshot.
+
+### 33.877 A page change closes an open flyout list (H47-8-2; WoW Forever and Retail)
+
+- Do: As a druid or warrior, put a flyout on bar 1, open its list, then change form or stance. [Client: Forever and Retail.]
+- Expect: The list closes.
+- If it fails, paste: `/vg errors`.
+
+### 33.878 Flyout spell buttons show their cooldown and dim when they can't be cast (H47-8-3; WoW Forever and Retail)
+
+- Do: On Retail, open the Hero's Path flyout after using one teleport (or on Forever a mage with no Rune of Teleportation opens Teleport). [Client: Forever and Retail.]
+- Expect: The used teleport shows its cooldown sweep; a spell you lack the reagent for is dimmed.
+- If it fails, paste: A screenshot.
+
+### 33.879 A long key on a Cooldown Manager icon is cut at the icon's edge (H47-8-6; WoW Forever and Retail)
+
+- Do: Tick Key text on the manager's icons, bind Ctrl-Shift-Num Lock to a spell on a bar that is in the Cooldown Manager's utility row. [Client: Forever and Retail.]
+- Expect: The key text stops at the icon's edge and does not draw over the next icon.
+- If it fails, paste: A screenshot.
+
+### 33.880 The Gaps card's typing box stays usable in long languages (H47-8-101; WoW Forever and Retail)
+
+- Do: Set the game client to Russian (or German), Vanguard Text size 130%, open the Cooldowns page, tick Gaps row, open the Gaps card. [Client: Forever and Retail.]
+- Expect: A typing box at least 120 units wide between the row's start (or its label) and Add item.
+- If it fails, paste: A screenshot.
+
+### 33.881 Keybind mode shows Hidden bars while it is on (H47-8-7; WoW Forever and Retail)
+
+- Do: Set Action bar 6 on and to Hidden, then press the Keybind mode button. [Client: Forever and Retail.]
+- Expect: Bar 6 shows while the mode is on, a key binds to its button, and the bar hides again after Done; the key still casts.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.882 The bag and bank search boxes keep their magnifier (H47-9-1; WoW Forever and Retail)
+
+- Do: Open the combined bag, then the bank. [Client: Forever and Retail.]
+- Expect: A small magnifier at the left end of each search box with the 'Search' hint after it.
+- If it fails, paste: Pass/fail.
+
+### 33.883 The bag's search row fits with the gamepad interface on (H47-9-2; WoW Forever)
+
+- Do: (WoW Forever): turn on the game's gamepad interface, open the combined bag. [Client: Forever.]
+- Expect: Search box, Filter, Groups and Sort all inside the bag, Sort near the right edge.
+- If it fails, paste: Pass/fail, /vg frame BagItemSearchBox.
+
+### 33.884 The bulk-buy cost line stays under the Stack and Max buttons (H47-9-101; WoW Forever and Retail)
+
+- Do: At any merchant, Shift-click an item that stacks. [Client: Forever and Retail.]
+- Expect: Under the Stack and Max buttons, a separate cost line not touching them.
+- If it fails, paste: /vg frame StackSplitFrame if it overlaps.
+
+### 33.885 The combined bag falls back to the game's plain grid when the sections won't fit the screen (H47-9-102; WoW Forever and Retail)
+
+- Do: With four 36-slot bags (Forever: the biggest you have), set UI scale to 1.15 and open the combined bag with sections on. [Client: Forever and Retail.]
+- Expect: The game's plain grid, whole window on screen, no section headers.
+- If it fails, paste: /vg frame ContainerFrameCombinedBags.
+
+### 33.886 Mail preset buttons show their whole names (H47-9-103; WoW Forever and Retail)
+
+- Do: /vg mail preset add Enchanting Bobalt dust, open a mailbox. [Client: Forever and Retail.]
+- Expect: The preset button reads Enchanting in full, + Add after it.
+- If it fails, paste: Pass/fail.
+
+### 33.887 The AFK screen's clock follows the game clock (H47-10-2; WoW Forever and Retail)
+
+- Do: Set the game clock to 12-hour (Game clock window), then /afk. [Client: Forever and Retail.]
+- Expect: The AFK card's time reads like the info strip's (e.g. 9:04 PM).
+- If it fails, paste: /vg frame Vanguard_AfkScreen.
+
+### 33.888 The info strip sits under a round minimap after a reload in a fight (H47-10-4; WoW Forever and Retail)
+
+- Do: Pick the Classic look, /reload during a fight, leave the fight. [Client: Forever and Retail.]
+- Expect: The info strip sits under the round map's band.
+- If it fails, paste: /vg frame infostrip.
+
+### 33.889 The minimap's addon drawer draws above your buffs (H47-10-101; WoW Forever and Retail)
+
+- Do: With two buffs and one LibDBIcon addon, click the '...' by the minimap. [Client: Forever and Retail.]
+- Expect: Every drawer button is visible and clickable above your buff icons.
+- If it fails, paste: A screenshot.
+
+### 33.890 The AFK card keeps its whole passage on screen (H47-10-102; WoW Forever and Retail)
+
+- Do: German (or French), Text size 130%, UI scale 1.0 at 768 high, Alliance, /afk. [Client: Forever and Retail.]
+- Expect: The whole passage and Varian's attribution are on screen.
+- If it fails, paste: A screenshot.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
