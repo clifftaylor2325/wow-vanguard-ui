@@ -509,3 +509,18 @@ it("text fits: a 32-character profile name on the Profiles page stays clear of t
     }
   }
 });
+
+it("text fits: the meter's Report and Reset buttons in every language, the title ending short of them (H47-17-1)", () => {
+  const env = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }\n";
+  const saved = SETUP_DONE + "\nVanguardDB.profiles.Default = VanguardDB.profiles.Default or {} VanguardDB.profiles.Default.Meter = { on = true }";
+  const findings = [];
+  for (const loc of ["enUS", "deDE", "frFR", "esES", "itIT", "ptBR", "ruRU"]) {
+    const addon = createAddon({ savedVariables: saved, textFit: true, client: `${env}__wfgWorld.locale = "${loc}"` });
+    addon.login();
+    addon.advance(1);
+    findings.push(...addon.textFit("Vanguard_Meter"));
+    const gap = addon.eval("local f = Vanguard_Meter return f.titleBar:GetRight() <= f.report:GetLeft() and f.report:GetRight() < f.reset:GetLeft()");
+    expect(gap, `${loc}: the title stops short of Report, and Report sits left of Reset`).toBe(true);
+  }
+  expectFits("meter title row, every language", findings);
+});

@@ -400,6 +400,7 @@ local function addTitle(f)
   local title = CreateFrame("Button", nil, f)
   title:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
   title:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(2 * (MT.BUTTON_W + MT.GAP) + T.SPACE.gap), 0)
+  f.titleBar = title
   title:SetHeight(MT.HEAD)
   title:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   title:SetScript("OnClick", ns.Guard("click meter title", MT.TitleClick))
@@ -415,17 +416,23 @@ local function addEmpty(f)
   f.empty:SetText(MT.EMPTY.Dps)
 end
 
--- A small button at the right of the panel's title row, `slot` buttons in from the edge.
-local function headerButton(f, text, slot, onClick)
-  local b = W.Button(f, text, onClick, MT.BUTTON_W)
-  b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -MT.GAP - (slot - 1) * (MT.BUTTON_W + MT.GAP), -MT.GAP)
+-- A small button in the panel's title row, MT.GAP left of `anchor` (the panel's right edge when nil). It is
+-- MT.BUTTON_W wide, or wider when its label (a translation runs longer) needs the room.
+local function headerButton(f, text, anchor, onClick)
+  local b = ns.WidenToLabel(W.Button(f, text, onClick, MT.BUTTON_W))
+  if anchor then b:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -MT.GAP, 0)
+  else b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -MT.GAP, -MT.GAP) end
   return b
 end
 
 -- The title row's buttons: Report (to chat, or the channel picked in the options) and Reset (the game's meter).
+-- The title ends a gap short of the left one, wherever the labels put it.
 local function addHeaderButtons(f)
-  f.report = headerButton(f, L["Report"], 2, MT.ReportClick)
-  f.reset = headerButton(f, L["Reset"], 1, MT.Reset)
+  f.reset = headerButton(f, L["Reset"], nil, MT.Reset)
+  f.report = headerButton(f, L["Report"], f.reset, MT.ReportClick)
+  f.titleBar:ClearAllPoints()
+  f.titleBar:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+  f.titleBar:SetPoint("TOPRIGHT", f.report, "TOPLEFT", -T.SPACE.gap, MT.GAP)
 end
 
 -- Applies the panel's visibility setting: now, or when combat ends. Nothing to do while the panel is not built (the
