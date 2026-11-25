@@ -801,6 +801,7 @@ export const AFK_ENV = `
   UnitXP = function() return 300 end
   UnitXPMax = function() return 1000 end
   date = function() return "21:04" end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return __level >= 60 end }
 `;
 
 // Who hears a unit event: `subs`, the units each ns.OnUnit subscription asked

@@ -96,11 +96,11 @@ end
 
 -- Painting ---------------------------------------------------------------------------------------
 
--- The XP bar: your XP into this level, hidden at the cap or when the client hides it.
+-- The XP bar: your XP into this level, hidden wherever the XP data bar hides (the cap, XP gain locked, the realm's
+-- rules) or when the client gives no figures.
 local function paintXP(bar)
   local cur, max = ns.PlainNumber(ask("UnitXP", "player")), ns.PlainNumber(ask("UnitXPMax", "player"))
-  local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
-  local show = cur ~= nil and max ~= nil and max > 0 and not (level and cap and level >= cap)
+  local show = cur ~= nil and max ~= nil and max > 0 and not ns.GetModule("DataBars").XPHidden()
   bar:SetShown(show)
   if not show then return end
   bar:SetMinMaxValues(0, max)

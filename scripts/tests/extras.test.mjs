@@ -1038,6 +1038,14 @@ it("H47-10-2 the AFK card's clock reads the game clock, as the info strip does",
   expect(addon.eval("return Vanguard_AfkScreen.clock:GetText()")).toBe("9:04 PM");
 });
 
+it("H47-10-3 with XP gain locked the AFK card shows no XP bar, as the XP data bar hides", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + "IsXPUserDisabled = function() return true end");
+  addon.fire("DISABLE_XP_GAIN");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return { Vanguard_AfkScreen:IsShown(), Vanguard_AfkScreen.xp:IsShown() }")).toEqual([true, false]);
+});
+
 it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_AfkScreen)");
