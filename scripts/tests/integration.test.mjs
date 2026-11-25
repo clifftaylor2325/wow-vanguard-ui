@@ -26,6 +26,17 @@ it("RegisterPreset checks its arguments", () => {
   expect(addon.eval("return Vanguard.GetPresets()").length, "at most 20 presets").toBe(20);
 });
 
+it("H48-8-3 RegisterPreset keeps a name and an info on one line, so the Profiles page and /vg preset can match them", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const ok = addon.eval('return Vanguard.RegisterPreset("Mine\\nTwo\\t|cffff0000x|r", "VG1:abc", "line1\\nline2\\r\\n|cffff0000red|r")');
+  expect(ok, "a name with line breaks is accepted").toBe(true);
+  const preset = addon.eval("return Vanguard.GetPresets()[4]");
+  expect([preset.name, preset.info], "line breaks and tabs became spaces, escape codes were dropped").toEqual(["Mine Two cffff0000xr", "line1 line2  cffff0000redr"]);
+  expect(addon.eval('return Vanguard.RegisterPreset("\\n", "VG1:abc")'), "a name of nothing but line breaks is no name").toBe(false);
+  expect(addon.eval('return Vanguard.RegisterPreset("Mine Two cffff0000xr", "VG1:def")'), "the flattened name is the one a repeat replaces").toBe(true);
+  expect(addon.eval("return #Vanguard.GetPresets()"), "so there is still one of it").toBe(4);
+});
+
 it("the built-in presets are made from the role tables, so setup's layouts and the presets agree", () => {
   const addon = loggedIn(CLICK_LUA);
   const same = addon.eval(`local out = {}
