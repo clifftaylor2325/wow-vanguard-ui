@@ -199,6 +199,18 @@ it("inventory: a bank that closes in the frame of its last change keeps that cha
   expect(addon.eval("return __reads"), "the waiting read finds the bank shut and reads nothing").toBe(0);
 });
 
+it("inventory: a bank that answers no slots as it closes keeps the remembered bank", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bagSizes[6], __wfgWorld.bagSizes[7] = 0, 0");
+  addon.fire("PLAYERBANKSLOTS_CHANGED", 1);
+  addon.fire("BANKFRAME_CLOSED");
+  expect(mine(addon).bank, "no slots in all is no data: the last reading stays").toEqual({ 2589: 4 });
+  addon.eval("__wfgWorld.bagSizes[6], __wfgWorld.bagSizes[7] = 8, 8 __wfgWorld.bags[6] = {}");
+  addon.fire("BANKFRAME_OPENED");
+  expect(mine(addon).bank, "a bank with slots and nothing in them is a real, empty reading").toEqual({});
+});
+
 it("inventory: a bank change waiting when the module is switched off is not read", () => {
   const addon = loggedIn(BAGS_ENV);
   addon.fire("BANKFRAME_OPENED");

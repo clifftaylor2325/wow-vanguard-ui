@@ -87,11 +87,19 @@ function IV.BankBags()
   return out
 end
 
--- Reads the open bank into this character's record, only when the client names the bank's tabs: a missing or
--- empty answer (tab data not in yet) means no data, so the remembered bank stays until a real one arrives.
+-- How many slots a list of containers reports in all (0 when the client can't say).
+local function slotTotal(bags)
+  local slots, total = containerApi(), 0
+  for _, bag in ipairs(bags) do total = total + (slots and ns.PlainNumber(slots(bag)) or 0) end
+  return total
+end
+
+-- Reads the open bank into this character's record, only when the client names the bank's tabs and they report
+-- slots: a missing or empty answer (tab data not in yet, a bank that answers nothing as it closes) means no data,
+-- so the remembered bank stays until a real one arrives. A bought tab always has slots, even when it holds nothing.
 function IV.ReadBank(mine)
   local tabs = IV.BankBags()
-  if #tabs > 0 then mine.bank = countIn(tabs) end
+  if #tabs > 0 and slotTotal(tabs) > 0 then mine.bank = countIn(tabs) end
 end
 
 -- Notes this character's level, money and rested XP (as a percent of a level) on its record.
