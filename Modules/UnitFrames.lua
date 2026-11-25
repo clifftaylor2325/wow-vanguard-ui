@@ -673,10 +673,40 @@ local function nameHome(f)
   return f.health
 end
 
--- Where a frame's name stops: at its tab's far end while it wears one, else short of the health text.
+-- How far in from the bar's far end the name must stop while power text shows (units): past the health text and its
+-- room, or the power text and its inset, whichever reaches further in. A width the client hides keeps the last one.
+function UF.NameEndReach(f)
+  local health = ns.PlainNumber(f.healthText:GetUnboundedStringWidth())
+  local power = f.powerText:IsShown() and ns.PlainNumber(f.powerText:GetUnboundedStringWidth()) or 0
+  if not (health and power) then return f.vgNameReach or 0 end
+  f.vgNameReach = math.max(f.vgTextRoom + health, UF.TEXT_INSET + power)
+  return f.vgNameReach
+end
+
+-- Re-sizes the spacer the name ends at, after the health or power text changed (a no-op while no spacer is in use).
+function UF.FitNameEnd(f)
+  if f.nameEnd then f.nameEnd:SetWidth(math.max(1, UF.NameEndReach(f))) end
+end
+
+-- The zero-height spacer on the bar's middle line that the name ends at while power text shows: the health text sits on
+-- the top line then, so ending the name at it would hold the name by two anchors at different heights.
+local function nameEndSpacer(f, far)
+  if not f.nameEnd then f.nameEnd = f.layer:CreateTexture(nil, "OVERLAY") end
+  f.nameEnd:ClearAllPoints()
+  f.nameEnd:SetPoint(far, f.health, far, 0, 0)
+  f.nameEnd:SetSize(1, 1)
+  UF.FitNameEnd(f)
+  return f.nameEnd
+end
+
+-- Where a frame's name stops: at its tab's far end while it wears one, else short of the health text (and of the power
+-- text under it, on a frame that shows one).
 local function endName(f, side)
   local far = INNER[side]
   if tabbed(f) then return f.name:SetPoint(far, f.tab, far, inward(far, UF.TEXT_INSET), 0) end
+  if f.powerText:IsShown() and not T.BareOf(f) then
+    return f.name:SetPoint(far, nameEndSpacer(f, far), side, inward(far, UF.TEXT_INSET), 0)
+  end
   f.name:SetPoint(far, f.healthText, side, inward(far, UF.TEXT_INSET), 0)
 end
 
@@ -730,12 +760,19 @@ local function textEndRoom(f)
   return (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
 end
 
+-- How far in from its end the health text stops, remembered for the name's end (UF.NameEndReach): the tag mark's room
+-- on the target in every look.
+local function healthTextRoom(f)
+  local room = textEndRoom(f)
+  f.vgTextRoom = f.tag and math.max(room, UF.TAG_ROOM) or room
+  return f.vgTextRoom
+end
+
 -- The health text at the other end from the name, short of the marks on a frame that has them and, on the target,
 -- short of the tag mark in every look; on the bar's top line while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
-  local room = textEndRoom(f)
-  room = f.tag and math.max(room, UF.TAG_ROOM) or room
+  local room = healthTextRoom(f)
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
@@ -1076,6 +1113,7 @@ local function paintHealthText(f, down)
   f.healthText:SetText(text)
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
+  UF.FitNameEnd(f)
 end
 
 -- Health bar value, color and text. Raw values go straight to the bar; the
@@ -1106,6 +1144,7 @@ end
 function UF.PaintPowerText(f)
   if not (f.powerText:IsShown() and ns.IsTrue(UnitExists(f.unit))) then return end
   f.powerText:SetText(f.vgDown and "" or UF.PowerText(f.unit))
+  UF.FitNameEnd(f)
 end
 
 -- The heal prediction or shield switch changed (Unit frames page): the player, target and party frames paint again.

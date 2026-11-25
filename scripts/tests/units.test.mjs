@@ -1203,3 +1203,14 @@ it("one unit frame that fails to paint or lay out is reported, and every other f
   expect(ufState(addon, watched).hp, "a frame past the broken one still paints").toBe(watched === "player" ? 500 : 7);
   expectErrors(/^unit frame refresh: eval:4: TEST-ONLY broken frame$/, /^unit frame layout: eval:5: TEST-ONLY broken layout$/);
 });
+
+// H47-5-3: with power text on, a long target name ends before the power number, on the bar's middle line.
+it("the target's name stops short of the power text when it is wider than the health text", () => {
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'both', healthFormat = 'deficit' }, theme = { hudLook = "rimmed" } }` });
+  addon.login();
+  addon.world.setUnit("target", { name: "Grizzled Thunderhoof Matriarch-Argent Dawn", hp: 5000, maxhp: 5000, power: 12345, maxpower: 20000, ptypeName: "MANA", reaction: 2, level: 60 });
+  const fit = addon.textFit("Vanguard_target").filter((x) => x.kind === "overlap");
+  expect(fit, "the name does not run over the power number").toEqual([]);
+  const ys = addon.eval(`local f = Vanguard_target local n = f.name:GetNumPoints() local out = {} for i = 1, n do local _, _, _, _, y = f.name:GetPoint(i) out[#out + 1] = y end return out`);
+  expect(new Set(ys).size, "the name's anchors share one height").toBe(1);
+});
