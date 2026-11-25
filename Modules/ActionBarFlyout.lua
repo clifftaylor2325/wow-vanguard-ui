@@ -25,8 +25,10 @@ local T = ns.Theme
 AB.FLYOUT = { max = 20, size = 32, gap = 2, slots = 180, frame = "Vanguard_Flyout", close = "Vanguard_FlyoutClose", edgeCVar = "ActionButtonUseKeyDown" }
 
 -- Runs in the secure environment before a bar button's click. On a flyout slot it lists the flyout's
--- spells beside the button (above it, below it, or toward the screen's middle from a side edge) and
--- stops the click; on anything else it closes the list. The click's other edge (the game acts on
+-- spells beside the button and stops the click. The list runs away from the bar, as the game's own does
+-- (ActionBarMixin:UpdateSpellFlyoutDirection in Blizzard_ActionBar/Shared/ActionBar.lua): up or down from a
+-- horizontal bar by which half of the screen it is in, left or right from a vertical one. A bar with no
+-- stored orientation goes by the button's own place; on anything else it closes the list. The click's other edge (the game acts on
 -- key down or up, by the Action Button key-down setting) is stopped too, so the list opens once.
 AB.FLYOUT_PRE = [[
   local kind, id = GetActionInfo(self:GetAttribute("action") or 0)
@@ -36,12 +38,17 @@ AB.FLYOUT_PRE = [[
   local count = control:GetAttribute("flyout-" .. id .. "-count") or 0
   if count == 0 then control:Hide() return false end
   local gap, dir = control:GetAttribute("gap"), "UP"
-  local left, bottom, width, height = self:GetRect()
+  local bar = self:GetParent()
+  local orientation = bar and bar:GetAttribute("orientation")
+  local source = orientation and bar or self
+  local left, bottom, width, height = source:GetRect()
   if left then
-    local scale = self:GetEffectiveScale()
+    local scale = source:GetEffectiveScale()
     local x, y = (left + width / 2) * scale, (bottom + height / 2) * scale
     local screenWidth, screenHeight = control:GetAttribute("screen-width"), control:GetAttribute("screen-height")
-    if x < screenWidth * 0.15 then dir = "RIGHT" elseif x > screenWidth * 0.85 then dir = "LEFT" elseif y > screenHeight / 2 then dir = "DOWN" end
+    if orientation == "horizontal" then dir = y > screenHeight / 2 and "DOWN" or "UP"
+    elseif orientation == "vertical" then dir = x > screenWidth / 2 and "LEFT" or "RIGHT"
+    elseif x < screenWidth * 0.15 then dir = "RIGHT" elseif x > screenWidth * 0.85 then dir = "LEFT" elseif y > screenHeight / 2 then dir = "DOWN" end
   end
   local point, relative, dx, dy = "BOTTOM", "TOP", 0, gap
   if dir == "DOWN" then point, relative, dy = "TOP", "BOTTOM", -gap
@@ -82,10 +89,45 @@ AB.FLYOUT_ON_SHOW = 'self:SetBindingClick(true, "ESCAPE", "' .. AB.FLYOUT.close 
 -- Clicking the close button hides the list.
 AB.FLYOUT_CLOSE = 'self:GetFrameRef("flyout"):Hide()'
 
--- The icon of a spell button, from the spell the snippet set on it.
+-- The sweep of a spell button from the client's duration object for its spell (none: no sweep). The object goes to
+-- the widget as it is and is never compared; a call the client refuses is kept for /vg errors.
+local function sweepFromObject(child, spell)
+  local duration = C_Spell.GetSpellCooldownDuration(spell)
+  if duration == nil then return child.cooldown:Clear() end
+  ns.Quiet("flyout cooldown", child.cooldown.SetCooldownFromDurationObject, child.cooldown, duration)
+end
+
+-- The sweep on a client with no duration object: plain start and length; hidden ones clear it (SetCooldown takes no secret).
+local function sweepFromNumbers(child, spell)
+  local info = C_Spell.GetSpellCooldown(spell)
+  local start, length = type(info) == "table" and info.startTime, type(info) == "table" and info.duration
+  if not start or ns.IsSecret(start) or ns.IsSecret(length) then return child.cooldown:Clear() end
+  ns.Quiet("flyout cooldown", child.cooldown.SetCooldown, child.cooldown, start, length)
+end
+
+-- A spell button's cooldown sweep, as the game's list buttons show it (UpdateCooldown on SPELL_UPDATE_COOLDOWN).
+local function paintCooldown(child, spell)
+  if not spell then return child.cooldown:Clear() end
+  if child.cooldown.SetCooldownFromDurationObject and C_Spell.GetSpellCooldownDuration then return sweepFromObject(child, spell) end
+  if C_Spell.GetSpellCooldown then sweepFromNumbers(child, spell) end
+end
+
+-- The tint token of a spell for what the client says of it: no power blue, unusable grey, else none. A hidden answer
+-- counts as usable.
+local function usableTint(spell)
+  if not (spell and C_Spell.IsSpellUsable) then return "white" end
+  local usable, noPower = C_Spell.IsSpellUsable(spell)
+  if ns.IsSecret(usable) or usable then return "white" end
+  return (not ns.IsSecret(noPower) and noPower) and "noPower" or "unusable"
+end
+
+-- The icon of a spell button, from the spell the snippet set on it, with its cooldown sweep and usable tint (the
+-- game's list buttons dim a spell you can't cast now, UpdateUsable on SPELL_UPDATE_USABLE).
 local function paintChild(child)
   local spell = child:GetAttribute("spell")
   child.icon:SetTexture(spell and C_Spell.GetSpellTexture(spell))
+  T.Tint(child.icon, usableTint(spell))
+  paintCooldown(child, spell)
 end
 
 -- The tooltip of a spell button's spell.
@@ -102,6 +144,12 @@ local function hideSpell()
   GameTooltip:Hide()
 end
 
+-- The cooldown sweep over a spell button's icon.
+local function addSweep(child)
+  child.cooldown = CreateFrame("Cooldown", nil, child, "CooldownFrameTemplate")
+  child.cooldown:SetAllPoints(child.icon)
+end
+
 -- One spell button of the list: a secure button that casts its spell, in the bar buttons' skin.
 local function makeChild(flyout, i)
   local child = CreateFrame("Button", string.format("%s%d", AB.FLYOUT.frame, i), flyout, "SecureActionButtonTemplate")
@@ -112,6 +160,7 @@ local function makeChild(flyout, i)
   child.icon = child:CreateTexture(nil, "ARTWORK")
   child.icon:SetAllPoints()
   T.Crop(child.icon)
+  addSweep(child)
   return child
 end
 
@@ -133,6 +182,12 @@ end
 -- Paints the spell buttons when the list opens (the snippet has set their spells just before).
 local function paintOpen(flyout)
   for _, child in ipairs(flyout.vgChildren) do paintChild(child) end
+end
+
+-- Repaints the shown list's buttons when a cooldown or usable state changes (nothing while the list is shut).
+local function repaintOpen()
+  local flyout = AB.flyout
+  if flyout and flyout:IsShown() then paintOpen(flyout) end
 end
 
 -- The list's spell buttons, wired.
@@ -166,8 +221,10 @@ local function makeFlyout()
   return flyout
 end
 
--- Wraps one bar button's click and its hiding with the snippets (out of combat: a bar's buttons are made then).
+-- Wraps one bar button's click and its hiding with the snippets, and gives its bar the list to close on a page change
+-- (out of combat: a bar's buttons are made then).
 local function wrapButton(b)
+  SecureHandlerSetFrameRef(b:GetParent(), "flyout", AB.flyout)
   SecureHandlerWrapScript(b, "OnClick", AB.flyout, AB.FLYOUT_PRE)
   SecureHandlerWrapScript(b, "OnHide", AB.flyout, AB.FLYOUT_BUTTON_HIDE)
   b.vgFlyoutWrapped = true
@@ -267,6 +324,9 @@ end
 local function watchFlyouts()
   for _, event in ipairs({ "SPELLS_CHANGED", "ACTIONBAR_SLOT_CHANGED", "PLAYER_ENTERING_WORLD", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
     ns.On(event, refresh)
+  end
+  for _, event in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_FLYOUT_UPDATE" }) do
+    ns.On(event, repaintOpen)
   end
   ns.On("CVAR_UPDATE", onSettingChanged)
   ns.OutOfCombat(ensureFlyout, "action bar flyout list")

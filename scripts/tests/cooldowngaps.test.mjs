@@ -372,9 +372,10 @@ it("the Gaps card's add row shows its buttons whole in German and Russian, and t
     addon.eval(keys.map((key) => `ns.L[${JSON.stringify(key)}] = ${JSON.stringify(realText(locale, key))}`).join(" "));
     addon.login();
     addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() ns.Options.Show("cooldowns")`);
-    const row = addon.eval(`local r = __addRow() return { r.label:GetRight(), r.input:GetLeft(), r.input:GetRight(), r.item:GetLeft(), r.input:GetWidth() }`);
-    expect(row[1], `${locale} ${scale}: the box starts after the label`).toBeGreaterThanOrEqual(row[0]);
+    const row = addon.eval(`local r = __addRow() return { r.label:IsShown() and r.label:GetRight() or r:GetLeft(), r.input:GetLeft(), r.input:GetRight(), r.item:GetLeft(), r.input:GetWidth() }`);
+    expect(row[1], `${locale} ${scale}: the box starts after the label (or the row's edge once the label gives way)`).toBeGreaterThanOrEqual(row[0]);
     expect(row[2], `${locale} ${scale}: and ends before the buttons`).toBeLessThanOrEqual(row[3]);
+    expect(row[4], `${locale} ${scale}: H47-8-101 the box keeps CG.INPUT_MIN while the label gives way`).toBeGreaterThanOrEqual(120);
     const mine = [...keys, ...keys.map((key) => realText(locale, key))];
     const cut = addon.textFit(null).filter((f) => mine.includes(f.text));
     expect(cut, `${locale} ${scale}: nothing on the add row is cut or overlapping`).toEqual([]);

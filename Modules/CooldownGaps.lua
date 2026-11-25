@@ -391,6 +391,8 @@ CG.EMPTY = L["Nothing chosen yet. Drag an item or spell here, or type its name."
 CG.OFF = L["The gaps row is off. Tick Gaps row above to choose its items and spells."]
 -- A chosen entry's icon size and the add buttons' width before they widen to their labels on the card's rows.
 CG.ROW_ICON, CG.ROW_BUTTON = 20, 84
+-- The least width of the add row's typing box: the row's label gives way before the box does.
+CG.INPUT_MIN = 120
 
 -- A chosen entry's icon and name; an item the client hasn't loaded yet reads "Item <id>".
 local function entryLook(kind, id)
@@ -483,13 +485,23 @@ local function addButtons(r)
   r.item:SetPoint("RIGHT", r.spell, "LEFT", -T.SPACE.gap, 0)
 end
 
--- The add row's box and buttons: the box takes the room between the row's label and the buttons.
-local function addControls(r)
+-- Hides the add row's label when it would squeeze the typing box under CG.INPUT_MIN (the whole row is the drop target
+-- anyway); returns the frame the box starts after.
+local function labelBefore(r, width)
+  local taken = r.item:GetWidth() + r.spell:GetWidth() + CG.INPUT_MIN + T.SPACE.gap * 5
+  r.label:SetShown(r.label:GetStringWidth() <= width - taken)
+  return r.label:IsShown() and r.label or r
+end
+
+-- The add row's box and buttons: the box takes the room between the row's label and the buttons, and never less than
+-- CG.INPUT_MIN (the label gives way).
+local function addControls(r, width)
   addButtons(r)
+  local before = labelBefore(r, width)
   r.input = W.Input(r)
   r.input:SetWidth(0)
   r.input:SetPoint("RIGHT", r.item, "LEFT", -T.SPACE.gap, 0)
-  r.input:SetPoint("LEFT", r.label, "RIGHT", T.SPACE.gap, 0)
+  r.input:SetPoint("LEFT", before, before == r and "LEFT" or "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The add row: the whole row takes a dragged item or spell, and the box takes a typed name or ID.
@@ -501,7 +513,7 @@ local function addRow(parent, _, width)
   r:SetScript("OnMouseUp", ns.Guard("click-drop on gaps add row", onClickDrop))
   r.label = W.Text(r, L["Drag here, or type"])
   r.label:SetPoint("LEFT", T.SPACE.gap, 0)
-  addControls(r)
+  addControls(r, width)
   return r
 end
 

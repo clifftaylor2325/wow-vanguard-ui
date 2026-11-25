@@ -68,6 +68,14 @@ function CK.KeyFor(item, keys)
   return ""
 end
 
+-- Pins a key's text across the top of the icon, right-aligned and on one line, so it is cut at the edge.
+local function pinAcross(fs, holder)
+  fs:SetPoint("TOPLEFT", holder, "TOPLEFT", 2, -2)
+  fs:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -2, -2)
+  fs:SetJustifyH("RIGHT")
+  fs:SetWordWrap(false)
+end
+
 -- The item's label text, made on first use on a small frame above the icon's sweep.
 local function label(item)
   if vgKey[item] then return vgKey[item] end
@@ -76,7 +84,7 @@ local function label(item)
   holder:SetFrameLevel(item:GetFrameLevel() + 10)
   local fs = T.Text(holder:CreateFontString(nil, "OVERLAY"), "small")
   T.Color(fs, "text2")
-  fs:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -2, -2)
+  pinAcross(fs, holder)
   vgKey[item] = fs
   return fs
 end
