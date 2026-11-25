@@ -2043,7 +2043,6 @@ L["Suggested: Graphics Quality {step} in Options → Graphics; this computer has
 L["Suggested: lower Graphics Quality to {step} in Options → Graphics (the slider sets every detail for you)."] = "권장: 설정 → 그래픽에서 그래픽 품질을 {step}(으)로 낮추기 (슬라이더가 세부 항목을 모두 정합니다)."
 L["Sun"] = "일"
 L["Sunken Temple"] = "아탈학카르 신전"
-L["Sure?"] = "확실한가요?"
 L["Swap them"] = "서로 바꾸기"
 L["Swing timer"] = "공격 타이머"
 L["Swing timer (reload)"] = "공격 타이머 (UI 재시작)"

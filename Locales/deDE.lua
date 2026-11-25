@@ -2043,7 +2043,6 @@ L["Suggested: Graphics Quality {step} in Options → Graphics; this computer has
 L["Suggested: lower Graphics Quality to {step} in Options → Graphics (the slider sets every detail for you)."] = "Empfohlen: senke die Grafikqualität unter Optionen → Grafik auf {step} (der Regler stellt jedes Detail für dich ein)."
 L["Sun"] = "So"
 L["Sunken Temple"] = "Versunkener Tempel"
-L["Sure?"] = "Sicher?"
 L["Swap them"] = "Tauschen"
 L["Swing timer"] = "Schwungtimer"
 L["Swing timer (reload)"] = "Schwungtimer (Neu laden)"

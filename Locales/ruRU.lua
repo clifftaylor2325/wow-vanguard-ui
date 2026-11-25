@@ -2043,7 +2043,6 @@ L["Suggested: Graphics Quality {step} in Options → Graphics; this computer has
 L["Suggested: lower Graphics Quality to {step} in Options → Graphics (the slider sets every detail for you)."] = "Рекомендуется: понизить качество графики до {step} в Настройки → Графика (ползунок сам задает все детали)."
 L["Sun"] = "вс"
 L["Sunken Temple"] = "Затонувший храм"
-L["Sure?"] = "Точно?"
 L["Swap them"] = "Поменять местами"
 L["Swing timer"] = "Таймер атаки"
 L["Swing timer (reload)"] = "Таймер атаки (перезагрузка)"

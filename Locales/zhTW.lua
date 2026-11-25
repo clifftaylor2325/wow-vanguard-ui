@@ -2043,7 +2043,6 @@ L["Suggested: Graphics Quality {step} in Options → Graphics; this computer has
 L["Suggested: lower Graphics Quality to {step} in Options → Graphics (the slider sets every detail for you)."] = "建議：在 選項 → 顯示 中將圖形品質降到{step}（滑桿會替你設定每項細節）。"
 L["Sun"] = "週日"
 L["Sunken Temple"] = "沉沒的神廟"
-L["Sure?"] = "確定嗎？"
 L["Swap them"] = "交換"
 L["Swing timer"] = "攻擊計時器"
 L["Swing timer (reload)"] = "攻擊計時器（重新載入）"

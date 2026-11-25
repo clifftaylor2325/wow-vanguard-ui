@@ -1,7 +1,6 @@
 -- The Profiles page's own rows: one per profile, with Use, Copy here and
--- Delete (the last two change settings for good, so they ask "Sure?" on the
--- first click), and a box to name a new profile. Changing the list
--- rebuilds the page, and so does a switch staged anywhere. Switching profiles applies on reload.
+-- Delete (the last two change settings for good, so they ask a question first), and a box to name a new
+-- profile. Changing the list rebuilds the page, and so does a switch staged anywhere. Switching profiles applies on reload.
 
 local ADDON, ns = ...
 
@@ -21,25 +20,15 @@ local function warnTip(b)
   GameTooltip:Show()
 end
 
--- Puts an armed danger button back to its label whenever it hides (its page left, or the window
--- closed), so a click after that asks "Sure?" again.
-local function disarmOnHide(b, text)
-  b:HookScript("OnHide", ns.Guard("disarm danger button", function(self) self.armed = nil self.text:SetText(text) end))
-end
-
--- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip
--- under the mouse. The first click asks "Sure?" in its place, the second runs onClick.
+-- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip under the
+-- mouse. A click asks warn as a danger question (Enter never answers it); only its Yes runs onClick, so a double
+-- click only asks again.
 function W.Danger(parent, text, onClick, width, warn)
   local b = ns.DialogButton(parent, text, width or 120, "danger")
   b.warn = warn
-  disarmOnHide(b, text)
   b:HookScript("OnEnter", ns.Guard("hover danger button", warnTip))
   b:HookScript("OnLeave", ns.Guard("hide danger tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
-  -- Asks first, then acts.
-  b:SetScript("OnClick", ns.Guard("click danger button", function(self)
-    if not self.armed then self.armed = true return self.text:SetText(L["Sure?"]) end
-    onClick()
-  end))
+  b:SetScript("OnClick", ns.Guard("click danger button", function() ns.Ask(warn or text, text, onClick, function() end, "danger") end))
   return b
 end
 
@@ -53,8 +42,9 @@ local function addEditButtons(r, name)
   ns.WidenToLabel(r.delete)
   -- The page is built again on every staged switch and after setup forks a profile, so {into} is always the profile
   -- ns.CopyProfile writes into.
-  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.LoadingProfileName(), from = name })
-  r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
+  local into = ns.LoadingProfileName()
+  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = into, from = name })
+  r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name, into)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.copy)
 end
