@@ -982,10 +982,11 @@ local function levelFits(f)
 end
 
 -- Hides the level of a frame too narrow to hold it beside the number (the name would be squeezed to nothing and the
--- number run over the level; a name tab has its own room, so it keeps it), and shows it again once there is room.
+-- number run over the level; a name tab has its own room, so it keeps it, and a level hidden before the frame took
+-- its tab shows again), and shows it again once there is room.
 function UF.FitLevel(f)
-  if not f.level or tabbed(f) then return end
-  local fits = levelFits(f)
+  if not f.level then return end
+  local fits = tabbed(f) and true or levelFits(f)
   if fits == nil or fits == not f.vgLevelOff then return end
   f.vgLevelOff = not fits or nil
   f.level:SetShown(fits)

@@ -1275,6 +1275,9 @@ it("a narrow target frame with Health as Both hides the level instead of squeezi
   const problems = narrow.textFit("Vanguard_target").filter((x) => x.kind === "overlap" || /squeezed/.test(x.other ?? ""));
   expect([problems, narrow.eval("return Vanguard_target.level:IsShown()")], "100 wide: the level gives way, nothing overlaps or is squeezed").toEqual([[], false]);
   expect(boot(240).eval("return Vanguard_target.level:IsShown()"), "240 wide: the level stays").toBe(true);
+  narrow.eval("ns.Theme.Settings().hudLook = 'tabs' ns.Theme.Refresh()");
+  narrow.update(0.3);
+  expect(narrow.eval("return { Vanguard_target.tab:IsShown(), Vanguard_target.level:IsShown() }"), "the Tabs look gives the name a tab: the level shows again (H47-22-2)").toEqual([true, true]);
 });
 
 // H47-5-101: under the Tabs look the pet and focus frames wear no tab at their Like the game's spots, where they stand
