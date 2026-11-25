@@ -516,14 +516,21 @@ function TP.Summary(tree, result)
   return table.concat(parts, "; ")
 end
 
--- Puts the summary on the bar and makes Spend planned usable when there is something to spend (out of combat).
-local function paintBar(tree, result)
+-- Lights a bar button (enabled, full alpha) or greys it (disabled, half alpha).
+local function setUsable(button, usable)
+  if usable then button:Enable() else button:Disable() end
+  button:SetAlpha(usable and 1 or 0.5)
+end
+
+-- Puts the summary on the bar and makes Spend planned usable when there is something to spend (out of combat). While
+-- the window shows another config than the plan's (`other`: the other spec's tab, an inspected player) the plan is
+-- not for what is on screen, so Spend planned and the Plan switch are greyed there; the bar keeps its place.
+local function paintBar(tree, result, other)
   local bar = TP.bar
   if not bar then return end
   bar.summary:SetText(TP.Summary(tree, result))
-  local can = tree.points > 0 and #result.order > 0 and not ns.InCombat()
-  if can then bar.spend:Enable() else bar.spend:Disable() end
-  bar.spend:SetAlpha(can and 1 or 0.5)
+  setUsable(bar.spend, not other and tree.points > 0 and #result.order > 0 and not ns.InCombat())
+  setUsable(bar.plan, not other)
 end
 
 -- Plan mode on or off: the marks take the mouse, the switch re-reads, the window repaints.
@@ -604,7 +611,7 @@ function TP.Refresh()
   local plan = TP.Reconcile(TP.tree, TP.Plan())
   TP.result = TP.Resolve(TP.tree, plan)
   paintAll(frame, TP.tree, plan, TP.result)
-  paintBar(TP.tree, TP.result)
+  paintBar(TP.tree, TP.result, showsOther(frame, TP.tree))
   TP.RefreshOrder()
 end
 

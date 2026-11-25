@@ -120,6 +120,22 @@ it("talent planner: no marks while the window shows another config than the plan
   expect(addon.eval("return __mark(101):IsShown()"), "a config ID the client hides is not read: the marks stay").toBe(true);
 });
 
+it("talent planner: Spend planned and Plan are greyed while the window shows another config, and lit again on the plan's (H47-20-5)", () => {
+  const addon = open(`
+    __shown = 501
+    function PlayerSpellsFrame.TalentsFrame:GetConfigID() return __shown end
+    function PlayerSpellsFrame.TalentsFrame:SetConfigID(id) __shown = id end`);
+  addon.eval(`${TP}.SetPlanning(true) __click(101) ${TP}.Refresh()`);
+  const lit = "local b = Vanguard_TalentPlan return { b.spend:IsEnabled(), b.plan:IsEnabled(), b:IsShown() }";
+  expect(addon.eval(lit), "the plan's own config: both usable").toEqual([true, true, true]);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(502)");
+  addon.update(0.01);
+  expect(addon.eval(lit), "another config: both greyed, the bar still there").toEqual([false, false, true]);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(501)");
+  addon.update(0.01);
+  expect(addon.eval(lit), "back on the plan's config: both usable again").toEqual([true, true, true]);
+});
+
 it("talent planner: a talent with two sufficient-for-availability parents needs only one of them", () => {
   const addon = open(`
     __nodes[301] = { g = 10, x = 3000, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
