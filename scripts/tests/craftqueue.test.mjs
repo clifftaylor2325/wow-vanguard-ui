@@ -373,7 +373,12 @@ it("shows a panel beside the profession window: rows, what is short, remove, add
   expect(queue(addon), "the first entry is removed").toEqual([[102, 1]]);
   expect(Object.values(panel(addon)[1]), "the row went").toEqual(["1 x TEST-ONLY Bandage"]);
   addon.eval(`${CQ}.frame.clear:Click()`);
+  expect(Object.values(queue(addon)), "Clear asks first (H47-20-54): nothing is cleared yet").toEqual([[102, 1]]);
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the question").toBe("Clear the craft queue?");
+  addon.eval("Vanguard_Question.sure:Click()");
   expect(Object.values(queue(addon)), "cleared").toEqual([]);
+  addon.eval(`${CQ}.AskClear()`);
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "an empty queue asks nothing").toBe(false);
   addon.slash("craft add");
   expect(Object.values(panel(addon)[1]), "a command repaints it too").toEqual(["1 x TEST-ONLY Bandage"]);
   addon.world.closeProfession();

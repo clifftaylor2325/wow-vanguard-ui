@@ -428,6 +428,7 @@ L["Clear every click-casting binding for {talents}? This can't be undone."] = "�
 L["Clear every reserve"] = "清除所有预约"
 L["Clear list"] = "清空清单"
 L["Clear saved chat"] = "清除已保存的聊天"
+L["Clear the craft queue?"] = "清空制造队列？"
 L["Clear the {count} recent searches?"] = "清除{count}条最近搜索？"
 L["Clear this spec's plan"] = "清除此专精的规划"
 L["Clear this spec's talent plan (1 point planned)? This can't be undone."] = "清除此专精的天赋规划（已规划1点）？此操作无法撤销。"

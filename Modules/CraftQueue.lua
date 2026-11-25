@@ -353,6 +353,13 @@ function CQ.Clear()
   CQ.Repaint()
 end
 
+-- The panel's Clear asks first (the queue can't be got back), as Keep stocked's Clear list does, then empties it; an
+-- empty queue has nothing to ask about.
+function CQ.AskClear()
+  if #CQ.Mine().queue == 0 then return end
+  ns.Ask(L["Clear the craft queue?"], L["Clear"], CQ.Clear, nil, "danger")
+end
+
 -- Takes a whole entry off the queue (the panel's remove button).
 function CQ.Remove(id)
   local queue = CQ.Mine().queue
@@ -439,7 +446,8 @@ end
 local function addButtons(f)
   f.add = ns.WidenToLabel(W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100))
   f.next = ns.WidenToLabel(W.Button(f, L["Next"], function() CQ.Next() end, 60))
-  f.clear = ns.WidenToLabel(W.Button(f, L["Clear"], function() CQ.Clear() end, 60))
+  f.clear = ns.WidenToLabel(ns.DialogButton(f, L["Clear"], 60, "danger"))
+  f.clear:SetScript("OnClick", ns.Guard("click Clear", CQ.AskClear))
   f.clear:SetPoint("LEFT", f.next, "RIGHT", T.SPACE.tight, 0)
   placeButtons(f)
 end

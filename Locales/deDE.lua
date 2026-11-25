@@ -428,6 +428,7 @@ L["Clear every click-casting binding for {talents}? This can't be undone."] = "A
 L["Clear every reserve"] = "Alle Reservierungen löschen"
 L["Clear list"] = "Liste leeren"
 L["Clear saved chat"] = "Gespeicherten Chat löschen"
+L["Clear the craft queue?"] = "Die Herstellungsliste leeren?"
 L["Clear the {count} recent searches?"] = "Die {count} letzten Suchen löschen?"
 L["Clear this spec's plan"] = "Plan dieser Spezialisierung löschen"
 L["Clear this spec's talent plan (1 point planned)? This can't be undone."] = "Talentplan dieser Spezialisierung löschen (1 Punkt geplant)? Das lässt sich nicht rückgängig machen."

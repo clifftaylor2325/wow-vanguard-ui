@@ -428,6 +428,7 @@ L["Clear every click-casting binding for {talents}? This can't be undone."] = "{
 L["Clear every reserve"] = "모든 예약 지우기"
 L["Clear list"] = "목록 지우기"
 L["Clear saved chat"] = "저장된 대화 지우기"
+L["Clear the craft queue?"] = "제작 대기열을 지울까요?"
 L["Clear the {count} recent searches?"] = "최근 검색 {count}개를 지울까요?"
 L["Clear this spec's plan"] = "이 전문화 계획 지우기"
 L["Clear this spec's talent plan (1 point planned)? This can't be undone."] = "이 전문화의 특성 계획(1포인트)을 지울까요? 되돌릴 수 없습니다."
