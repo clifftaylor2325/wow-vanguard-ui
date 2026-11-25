@@ -132,6 +132,7 @@ const PIN_ENV = `
   SuperTrackedFrame = CreateFrame("Frame", "SuperTrackedFrame", UIParent)
   SuperTrackedFrame.Icon = SuperTrackedFrame:CreateTexture(nil, "BACKGROUND")
   SuperTrackedFrame.DistanceText = SuperTrackedFrame:CreateFontString(nil, "BACKGROUND")
+  SuperTrackedFrame.Arrow = SuperTrackedFrame:CreateTexture(nil, "ARTWORK")
   Enum.SuperTrackingType = { Quest = 0, UserWaypoint = 1, Corpse = 2, PartyMember = 5 }
   __pinKind = 0
   C_SuperTrack.GetHighestPrioritySuperTrackingType = function() return __pinKind end
@@ -169,6 +170,18 @@ it("waypoints: the game's floating pin takes Vanguard's pin and font, and keeps 
   expect(vanguardPin(addon), "a kind the client hides: Vanguard's pin, no error").toEqual([true, true, WHOLE]);
   addon.eval("__pinKind = 0 SuperTrackedFrame:UpdateIcon()");
   expect(vanguardPin(addon), "a quest again: Vanguard's pin").toEqual([true, true, WHOLE]);
+});
+
+// The game's SuperTrackedFrame.Arrow (Blizzard_QuestNavigation/SuperTrackedFrame.xml, "Navigation-Tracked-Arrow";
+// SuperTrackedFrameMixin:UpdateArrow shows it while the pin is clamped to the screen's edge) is tinted with the pin.
+it("waypoints: the game's edge arrow takes the accent with the pin and follows it, its atlas left alone", () => {
+  const addon = loggedIn(MAP_ENV + PIN_ENV + 'SuperTrackedFrame.Arrow:SetAtlas("TEST-ONLY-Navigation-Tracked-Arrow", true)');
+  // The arrow's tint and atlas as the game drew them.
+  const arrow = () => addon.eval("local a = SuperTrackedFrame.Arrow return { a.__vertexColor or false, a.__atlas or false }");
+  expect(isTok(addon, arrow()[0], "accent"), "the arrow is in the accent at login").toBe(true);
+  expect(arrow()[1], "its atlas stays the game's").toBe("TEST-ONLY-Navigation-Tracked-Arrow");
+  addon.eval("ns.Theme.SetAccent(0.2, 0.7, 0.4)");
+  expect(arrow()[0].slice(0, 3), "the accent changes: the arrow follows").toEqual([0.2, 0.7, 0.4]);
 });
 
 it("waypoints: the pin is the game's own with its switch off or the module off, and nothing happens without the frame", () => {

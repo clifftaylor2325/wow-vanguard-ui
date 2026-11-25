@@ -509,3 +509,41 @@ it("text fits: a 32-character profile name on the Profiles page stays clear of t
     }
   }
 });
+
+it("text fits: the meter's Report and Reset buttons in every language, the title ending short of them (H47-17-1)", () => {
+  const env = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }\n";
+  const saved = SETUP_DONE + "\nVanguardDB.profiles.Default = VanguardDB.profiles.Default or {} VanguardDB.profiles.Default.Meter = { on = true }";
+  const findings = [];
+  for (const loc of ["enUS", "deDE", "frFR", "esES", "itIT", "ptBR", "ruRU"]) {
+    const addon = createAddon({ savedVariables: saved, textFit: true, client: `${env}__wfgWorld.locale = "${loc}"` });
+    addon.login();
+    addon.advance(1);
+    findings.push(...addon.textFit("Vanguard_Meter"));
+    const gap = addon.eval("local f = Vanguard_Meter return f.titleBar:GetRight() <= f.report:GetLeft() and f.report:GetRight() < f.reset:GetLeft()");
+    expect(gap, `${loc}: the title stops short of Report, and Report sits left of Reset`).toBe(true);
+  }
+  expectFits("meter title row, every language", findings);
+});
+
+it("text fits: the quest arrow's distance line for a ready quest with no direction, five figures, in every language (H47-17-102)", () => {
+  const env = `
+    C_QuestLog.GetTitleForQuestID = function() return "TEST-ONLY Near" end
+    C_QuestLog.GetNextWaypoint = function() return 10, 0.6, 0.5 end
+    C_QuestLog.GetQuestsOnMap = function() return {} end
+    C_Map.GetBestMapForUnit = function() return 10 end
+    C_Map.GetMapWorldSize = function() return 1000, 1000 end
+    GetPlayerFacing = function() return nil end
+    C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.5, 0.5 end } end
+    __wfgWorld.addQuest({ questID = 90061, title = "TEST-ONLY Near", level = 8, watched = true, isComplete = true, distanceSq = 12345 * 12345, objectives = {} })
+  `;
+  const findings = [];
+  for (const loc of ["enUS", "deDE", "frFR", "esES", "itIT", "ptBR", "ruRU"]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `__wfgWorld.locale = "${loc}"` });
+    addon.eval(env);
+    addon.login();
+    addon.eval("ns.QuestArrow.Pick()");
+    addon.update(0);
+    findings.push(...addon.textFit("Vanguard_QuestArrow"));
+  }
+  expectFits("quest arrow distance line, every language", findings);
+});

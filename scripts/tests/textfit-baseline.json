@@ -3,6 +3,7 @@
   "dialogs @130": [],
   "handles while recording": [],
   "key setup": [],
+  "meter title row, every language": [],
   "options search list, German at 130%": [],
   "options window, German @130": [
     "cut | Vanguard_Options | Einstellungen durchsuchen | wider than its box",
@@ -32,6 +33,7 @@
   "preview scenes' windows": [
     "cut | Vanguard_StockList | sold by TEST-ONLY Thomas Miller (TEST-ONLY Goldshire)soldbys | wider than its box"
   ],
+  "quest arrow distance line, every language": [],
   "screen": [],
   "screen @130": [
     "spill | top level | Vehicle exit"
