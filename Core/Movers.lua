@@ -353,6 +353,14 @@ function ns.SetHudLayout(layout)
   tellLayoutListeners()
 end
 
+-- Sets the profile's HUD layout back to `layout` (what it was: nil for Centered) and tells the ns.OnLayoutChanged
+-- listeners, without SetHudLayout's forgetting of spots or placing (Exit without saving puts the spots back itself).
+---@param layout string|nil
+function ns.RestoreHudLayout(layout)
+  ns.Profile().hudLayout = layout
+  tellLayoutListeners()
+end
+
 -- Puts the frames the HUD layout in force places at their spots again and tells the ns.OnLayoutChanged listeners,
 -- after something the layout measures changed (the bar stack's width: the keep's spread; the bag and menu bar's:
 -- the canvas it holds on). Each frame waits for combat to end (the unit frames are secure); nothing to do under
