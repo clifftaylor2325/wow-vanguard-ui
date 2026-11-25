@@ -334,6 +334,16 @@ local function addTexts(bar, h)
   ns.SingleLine(bar.text)
 end
 
+-- Draws the name and the seconds no taller than a bar of height h (a plate's cast bar at its smallest height), the
+-- seconds' room with them; a bar tall enough keeps the role's own size, which follows the theme's text size.
+function CB.SizeTexts(bar, h)
+  local role = T.RoleSize(textRole(h))
+  local size = h < role and h or nil
+  T.TextSize(bar.text, size)
+  T.TextSize(bar.time, size)
+  bar.time:SetWidth(math.ceil(CB.TIME_EM * (size or role)))
+end
+
 -- The icon to the left, the spell name on the bar and the seconds left at its right.
 local function addParts(bar, h)
   bar.icon = T.Snap(T.Crop(bar:CreateTexture(nil, "ARTWORK")))

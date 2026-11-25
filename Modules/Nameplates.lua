@@ -323,6 +323,7 @@ local function sizeCast(f, l)
   if not f.cast then return end
   f.cast:SetSize(l.width - l.height - 3, l.height)
   f.cast.icon:SetSize(l.height, l.height)
+  CB.SizeTexts(f.cast, l.height)
   if not l.castBar then f.cast:Hide() end
 end
 

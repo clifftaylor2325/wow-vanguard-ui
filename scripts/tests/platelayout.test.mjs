@@ -302,3 +302,14 @@ it("H47-6-101 a narrow plate's cast bar gives the spell name the room the second
   expect(box.name, "the spell name's box").toBeGreaterThanOrEqual(40);
   expect(box.nameRight, "ends short of the seconds").toBeLessThan(box.timeLeft);
 });
+
+// H47-6-102: at the smallest plate height the cast bar's name and seconds are drawn no taller than the bar.
+it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, and a tall one keeps the role's size", () => {
+  const sizeAt = (height) => loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved(`width = 80, height = ${height}`))
+    .eval(`local c = __plateOf("nameplate1").cast local _, nameSize = c.text:GetFont() local _, timeSize = c.time:GetFont()
+      return { nameSize, timeSize, c.time:GetWidth() }`);
+  const [nameSize, timeSize, timeWidth] = sizeAt(6);
+  expect([nameSize, timeSize], "text size follows the bar").toEqual([6, 6]);
+  expect(timeWidth, "the seconds' room follows the text").toBe(Math.ceil(1.3 * 6));
+  expect(sizeAt(10)[0], "at the default height the role's own size").toBe(10);
+});
