@@ -984,3 +984,19 @@ it("H47-18-104 the sell card's no-history line fits whole on one line in German,
     expect(r, `${scale}: under the count line, above the steps, inside the card`).toEqual([true, true, true]);
   }
 });
+it("H47-18-105 a long shopping list name ends in an ellipsis before the toolbar's buttons, its count after it; a short one is whole", () => {
+  for (const locale of ["enUS", "frFR"]) {
+    const addon = postingTab(locale);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    const long = "TEST-ONLY Things to buy for my alts every weekend before the raid night";
+    addon.eval(`local AH = ${HELPER} AH.NewList("${long}") AH.AddEntry("Strange Dust", "${long}") AH.PaintShop()`);
+    const kinds = addon.textFit("Vanguard_AuctionShopping").map((f) => [f.kind, f.text]);
+    expect(kinds.filter(([kind]) => kind !== "cut"), `${locale}: nothing runs under a button`).toEqual([]);
+    expect(kinds.filter(([, text]) => text !== long), `${locale}: only the long name ends in an ellipsis (heading and pane row)`).toEqual([]);
+    const r = addon.eval(`local c = ${HELPER}.shopCard return { c.progress:GetRight() <= c.restock:GetLeft(), c.title:GetRight() < c.progress:GetLeft() }`);
+    expect(r, `${locale}: the name, then its count, before Restock`).toEqual([true, true]);
+    addon.eval(`local AH = ${HELPER} AH.NewList("TEST-ONLY Mats") AH.AddEntry("Strange Dust", "TEST-ONLY Mats") AH.PaintShop()`);
+    const short = addon.textFit("Vanguard_AuctionShopping").filter((f) => f.text !== long);
+    expect([short, addon.eval(`return ${HELPER}.shopCard.title:GetText()`)], `${locale}: a short name is whole`).toEqual([[], "TEST-ONLY Mats"]);
+  }
+});
