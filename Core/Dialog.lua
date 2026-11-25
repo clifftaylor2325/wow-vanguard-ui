@@ -428,6 +428,18 @@ local function pickConfirm(f, kind)
   f.sure:SetShown(f.confirm == f.sure)
 end
 
+-- Gives the shown Yes room for its label (a translation often runs longer than the English) and both Yes buttons the
+-- same width, which No hangs on to the left of; the width stops short of No's room, past that T.FitText shrinks the label.
+local function sizeConfirm(f)
+  local most = ASK_W - 2 * T.SPACE.pad - T.SPACE.gap - BUTTON_W
+  f.confirm:SetWidth(BUTTON_W)
+  ns.WidenToLabel(f.confirm)
+  f.confirm:SetWidth(math.min(f.confirm:GetWidth(), most))
+  T.Refit(f.confirm.text)
+  f.yes:SetWidth(f.confirm:GetWidth())
+  f.sure:SetWidth(f.confirm:GetWidth())
+end
+
 -- Puts a question's text, its Yes and its kind on the dialog, with no focus ring left from the question it replaces
 -- (the dialog may already be shown, so no OnShow clears it: Enter would press the old ring's button).
 local function fillQuestion(f, text, yes, kind)
@@ -435,6 +447,7 @@ local function fillQuestion(f, text, yes, kind)
   fitTitle(f)
   pickConfirm(f, kind)
   f.confirm.text:SetText(yes)
+  sizeConfirm(f)
   ns.FocusClear(f)
 end
 

@@ -339,6 +339,18 @@ it("text fits: the errors window's Report a bug button is as wide as its label, 
   expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the next use of the box has the usual width").toBe(120);
 });
 
+it("text fits: the question's Yes grows to a long translated label and No keeps its room, plain and danger, at Text size 130% (H47-1-101)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  atLargestText(addon);
+  for (const [label, kind] of [["Cancel auction", '"danger"'], ["Paste a string", "nil"]]) {
+    addon.eval(`ns.Ask("Question?", ns.L["${label}"], function() end, nil, ${kind})`);
+    const cut = addon.textFit("Vanguard_Question").filter((finding) => finding.kind === "cut");
+    const [noRight, yesLeft, yesWidth] = addon.eval("local q = Vanguard_Question return { q.no:GetRight(), q.confirm:GetLeft(), q.confirm:GetWidth() }");
+    expect([label, cut, noRight < yesLeft, yesWidth <= 240], "no label cut, No left of Yes, Yes at most 240 wide").toEqual([label, [], true, true]);
+  }
+});
+
 it("text fits: a dialog's long title stays on one line instead of wrapping over its content (B1-8)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
   addon.login();
