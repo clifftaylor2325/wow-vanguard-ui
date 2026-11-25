@@ -1012,3 +1012,16 @@ it("H47-18-102 (recommended pick, awaits Cliff) the Your auctions count is on th
     expect(line, `${locale}: on the Item heading's line, after it`).toEqual([true, true]);
   }
 });
+it("H47-18-101 the Up now card's Your history toggle keeps its whole label, a third longer too, and its width when clicked", () => {
+  for (const locale of ["enUS", "frFR", "itIT"]) {
+    const addon = postingTab(locale);
+    // The toggle's label and width.
+    const look = () => addon.eval(`local b = ${HELPER}.upCard.historyToggle return { b.text:GetText(), b:GetWidth() }`);
+    const before = look();
+    expect(addon.textFit(`${HELPER}.upCard`).filter((f) => f.text === before[0]), `${locale}: ${before[0]} not cut`).toEqual([]);
+    addon.click(`${HELPER}.upCard.historyToggle`);
+    const after = look();
+    expect(addon.textFit(`${HELPER}.upCard`).filter((f) => f.text === after[0]), `${locale}: ${after[0]} not cut`).toEqual([]);
+    expect(after[1], `${locale}: the same width either way`).toBe(before[1]);
+  }
+});
