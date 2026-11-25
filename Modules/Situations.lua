@@ -403,12 +403,13 @@ local function refreshShownOptions()
 end
 
 -- Applies the situation on the next frame (a burst of roster or zone events is one), out of combat, and updates the page.
--- The page is always dropped: its rows name the situation you're in when they're built.
+-- The page is built again only when the situation you're in is not the one its rows were built for (SI.pageFor): its
+-- rows name that situation, and every other change to it rebuilds the page where it is made.
 function SI.Refresh()
   ns.Soon("situations", function()
     ns.OutOfCombat(SI.Apply, "situations")
     refreshShownOptions()
-    ns.Options.RebuildPage("situations")
+    if SI.Where() ~= SI.pageFor then ns.Options.RebuildPage("situations") end
   end)
 end
 
@@ -488,7 +489,7 @@ end
 function SI.ProfileChanged()
   SI.PutBack()
   if SI.recording then ns.SetMoverSuffix(nil) end
-  SI.base, SI.applied, SI.recording = nil, nil, nil
+  SI.base, SI.applied, SI.recording, SI.pageFor = nil, nil, nil, nil
   if running() then SI.Refresh() end
 end
 ns.OnProfileChanged(SI.ProfileChanged)
@@ -614,6 +615,7 @@ end
 -- The Your situations card: every situation with an override, in precedence order, or a line saying there are none.
 local function yourRows(rows)
   local before, now = #rows, SI.Where()
+  SI.pageFor = now
   rows[#rows + 1] = { "header", L["Your situations"] }
   for _, name in ipairs(SI.NAMES) do
     local ov = SI.Override(name)
