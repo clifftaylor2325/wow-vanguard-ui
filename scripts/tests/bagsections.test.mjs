@@ -369,6 +369,12 @@ it("a clear gap above each section header, its band reaching down to its slots; 
   expect(side, "Junk 12 px right of Other, on the same line").toEqual([12, 0]);
 });
 
+it("the bag's search box keeps its magnifier after the skin (SearchBoxTemplate's searchIcon, InputBoxTemplates.xml)", () => {
+  const addon = loggedIn(BAG_ENV + "BagItemSearchBox.searchIcon = BagItemSearchBox:CreateTexture(nil, 'OVERLAY')");
+  addon.eval("__openBag()");
+  expect(addon.eval("return { BagItemSearchBox.searchIcon:GetAlpha(), BagItemSearchBox.searchIcon:IsShown() }"), "magnifier drawn").toEqual([1, true]);
+});
+
 it("the window grows to fit; on a 768 px screen at UI scale 1 the game keeps even a full bag on screen", () => {
   const screen = "__wfgStub.setScreen(1365, 768)";
   // The window's height, the game's scale for it, and whether all of it is on the screen.

@@ -188,10 +188,10 @@ local function skinItems(frame)
   end
 end
 
--- The game's item search box in the theme, where it has one.
+-- The game's item search box in the theme, where it has one, its magnifier kept (T.EditBox alone fades it).
 local function skinSearch(name)
   local box = _G[name]
-  if type(box) == "table" and box.SetText then T.EditBox(box) end
+  if type(box) == "table" and box.SetText then ns.GetModule("Windows").SkinSearch(box) end
 end
 
 -- Skins the window and its item buttons, on every show: the game windows' skin (its art and portrait
