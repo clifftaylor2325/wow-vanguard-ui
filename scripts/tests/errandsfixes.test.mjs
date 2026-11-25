@@ -179,3 +179,23 @@ it("H47-20-52 Train all stays right of the money line in long languages, and nar
     expect(addon.eval(width), `${locale}: two skills never need more than the room`).toBeLessThanOrEqual(106);
   }
 });
+
+// H48-3-R1: Fill checks a table's type, never its entries, so a crafted or damaged string (or a hand-edited file) could
+// leave a flight or boat time that is not a number, or a last boat's destination that is not a name. Errands' upgrade
+// (ns.Migrate) drops those entries; a time that is a number still counts down.
+const DAMAGED_TIMES = `{ flights = { ["A > B"] = "x", ["C > D"] = 40 }, boats = { ["Here > There"] = "y", ["Dock > Pier"] = 90 }, boatLast = { Here = {}, Dock = "Pier" } }`;
+it("H48-3-R1 errands: saved flight and boat times that are not numbers are dropped at login, and the bars still count down", () => {
+  const addon = loggedIn("", { savedVariables: `VanguardDB.profiles = { Default = { Errands = ${DAMAGED_TIMES} } }` });
+  const read = addon.eval(`local ER = ns.GetModule("Errands")
+    local s = ER.settings
+    local ok = pcall(ER.BoatGuess, "Here")
+    local to, seconds = ER.BoatGuess("Dock")
+    return { s.flights["A > B"] or false, s.flights["C > D"], s.boats["Here > There"] or false, s.boats["Dock > Pier"], s.boatLast.Here or false, ok, to, seconds, #ns.errors }`);
+  expect(read, "the wrong entries are gone, the numbers and the name stay, nothing raised").toEqual([false, 40, false, 90, false, true, "Pier", 90, 0]);
+});
+it("H48-3-R1 errands: a string with wrong-shaped times is saved clean", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ Errands = ${DAMAGED_TIMES} })))`);
+  const saved = addon.eval(`local e = VanguardDB.profiles.Imported.Errands return { e.flights["A > B"] or false, e.flights["C > D"], e.boats["Here > There"] or false, e.boats["Dock > Pier"], e.boatLast.Here or false, e.boatLast.Dock }`);
+  expect(saved).toEqual([false, 40, false, 90, false, "Pier"]);
+});
