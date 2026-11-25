@@ -311,6 +311,7 @@ end
 function QD.MarkCard(c, on)
   if not c.picked then
     c.picked = T.Tint(c:CreateTexture(nil, "BACKGROUND", nil, 2), "accent", 0.3)
+    c.picked:SetTexture(T.WHITE)
     c.picked:SetAllPoints()
   end
   c.picked:SetShown(on)

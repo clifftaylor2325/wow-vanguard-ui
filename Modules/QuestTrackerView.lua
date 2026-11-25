@@ -330,18 +330,32 @@ QT.EXPANDED_SHARE, QT.FALLBACK_SCREEN_HEIGHT, QT.FOOT_CLEAR = 0.7, 768, T.SPACE.
 -- first three bars, which reach the tracker's columns only on the narrowest screens.
 QT.FLOOR_FRAMES = { "Vanguard_MenuStrip", "Vanguard_Bar1", "Vanguard_Bar2", "Vanguard_Bar3" }
 
--- Whether a frame shows under the tracker: its columns cross the tracker's.
+-- The frames the tracker keeps clear of wherever they sit, shown or not, so its room does not jump as targets
+-- change: the target-of-target frame, which at the narrowest canvas reaches the tracker's columns.
+QT.SPOT_FRAMES = { "Vanguard_targettarget" }
+
+-- Whether a frame lies under the tracker's top: its columns cross the tracker's and its top is no higher than
+-- the body's (a frame above the tracker is no floor for it).
 local function underColumns(o, f)
-  if not (o and o:IsShown() and o:GetLeft() and f:GetLeft()) then return false end
+  if not (o and o:GetLeft() and f:GetLeft() and f.body:GetTop()) then return false end
   local k = o:GetEffectiveScale() / f:GetEffectiveScale()
-  return o:GetLeft() * k < f:GetRight() and o:GetRight() * k > f:GetLeft()
+  return o:GetLeft() * k < f:GetRight() and o:GetRight() * k > f:GetLeft() and o:GetTop() * k <= f.body:GetTop()
 end
 
--- The top of the highest of QT.FLOOR_FRAMES under the tracker's columns, in the tracker's units; 0 with none.
+-- The frames that count as a floor: the shown ones of QT.FLOOR_FRAMES and any of QT.SPOT_FRAMES.
+local function floorFrames()
+  local out = {}
+  for _, name in ipairs(QT.FLOOR_FRAMES) do
+    if _G[name] and _G[name]:IsShown() then out[#out + 1] = _G[name] end
+  end
+  for _, name in ipairs(QT.SPOT_FRAMES) do out[#out + 1] = _G[name] end
+  return out
+end
+
+-- The top of the highest floor frame under the tracker's columns, in the tracker's units; 0 with none.
 local function floorUnder(f)
   local floor = 0
-  for _, name in ipairs(QT.FLOOR_FRAMES) do
-    local o = _G[name]
+  for _, o in ipairs(floorFrames()) do
     if underColumns(o, f) then floor = math.max(floor, o:GetTop() * o:GetEffectiveScale() / f:GetEffectiveScale()) end
   end
   return floor
