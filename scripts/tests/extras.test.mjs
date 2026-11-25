@@ -1077,6 +1077,18 @@ it("the AFK screen: a long zone line wraps clear of the faction crest and above 
   expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
 });
 
+it("H47-10-102 a long German passage at the largest Text size on a short screen raises the card until the band is on screen", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + '__faction = "Alliance" UnitFactionGroup = function() return __faction end ' + "__wfgStub.setScreen(1365, 560) ", { client: '__wfgStub.textMetrics = "font" __wfgWorld.locale = "deDE"' });
+  addon.eval("ns.Theme.Settings().textScale = ns.Theme.TEXT_SCALE.max ns.Theme.Refresh() __afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  // The band's bottom, the card's rise, and whether the card is under the screen's top.
+  const read = () => addon.eval("local A = Vanguard_AfkScreen return { A.passageShade:GetBottom(), A.card.__points.CENTER.y, A.card:GetTop() <= A:GetTop() }");
+  const [bottom, rise, cardOnScreen] = read();
+  expect([bottom >= 0, rise > 60, cardOnScreen], "band on screen, card raised, card still under the top").toEqual([true, true, true]);
+  addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+  expect(read()[1], "back to its usual spot at a normal size").toBe(60);
+});
+
 it("H27-3-1: a main tank's target line keeps its reaction colour through a look change", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
   addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
