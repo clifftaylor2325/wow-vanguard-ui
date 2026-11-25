@@ -605,3 +605,13 @@ it("H48-4-1 a module restarted by a setting keeps its logout work in the backup"
 it("H48-4-1 a live profile switch and back keeps the modules' logout work in the backup", () => {
   expect(scaleAfterRestart('assert(ns.SwitchProfileNow("Alt") and ns.SwitchProfileNow("Default"), "the switches applied")')).toBe(1.25);
 });
+
+it("H48-6-2 answering the loss with Keep these settings puts the login question away, so Restore can't overwrite what was kept", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.slash("accent arcane");
+  const lost = relog(first, { account: "nil" });
+  expect(question(lost), "the login question is up").toBe("Vanguard's saved settings didn't load. Restore profile Default from this character's backup?");
+  lost.eval('ns.Options.Show("general")');
+  expect(lost.eval('return __click("Keep these settings")'), "Keep these settings answers the loss").toBe(true);
+  expect(question(lost), "the question is put away").toBe(null);
+});

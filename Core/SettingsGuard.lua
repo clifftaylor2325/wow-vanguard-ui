@@ -128,9 +128,16 @@ local function rebuildPages()
   O.RebuildPage("profiles")
 end
 
--- The loss is answered (restored, a string pasted, or a fresh start): the notice goes.
+-- Not now: says where the restore still is.
+local function later()
+  ns.Chat(G.LATER)
+end
+
+-- The loss is answered (restored, a string pasted, or a fresh start): the notice goes, and so does the login
+-- question when it is still up (its Restore would otherwise overwrite what the player kept or set up since).
 function G.Resolve()
   G.lost = nil
+  ns.CancelAsk(later)
   rebuildPages()
 end
 
@@ -218,11 +225,6 @@ end
 function G.Keep()
   G.Resolve()
   ns.Chat(L["Vanguard keeps the settings that loaded and won't ask about them again."])
-end
-
--- Not now: says where the restore still is.
-local function later()
-  ns.Chat(G.LATER)
 end
 
 -- Asks once at login: use the profile another character restored from a newer backup, restore from this
