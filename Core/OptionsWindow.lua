@@ -1479,7 +1479,7 @@ end
 -- Filters the nav by search text: pages that don't match fade; the settings that match are listed under the box
 -- (Core/OptionsSearch.lua); Enter opens the first.
 function O.Search(text)
-  text = ns.Lower(text or "")
+  text = ns.Lower(text or ""):match("^%s*(.-)%s*$")
   if window and window.found then window.found:Hide() end
   matchPages(text)
   O.ShowHits(text)

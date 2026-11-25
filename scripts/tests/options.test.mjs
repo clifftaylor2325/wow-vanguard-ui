@@ -2635,6 +2635,13 @@ it("options: the search list closes when another page opens and when Escape is p
   expect(listed(), "typing brings it back").toBe(true);
 });
 
+it("options: a search of only spaces lists nothing and dims no page, like an empty box (H47-2-6)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('local s = Vanguard_Options.search s:SetText("  ") s:GetScript("OnTextChanged")(s)');
+  expect(addon.eval("return { Vanguard_Options.results and Vanguard_Options.results:IsShown() or false, ns.Options.matches == nil }"), "no list, no filter").toEqual([false, true]);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
