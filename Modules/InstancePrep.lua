@@ -470,7 +470,7 @@ end
 
 -- /vg prep [want <key> <n>|setup]: the card now (after the fight, in one), a wanted amount, or the wanted-amounts window.
 function PR.Command(rest)
-  rest = rest or ""
+  rest = (rest or ""):lower()
   if not PR.Running() then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
   if rest:match("^want") then return setWant(rest) end
   if rest:match("^setup") then return PR.Wizard.Open() end

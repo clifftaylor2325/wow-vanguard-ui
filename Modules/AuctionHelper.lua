@@ -646,7 +646,7 @@ AH.COMMANDS = {
   scan = function() AH.StartScan() end,
   -- Forgets every price (of every realm and faction).
   prices = function(arg)
-    if arg ~= "clear" then return AH.Status() end
+    if arg:lower() ~= "clear" then return AH.Status() end
     AP.Store().houses = {}
     ns.Chat(L["Forgot every auction price."])
   end,

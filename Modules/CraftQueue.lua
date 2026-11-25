@@ -532,6 +532,7 @@ local PLAIN = { next = "Next", stock = "Stock", cd = "Cooldowns", top = "Top", d
 -- /vg craft [add [n]|next|stock|cd|top|done|clear].
 function CQ.Command(rest)
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)$")
+  word = word:lower()
   if not CQ.Active() then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
   if word == "add" then return CQ.AddShown(arg) end
   if word == "clear" then return CQ.Clear() end

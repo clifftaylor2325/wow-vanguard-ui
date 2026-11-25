@@ -497,7 +497,7 @@ local VERBS = {
 -- /vg filter [on | off | tab | hide | add <word> | remove <word> | clear].
 function CF.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  local run = VERBS[verb]
+  local run = VERBS[verb:lower()]
   if not run then return ns.Chat(L["Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]"]) end
   return run(arg)
 end

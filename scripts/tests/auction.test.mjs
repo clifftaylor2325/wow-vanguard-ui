@@ -653,3 +653,10 @@ it("H46-31-201 the Lists and Posting tabs switch is a reload row; tabs already b
   addon.update(0);
   expect(addon.eval("return { #AuctionHouseFrame.Tabs, __paints > 0 }"), "the built tabs are still painted at the next opening").toEqual([5, true]);
 });
+
+it("H48-8-2 /vg ah prices reads clear in any case", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.Record(2589, 90, __now)");
+  addon.slash("ah prices CLEAR");
+  expect(list(houses(addon)), "CLEAR forgot every house").toEqual([]);
+});
