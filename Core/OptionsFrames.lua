@@ -316,7 +316,7 @@ end
 local function raidAuraRows()
   return {
     dispelRow(),
-    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
+    { "cycle", L["Debuff icons (reload)"], { { 0, L["None"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
     check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons at each tile's right edge under the missing-buff mark; the second and third sit under the name, where they fit."], "note" },
     { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator1") },

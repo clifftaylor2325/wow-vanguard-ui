@@ -116,7 +116,7 @@ it("options window: nav, search, controls, footer", () => {
       local shown = m:IsShown()
       m.items[2]:GetScript("OnClick")(m.items[2])
       return { shown = shown, count = #m.items, value = VanguardDB.profiles.Default.Tooltips.anchor, closed = not m:IsShown(), text = w.dropdown.text:GetText() } end end`);
-  expect(dd.shown && dd.count === 3 && dd.value === "cursor" && dd.closed && dd.text === "at the cursor", "a dropdown opens a menu of its choices; picking one sets it and closes the menu").toBeTruthy();
+  expect(dd.shown && dd.count === 3 && dd.value === "cursor" && dd.closed && dd.text === "At the cursor", "a dropdown opens a menu of its choices; picking one sets it and closes the menu").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Text size" then
       w.set(0.95) w:Refresh()
@@ -1218,7 +1218,7 @@ it("a note row wraps to its card and the row grows to fit; a dropdown's choice s
   expect(note[0], "the note is as wide as the card's inside: the card's 12 of padding kept on both sides").toBe(note[4] - 2 * 12);
   expect(note[1] > 20 && note[3] <= note[2] - note[1] - 6, "its text wraps to more than one line, and the next row starts under all of it").toBe(true);
   addon.eval('ns.Options.Show("town")');
-  const choice = addon.eval(`local fs = __fontString("group role, else damage")
+  const choice = addon.eval(`local fs = __fontString("Group role, else damage")
     return { fs.__noWrap, fs.__points.LEFT ~= nil, fs.__points.RIGHT and fs.__points.RIGHT.rel == fs.__parent.arrow }`);
   expect(choice, "the chosen role is one line between the box's edge and its arrow").toEqual([true, true, true]);
 });
@@ -2750,4 +2750,19 @@ it("H46-24-53: General has a Grid spacing slider, and the Modules page a switch 
   const none = loggedIn(CLICK_LUA);
   none.eval('ns.Options.Show("modules")');
   expect(none.eval('return __find("Skins for other addons") == nil'), "no skin registered, no skin rows").toBe(true);
+});
+
+it("options: the choice words of Numbers, Tooltips, Debuff icons and Weigh stats for start with a capital, like the other choices", () => {
+  const addon = loggedIn();
+  // The first letter of every choice label of the cycle rows with those captions, across the pages.
+  const labels = addon.eval(`local out = {}
+    for _, p in ipairs(ns.Options.PAGES) do for _, r in ipairs(ns.Options.RowsOf(p)) do
+      local caption = type(r[2]) == "string" and r.english or ""
+      if r[1] == "cycle" and type(r[3]) == "table" and (caption:find("^Numbers") or caption:find("^Debuff icons") or caption:find("^Weigh stats") or caption:find("^Unit tooltips") or caption:find("^Tooltip position")) then
+        for _, c in ipairs(r[3]) do out[#out + 1] = tostring(c[2]) end
+      end
+    end end
+    return out`);
+  expect(labels.length, "the rows were found").toBeGreaterThan(8);
+  expect(labels.filter((label) => /^[a-z]/.test(label)), "no lower-case choice").toEqual([]);
 });
