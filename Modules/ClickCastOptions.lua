@@ -302,10 +302,18 @@ local function rowText(item)
   return item.text or item.spell.name
 end
 
--- Puts a row's text where its kind has it: a rank line indented under its spell, the rest after the icon.
+-- Whether a row shows the Ranks button: a spell (not one of its rank lines) with more than one rank.
+local function hasRanks(item)
+  return item.spell ~= nil and not item.rank and #item.spell.ranks > 1
+end
+
+-- Puts a row's text where its kind has it: a rank line indented under its spell, the rest after the icon. Beside the
+-- Ranks button it ends short of it, on one line (a long translated name ends in "…" instead of running under it).
 local function placeRowText(b, item)
   b.text:ClearAllPoints()
   b.text:SetPoint("LEFT", item.rank and ROW_H + 20 or ROW_H + 6, 0)
+  if hasRanks(item) then b.text:SetPoint("RIGHT", b.chevron, "LEFT", -T.SPACE.tight, 0) end
+  b.text:SetWordWrap(not hasRanks(item))
   b.text:SetText(rowText(item))
 end
 
@@ -317,7 +325,7 @@ local function fillRow(b, item)
   b.icon:SetShown(item.spell ~= nil and not item.rank)
   b.icon.icon:SetTexture(item.spell and item.spell.icon or nil)
   placeRowText(b, item)
-  b.chevron:SetShown(item.spell ~= nil and not item.rank and #item.spell.ranks > 1)
+  b.chevron:SetShown(hasRanks(item))
   b.chevron.text:SetText(item.spell and picker.open[item.spell.name] and L["Ranks ^"] or L["Ranks v"])
 end
 
