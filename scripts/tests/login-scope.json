@@ -198,6 +198,7 @@
       "H46-13-2: the party column grows up from its foot, and the pets column over it with it",
       "H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise",
       "raid tools: calls, target icons and world markers for the leader and assistants",
+      "H47-7-3: every raid tools button says what a click does, and the two clear buttons differ",
       "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],
     "scripts/tests/fallbacks.test.mjs": [],

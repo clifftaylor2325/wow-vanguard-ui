@@ -664,6 +664,20 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   const solo = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV + "__inGroup = false");
   expect(solo.eval("return Vanguard_RaidTools:IsShown()"), "hidden out of a group").toBe(false);
 });
+it("H47-7-3: every raid tools button says what a click does, and the two clear buttons differ", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
+  // The tooltip text shown over bar button i, and whether the button owns the tooltip.
+  const tip = (i) => addon.eval(`local b = Vanguard_RaidTools.list[${i}] b.__scripts.OnEnter(b) local t = { GameTooltip.__lines[1].text, GameTooltip:GetOwner() == b } b.__scripts.OnLeave(b) return t`);
+  expect(tip(1)[0], "Ready").toBe("Start a ready check");
+  expect(tip(2)[0], "Pull says what the right click does").toBe("Start the pull timer. Right-click: cancel it");
+  expect(tip(4)[0]).toBe("Convert the party to a raid");
+  expect(tip(5)[0]).toBe("Mark your target");
+  expect(tip(13)[0], "the first X clears your target's mark").toBe("Clear your target's mark");
+  expect(tip(14)[0]).toBe("Place or remove this world marker. Right-click: clear it");
+  expect(tip(22), "the second X clears every world marker, and the tip belongs to the button").toEqual(["Clear every world marker", true]);
+  expect(addon.eval("__tool(3) return GameTooltip:IsShown()"), "the Roles tip hides on leave").toBe(false);
+  expect(addon.eval("local b = Vanguard_RaidTools.list[3] b.__scripts.OnEnter(b) return GameTooltip.__lines[1].text")).toBe("Start a role check");
+});
 it("raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
   addon.eval("Vanguard_RaidTools.actions.ConvertToRaid.text:SetText('Schlachtzug')");

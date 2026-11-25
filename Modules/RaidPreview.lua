@@ -219,6 +219,33 @@ local function inGroup()
   return ns.IsTrue(yes)
 end
 
+-- The options window's rect and the preview's, on screen, overlap (the preview sits where the real tiles would).
+local function overlaps(a, b)
+  local sa, sb = a:GetEffectiveScale(), b:GetEffectiveScale()
+  local al, ar, at, ab = a:GetLeft(), a:GetRight(), a:GetTop(), a:GetBottom()
+  local bl, br, bt, bb = b:GetLeft(), b:GetRight(), b:GetTop(), b:GetBottom()
+  if not (al and bl) then return false end
+  return al * sa < br * sb and bl * sb < ar * sa and ab * sa < bt * sb and bb * sb < at * sa
+end
+
+-- Slides the open options window to the screen side the preview is not on when it covers the sample tiles,
+-- which are drawn under it otherwise (the window is above them). RP.RestoreOptions puts it back.
+local function clearOptions()
+  local window = _G.Vanguard_Options
+  if not (window and window:IsShown() and overlaps(window, RP.frame)) then return end
+  local leftSide = RP.frame:GetCenter() * RP.frame:GetEffectiveScale() < UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2
+  window:ClearAllPoints()
+  window:SetPoint(leftSide and "RIGHT" or "LEFT", UIParent, leftSide and "RIGHT" or "LEFT", leftSide and -20 or 20, 0)
+  RP.optionsMoved = true
+end
+
+-- Puts the options window back where it was (its saved place) if the preview moved it.
+local function restoreOptions()
+  if not RP.optionsMoved then return end
+  RP.optionsMoved = false
+  if _G.Vanguard_Options then ns.Options.PlaceWindow() end
+end
+
 -- Why the preview can't start now, or nil when it can.
 local function blocked()
   if not RF.holder then return L["The raid frames are off (/vg > Modules), so there is nothing to preview."] end
@@ -232,6 +259,7 @@ local function stop(said, refit)
   if RP.size == 0 then return end
   RP.size = 0
   RP.frame:Hide()
+  restoreOptions()
   refit()
   ns.Chat(said or L["Raid frames preview off."])
 end
@@ -260,6 +288,7 @@ function RP.Set(n)
   if RP.size == 0 then ns.Chat(L["Raid frames preview on, with sample players. /vg preview off, joining a group or combat ends it."]) end
   RP.size = n
   draw()
+  clearOptions()
 end
 
 -- Draws the preview again (a raid frame setting changed); nothing while it's off.

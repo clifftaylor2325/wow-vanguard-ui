@@ -160,6 +160,29 @@ it("raid frames: a new grid scale places the role-mark and status-mark shadows a
   expect(addon.eval("return Vanguard_Raid:GetScale()"), "drawn at the 40-player size").toBe(0.72);
 });
 
+it("H47-7-103: the preview slides the options window clear of the sample tiles, and the window comes back when it stops", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(1920, 1080)");
+  addon.slash("");
+  // The options window and the preview overlap on screen (their rects, in screen units).
+  const covered = () => addon.eval(`local a, b = Vanguard_Options, Vanguard_RaidPreview
+    local sa, sb = a:GetEffectiveScale(), b:GetEffectiveScale()
+    return a:GetLeft() * sa < b:GetRight() * sb and b:GetLeft() * sb < a:GetRight() * sa and a:GetBottom() * sa < b:GetTop() * sb and b:GetBottom() * sb < a:GetTop() * sa`);
+  // The options window's left edge.
+  const left = () => addon.eval("return Vanguard_Options:GetLeft()");
+  const before = left();
+  addon.slash("preview 5");
+  expect([covered(), left() !== before], "the window moved off the party preview").toEqual([false, true]);
+  addon.slash("preview off");
+  expect(left(), "and is back where it was").toBe(before);
+  addon.slash("preview 10");
+  addon.slash("preview 40");
+  expect(covered(), "a 40 preview is clear of it too").toBe(false);
+  addon.eval("local w = Vanguard_Options w:ClearAllPoints() w:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, 0)");
+  const placed = left();
+  addon.slash("preview 25");
+  expect(left(), "a window the player already moved clear is left alone").toBe(placed);
+});
+
 it("raid preview: stepping from 25 to 40 sample players works the tiles' borders out again for the new scale, once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
   addon.slash("preview 25");
@@ -785,10 +808,32 @@ it("raid frames: on a big grid the tile's status takes 32 units on one line and 
   expect(zones(100, 48, 0.8), "25 players: status 32 wide at the tile's right, the name before it").toEqual([44, 52, 32, "RIGHT"]);
   expect(zones(100, 48, 0.72), "40 players: the same").toEqual([44, 52, 32, "RIGHT"]);
   expect(zones(100, 48, 0.72)[0], "the 44 unit name zone leaves 31 after the role mark and its gap: Aldren, Brielle and Jorund (30.4 units at most in the game's font) fit").toBeGreaterThanOrEqual(44);
-  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it (28 of 72), so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
+  expect(zones(72, 36, 0.72), "H47-7-1: a 72 wide tile gives the status only what is left after the name's 31 units (4 of 72)").toEqual([44, 52, 4, "RIGHT"]);
+  for (const [w, room] of [[72, 4], [80, 12], [90, 22], [100, 32], [120, 32]]) {
+    const z = zones(w, 36, 0.8);
+    expect(z[0] + 4 - 17, `H47-7-101: the name keeps 31 units after the role mark at ${w} wide`).toBeGreaterThanOrEqual(31);
+    expect(z[2], `and the status gets ${room} at ${w} wide`).toBe(room);
+  }
   expect(zones(100, 48, 1)[3], "a full-size tile keeps the status under the name").toBe("CENTER");
   addon.slash("preview 25");
   expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
+});
+
+it("H47-7-102: on a short canvas a 40 player grid is put lower, so it clears the Main tanks column", () => {
+  // Main tanks (Modules/MainTanks.lua): TOPLEFT 400,-20 with four 22 high tiles 4 apart: its foot is 120 below the canvas top.
+  const spot = (w, h, size = "") => {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.setScreen(${w}, ${h})`);
+    if (size) addon.eval(size);
+    return addon.eval("local y = ns.GetModule('RaidFrames').SpotFor(40)[4] return { y, (8 * (ns.GetModule('RaidFrames').settings.height + ns.GetModule('RaidFrames').settings.spacing) - ns.GetModule('RaidFrames').settings.spacing) * 0.72 }");
+  };
+  for (const [w, h] of [[1187, 668], [1280, 720], [1366, 768]]) {
+    const [y, tall] = spot(w, h);
+    expect(y + tall, `${w}x${h}: the grid's top is under the Main tanks' foot (120)`).toBeLessThanOrEqual(h - 120);
+    expect(y, `${w}x${h}: never above the usual 344`).toBeLessThanOrEqual(344);
+  }
+  expect(spot(1920, 1080)[0], "a tall canvas keeps the usual spot").toBe(344);
+  expect(spot(1187, 400)[0], "a very short canvas stops at the floor (200)").toBe(200);
+  expect(spot(1366, 768, "ns.GetModule('RaidFrames').settings.height = 56")[0], "bigger tiles go lower still").toBeLessThan(spot(1366, 768)[0]);
 });
 
 it("raid frames: the raid mover's Scale and Opacity reach the tiles; a Scale above 100% grows the grid only up to 25 players", () => {
