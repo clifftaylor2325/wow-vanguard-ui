@@ -711,3 +711,10 @@ it("H48-7-52: recording a price a row already has makes no tables for its days",
   addon.eval("ns.AuctionPrices.House().prices[2589].qtys = 'broken' ns.AuctionPrices.Record(2589, 60, __now + 3)");
   expect(addon.eval("return { __fills, type(ns.AuctionPrices.House().prices[2589].qtys) }"), "a damaged row is mended").toEqual([1, "table"]);
 });
+
+it("H48-8-2 /vg ah prices reads clear in any case", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.Record(2589, 90, __now)");
+  addon.slash("ah prices CLEAR");
+  expect(list(houses(addon)), "CLEAR forgot every house").toEqual([]);
+});

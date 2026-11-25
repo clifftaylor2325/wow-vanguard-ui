@@ -32,14 +32,19 @@ local function problem(name, text, info)
   if not find(name) and #presets >= MAX_PRESETS then return "too many presets" end
 end
 
--- Adds or replaces a preset by name (its escape codes dropped, as the info's are); returns the same results as Vanguard.RegisterPreset.
+-- A text on one line: its escape codes dropped, its line breaks and other control characters made spaces.
+local function oneLine(text)
+  return (text:gsub("|", ""):gsub("%c", " "))
+end
+
+-- Adds or replaces a preset by name (its name and info made one line without escape codes); returns the same results as Vanguard.RegisterPreset.
 local function add(name, text, info, source)
-  if type(name) == "string" then name = (name:gsub("|", "")) end
+  if type(name) == "string" then name = oneLine(name) end
   local why = problem(name, text, info)
   if why then return false, why end
   local old, at = find(name)
   if old and old.source == "Vanguard" and source ~= "Vanguard" then return false, "a built-in preset has that name" end
-  local entry = { name = name, text = text, info = ns.TextPrefix((info or ""):gsub("|", ""), MAX_INFO), source = source }
+  local entry = { name = name, text = text, info = ns.TextPrefix(oneLine(info or ""), MAX_INFO), source = source }
   if old and old.text == text and old.info == entry.info and old.source == source then return true end
   presets[at or (#presets + 1)] = entry
   return true
@@ -50,7 +55,7 @@ end
 -- replaced. Returns true, or false and why not. The string is checked when the player applies it.
 -- The Profiles page is rebuilt when an entry was added or changed, so it shows the current list.
 function Vanguard.RegisterPreset(name, text, info)
-  local clean = type(name) == "string" and (name:gsub("|", "")) or name
+  local clean = type(name) == "string" and oneLine(name) or name
   local before = ns.FindPreset(clean)
   local ok, why = add(name, text, info, "addon")
   if ok and ns.FindPreset(clean) ~= before and O.Frame() then O.RebuildPage("profiles") end

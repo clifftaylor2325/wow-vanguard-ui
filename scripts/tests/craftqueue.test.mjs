@@ -533,3 +533,16 @@ it("H47-20-102 the panel's buttons are as wide as their labels in German, Spanis
     expect(addon.eval(inside), `${locale}: the buttons stay in the panel (two rows when one is too wide)`).toBe(true);
   }
 });
+
+it("H48-8-2 /vg craft reads add, clear and the plain words in any case", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  addon.slash("craft ADD 2");
+  expect(queue(addon), "ADD queued two").toEqual([[100, 2]]);
+  expect(say(addon, "craft Done", /Crafted TEST-ONLY Linen Bag\. 1 craft left/), "Done took one off").toBe(true);
+  addon.slash("craft CLEAR");
+  expect([Object.keys(queue(addon)).length, chatHas(addon, /Craft queue emptied/)], "CLEAR emptied it").toEqual([0, true]);
+  addon.eval("__price(2589, 10) __price(2320, 20) __price(4238, 500) __price(1251, 40)");
+  addon.slash("craft TOP");
+  expect(chatHas(addon, /1\. TEST-ONLY Linen Bag: 4s 50c a craft/), "TOP ran the ranking, not the queue list").toBe(true);
+});

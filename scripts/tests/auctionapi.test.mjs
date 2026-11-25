@@ -223,6 +223,18 @@ it("RegisterForDBUpdate: a callback that registers another one doesn't make the 
   expect(browse(90), "it is told in the next pass").toEqual([2, 1]);
 });
 
+it("H48-8-5 RegisterForDBUpdate hears the same function once, however often it is registered", () => {
+  const addon = withApi();
+  addon.eval(`__heard = 0 local function hear() __heard = __heard + 1 end
+    for i = 1, 50 do Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", hear) end
+    Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY B", hear)
+    Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", function() __heard = __heard + 10 end)`);
+  addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 95, totalQuantity = 3 } }`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.update(0.01);
+  expect(addon.eval("return __heard"), "the function once (1), a different one still added (10)").toBe(11);
+});
+
 it("H44-21-2: MultiSearchExact on a name the client has not cached takes no item whose name only contains it", () => {
   const addon = withApi();
   call(addon, "MultiSearchExact", "'TEST-ONLY Addon', { 'TEST-ONLY Ore' }");

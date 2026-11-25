@@ -370,6 +370,7 @@
       "prep buffs: off until switched on",
       "prep buffs: on a German client the checks find the German names",
       "prep buffs: world buffs only when asked for, an off hand only when it holds a weapon",
+      "prep: /vg prep reads its words in any case (H48-8-2)",
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
       "prep: a /reload inside the dungeon does not bring the door card back",

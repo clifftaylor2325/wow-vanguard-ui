@@ -29,7 +29,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg variant [name]` | Theme variant: default, contrast, vellum, classic, midnight, obsidian, moss, ember |
 | `/vg corners [square\|rounded]` | Panel corners |
 | `/vg accent <colour>` | The accent colour |
-| `/vg theme reset` | Every Look setting back to its default: accent, variant, corners, panel texture, font and text size |
+| `/vg theme reset` | Every theme setting back to its default: accent, variant, corners, panel texture, font, text size, Safer colours, Reduce motion, Interface sounds, Pixel-perfect scale, HUD look and bar texture |
 | `/vg ornaments`, `/vg gradient`, `/vg icons` | Window ornaments, panel gradient, sharper menu icons (off by default) |
 | `/vg texelsnap`, `/vg nineslice`, `/vg slug`, `/vg framebuffer` | Side-by-side tests (off by default) |
 

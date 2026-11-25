@@ -442,3 +442,13 @@ it("prep buffs: /vg prep buffs says in the client's language when a check's spel
   expect(chatHas(addon, /keine, die dieser Client kennt, also keine Zeile/), "the German line").toBe(true);
   expect(chatHas(addon, /none this client knows, so no row/), "not the English").toBe(false);
 });
+
+it("prep: /vg prep reads its words in any case (H48-8-2)", () => {
+  const addon = character("WARRIOR", 60);
+  addon.slash("prep want food 30");
+  expect(addon.eval("return ns.Settings('InstancePrep').want.food"), "WANT took effect").toBe(30);
+  addon.slash("prep BUFFS");
+  expect(chatHas(addon, /Your \d+ buff\(s\)|Your \d+ buffs?, and the Instance prep check/), "BUFFS prints the report").toBe(true);
+  addon.slash("prep SETUP");
+  expect(addon.frame("Vanguard_PrepWizard").visible, "SETUP opens the wanted-amounts window").toBe(true);
+});

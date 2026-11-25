@@ -688,3 +688,21 @@ it("H46-40-F4 chat filter: a Filtered tab closed with the module off since login
   addon.update(0.1);
   expect(addon.eval("return { #ChatFrame3.__messages, ns.GetModule('ChatFilter').window:GetName() }"), "Loot holds no spam; a new Filtered tab has it").toEqual([0, "ChatFrame4"]);
 });
+
+it("H48-8-2 /vg filter reads its verbs in any case", () => {
+  const addon = loggedIn();
+  // The filter's switch, where it sends lines and how many words it holds.
+  const filterState = () => addon.eval("local s = ns.Settings('ChatFilter') return { s.on == true, s.mode, #(s.keywords or {}) }");
+  addon.slash("filter ON");
+  addon.slash("filter HIDE");
+  addon.slash("filter Add Foo");
+  expect(filterState(), "on, hide and add took effect").toEqual([true, "hide", 1]);
+  addon.slash("filter TAB");
+  addon.slash("filter Remove foo");
+  expect(filterState(), "tab and remove took effect").toEqual([true, "tab", 0]);
+  addon.slash("filter add bar");
+  addon.slash("filter CLEAR");
+  addon.slash("filter OFF");
+  expect(filterState(), "clear and off took effect").toEqual([false, "tab", 0]);
+  expect(chatHas(addon, /Usage: \/vg filter/), "no usage line for a capital").toBe(false);
+});
