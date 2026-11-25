@@ -321,6 +321,21 @@ function ns.OnLayoutChanged(fn)
   layoutListeners[#layoutListeners + 1] = fn
 end
 
+-- Functions told when unlock mode begins or ends (ns.Unlocked() answers which): a module that gives a frame a spot
+-- of its own while its handle is up.
+local unlockListeners = {}
+
+-- Registers fn() to run after the frames unlocked or locked, before the handles show.
+---@param fn fun()
+function ns.OnUnlockChanged(fn)
+  unlockListeners[#unlockListeners + 1] = fn
+end
+
+-- Tells the ns.OnUnlockChanged listeners; one that fails is reported and the rest still run.
+local function tellUnlockListeners()
+  for _, fn in ipairs(unlockListeners) do ns.Try("unlock changed", fn) end
+end
+
 -- Forgets where a frame stands in the profile, its point and offsets and its anchor link (a link is a position too),
 -- and keeps the rest of its entry: its scale, its opacity and a matched or own size. An entry left empty goes. For a
 -- frame whose handle is gone and whose next spot is the game's to choose, as well as a layout's frames.
@@ -848,6 +863,7 @@ end
 -- Marks the frames unlocked and shows every handle on strata (nil: each handle's own).
 local function showAllHandles(strata)
   unlocked = true
+  tellUnlockListeners()
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
 end
 
@@ -886,6 +902,7 @@ end
 -- Hides every handle, the grid and unlock mode's bar, keeping every change.
 function ns.Lock()
   unlocked, editUnlocked = false, false
+  tellUnlockListeners()
   ns.UnlockEnded()
   selectMover(nil)
   if ns.CloseMoverPopover then ns.CloseMoverPopover() end

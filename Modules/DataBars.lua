@@ -506,10 +506,25 @@ end
 -- edge (`edge`) while the block around your character rises on a tall screen (Core/Layout.lua, HudLift).
 DB.POINTS = { xpbar = { "BOTTOM", "BOTTOM", 0, 4, edge = true }, repbar = { "BOTTOM", "BOTTOM", 0, 12, edge = true } }
 
+-- The lifted spot's table, refitted in place so the same spot compares equal until the height changes.
+DB.liftedPoint = { "BOTTOM", "BOTTOM", 0, 0, edge = true }
+
+-- The reputation bar's spot while the frames are unlocked and the XP bar has nothing to show: just above the XP
+-- bar's handle (its own height, at least the handle's 14, and a gap of 2), so both names read and both handles
+-- can be grabbed.
+function DB.LiftedPoint()
+  local height = math.max(ns.PlainNumber(DB.xpBar:GetHeight()) or 0, ns.HANDLE_MIN.height)
+  DB.liftedPoint[4] = DB.POINTS.xpbar[4] + height + 2
+  return DB.liftedPoint
+end
+
 -- The reputation bar's default spot, given the XP bar's figures (nil when it has nothing to show): above
--- the XP bar, or the XP bar's own spot at the level cap or with that bar turned off, so no gap is left.
+-- the XP bar, or the XP bar's own spot at the level cap or with that bar turned off, so no gap is left (but
+-- lifted clear of the XP handle while unlocked, DB.LiftedPoint).
 function DB.RepPoint(xp)
-  return DB.xpBar and xp and DB.POINTS.repbar or DB.POINTS.xpbar
+  if not DB.xpBar then return DB.POINTS.xpbar end
+  if xp then return DB.POINTS.repbar end
+  return ns.Unlocked() and DB.LiftedPoint() or DB.POINTS.xpbar
 end
 
 -- Moves the reputation bar's default spot when the XP bar comes or goes (a spot the player saved wins).
@@ -520,6 +535,9 @@ function DB.PlaceRepBar(xp)
   DB.repPoint = point
   ns.SetMoverDefault("repbar", point)
 end
+
+-- Unlocking or locking moves the shared reputation spot up or back.
+ns.OnUnlockChanged(function() DB.PlaceRepBar(DB.Line()) end)
 
 -- Honor's bar colour: the theme's orange (the game paints honor orange; the theme has no honor token).
 DB.HONOR_COLOR = "focus"
