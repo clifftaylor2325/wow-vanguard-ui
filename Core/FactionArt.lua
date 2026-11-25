@@ -42,6 +42,15 @@ function FA.Faction()
   return faction
 end
 
+-- Your faction as the client names it in its language (the second answer of UnitFactionGroup, "Horde" in English), else
+-- the token; "none" for neutral and hidden answers. The token stays the one to compare, this is only for showing.
+function FA.FactionName()
+  local faction = FA.Faction()
+  local _, localized = UnitFactionGroup("player")
+  if faction ~= "none" and type(localized) == "string" and localized ~= "" and not ns.IsSecret(localized) then return localized end
+  return faction
+end
+
 -- One line of the report: a name, and whether the client has it.
 local function line(kind, name, found)
   ns.Chat(string.format("  %s %s  %s", kind, name, found and T.Paint(L["yes"], "good") or T.Paint(L["missing"], "muted")))
@@ -52,7 +61,7 @@ ns.On("NEUTRAL_FACTION_SELECT_RESULT", function() T.Refresh() end)
 
 -- Prints the report: your faction, then each atlas and file and whether it's there.
 function FA.Report()
-  local faction = FA.Faction()
+  local faction = FA.FactionName()
   ns.Chat(ns.Format(L["Faction art on this client (you're {faction}):"], { faction = faction == "none" and L["none"] or faction }))
   for _, name in ipairs(FA.ATLASES) do line(L["atlas"], name, FA.HasAtlas(name)) end
   for _, file in ipairs(FA.FILES) do line(L["file"], file, FA.HasFile(file)) end

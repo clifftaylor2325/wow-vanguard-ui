@@ -127,6 +127,24 @@ it("H46-18-52 options: Forget every class's trainers asks first, names the whole
   expect([addon.eval("return VanguardDB.trainers == nil"), /Forgot every trainer\.$/.test(addon.chat().at(-1))], "Forget forgets every class and says so").toEqual([true, true]);
 });
 
+it("options: General has Check graphics, Apply graphics and Undo graphics; Apply and Undo wait for a check and a record (H47-1-55)", () => {
+  // TEST-ONLY client: a frame rate to read and a Graphics Quality in use, as the graphics tests set them.
+  const addon = loggedIn(CLICK_LUA + `__fps = 45 GetFramerate = function() return __fps end
+    __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = "6", "1"`);
+  addon.slash("");
+  addon.eval('ns.Options.Show("general")');
+  // Whether the General page's button with this label can be pressed.
+  const enabled = (label) => addon.eval(`return __find("${label}"):IsEnabled()`);
+  expect([enabled("Check graphics"), enabled("Apply graphics"), enabled("Undo graphics")], "before a check: only Check").toEqual([true, false, false]);
+  addon.eval('__click("Check graphics")');
+  addon.advance(5, 1);
+  expect([enabled("Apply graphics"), enabled("Undo graphics")], "a finished check enables Apply").toEqual([true, false]);
+  addon.eval('__click("Apply graphics")');
+  expect([enabled("Undo graphics"), addon.chat().some((line) => /undo puts your settings back/.test(line))], "Apply sets and says so, and Undo has a record").toEqual([true, true]);
+  addon.eval('__click("Undo graphics")');
+  expect([enabled("Undo graphics"), addon.eval('return __wfgWorld.cvars.graphicsQuality')], "Undo puts the quality back and has nothing left").toEqual([false, "6"]);
+});
+
 it("options: Move frames on Chat windows and Situations unlocks the frames", () => {
   for (const page of ["chat", "situations"]) {
     const addon = loggedIn(CLICK_LUA);

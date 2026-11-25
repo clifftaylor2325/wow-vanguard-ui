@@ -155,11 +155,23 @@ function UX.Status()
 end
 
 -- The frame whose top edge the chip sits over: your class's row on the player frame (the totems, else the combo
--- points) when it is made, else the player frame itself.
+-- points) when it is made, else the player frame's crown (its name tab under the Tabs look).
 local function aboveRow(player)
   local totems = ns.ModuleLive("ClassBars") and ns.GetModule("ClassBars").totems
   local points = ns.ModuleLive("ComboPoints") and ns.GetModule("ComboPoints").bar
-  return totems or points or player
+  return totems or points or UF.Crown(player)
+end
+
+-- How far the status marks stand over `base`'s top at the chip's corner (units): the chip lifts past them. None while a
+-- class row is built (the marks then stand on the frame's inner corner).
+local function statusReach(player, base)
+  if UF.ClassRowBuilt() then return 0 end
+  local top = 0
+  for _, name in ipairs(UF.Status.ORDER) do
+    local mark = player.status[name]
+    if mark:IsShown() then top = math.max(top, ns.PlainNumber(mark:GetTop()) or 0) end
+  end
+  return math.max(0, top - (ns.PlainNumber(base:GetTop()) or 0))
 end
 
 -- Puts the chip level with the player frame, a gap to its left when the chip fits there on the screen, else
@@ -172,8 +184,9 @@ local function placeChip(chip, player)
     return chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
   end
   local row = aboveRow(player)
-  local lift = math.max(0, (row:GetTop() or 0) - (player:GetTop() or 0))
-  chip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
+  local marks = statusReach(player, row)
+  local lift = math.max(0, (row:GetTop() or 0) - (player:GetTop() or 0)) + marks
+  chip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y + marks)
   UF.RaiseDeckReach("UnitExtras", "top", lift + UX.CHIP_ABOVE_Y + UX.CHIP_HEIGHT)
 end
 
@@ -259,6 +272,7 @@ end
 -- and the fight.
 local function addChip(scope)
   UX.chip = UX.chip or makeChip()
+  UF.Status.OnLayout = UX.SoonChip
   scope:Frame(UX.chip)
   UX.WatchChip(scope)
 end
@@ -295,6 +309,7 @@ end
 -- text goes back where the unit frames put it (the chip and the handlers go with the scope).
 function UX.Disable()
   if UX.threat then UX.threat:SetText("") end
+  UF.Status.OnLayout = nil
   if UX.happy then UX.happy:Hide() end
   UF.TOOLTIP_LINES.pet, UF.TEXT_END_ROOM.pet = nil, nil
   if UX.happy and UF.frames.pet then UF.PlaceParts(UF.frames.pet) end

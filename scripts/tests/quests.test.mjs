@@ -3028,3 +3028,16 @@ it("H46-8-R1: quest automation's accept leaves an adventure map's offer to the m
   addon.fire("QUEST_DETAIL", 0);
   expect(calls(addon), "an ordinary offer is accepted").toEqual(["accept nil"]);
 });
+
+it("quest history: unticking Remember who finished each quest greys the open window's List latest turn-ins button at once", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("quests")');
+  // The button's enabled state as the window draws it.
+  const enabled = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.text and w.text.__text == "List latest turn-ins" and ns.Options.RevealRow(w) then return w:IsEnabled() end end`);
+  expect(enabled(), "on by default").toBe(true);
+  addon.eval('__click("Remember who finished each quest")');
+  expect(enabled(), "its switch unticked").toBe(false);
+  addon.eval('__click("Remember who finished each quest")');
+  expect(enabled(), "ticked again").toBe(true);
+});

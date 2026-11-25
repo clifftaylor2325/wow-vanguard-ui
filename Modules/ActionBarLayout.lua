@@ -65,13 +65,16 @@ local function layoutButtons(bar, s, size, gap)
 end
 
 -- Lays bar n out from its settings right now, its button size and gap rounded to whole
--- screen pixels at the bar's scale, so every button edge lands on a pixel. Only call out of combat.
+-- screen pixels at the bar's scale, so every button edge lands on a pixel. Only call out of combat. A bar
+-- with more than one button to a row counts as horizontal, one button to a row as vertical: the attribute
+-- tells a flyout's secure snippet which way to open (see AB.FLYOUT_PRE).
 function AB.LayoutBar(n)
   local bar, s = AB.bars[n], AB.settings.bars[n]
   if not bar then return end
   local size, gap = T.PixelRound(bar, AB.ButtonSize(n)), T.PixelRound(bar, AB.settings.spacing)
   layoutButtons(bar, s, size, gap)
   sizeBar(bar, s.buttons, s.perRow, size, gap)
+  bar:SetAttribute("orientation", s.perRow > 1 and "horizontal" or "vertical")
 end
 
 -- Lays every built bar out again after a scale change, then re-stacks what their heights, rounded to
@@ -115,11 +118,17 @@ function AB.UpdateAlpha(n)
   bar:SetAlpha(V.Alpha(bar))
 end
 
--- Bar n's state driver: its own, or "show" for a bar shown on conditions
--- while a drag that started out of combat is under way.
+-- Whether a driver hides its bar for good (a Hidden bar).
+local function alwaysHides(driver)
+  return driver == "hide"
+end
+
+-- Bar n's state driver: its own, or "show" for a bar shown on conditions while a drag that started out of
+-- combat is under way, and for a Hidden bar while keybind mode is on (a bar can't be bound while it is undrawn).
 function AB.Driver(n)
   local own = AB.OwnDriver(n)
   if AB.dragShown and V.Conditional(own) then return "show" end
+  if AB.binding and alwaysHides(own) then return "show" end
   return own
 end
 
@@ -145,10 +154,12 @@ local function visibilityNow(n)
   AB.UpdateBackings()
 end
 
--- Re-registers the visibility driver of every bar shown on conditions right now (out of combat only).
+-- Re-registers the visibility driver of every bar shown on conditions, and every Hidden bar (keybind mode shows
+-- those), right now (out of combat only).
 local function conditionalBarsNow()
   for n, bar in pairs(AB.bars) do
-    if V.Conditional(AB.OwnDriver(n)) then RegisterStateDriver(bar, "visibility", AB.BarDriver(n)) end
+    local own = AB.OwnDriver(n)
+    if V.Conditional(own) or alwaysHides(own) then RegisterStateDriver(bar, "visibility", AB.BarDriver(n)) end
   end
 end
 

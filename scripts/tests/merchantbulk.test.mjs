@@ -531,8 +531,9 @@ it("Stack, Max and the cost line sit on a panel under the quantity window, wide 
   const place = addon.eval(`local e = ns.FrameState("vgSplitBulk")[StackSplitFrame] local d = e.drawer
     return { d:GetParent() == StackSplitFrame, d:IsShown(), d:GetTop() == StackSplitFrame:GetBottom(), d:GetLeft() == StackSplitFrame:GetLeft(),
       e.stack:GetParent() == d, e.max:GetParent() == d, e.stack:GetLeft() >= d:GetLeft(), e.max:GetRight() <= d:GetRight(), e.line:GetRight() <= d:GetRight(),
-      e.line:GetBottom() >= d:GetBottom(), e.stack:GetTop() <= d:GetTop(), d:GetWidth() >= ns.GetModule("Merchant").DRAWER_W }`);
-  expect(place, "the panel hangs from the window's bottom left; the buttons and the line are children of it, inside it").toEqual(Array(12).fill(true));
+      e.line:GetBottom() >= d:GetBottom(), e.stack:GetTop() <= d:GetTop(), d:GetWidth() >= ns.GetModule("Merchant").DRAWER_W,
+      e.line:GetTop() <= e.stack:GetBottom() - ns.Theme.SPACE.gap, e.line:GetTop() <= e.max:GetBottom() - ns.Theme.SPACE.gap }`);
+  expect(place, "the panel hangs from the window's bottom left; the buttons and the line are children of it, inside it, the line under both buttons (H47-9-101)").toEqual(Array(14).fill(true));
   addon.eval("__owner('ContainerFrame1Item1', 1) StackSplitFrame:Hide() StackSplitFrame:Show()");
   expect(addon.eval(`return ns.FrameState("vgSplitBulk")[StackSplitFrame].drawer:IsShown()`), "an item in your bags: the panel goes too").toBe(false);
 });

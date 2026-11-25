@@ -14,6 +14,8 @@ local T, W = ns.Theme, ns.Widgets
 local bar
 -- Every saved spot as it was when unlock started (a copy), until the frames lock.
 local before
+-- The profile's HUD layout as it was when unlock started (nil is Centered), kept with `before`.
+local beforeLayout
 -- The options page unlock was started from, until the frames lock.
 local fromPage
 
@@ -26,6 +28,7 @@ local BAR = { hint = L["Drag to move Â· right-click for anchor, scale, opacity Â
 -- runs under its own guard, so one that fails is reported and the rest go back and the frames still lock.
 function ns.ExitWithoutSaving()
   local positions, movers = ns.Settings("positions"), ns.MoverList()
+  if before and ns.Profile().hudLayout ~= beforeLayout then ns.RestoreHudLayout(beforeLayout) end
   for key in pairs(positions) do positions[key] = nil end
   for key, spot in pairs(before or {}) do positions[key] = type(spot) == "table" and ns.Copy(spot) or spot end
   for _, m in ipairs(movers) do ns.Try("place " .. m.key, ns.PlaceMover, m.key) end
@@ -111,6 +114,7 @@ end
 
 -- Remembers every saved spot (once, until the frames lock) and makes the bar ready to show.
 local function prepareBar()
+  if not before then beforeLayout = ns.Profile().hudLayout end
   before = before or ns.Copy(ns.Settings("positions"))
   if not bar then build() end
   fitBar()
@@ -130,7 +134,7 @@ end
 
 -- The frames locked: what was remembered is forgotten (the changes stay) and the bar hides.
 function ns.UnlockEnded()
-  before, fromPage = nil, nil
+  before, beforeLayout, fromPage = nil, nil, nil
   if bar then bar:Hide() end
 end
 
@@ -138,5 +142,5 @@ end
 -- here, an import): the spots remembered were the old settings', so Exit without saving would write them over the
 -- new ones. It remembers the new profile's spots as they are now instead.
 ns.OnProfileChanged(ns.Guard("unlock spots after a profile change", function()
-  if before then before = ns.Copy(ns.Settings("positions")) end
+  if before then before, beforeLayout = ns.Copy(ns.Settings("positions")), ns.Profile().hudLayout end
 end))

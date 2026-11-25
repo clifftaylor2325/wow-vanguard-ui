@@ -121,3 +121,13 @@ it("H25-1-1 cooldown keys: a burst of slot events in one frame scans the buttons
   addon.update(0);
   expect(addon.eval("return SCANS"), "one for all twenty").toBe(1);
 });
+
+// H47-8-6 / H47-8-102: a key with no short form stays inside a 30-unit utility icon (Blizzard_CooldownViewer/CooldownViewer.xml, CooldownViewerUtilityItemTemplate Size 30).
+it("H47-8-6 H47-8-102 cooldown keys: a long key is pinned across the icon and cut at its edge, not drawn over the next icon", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS, { savedVariables: ON });
+  addon.eval("ns.GetModule('CooldownKeys').Paint({ [1234] = 'CSNUMLOCK' })");
+  const label = "ns.FrameState('vgKey')[EssentialCooldownViewer.items[1]]";
+  expect(addon.eval(`return ${label}:GetText()`), "the long key is drawn").toBe("CSNUMLOCK");
+  expect(addon.eval(`return ${label}:CanWordWrap()`), "never wraps").toBe(false);
+  expect(addon.eval(`return ${label}:GetPoint(1) .. ${label}:GetPoint(2)`), "pinned at both sides").toBe("TOPLEFTTOPRIGHT");
+});

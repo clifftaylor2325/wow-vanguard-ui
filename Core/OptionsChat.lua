@@ -103,12 +103,17 @@ local function chatWatchRows()
   return append(rows, chatWatchSwitches(CW))
 end
 
+-- Two lines of one text row, the second after a space, or the first alone when the second is empty (an empty row
+-- would leave a blank gap in the card).
+local function joinLines(first, second)
+  return second == "" and first or (first .. " " .. second)
+end
+
 -- What the chat filter caught this session, by reason, the hint while caught lines are hidden, and the senders let
 -- through with a button that filters them again: live lines, re-read each time the window shows or a setting changes.
 local function chatFilterStatusRows(CF)
   return {
-    { "text", CF.CaughtText },
-    { "text", CF.HiddenHint },
+    { "text", function() return joinLines(CF.CaughtText(), CF.HiddenHint()) end },
     { "text", CF.LetThroughText },
     { "button", L["Filter them again"], CF.FilterAgain },
   }

@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { loggedIn, setCombat } from "./helpers.mjs";
+import { loggedIn, pageBar1, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY flyouts in the world: 1 a three-spell Teleport (one spell not known), 2 a Call Pet (slot 1 without a
 // pet), 3 a flyout bigger than the list, and the spell icons by id.
@@ -51,9 +51,11 @@ const RESTRICTED = `
 
 // Runs a snippet of the module as the client's restricted environment does, for a click on a bar button
 // (down is the click's edge, rect the button's left, bottom, width and height). Returns what it returns.
-const run = (addon, snippet, { button = "Vanguard_Bar1Button1", rect = "900, 40, 40, 40", down = "false" } = {}) => addon.eval(`${RESTRICTED}
-  local r = { ${rect} }
-  local self = wrap(${button}, { GetRect = function() if r[1] then return unpack(r) end end, GetEffectiveScale = function() return 1 end })
+// barRect is the button's bar's rect (default: the button's own).
+const run = (addon, snippet, { button = "Vanguard_Bar1Button1", rect = "900, 40, 40, 40", barRect = rect, down = "false" } = {}) => addon.eval(`${RESTRICTED}
+  local r, br = { ${rect} }, { ${barRect} }
+  local bar = wrap(${button}:GetParent(), { GetRect = function() if br[1] then return unpack(br) end end, GetEffectiveScale = function() return 1 end })
+  local self = wrap(${button}, { GetRect = function() if r[1] then return unpack(r) end end, GetEffectiveScale = function() return 1 end, GetParent = function() return bar end })
   local env = { self = self, control = control, down = ${down}, ipairs = ipairs, newtable = function(...) return { ... } end, GetActionInfo = GetActionInfo }
   local first, second = (setfenv and setfenv(loadstring(${snippet}, "snippet"), env) or load(${snippet}, "snippet", "t", env))()
   return { first == nil and "nil" or first, second == nil and "nil" or second }`);
@@ -168,9 +170,10 @@ it("a click on a flyout slot opens the list above a bottom bar's button and stop
   expect(addon.eval("return Vanguard_Flyout:IsShown()"), "closes it").toBe(false);
 });
 
-it("the list opens toward the middle of the screen: down from the top, right from the left edge, left from the right edge", () => {
+it("a bar with no stored orientation: the list opens toward the middle of the screen: down from the top, right from the left edge, left from the right edge", () => {
   const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1);
+  addon.eval("Vanguard_Bar1:SetAttribute('orientation', nil)");
   // The first spell button's anchor point, after closing the list for the next run.
   const point = () => addon.eval("local c = Vanguard_Flyout.vgChildren[1] Vanguard_Flyout:Hide() return (next(c.__points))");
   run(addon, PRE, { rect: "900, 1000, 40, 40" });
@@ -181,6 +184,74 @@ it("the list opens toward the middle of the screen: down from the top, right fro
   expect(point(), "at the right edge: to its left").toBe("RIGHT");
   run(addon, PRE, { rect: "nil" });
   expect(point(), "a button with no rect yet: above it").toBe("BOTTOM");
+});
+
+// H47-8-1. The game's rule: ActionBarMixin:UpdateSpellFlyoutDirection (Blizzard_ActionBar/Shared/ActionBar.lua): a horizontal
+// bar opens UP below the screen's middle and DOWN above it, a vertical one LEFT right of the middle and RIGHT left of it,
+// by the bar's centre, so the list never lies over the bar's own buttons.
+it("H47-8-1 the list opens away from its bar: up or down from a horizontal bar, left or right from a vertical one", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS);
+  place(addon, 1, 1);
+  // The first spell button's anchor point, after closing the list for the next run.
+  const point = () => addon.eval("local c = Vanguard_Flyout.vgChildren[1] Vanguard_Flyout:Hide() return (next(c.__points))");
+  expect(addon.eval("return Vanguard_Bar1:GetAttribute('orientation')"), "twelve to a row").toBe("horizontal");
+  run(addon, PRE, { rect: "1850, 100, 40, 40", barRect: "900, 40, 1000, 40" });
+  expect(point(), "a horizontal bar's rightmost button at the right edge: still above, not left over its neighbours").toBe("BOTTOM");
+  run(addon, PRE, { rect: "20, 1000, 40, 40", barRect: "20, 1000, 1000, 40" });
+  expect(point(), "a horizontal bar in the top half: below").toBe("TOP");
+  addon.eval("local AB = ns.GetModule('ActionBars') AB.settings.bars[1].perRow = 1 AB.LayoutBar(1)");
+  expect(addon.eval("return Vanguard_Bar1:GetAttribute('orientation')"), "one to a row").toBe("vertical");
+  run(addon, PRE, { rect: "900, 500, 40, 40", barRect: "900, 100, 40, 900" });
+  expect(point(), "a vertical bar in the screen's middle band, left half: to its right").toBe("LEFT");
+  run(addon, PRE, { rect: "1200, 500, 40, 40", barRect: "1200, 100, 40, 900" });
+  expect(point(), "right half: to its left").toBe("RIGHT");
+  run(addon, PRE, { rect: "1200, 500, 40, 40", barRect: "nil" });
+  expect(point(), "a bar with no rect yet: above the button").toBe("BOTTOM");
+});
+
+// H47-8-3. The game's list buttons run UpdateCooldown and UpdateUsable on SPELL_UPDATE_COOLDOWN, SPELL_UPDATE_USABLE
+// and SPELL_FLYOUT_UPDATE (Blizzard_ActionBar/Shared/SpellFlyout.lua, SpellFlyoutMixin:OnEvent).
+it("H47-8-3 the list's spell buttons show a cooldown sweep and dim a spell that can't be cast, and follow the events while open", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS + "__cd = {} C_Spell.GetSpellCooldownDuration = function(id) return __cd[id] end C_Spell.IsSpellUsable = function(id) return id ~= 13, id == 13 end");
+  place(addon, 1, 1);
+  run(addon, PRE);
+  // Whether button i's icon wears the theme's token (by its vertex colour).
+  const tinted = (i, token) => addon.eval(`local c = Vanguard_Flyout.vgChildren[${i}].icon.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
+  expect(tinted(1, "white"), "a castable spell keeps its colour").toBe(true);
+  expect(tinted(2, "noPower"), "a spell short of power wears the no-power tint").toBe(true);
+  addon.eval("__cd[11] = { TEST_ONLY_DURATION = true }");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[1].cooldown.__durationObject ~= nil"), "a spell on cooldown sweeps").toBe(true);
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[2].cooldown.__durationObject == nil"), "its neighbour does not").toBe(true);
+  addon.eval("C_Spell.IsSpellUsable = function() return false, false end");
+  addon.fire("SPELL_UPDATE_USABLE");
+  expect(tinted(1, "unusable"), "a spell that can't be cast now is dimmed on the usable event").toBe(true);
+  addon.eval("Vanguard_Flyout:Hide() __cd[11] = nil");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[1].cooldown.__durationObject ~= nil"), "a shut list is left as it was").toBe(true);
+});
+
+it("H47-8-3 a client with no duration object sweeps from plain numbers, and a hidden cooldown or usable answer leaves a plain, castable button", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS + "C_Spell.GetSpellCooldownDuration = nil __info = { [11] = { startTime = 5, duration = 10 }, [13] = { startTime = __wfgWorld.secret(5), duration = __wfgWorld.secret(10) } } C_Spell.GetSpellCooldown = function(id) return __info[id] end C_Spell.IsSpellUsable = function() return __wfgWorld.secret(false), __wfgWorld.secret(false) end");
+  place(addon, 1, 1);
+  run(addon, PRE);
+  expect(addon.eval("local c = Vanguard_Flyout.vgChildren[1].cooldown return c.__cooldown and c.__cooldown[2]"), "plain numbers go to the sweep").toBe(10);
+  expect(addon.eval("local c = Vanguard_Flyout.vgChildren[2] local v = c.icon.__vertexColor local r, g, b = ns.Theme.RGB('white') return v[1] == r and v[2] == g and v[3] == b"), "a hidden usable answer counts as castable").toBe(true);
+  addon.eval("C_Spell.GetSpellCooldown = nil C_Spell.IsSpellUsable = nil");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a client with neither call paints without error").toBe(true);
+});
+
+// H47-8-2. The game closes its list on ACTIONBAR_PAGE_CHANGED (Blizzard_ActionBar/Shared/SpellFlyout.lua, SpellFlyoutMixin:OnEvent).
+it("H47-8-2 a page change on the bar closes the list its button opened", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS);
+  place(addon, 1, 1);
+  run(addon, PRE);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "open").toBe(true);
+  pageBar1(addon, 7);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a stance page closes it").toBe(false);
+  pageBar1(addon, 1);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a page change with the list shut leaves it shut").toBe(false);
 });
 
 it("a click on anything but a flyout closes the list, a flyout with no known spell opens nothing, and the click's other edge is ignored", () => {

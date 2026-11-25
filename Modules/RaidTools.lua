@@ -54,13 +54,26 @@ RT.PULL_SECONDS = 10
 
 -- Each text button: label, what a click does, the client call it needs (the button shows only where the
 -- client has it), and for a secure button the macro attributes it runs on a click instead of a handler
--- (the game's own /readycheck and /countdown; a right-click on Pull cancels its countdown).
+-- (the game's own /readycheck and /countdown; a right-click on Pull cancels its countdown), and its tooltip.
 RT.ACTIONS = {
-  { L["Ready"], false, "DoReadyCheck", { macrotext = "/readycheck" } },
-  { L["Pull"], false, "DoCountdown", { macrotext = "/countdown " .. RT.PULL_SECONDS, macrotext2 = "/countdown 0" } },
-  { L["Roles"], function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
-  { L["Raid"], function() party("ConvertToRaid") end, "ConvertToRaid" },
+  { L["Ready"], false, "DoReadyCheck", { macrotext = "/readycheck" }, L["Start a ready check"] },
+  { L["Pull"], false, "DoCountdown", { macrotext = "/countdown " .. RT.PULL_SECONDS, macrotext2 = "/countdown 0" },
+    L["Start the pull timer. Right-click: cancel it"] },
+  { L["Roles"], function() _G.InitiateRolePoll() end, "InitiateRolePoll", nil, L["Start a role check"] },
+  { L["Raid"], function() party("ConvertToRaid") end, "ConvertToRaid", nil, L["Convert the party to a raid"] },
 }
+
+-- A one line tooltip on a bar button while the mouse is over it (hooked through the module's scope, so a secure
+-- click stays the game's and the hook does nothing while the module is off).
+local function addTip(b, text)
+  local key = "tip " .. tostring(b)
+  RT.scope:Gate(key .. " enter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(text)
+    GameTooltip:Show()
+  end, function(gate) b:HookScript("OnEnter", ns.Guard("raid tools tip", gate)) end)
+  RT.scope:Gate(key .. " leave", function() GameTooltip:Hide() end, function(gate) b:HookScript("OnLeave", ns.Guard("raid tools tip", gate)) end)
+end
 
 -- True when this client has the call a button needs.
 local function hasCall(name)
@@ -81,6 +94,7 @@ local function actionButton(bar, spec)
   local b = ns.DialogButton(bar, spec[1], RT.ACTION_W, nil, spec[4] and "SecureActionButtonTemplate")
   b:SetHeight(RT.ICON)
   b:RegisterForClicks("AnyUp")
+  addTip(b, spec[5])
   if spec[4] then runMacros(b, spec[4]) else b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2])) end
   bar.actions[spec[3]] = b
   RT.Place(bar, b, 1, #bar.list)
@@ -131,7 +145,7 @@ end
 
 -- An icon button showing raid icon `index` (or the clear mark for nil). A secure one acts on the
 -- click's release whatever the key-down casting setting says, since it only listens for releases.
-local function iconButton(bar, template, index)
+local function iconButton(bar, template, index, tip)
   local b = T.Button(CreateFrame("Button", nil, bar, template))
   b:SetSize(RT.ICON, RT.ICON)
   b.icon = b:CreateTexture(nil, "OVERLAY")
@@ -139,6 +153,7 @@ local function iconButton(bar, template, index)
   b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
   if index then ns.GetModule("RaidStatus").PaintIcon(b.icon, index) else b.icon:SetTexture(RT.CLEAR) end
   b:RegisterForClicks("AnyUp")
+  addTip(b, tip)
   if template then b:SetAttribute("useOnKeyDown", false) end
   return b
 end
@@ -146,7 +161,7 @@ end
 -- One secure raid target button: a click marks your target with raid icon i (the game's own
 -- "raidtarget" action, as SetRaidTarget is reserved for secure code; a missing target is a no-op).
 local function targetButton(bar, i)
-  local b = iconButton(bar, "SecureActionButtonTemplate", i)
+  local b = iconButton(bar, "SecureActionButtonTemplate", i, L["Mark your target"])
   b:SetAttribute("type", "raidtarget")
   b:SetAttribute("marker", i)
   b:SetAttribute("action", "set")
@@ -156,7 +171,7 @@ end
 -- The row of raid target icons, then a secure button that clears your target's.
 local function addTargetIcons(bar)
   for i = 1, 8 do RT.Place(bar, targetButton(bar, i), 2, i - 1) end
-  local clear = iconButton(bar, "SecureActionButtonTemplate")
+  local clear = iconButton(bar, "SecureActionButtonTemplate", nil, L["Clear your target's mark"])
   clear:SetAttribute("type", "raidtarget")
   clear:SetAttribute("action", "clear")
   RT.Place(bar, clear, 2, 8)
@@ -164,7 +179,7 @@ end
 
 -- One secure world marker button: left places or removes marker i, right clears it.
 local function markerButton(bar, i)
-  local b = iconButton(bar, "SecureActionButtonTemplate", RT.MARKER_ICONS[i])
+  local b = iconButton(bar, "SecureActionButtonTemplate", RT.MARKER_ICONS[i], L["Place or remove this world marker. Right-click: clear it"])
   b:SetAttribute("type", "worldmarker")
   b:SetAttribute("marker", i)
   b:SetAttribute("action1", "toggle")
@@ -175,7 +190,7 @@ end
 -- The row of world markers, then a secure button that clears them all.
 local function addMarkers(bar)
   for i = 1, 8 do RT.Place(bar, markerButton(bar, i), 3, i - 1) end
-  local clear = iconButton(bar, "SecureActionButtonTemplate")
+  local clear = iconButton(bar, "SecureActionButtonTemplate", nil, L["Clear every world marker"])
   clear:SetAttribute("type", "worldmarker")
   clear:SetAttribute("action", "clear")
   RT.Place(bar, clear, 3, 8)

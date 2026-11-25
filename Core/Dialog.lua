@@ -160,11 +160,12 @@ local function hangTitle(f)
   f.title:SetMaxLines(0)
 end
 
--- The text dialog's title: two lines at most (its words are the sentence that says what to do with the box,
--- "Ctrl+C to copy"), hung from the top.
+-- The text dialog's title: three lines at most, hung from the top. Its words say what to do with the box ("Ctrl+C
+-- to copy") or what is asked (a list's import line, a mail preset's name and words), which runs to three lines at
+-- Text size 130%; past three the client ends it with an ellipsis.
 local function limitTitle(f)
   hangTitle(f)
-  f.title:SetMaxLines(2)
+  f.title:SetMaxLines(3)
 end
 
 -- Sets the text dialog's title: the text area keeps a gap under it, so a title of two lines pushes the area
@@ -428,14 +429,45 @@ local function pickConfirm(f, kind)
   f.sure:SetShown(f.confirm == f.sure)
 end
 
--- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
--- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
-function ns.Ask(text, yes, onYes, onNo, kind)
-  local f = questionDialog()
+-- Gives the shown Yes room for its label (a translation often runs longer than the English) and both Yes buttons the
+-- same width, which No hangs on to the left of; the width stops short of No's room, past that T.FitText shrinks the label.
+local function sizeConfirm(f)
+  local most = ASK_W - 2 * T.SPACE.pad - T.SPACE.gap - BUTTON_W
+  f.confirm:SetWidth(BUTTON_W)
+  ns.WidenToLabel(f.confirm)
+  f.confirm:SetWidth(math.min(f.confirm:GetWidth(), most))
+  T.Refit(f.confirm.text)
+  f.yes:SetWidth(f.confirm:GetWidth())
+  f.sure:SetWidth(f.confirm:GetWidth())
+end
+
+-- Puts a question's text, its Yes and its kind on the dialog, with no focus ring left from the question it replaces
+-- (the dialog may already be shown, so no OnShow clears it: Enter would press the old ring's button).
+local function fillQuestion(f, text, yes, kind)
   f.title:SetText(text)
   fitTitle(f)
   pickConfirm(f, kind)
   f.confirm.text:SetText(yes)
+  sizeConfirm(f)
+  ns.FocusClear(f)
+end
+
+-- A question replaced before it was answered is answered No, once, now: what waits on the answer (the reload offered
+-- after a profile import, say) must not be lost. Its onNo is told "replaced", so a once-only offer can tell that from
+-- a No and ask again later. Run before the new question is set so anything it opens sits under it.
+local function answerReplaced(f)
+  local onNo = f.waiting
+  f.waiting = nil
+  if onNo then onNo("replaced") end
+end
+
+-- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
+-- any other way (the X, Escape) answers No; a question asked over it answers No too, onNo("replaced").
+-- kind is "danger" for a question about something lost for good.
+function ns.Ask(text, yes, onYes, onNo, kind)
+  local f = questionDialog()
+  answerReplaced(f)
+  fillQuestion(f, text, yes, kind)
   f.waiting = onNo
   f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
   f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))

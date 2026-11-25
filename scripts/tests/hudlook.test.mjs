@@ -281,7 +281,7 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
   expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift(Vanguard_target)")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
   addon.eval('Vanguard_target.name:SetText("TEST-ONLY A very long name that no tab holds") ns.GetModule("UnitFrames").FitTab(Vanguard_target)');
-  expect(addon.eval("return Vanguard_target.tab:GetWidth() <= 120 + ns.Theme.Pixel(Vanguard_target)"), "a long name's tab stops at half the frame (whole pixels)").toBe(true);
+  expect(addon.eval("return Vanguard_target.tab:GetWidth() <= 240 - 42 + ns.Theme.Pixel(Vanguard_target)"), "a long name's tab stops short of the inner corner's marks, 42 units in (whole pixels)").toBe(true);
   addon.eval("__wfgStub.setScreen(1229, 768)");
   addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
   expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), "on a narrow canvas the target of target's spot over the target's cast bar rises with the bar").toEqual(["BOTTOM", "BOTTOM", 180, 280 + 18]);

@@ -1300,6 +1300,8 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   const spot = (name) => addon.eval(`local b = ${name} local p = b.__points.TOPLEFT return { b:GetParent():GetName(), p and p.x, p and p.y }`);
   expect([addon.eval("return { Vanguard_MinimapDrawerToggle:IsShown(), Vanguard_MinimapDrawer:IsShown() }"), spot("LibDBIcon10_TestOnlyOne")], "gathered into the shut drawer, the toggle showing").toEqual([[true, false], ["Vanguard_MinimapDrawer", 4, -4]]);
   expect(addon.eval("return TestOnlyOtherButton:GetParent():GetName()"), "other minimap children are left alone").toBe("Minimap");
+  // H47-10-101: your buff icons are MEDIUM, and tooltips TOOLTIP: the drawer and its buttons sit between.
+  expect(addon.eval("return { Vanguard_MinimapDrawer:GetFrameStrata(), LibDBIcon10_TestOnlyOne:GetFrameStrata() }"), "above the aura icons, below tooltips").toEqual(["HIGH", "HIGH"]);
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
   expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle opens it").toBe(true);
   addon.eval('CreateFrame("Button", "LibDBIcon10_TestOnlyTwo", Minimap)');

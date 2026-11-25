@@ -248,6 +248,14 @@ it("Exit without saving tells what follows a frame that it moved back: the raid 
   addon.eval("ns.ExitWithoutSaving()");
   expect([before, points()], "back as it was, the grid grows from the anchor it had").toEqual([{ header: "BOTTOM", mover: "BOTTOM" }, { header: "BOTTOM", mover: "BOTTOM" }]);
 });
+it("Exit without saving puts back the HUD layout chosen after unlocking, and tells the layout listeners", () => {
+  const addon = loggedIn();
+  addon.eval("seen = {} ns.OnLayoutChanged(function(layout) seen[#seen + 1] = layout end)");
+  addon.slash("unlock");
+  addon.eval("ns.SetHudLayout('fort')");
+  addon.eval("seen = {} ns.ExitWithoutSaving()");
+  expect(addon.eval("return { ns.HudLayout(), tostring(ns.Profile().hudLayout), seen[1], #seen }"), "Centered again, once announced").toEqual(["centered", "nil", "centered", 1]);
+});
 it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {
   const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "VanguardDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
   addon.slash("unlock");

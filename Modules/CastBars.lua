@@ -311,21 +311,45 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
--- How far the text sits in from a bar's ends, and the room the seconds left keep at its right (units): a long
--- spell name (a translation runs longer) stops short of it, cut on one line, instead of running under it.
-CB.TEXT_INSET, CB.TIME_ROOM = 4, 30
+-- How far the text sits in from a bar's ends, the gap between the spell name and the seconds, and the room the seconds
+-- keep as a share of their text size ("12.3" is about 1.2 wide): a long spell name (a translation runs longer) stops
+-- short of the seconds, cut on one line, instead of running under them, and a narrow bar still shows most of it.
+CB.TEXT_INSET, CB.TIME_GAP, CB.TIME_EM = 4, 3, 1.3
+
+-- The text role of a bar's name and seconds: the label on a tall bar, the small one on the rest.
+local function textRole(h)
+  return h >= 18 and "label" or "small"
+end
+
+-- The seconds left at the bar's right end, and the spell name from its left end up to them.
+local function addTexts(bar, h)
+  local role = textRole(h)
+  bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "white")
+  bar.time:SetPoint("RIGHT", -CB.TEXT_INSET, 0)
+  bar.time:SetJustifyH("RIGHT")
+  bar.time:SetWidth(math.ceil(CB.TIME_EM * T.RoleSize(role)))
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
+  bar.text:SetPoint("LEFT", CB.TEXT_INSET, 0)
+  bar.text:SetPoint("RIGHT", bar.time, "LEFT", -CB.TIME_GAP, 0)
+  ns.SingleLine(bar.text)
+end
+
+-- Draws the name and the seconds no taller than a bar of height h (a plate's cast bar at its smallest height), the
+-- seconds' room with them; a bar tall enough keeps the role's own size, which follows the theme's text size.
+function CB.SizeTexts(bar, h)
+  local role = T.RoleSize(textRole(h))
+  local size = h < role and h or nil
+  T.TextSize(bar.text, size)
+  T.TextSize(bar.time, size)
+  bar.time:SetWidth(math.ceil(CB.TIME_EM * (size or role)))
+end
 
 -- The icon to the left, the spell name on the bar and the seconds left at its right.
 local function addParts(bar, h)
   bar.icon = T.Snap(T.Crop(bar:CreateTexture(nil, "ARTWORK")))
   bar.icon:SetSize(h, h)
   bar.icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
-  local role = h >= 18 and "label" or "small"
-  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
-  bar.text:SetPoint("LEFT", CB.TEXT_INSET, 0)
-  ns.EndAt(bar.text, bar, CB.TEXT_INSET + CB.TIME_ROOM)
-  bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "white")
-  bar.time:SetPoint("RIGHT", -CB.TEXT_INSET, 0)
+  addTexts(bar, h)
 end
 
 -- A soft spark riding the fill's edge, and the latency shade at the bar's end.
@@ -521,11 +545,12 @@ CB.OVER_FRAME = { target = true, focus = true }
 
 -- Moves the target's and the focus's cast bars' default spots up by the tab their unit's frame wears now
 -- (Modules/UnitFrames.lua UF.TabLift: 0 under the other looks, and for a frame the Versus deck holds, a banner or
--- one of the keep's small frames); a position you dragged them to still wins.
+-- one of the keep's small frames), and the target's by the height its buff row takes over one line of default icons
+-- (Modules/FrameAuras.lua FA.BuffLift); a position you dragged them to still wins.
 function CB.FitLook()
-  local UF = ns.GetModule("UnitFrames")
+  local UF, FA = ns.GetModule("UnitFrames"), ns.GetModule("FrameAuras")
   for unit in pairs(CB.OVER_FRAME) do
-    local lift = UF and UF.TabLift(UF.frames[unit]) or 0
+    local lift = (UF and UF.TabLift(UF.frames[unit]) or 0) + (unit == "target" and FA and FA.BuffLift() or 0)
     ns.SetMoverDefault("cast_" .. unit, ns.RaisedDefault(LAYOUT[unit].point, lift))
   end
 end

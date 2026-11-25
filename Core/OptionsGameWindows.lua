@@ -103,7 +103,7 @@ local function vendorRows()
 end
 
 -- Where a tooltip the game gives its default spot can sit.
-local TOOLTIP_SPOTS = { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }
+local TOOLTIP_SPOTS = { { "corner", L["Corner (movable)"] }, { "cursor", L["At the cursor"] }, { "default", L["Client default"] } }
 
 -- Tooltips: where each kind sits. Tooltip position is every tooltip that isn't a unit's.
 local function tooltipSpotRows()

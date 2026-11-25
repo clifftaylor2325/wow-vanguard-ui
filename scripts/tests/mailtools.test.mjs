@@ -707,6 +707,22 @@ it("mail search looks in the first item's name, not in the item link's markup", 
   expect([found("item"), found("cff"), found("123"), found("hitem")], "link markup and ids do not").toEqual([false, false, false, false]);
 });
 
+it("preset buttons are as wide as their names, as many as fit the panel, + Add after the last (H47-9-103)", () => {
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + ON });
+  addon.eval(ENV);
+  addon.login();
+  addon.world.openMailWindow();
+  // Makes one preset for each name and repaints the panel.
+  const set = (names) => addon.eval(`${MT}.settings.presets = {} for _, n in ipairs({ ${names.map((n) => `"${n}"`).join(", ")} }) do table.insert(${MT}.settings.presets, { name = n, to = "Bobalt", words = "" }) end ${MT}.Paint()`);
+  set(["Enchanting", "Leatherworking", "Herbs"]);
+  expect(addon.textFit("Vanguard_MailTools").filter((f) => /^(Enchanting|Leatherworking|Herbs)$/.test(f.text)), "no name is cut short").toEqual([]);
+  const row = addon.eval(`local f = Vanguard_MailTools local r = {} for i = 1, 3 do r[i] = f.presets[i]:IsShown() and f.presets[i]:GetRight() or -1 end
+    return { f.presets[1]:GetLeft() - f:GetLeft(), r[1] < f.presets[2]:GetLeft(), f.addPreset:IsShown(), f.addPreset:GetLeft() > math.max(r[1], r[2], r[3]), f.addPreset:GetRight() <= f:GetRight() - ns.Theme.SPACE.gap }`);
+  expect(row, "the first at the padding, in order, + Add after them and inside the panel").toEqual([8, true, true, true, true]);
+  set(["Enchanting", "Leatherworking", "Alchemy", "Blacksmithing"]);
+  expect(addon.eval("local f = Vanguard_MailTools return { f.presets[1]:IsShown(), f.presets[4]:IsShown(), f.presets[4]:GetRight() <= f:GetRight() - ns.Theme.SPACE.gap }"), "what does not fit hides; the rest stays inside the panel").toEqual([true, false, true]);
+});
+
 it("mail search, presets and preset words ignore the case of Russian letters, not only of A-Z", () => {
   const addon = mailer(`__wfgWorld.items[903] = { name = "Железная руда" } __wfgWorld.bags[0][3] = { itemID = 903 }`);
   expect(addon.eval(`return ${MT}.Matches({ sender = "Торговец", subject = "Письмо", link = "", money = 0, items = 0 }, "торговец")`), "a small-letter query finds the capital").toBe(true);

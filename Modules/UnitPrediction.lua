@@ -55,12 +55,22 @@ local function follow(f, bar)
   bar:SetWidth(UF.BarWidth(f))
 end
 
+-- Stands the overshield mark on the health bar's far end (the right, or the left while the bars fill from the right):
+-- the raid tiles' mark, on the frame's text layer.
+local function placeOvershield(f)
+  local side = UF.FillsFromRight(f) and "LEFT" or "RIGHT"
+  f.overshield:ClearAllPoints()
+  f.overshield:SetPoint("TOP" .. side, f.health, "TOP" .. side)
+  f.overshield:SetPoint("BOTTOM" .. side, f.health, "BOTTOM" .. side)
+end
+
 -- Lays both bars out again (the look mirrored the fill, or the frame changed size) and paints them: a frame that stood
 -- as a banner had them off.
 ---@param f table a unit frame with the bars
 function PR.Place(f)
   follow(f, f.heal)
   follow(f, f.shield)
+  placeOvershield(f)
   PR.Update(f)
 end
 
@@ -70,6 +80,7 @@ local function add(f)
   f.healClip = clipFrame(f)
   f.heal = overlay(f, f.health, "heal", T.BarTexture())
   f.shield = overlay(f, f.heal, "shield", T.Texture("Stripes"))
+  f.overshield = ns.GetModule("RaidHealing").MakeOvershield(f.layer)
   f.shield:GetStatusBarTexture():SetHorizTile(true)
   f.shield:GetStatusBarTexture():SetVertTile(true)
   T.ShieldMask(f, { f.heal:GetStatusBarTexture(), f.shield:GetStatusBarTexture() }, "TOP", f.health)
@@ -100,10 +111,12 @@ end
 ---@param f table a unit frame with the bars
 function PR.Update(f)
   if not ns.IsTrue(UnitExists(f.unit)) then return end
-  local max, incoming, shields = ns.GetModule("RaidHealing").Prediction(f.unit)
+  local RH = ns.GetModule("RaidHealing")
+  local max, incoming, shields, over = RH.Prediction(f.unit)
   local lying = not UF.Standing(f)
   fill(f.heal, max, incoming, lying and UF.settings.healPrediction == true)
   fill(f.shield, max, shields, lying and UF.settings.absorbs == true)
+  RH.LightOvershield(f.overshield, lying and UF.settings.absorbs == true, over)
 end
 
 -- A switch changed (the Unit frames page): every frame paints again.

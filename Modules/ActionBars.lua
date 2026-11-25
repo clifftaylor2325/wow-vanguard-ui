@@ -91,8 +91,12 @@ function AB.BuildPageDriver()
 end
 AB.PAGE_DRIVER = AB.BuildPageDriver()
 
--- Runs in the secure environment when the page changes: re-points each button.
+-- Runs in the secure environment when the page changes: re-points each button, and closes a flyout's list
+-- (the bar holds a frame reference to it from the flyout's wrap), as the game's does on ACTIONBAR_PAGE_CHANGED
+-- (SpellFlyoutMixin:OnEvent in Blizzard_ActionBar/Shared/SpellFlyout.lua).
 AB.ON_PAGE = [[
+  local flyout = self:GetFrameRef("flyout")
+  if flyout and flyout:IsShown() then flyout:Hide() end
   self:SetAttribute("page", newstate)
   for _, button in ipairs(newtable(self:GetChildren())) do
     local index = button:GetAttribute("index")

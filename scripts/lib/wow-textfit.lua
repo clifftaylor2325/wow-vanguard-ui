@@ -45,9 +45,14 @@ local function pseudoLookup(t, key)
   return longer
 end
 
--- Makes a string table (ns.L) a pseudo-locale: every text it hands out a third longer.
-function __wfgPseudoLocale(L)
+-- Makes a string table (ns.L) a pseudo-locale: every text it hands out a third longer. ns.English caches its
+-- reverse map on its first call, before the table has handed out most texts, so it asks the made strings first.
+function __wfgPseudoLocale(L, ns)
   setmetatable(L, { __index = pseudoLookup })
+  local real = ns.English
+  -- The English a made string came from, else what the real lookup says.
+  local function english(text) return __wfgPseudoKeys[text] or real(text) end
+  ns.English = english
 end
 
 -- Whether a is b or under it.

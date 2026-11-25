@@ -78,6 +78,13 @@ it("text fits: the setup wizard, every step", () => {
   expectFits("setup wizard", wizardSteps(fitClient(true)));
 });
 
+it("text fits: the setup wizard's audit builds every guided row, so each is measured (H47-3-104)", () => {
+  const addon = fitClient(true);
+  wizardSteps(addon);
+  const built = addon.eval(`local out = {} for _, k in ipairs({ "comfort", "game", "helpers", "combat" }) do out[#out + 1] = #Vanguard_Setup.pages[k].rows end return out`);
+  expect(built, "comfort, game, helpers and combat build all their rows under the pseudo-locale, as in a real client").toEqual([5, 3, 6, 6]);
+});
+
 // Audits the options window on each of its pages from first to last (1-based, inclusive), each tab of a page in
 // turn (a page shows one card at a time), in one client.
 function optionsPages(first, last, addon = fitClient()) {
@@ -337,6 +344,28 @@ it("text fits: the errors window's Report a bug button is as wide as its label, 
   expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the button grew past the usual 120").toBeGreaterThan(120);
   addon.eval(`ns.AskText("Import", function() end)`);
   expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the next use of the box has the usual width").toBe(120);
+});
+
+it("text fits: the question's Yes grows to a long translated label and No keeps its room, plain and danger, at Text size 130% (H47-1-101)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  atLargestText(addon);
+  for (const [label, kind] of [["Cancel auction", '"danger"'], ["Paste a string", "nil"]]) {
+    addon.eval(`ns.Ask("Question?", ns.L["${label}"], function() end, nil, ${kind})`);
+    const cut = addon.textFit("Vanguard_Question").filter((finding) => finding.kind === "cut");
+    const [noRight, yesLeft, yesWidth] = addon.eval("local q = Vanguard_Question return { q.no:GetRight(), q.confirm:GetLeft(), q.confirm:GetWidth() }");
+    expect([label, cut, noRight < yesLeft, yesWidth <= 240], "no label cut, No left of Yes, Yes at most 240 wide").toEqual([label, [], true, true]);
+  }
+});
+
+it("text fits: the text dialog's title shows whole in three lines at Text size 130% (H47-1-102)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  atLargestText(addon);
+  addon.eval(`ns.AskText(ns.L["New preset: a name, the character, then words in the items' names (none: every item)"], function() end, ns.L["Add"])`);
+  const title = addon.eval("return Vanguard_TextDialog.title:GetText()");
+  const found = addon.textFit("Vanguard_TextDialog").filter((finding) => finding.text === title);
+  expect(found, "the title is cut by nothing, runs over nothing and has no more lines than it may draw").toEqual([]);
 });
 
 it("text fits: a dialog's long title stays on one line instead of wrapping over its content (B1-8)", () => {
