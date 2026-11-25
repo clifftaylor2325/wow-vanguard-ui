@@ -767,13 +767,16 @@ it("H27-4-4: the cast bar's time text is white, as the swing timer's seconds", (
   expect(isTok(addon, addon.eval("return Vanguard_CastBar_player.time.__textColor"), "white"), "white over the bar").toBe(true);
 });
 
+// TEST-ONLY: the target casts a spell that started a second ago and lasts `seconds`.
+const castingFor = (seconds) => `GetTime = function() return 1000 end
+  UnitCastingInfo = function(unit) if unit == "target" then return "TEST-ONLY Spell", "", "ICON", 999000, ${999000 + seconds * 1000}, false, nil, false end end
+  UnitChannelInfo = function() return nil end`;
+
 // A text-fit client casting a `seconds`-long spell on the target at Text size `scale` (live, after login, when `live`).
 function longCast(seconds, scale, live) {
   const theme = live ? "" : `, theme = { textScale = ${scale} }`;
   const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }${theme} }` });
-  addon.eval(`GetTime = function() return 1000 end
-    UnitCastingInfo = function(unit) if unit == "target" then return "TEST-ONLY Spell", "", "ICON", 999000, ${999000 + seconds * 1000}, false, nil, false end end
-    UnitChannelInfo = function() return nil end`);
+  addon.eval(castingFor(seconds));
   addon.login();
   if (live) addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
   addon.world.setUnit("target", { name: "Boar", hp: 50, maxhp: 100, reaction: 2 });

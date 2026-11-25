@@ -1246,10 +1246,8 @@ const statusRects = (cls) => {
   addon.world.setUnit("player", { combo: 3 });
   for (const event of ["PLAYER_FLAGS_CHANGED", "PARTY_LEADER_CHANGED", "RAID_TARGET_UPDATE"]) addon.fire(event, "player");
   addon.update(0.3);
-  return addon.eval(`local function r(x) return { x:GetLeft(), x:GetRight() } end
-    local CP, CB = ns.GetModule("ComboPoints"), ns.GetModule("ClassBars")
-    return { player = r(Vanguard_player), leader = r(Vanguard_player.status.leader), pvp = r(Vanguard_player.status.pvp), row = r(CP.bar or CB.totems or Vanguard_player),
-      icon = Vanguard_player.raidIcon:IsShown() and r(Vanguard_player.raidIcon) or false }`);
+  return addon.eval(`local function r(x) return { x:GetLeft(), x:GetRight() } end local CP, CB, f = ns.GetModule("ComboPoints"), ns.GetModule("ClassBars"), Vanguard_player
+    return { player = r(f), leader = r(f.status.leader), pvp = r(f.status.pvp), row = r(CP.bar or CB.totems or f), icon = f.raidIcon:IsShown() and r(f.raidIcon) or false }`);
 };
 
 // H47-5-1: the status row stands on the player frame's inner top corner while a class row is built on the outer one.
