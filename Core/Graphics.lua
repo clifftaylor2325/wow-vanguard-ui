@@ -411,14 +411,15 @@ local function press(action)
   end
 end
 
--- The General page's rows for /vg graphics: Check graphics, Apply and Undo, which do what the commands do (the result
--- stays in chat; a fight refuses the change as the commands do). Apply waits for a finished check, Undo for a record.
+-- The General page's rows for /vg graphics, under the Layout tab's fold: Check graphics, Apply and Undo, which do
+-- what the commands do (the result stays in chat; a fight refuses the change as the commands do). Apply waits for a
+-- finished check, Undo for a record.
 ---@return table[]
 function G.Rows()
   return {
-    ns.Options.Essential({ "button", L["Check graphics"], press(G.Check) }),
-    ns.Options.Essential({ "button", L["Apply graphics"], press(G.Apply), function() return G.last ~= nil end }),
-    ns.Options.Essential({ "button", L["Undo graphics"], press(G.Undo), G.CanUndo }),
+    { "button", L["Check graphics"], press(G.Check) },
+    { "button", L["Apply graphics"], press(G.Apply), function() return G.last ~= nil end },
+    { "button", L["Undo graphics"], press(G.Undo), G.CanUndo },
     { "text", L["Check measures your frame rate for 5 s (out of combat) and suggests settings; Apply sets them, Undo puts them back (/vg graphics)."], "note" },
   }
 end

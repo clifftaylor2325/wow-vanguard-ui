@@ -498,16 +498,16 @@ function O.MoveFramesRow()
   return { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end }
 end
 
--- General, part three: moving frames, and the graphics check beside the screen sizes.
+-- General, part three: moving frames, then the graphics check (folded: the tab shows the layout rows first).
 local function layoutRows()
-  return append(append(setupRows(), ns.Graphics.Rows()), {
+  return append(append(setupRows(), {
     O.Essential(O.MoveFramesRow()),
     O.Essential(check(L["Show a grid while moving"], gridSwitch())),
     { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },
     O.Essential(check(L["Snap to other frames"], moverOption("snap"))),
     check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
-  })
+  }), ns.Graphics.Rows())
 end
 
 -- General, part four: one frame's scale, opacity and size, and resetting every frame.

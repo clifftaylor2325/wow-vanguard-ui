@@ -7095,7 +7095,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.845 The graphics check has buttons on General (H47-1-55; WoW Forever and Retail)
 
-- Do: Open General, find the Layout card, press Check graphics, wait 5 s out of combat, then press Apply graphics, then Undo graphics. [Client: Forever and Retail.]
+- Do: Open General, find the Layout card, press its More settings line, press Check graphics, wait 5 s out of combat, then press Apply graphics, then Undo graphics. [Client: Forever and Retail.]
 - Expect: Chat prints the same lines as /vg graphics, apply and undo; Apply is greyed until the check ends, Undo until Apply has run; the three labels fit their buttons.
 - If it fails, paste: the chat lines and a screenshot of the Layout card
 
@@ -7162,7 +7162,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 ### 33.856 Narrow frames' handles keep their width under Standards (H47-4-103; WoW Forever and Retail)
 
 - Do: /vg unlock under the Standards layout. [Client: Forever and Retail.]
-- Expect: The Focus target, Focus and Pet handles side by side without overlapping.
+- Expect: The Focus target, Focus and Pet handles side by side without overlapping; at Text size 130% the bags and game menu handle is wide enough for its name, which stays inside it.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 33.857 Standards' target cast bar clears the target of target (H47-4-104; WoW Forever and Retail)
