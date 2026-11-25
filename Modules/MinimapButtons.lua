@@ -88,6 +88,7 @@ local function gather(b)
   vgGathered[b] = (b:GetName():gsub(MB.NAME, "")):lower()
   MB.buttons[#MB.buttons + 1] = b
   b:SetParent(MB.drawer)
+  b:SetFrameStrata(MB.drawer:GetFrameStrata())
   watchShown(b)
   return true
 end
@@ -128,11 +129,12 @@ end
 -- Building ------------------------------------------------------------------------------------
 
 -- The drawer: a panel beside the minimap (MB.PlaceDrawer picks the side), shut until the toggle opens
--- it; Escape closes it.
+-- it; Escape closes it. It is a transient popup, so it draws above the HUD (your buff icons sit level with the
+-- map's top, where it opens) and below tooltips.
 local function buildDrawer(map)
   MB.map = map
   MB.drawer = T.HudPanel(CreateFrame("Frame", "Vanguard_MinimapDrawer", map))
-  MB.drawer:SetFrameStrata("MEDIUM")
+  MB.drawer:SetFrameStrata("HIGH")
   MB.drawer:SetClampedToScreen(true)
   MB.drawer:Hide()
   ns.CloseOnEscape(MB.drawer)

@@ -291,3 +291,44 @@ it("a plate's aura row the client has closed is never pointed at a unit: a remov
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   expect(addon.eval("return { __plateOf('nameplate1'):IsShown(), #ns.errors }"), "drawn again with the closed row left as it is").toEqual([true, 0]);
 });
+
+// H47-6-101: the cast bar's spell name ends where the seconds begin, not 30 units before the bar's end, so a narrow
+// plate (80 x 10: a 67 wide bar) still shows the start of the spell.
+it("H47-6-101 a narrow plate's cast bar gives the spell name the room the seconds do not take", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved("width = 80, height = 10"));
+  const box = addon.eval(`local c = __plateOf("nameplate1").cast
+    return { bar = c:GetWidth(), name = c.text:GetRight() - c.text:GetLeft(), nameRight = c.text:GetRight(), timeLeft = c.time:GetLeft() }`);
+  expect(box.bar, "the plate's cast bar at 80 x 10").toBe(67);
+  expect(box.name, "the spell name's box").toBeGreaterThanOrEqual(40);
+  expect(box.nameRight, "ends short of the seconds").toBeLessThan(box.timeLeft);
+});
+
+// H47-6-102: at the smallest plate height the cast bar's name and seconds are drawn no taller than the bar.
+it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, and a tall one keeps the role's size", () => {
+  // The cast bar's text sizes and the seconds' width on a plate of this height.
+  const sizeAt = (height) => loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved(`width = 80, height = ${height}`))
+    .eval(`local c = __plateOf("nameplate1").cast local _, nameSize = c.text:GetFont() local _, timeSize = c.time:GetFont()
+      return { nameSize, timeSize, c.time:GetWidth() }`);
+  const [nameSize, timeSize, timeWidth] = sizeAt(6);
+  expect([nameSize, timeSize], "text size follows the bar").toEqual([6, 6]);
+  expect(timeWidth, "the seconds' room follows the text").toBe(Math.ceil(1.3 * 6));
+  expect(sizeAt(10)[0], "at the default height the role's own size").toBe(10);
+});
+
+// H47-6-3: a name-only plate's raid icon stands over the name, as the game's own name-only plates place it
+// (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua: when
+// IsShowOnlyName, RaidTargetFrame is anchored BOTTOM to the name's TOP, 10 up; else RIGHT of the health bars' LEFT).
+it("H47-6-3 a name-only plate's raid icon stands over its name, and goes back left of the bar when the plate is whole", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end GetRaidTargetIndex = function() return 8 end",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  // Where the friendly plate's raid icon stands against its name.
+  const icon = () => addon.eval(`local f = __plateOf("nameplate2") local p = f.raidIcon.__points
+    return { shown = f.raidIcon:IsShown(), mid = (f.raidIcon:GetLeft() + f.raidIcon:GetRight()) / 2, nameMid = (f.name:GetLeft() + f.name:GetRight()) / 2,
+      bottom = f.raidIcon:GetBottom(), nameTop = f.name:GetTop(), point = p.BOTTOM ~= nil and "BOTTOM" or p.RIGHT ~= nil and "RIGHT" or "?" }`);
+  const only = icon();
+  expect(only, "over the name").toMatchObject({ shown: true, point: "BOTTOM" });
+  expect(only.mid, "centred on it").toBeCloseTo(only.nameMid, 0);
+  expect(only.bottom - only.nameTop, "10 above its top").toBeCloseTo(10, 0);
+  addon.eval('ns.Options.Show("nameplates") __click("Names only on friendly plates")');
+  expect(icon().point, "whole again: left of the bar's end").toBe("RIGHT");
+});

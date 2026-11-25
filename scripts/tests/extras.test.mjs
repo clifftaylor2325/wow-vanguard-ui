@@ -134,6 +134,14 @@ it("/vg factionart: its words come from the string table, the neutral faction to
   const lines = addon.chat().join("\n");
   expect([/du bist keine\)/.test(lines), /TEST-ONLY Atlas MountJournalIcons-Horde\s+\|c\w+TEST-ONLY ja/.test(lines), /TEST-ONLY Atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+fehlt/.test(lines), /TEST-ONLY Datei /.test(lines)], "no faction, found, missing and file, each in the client's words").toEqual([true, true, true, true]);
 });
+it("/vg factionart: your faction is named in the client's language (H47-1-56)", () => {
+  // UnitFactionGroup returns factionGroupTag, localized (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, both clients).
+  const addon = loggedIn(`C_Texture = { GetAtlasInfo = function() end }
+    UnitFactionGroup = function() return "Horde", "Horda" end`, { client: '__wfgWorld.locale = "esES"' });
+  addon.slash("factionart");
+  expect(addon.chat().join("\n"), "the localized name in the line").toMatch(/Horda/);
+  expect(addon.eval("return { ns.FactionArt.Faction(), ns.FactionArt.FactionName() }"), "the token for logic, the name for showing").toEqual(["Horde", "Horda"]);
+});
 it("the faction look: the crest only by default, the crest and heading font, and Off", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
@@ -656,6 +664,20 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   const solo = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV + "__inGroup = false");
   expect(solo.eval("return Vanguard_RaidTools:IsShown()"), "hidden out of a group").toBe(false);
 });
+it("H47-7-3: every raid tools button says what a click does, and the two clear buttons differ", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
+  // The tooltip text shown over bar button i, and whether the button owns the tooltip.
+  const tip = (i) => addon.eval(`local b = Vanguard_RaidTools.list[${i}] b.__scripts.OnEnter(b) local t = { GameTooltip.__lines[1].text, GameTooltip:GetOwner() == b } b.__scripts.OnLeave(b) return t`);
+  expect(tip(1)[0], "Ready").toBe("Start a ready check");
+  expect(tip(2)[0], "Pull says what the right click does").toBe("Start the pull timer. Right-click: cancel it");
+  expect(tip(4)[0]).toBe("Convert the party to a raid");
+  expect(tip(5)[0]).toBe("Mark your target");
+  expect(tip(13)[0], "the first X clears your target's mark").toBe("Clear your target's mark");
+  expect(tip(14)[0]).toBe("Place or remove this world marker. Right-click: clear it");
+  expect(tip(22), "the second X clears every world marker, and the tip belongs to the button").toEqual(["Clear every world marker", true]);
+  expect(addon.eval("__tool(3) return GameTooltip:IsShown()"), "the Roles tip hides on leave").toBe(false);
+  expect(addon.eval("local b = Vanguard_RaidTools.list[3] b.__scripts.OnEnter(b) return GameTooltip.__lines[1].text")).toBe("Start a role check");
+});
 it("raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
   addon.eval("Vanguard_RaidTools.actions.ConvertToRaid.text:SetText('Schlachtzug')");
@@ -1009,6 +1031,21 @@ it("A-13 the AFK screen waits while you cast or channel, tries once more 30 s on
   addon.eval("__cast = { __secret = true }");
   expect(goAway(addon), "a hidden cast answer: shut").toBe(false);
 });
+it("H47-10-2 the AFK card's clock reads the game clock, as the info strip does", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + `GameTime_GetTime = function() return "9:04 PM" end`);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return Vanguard_AfkScreen.clock:GetText()")).toBe("9:04 PM");
+});
+
+it("H47-10-3 with XP gain locked the AFK card shows no XP bar, as the XP data bar hides", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + "IsXPUserDisabled = function() return true end");
+  addon.fire("DISABLE_XP_GAIN");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return { Vanguard_AfkScreen:IsShown(), Vanguard_AfkScreen.xp:IsShown() }")).toEqual([true, false]);
+});
+
 it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_AfkScreen)");
@@ -1038,6 +1075,18 @@ it("the AFK screen: a long zone line wraps clear of the faction crest and above 
   expect(where.left, "the zone line starts right of the crest").toBeGreaterThanOrEqual(crest.right);
   expect(where.bottom, "and its second line stays above the away row").toBeGreaterThanOrEqual(away.top);
   expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
+});
+
+it("H47-10-102 a long German passage at the largest Text size on a short screen raises the card until the band is on screen", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + '__faction = "Alliance" UnitFactionGroup = function() return __faction end ' + "__wfgStub.setScreen(1365, 560) ", { client: '__wfgStub.textMetrics = "font" __wfgWorld.locale = "deDE"' });
+  addon.eval("ns.Theme.Settings().textScale = ns.Theme.TEXT_SCALE.max ns.Theme.Refresh() __afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  // The band's bottom, the card's rise, and whether the card is under the screen's top.
+  const read = () => addon.eval("local A = Vanguard_AfkScreen return { A.passageShade:GetBottom(), A.card.__points.CENTER.y, A.card:GetTop() <= A:GetTop() }");
+  const [bottom, rise, cardOnScreen] = read();
+  expect([bottom >= 0, rise > 60, cardOnScreen], "band on screen, card raised, card still under the top").toEqual([true, true, true]);
+  addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+  expect(read()[1], "back to its usual spot at a normal size").toBe(60);
 });
 
 it("H27-3-1: a main tank's target line keeps its reaction colour through a look change", () => {

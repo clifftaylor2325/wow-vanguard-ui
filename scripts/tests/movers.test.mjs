@@ -1,7 +1,8 @@
 // movers: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -186,6 +187,24 @@ it("handles stay readable and grabbable at any Scale %: their label keeps its si
   expect(handle("thin"), "a 120 x 5 frame's handle is still 120 wide and at least 14 tall").toEqual([1, 120, 14, 1]);
   addon.eval('ns.SetMoverScale("box", 2)');
   expect(handle("box"), "200%: the label is not doubled").toEqual([1, 400, 80, 1]);
+});
+
+it("H47-4-103: a narrow frame's handle keeps its frame's width (24 at least), so handles 30 apart don't overlap", () => {
+  const addon = loggedIn("__n = CreateFrame('Frame', 'TESTONLY_Narrow', UIParent) __n:SetSize(24, 100) ns.Mover(__n, 'narrow', 'TEST-ONLY narrow', { 'BOTTOM', 'BOTTOM', 0, 300 }) __s = CreateFrame('Frame', 'TESTONLY_Sliver', UIParent) __s:SetSize(10, 100) ns.Mover(__s, 'sliver', 'TEST-ONLY sliver', { 'BOTTOM', 'BOTTOM', 60, 300 })");
+  addon.slash("unlock");
+  // A mover handle's width.
+  const width = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w:GetWidth() end end`);
+  expect([width("narrow"), width("sliver")], "24 stays 24 (30 apart leaves a gap); 10 is lifted to the 24 minimum").toEqual([24, 24]);
+});
+
+it("H47-4-103: a narrow handle whose wrapped label stands taller than it takes the wide minimum (40), so the name stays inside", () => {
+  // The text-fit client measures wrapped text with the addon's real font widths.
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.eval("__n = CreateFrame('Frame', 'TESTONLY_Short', UIParent) __n:SetSize(24, 20) ns.Mover(__n, 'short', 'TEST-ONLY a long name for a short narrow frame', { 'BOTTOM', 'BOTTOM', 0, 300 })");
+  addon.login();
+  addon.slash("unlock");
+  const handle = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "short" then return { w:GetWidth() } end end`);
+  expect(handle[0], "widened to the wide minimum").toBe(addon.eval("return ns.HANDLE_MIN.wide"));
 });
 
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
@@ -651,6 +670,20 @@ it("hunt H44-11-R3: a frame on a high strata registered in plain unlock mode kee
   addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(200, 40) __d:SetFrameStrata("DIALOG")
     __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
   expect(addon.eval("return __m.handle:GetFrameStrata()"), "above the frame").toBe("DIALOG");
+});
+
+it("H47-4-101: a closed frame on a high strata keeps its handle on HIGH, so it doesn't take the mouse from other handles", () => {
+  // Draw order is the addon's own assumption (Core/Movers.lua STRATA_RANK): DIALOG draws over HIGH; the strata order is the game's.
+  const addon = loggedIn();
+  addon.slash("lock");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(560, 360) __d:SetFrameStrata("DIALOG") __d:Hide()
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  addon.slash("unlock");
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "closed: with the other handles").toBe("HIGH");
+  addon.slash("lock");
+  addon.eval("__d:Show()");
+  addon.slash("unlock");
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "open: over the dialog (H44-11-R3)").toBe("DIALOG");
 });
 
 // Picks a choice in the open popover's "Anchor to" menu.

@@ -180,11 +180,18 @@ local function barVisibilityRows(n)
   return mode, when
 end
 
+-- One bar's on/off switch. It keeps its English caption (setup finds the row by it), which a translation can't give back.
+local function showBarRow(n)
+  local row = reloadRow(check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n)))
+  row.english = ns.Format("Show bar {n}", { n = n })
+  return row
+end
+
 -- One action bar's card: on/off, visibility, button count, per row and size.
 local function oneBarRows(n)
   local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) }, reloadRow(check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n))),
+    { "header", barTitle(n) }, showBarRow(n),
     visibility,
     { "text", L["Hidden bars keep their keys: a bound key still casts."] },
     showWhen,

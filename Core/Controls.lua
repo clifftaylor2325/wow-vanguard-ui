@@ -208,6 +208,16 @@ local function currentText(choices, current)
   return choices[1] and choices[1][2] or ""
 end
 
+-- The choices a player can pick: a choice marked `spare` only holds its place among the segments, so a row with
+-- fewer choices lines its segments up with the rows that have the full set.
+local function withoutSpare(choices)
+  local out = {}
+  for _, c in ipairs(choices) do
+    if not c.spare then out[#out + 1] = c end
+  end
+  return out
+end
+
 -- Whether choices fit as segments: four or fewer, with short labels.
 local function fitsSegments(choices)
   local chars = 0
@@ -270,6 +280,7 @@ local function segment(r, choice, set)
   s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "label")
   s.text:SetPoint("CENTER")
   s.text:SetText(choice[2])
+  s:SetShown(not choice.spare)
   s:SetScript("OnClick", ns.Guard("click segment", function() set(choice[1]); r:Refresh() end))
   return s
 end
@@ -310,7 +321,7 @@ local function addControl(r, choices, get, set, width)
   if r.segments and not crampedAt(r, true) then return end
   for _, s in ipairs(r.segments or {}) do s:Hide() end
   r.segments = nil
-  addDropdown(r, choices, get, set)
+  addDropdown(r, withoutSpare(choices), get, set)
   fitCaption(r, width)
 end
 
@@ -345,7 +356,7 @@ end
 -- A choice row: segments when they fit, else a dropdown. Clicking the caption steps to the next choice.
 function W.Choice(parent, caption, choices, get, set, width)
   local r = row(parent, caption, width)
-  r.caption, r.choices, r.get = caption, choices, get
+  r.caption, r.choices, r.get = caption, withoutSpare(choices), get
   addControl(r, choices, get, set, width)
   r.Refresh = r.Refresh or refreshSegments
   r:SetScript("OnClick", ns.Guard("click choice", function(self) stepChoice(self, set) end))

@@ -76,6 +76,12 @@ function ns.HideGrid()
   end
 end
 
+-- Draws the grid as the options say: shown (at the saved spacing) while frames are unlocked with the grid on, else hidden.
+function ns.RefreshGrid()
+  local o = ns.MoverOptions()
+  if ns.Unlocked() and o.grid then ns.ShowGrid(o.gridSize) else ns.HideGrid() end
+end
+
 -- A UI scale or screen change while the grid shows: its lines are drawn again for the new canvas and pixel size.
 T.OnScale(function()
   if grid and grid:IsShown() then ns.ShowGrid(shownSize) end

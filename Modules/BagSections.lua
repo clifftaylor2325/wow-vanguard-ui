@@ -257,20 +257,41 @@ local function bottomHeight(frame)
   return money:GetHeight() + (y or 0) + row:GetHeight()
 end
 
--- The window fitted to the sections: the grid's width with the padding each
--- side; the title and search row, the sections, the game's space above the
--- money line, the bottom rows and the padding under them. Then the search row fitted.
+-- The window's size for the sections: the grid's width with the padding each side; the title and search row,
+-- the sections, the game's space above the money line, the bottom rows and the padding under them.
+local function sectionSize(frame, g, height)
+  return g.w + 2 * BG.PAD, g.top + height + ABOVE_MONEY + bottomHeight(frame) + BG.PAD
+end
+
+-- The window fitted to the sections (sectionSize). Then the search row fitted.
 local function fitWindow(frame, g, height)
   BG.PadMoney(frame)
-  frame:SetSize(g.w + 2 * BG.PAD, g.top + height + ABOVE_MONEY + bottomHeight(frame) + BG.PAD)
+  frame:SetSize(sectionSize(frame, g, height))
   BG.FitSearch(frame)
+end
+
+-- The sections' grid in this window and the height they use (the sections' spots are set on the list).
+local function measure(frame, list)
+  local g = gridOf(frame)
+  g.head = headHeight(frame, list)
+  return g, shelve(list, g)
+end
+
+-- The game's smallest bag scale (CONTAINER_SCALE in Blizzard_UIPanels_Game ContainerFrame.lua, a local there).
+BG.GAME_MIN_SCALE = 0.75
+
+-- Whether the sectioned bag fits the screen as the game places it: at the game's smallest scale, under the
+-- screen's top less the game's bag offset (CONTAINER_OFFSET_Y). Taller than that and part of it is off screen.
+function BG.FitsScreen(frame, list)
+  local g, height = measure(frame, list)
+  local _, total = sectionSize(frame, g, height)
+  local room = UIParent:GetHeight() - (_G.CONTAINER_OFFSET_Y or 85)
+  return total * BG.GAME_MIN_SCALE <= room
 end
 
 -- Lays the sections out: slots and headers placed, and the window fitted to them.
 function BG.Place(frame, list)
-  local g = gridOf(frame)
-  g.head = headHeight(frame, list)
-  local height = shelve(list, g)
+  local g, height = measure(frame, list)
   BG.HideHeaders()
   for _, s in ipairs(list) do
     placeSlots(frame, s, g)
@@ -316,11 +337,13 @@ end
 -- Sections in the open bag window (when switched on); a layout already showing the same sections is left
 -- as it is. The Junk header's value is painted each time, as a stack can change without moving a section.
 -- With the game's gamepad interface on, the bag stays the game's plain grid (its per-bag tiles and collapsed
--- bags are laid out by the game), read at every layout, as with the switch off.
+-- bags are laid out by the game), read at every layout, as with the switch off. So it does when the
+-- sections would not fit the screen (BG.FitsScreen).
 function BG.LayOutSections(frame)
   if not ns.Settings("Bags", BG.defaults).sections or BG.GamepadUI() then return BG.PlainBag(frame) end
   if not frame:IsShown() then return end
   local list, sig = BG.Group(buttonsOf(frame))
+  if not BG.FitsScreen(frame, list) then return BG.PlainBag(frame) end
   if sig ~= vgSections[frame] then
     vgSections[frame] = sig
     BG.Place(frame, list)

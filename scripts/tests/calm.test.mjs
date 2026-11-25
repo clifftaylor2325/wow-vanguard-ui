@@ -138,3 +138,17 @@ it("H46-21-54 the keystone band dims with the Calm HUD without ever feeling the 
   addon.hover("Vanguard_Keystone.inner");
   expect(addon.eval("return math.floor(Vanguard_Keystone.inner:GetAlpha() * 100 + 0.5) / 100"), "pointing at it leaves it at the calm alpha").toBe(0.35);
 });
+
+it("calm HUD rows: the unit frames' Dim and Leave as is sit in the columns the other rows use, with Hide's place left empty", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("__wfgStub.textMetrics = 'font'");
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab(5)');
+  // Every shown choice row of the page under the options window: its caption, and each segment's text, left edge and shown state.
+  const rows = addon.eval(`local out = {} local function w(f) for _, c in ipairs({ f:GetChildren() }) do
+    if c:IsVisible() and c.segments then local s = {} for _, g in ipairs(c.segments) do s[#s + 1] = { g.text:GetText(), math.floor(g:GetLeft()), g:IsShown() } end out[c.label:GetText()] = s end w(c) end end
+    w(Vanguard_Options) return out`);
+  const bars = rows["Action bars"], frames = rows["Unit frames"];
+  expect(bars.length, "the other rows have three segments").toBe(3);
+  expect([frames[0][1], frames[2][1]], "Dim and Leave as is line up with the bars row").toEqual([bars[0][1], bars[2][1]]);
+  expect(frames.map((s) => s[2]), "Hide's place on the unit frames row is not drawn").toEqual([true, false, true]);
+});

@@ -73,11 +73,20 @@ local function historyOn()
   return ns.GetModule("QuestHistory").On()
 end
 
+-- The switch for quest history; it redraws the card, so the list button below follows it at once.
+local function trackRow()
+  local get, set, default = setting("QuestHistory", "track")
+  return check(L["Remember who finished each quest"], get, function(value)
+    set(value)
+    O.Refresh()
+  end, default)
+end
+
 -- Quest history: which character finished each quest.
 local function questHistoryRows()
   return {
     { "header", L["Quest history"] },
-    check(L["Remember who finished each quest"], setting("QuestHistory", "track")),
+    trackRow(),
     { "button", L["List latest turn-ins"], function() ns.GetModule("QuestHistory").Command("") end, historyOn },
   }
 end

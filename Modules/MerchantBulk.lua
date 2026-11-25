@@ -493,12 +493,14 @@ local function makeDrawer(frame)
   return drawer
 end
 
--- The cost line under the buttons, on one line inside the drawer (shrunk a little when it runs long).
+-- The cost line under the buttons, on one line inside the drawer (shrunk a little when it runs long). T.FitText
+-- centres the string on its box, so its own anchors under Stack and Max go on after it.
 local function costText(drawer, stack)
-  local line = T.Text(drawer:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  local line = T.FitText(ns.SingleLine(T.Text(drawer:CreateFontString(nil, "OVERLAY"), "small", "text2")), drawer)
+  line:ClearAllPoints()
   line:SetPoint("TOPLEFT", stack, "BOTTOMLEFT", 0, -T.SPACE.gap)
   line:SetPoint("TOPRIGHT", drawer, "TOPRIGHT", -T.SPACE.gap, -(2 * T.SPACE.gap + T.BUTTON_H))
-  return T.FitText(ns.SingleLine(line), drawer)
+  return line
 end
 
 -- A Stack or Max press: buys only while the window is still for that item and the row still holds it, at the

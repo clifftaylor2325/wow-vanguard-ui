@@ -87,19 +87,33 @@ local function paintRole(mark, unit)
   T.Tint(mark, look[2])
 end
 
--- Anchors the shown marks one after another from the frame's outer top corner inward (over its name tab, where the
--- look gives it one: the corner is the tab's). Out of combat: the frame is a secure button.
+-- The corner the row stands on and what it stands on: the frame's outer top corner (over its name tab, where the look
+-- gives it one), but your player frame's inner top corner while a class row (combo points, totems, class pips) is
+-- built on the outer one, so the marks stay clear of the first points.
+local function cornerOf(f)
+  if f.key == "player" and UF.ClassRowBuilt() then return INNER[f.outer], f end
+  return f.outer, UF.StatusHome(f)
+end
+
+-- Anchors the shown marks one after another from the row's corner inward. Out of combat: the frame is a secure button.
 local function layout(f)
-  local side, prev = f.outer, nil
+  local side, home = cornerOf(f)
+  local gap, prev = side == "LEFT" and ST.GAP or -ST.GAP, nil
   for _, name in ipairs(ST.ORDER) do
     local mark = f.status[name]
     mark:ClearAllPoints()
     if mark:IsShown() then
-      if prev then mark:SetPoint("BOTTOM" .. side, prev, "BOTTOM" .. INNER[side], f.outer == "LEFT" and ST.GAP or -ST.GAP, 0)
-      else mark:SetPoint("BOTTOM" .. side, UF.StatusHome(f), "TOP" .. side, f.outer == "LEFT" and ST.GAP or -ST.GAP, ST.LIFT) end
+      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, gap, prev and 0 or ST.LIFT)
       prev = mark
     end
   end
+end
+
+-- Lays a frame's marks out and tells the readout that stands over the player frame's corner (UnitExtras' chip, which
+-- lifts past the marks) to place itself again.
+local function relayout(f)
+  layout(f)
+  if f.key == "player" and ST.OnLayout then ST.OnLayout() end
 end
 
 -- Shows each mark the unit has (all hidden when `on` is false) and gives the set as a string of 1s and 0s.
@@ -126,7 +140,7 @@ function ST.Update(f)
   if f.status.role:IsShown() then paintRole(f.status.role, f.unit) end
   if sig == f.vgStatusSig then return end
   f.vgStatusSig = sig
-  ns.OutOfCombat(function() layout(f) end, "unit status " .. f.key)
+  ns.OutOfCombat(function() relayout(f) end, "unit status " .. f.key)
 end
 
 -- Lays a frame's marks out again from its tab or edge (the look changed), and paints them.

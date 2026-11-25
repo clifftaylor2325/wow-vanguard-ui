@@ -193,12 +193,6 @@ local function accentCommand(rest)
   chat(ns.Format(L["Accent set to {accent}."], { accent = rest:lower() }))
 end
 
--- Re-shows the grid with the current options while unlocked.
-local function refreshGrid()
-  local o = ns.MoverOptions()
-  if ns.Unlocked() and o.grid then ns.ShowGrid(o.gridSize) else ns.HideGrid() end
-end
-
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
   local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
@@ -209,7 +203,7 @@ local function gridCommand(rest)
   else
     return chat(L["Usage: /vg grid [8-256 | on | off]"])
   end
-  refreshGrid()
+  ns.RefreshGrid()
   chat(o.grid and ns.Format(L["Grid on, every {size} px."], { size = o.gridSize }) or L["Grid off."])
 end
 

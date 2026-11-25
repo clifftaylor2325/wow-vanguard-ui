@@ -170,6 +170,7 @@ function BG.NewGroup(text)
   if not name then return end
   if find(name) then return ns.Chat(ns.Format(L["{group} already exists."], { group = name })) end
   table.insert(list(), { name = name, items = {} })
+  ns.HideText()
   ns.Chat(ns.Format(L["Group {group} made. Pick an item up, then choose it under Groups."], { group = name }))
 end
 

@@ -369,12 +369,40 @@ it("a clear gap above each section header, its band reaching down to its slots; 
   expect(side, "Junk 12 px right of Other, on the same line").toEqual([12, 0]);
 });
 
+it("the bag's search box keeps its magnifier after the skin (SearchBoxTemplate's searchIcon, InputBoxTemplates.xml)", () => {
+  const addon = loggedIn(BAG_ENV + "BagItemSearchBox.searchIcon = BagItemSearchBox:CreateTexture(nil, 'OVERLAY')");
+  addon.eval("__openBag()");
+  expect(addon.eval("return { BagItemSearchBox.searchIcon:GetAlpha(), BagItemSearchBox.searchIcon:IsShown() }"), "magnifier drawn").toEqual([1, true]);
+});
+
+// With the gamepad interface on, Forever's ContainerFrameCombinedBagsMixin:SetSearchBoxPoint (Blizzard_UIPanels_Game/Mainline/
+// ContainerFrame.lua:3043) anchors the box's TOPRIGHT to the window's too (-12, -37) and gives it no width.
+it("with the gamepad layout's second anchor on the search box, Filter, Groups and Sort still end inside the window", () => {
+  const stretch = `function ContainerFrameCombinedBags:UpdateSearchBox()
+    BagItemSearchBox:SetParent(self) BagItemSearchBox:ClearAllPoints() BagItemSearchBox:SetPoint("TOPLEFT", self, "TOPLEFT", 62, -37)
+    BagItemSearchBox:SetPoint("TOPRIGHT", self, "TOPRIGHT", -12, -37) BagItemSearchBox:Show()
+  end`;
+  const addon = loggedIn(BAG_ENV + stretch);
+  addon.eval("__openBag()");
+  expect(addon.eval("return ContainerFrameCombinedBags:GetRight() - ns.GetModule('Bags').sort:GetRight()"), "Sort ends the padding inside the right edge").toBe(PAD);
+});
+
 it("the window grows to fit; on a 768 px screen at UI scale 1 the game keeps even a full bag on screen", () => {
   const screen = "__wfgStub.setScreen(1365, 768)";
   // The window's height, the game's scale for it, and whether all of it is on the screen.
   const fitted = (addon) => addon.eval("local f = ContainerFrameCombinedBags local s = f:GetScale() return { f:GetHeight(), math.floor(s * 100 + 0.5) / 100, f:GetTop() * s <= 768, f:GetBottom() * s >= 0 }");
   expect(fitted(openFilled(...OWNER_BAG, screen)), "the owner's bag: taller by the gaps and padding, still at full size").toEqual([585, 1, true, true]);
   expect(fitted(openFilled(...FULL_BAG, screen)), "a full bag: taller than the 683 px above the game's bag offset, so the game draws it a little smaller, all of it on screen").toEqual([753, 0.9, true, true]);
+});
+
+it("a sectioned bag too tall for the screen at the game's smallest scale falls back to the game's plain grid (H47-9-102)", () => {
+  const big = [[16, 36, 36, 36, 36], { equipment: 40, consumables: 40, trade: 40, other: 10, junk: 10 }];
+  const tall = openFilled(...big, "__wfgStub.setScreen(1365, 768)");
+  expect([headers(tall).length, tall.eval("return ContainerFrameCombinedBags:GetHeight()")], "768 px: no headers, the game's own height").toEqual([0, 774]);
+  const roomy = openFilled(...big, "__wfgStub.setScreen(1920, 1080)");
+  expect(headers(roomy).length, "1080 px: the sections show").toBeGreaterThan(0);
+  tall.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(headers(tall).length, "stays plain as items update").toBe(0);
 });
 
 it("the money line keeps the padding when the game puts it back, and sits on the currency tracker when that shows", () => {
@@ -881,6 +909,7 @@ it("the bag's Groups button makes groups, files the held item, sends to the bank
   expect(menuRows(addon), "only New group before any exists").toEqual(["New group..."]);
   addon.click("Vanguard_Menu.items[1]");
   addon.eval("Vanguard_TextEdit:SetText('Food items') Vanguard_TextDialog.primary:Click()");
+  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "Create closes the name box, as the other Create buttons do").toBe(false);
   expect(addon.eval("return ns.Settings('Bags').categories[1].name"), "the typed name becomes one word").toBe("Food-items");
   addon.eval("ns.GetModule('Bags').NewGroup('food-ITEMS') ns.GetModule('Bags').NewGroup('   ')");
   expect(chat(), "the same name twice is refused").toMatch(/food-ITEMS already exists/);

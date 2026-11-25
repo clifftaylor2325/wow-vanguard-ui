@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -1202,4 +1202,103 @@ it("one unit frame that fails to paint or lay out is reported, and every other f
   addon.eval('ns.GetModule("UnitFrames").Refresh() ns.GetModule("UnitFrames").ApplyLook()');
   expect(ufState(addon, watched).hp, "a frame past the broken one still paints").toBe(watched === "player" ? 500 : 7);
   expectErrors(/^unit frame refresh: eval:4: TEST-ONLY broken frame$/, /^unit frame layout: eval:5: TEST-ONLY broken layout$/);
+});
+
+// H47-5-3: with power text on, a long target name ends before the power number, on the bar's middle line.
+it("the target's name stops short of the power text when it is wider than the health text", () => {
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'both', healthFormat = 'deficit' }, theme = { hudLook = "rimmed" } }` });
+  addon.login();
+  addon.world.setUnit("target", { name: "Grizzled Thunderhoof Matriarch-Argent Dawn", hp: 5000, maxhp: 5000, power: 12345, maxpower: 20000, ptypeName: "MANA", reaction: 2, level: 60 });
+  const fit = addon.textFit("Vanguard_target").filter((x) => x.kind === "overlap");
+  expect(fit, "the name does not run over the power number").toEqual([]);
+  const ys = addon.eval(`local f = Vanguard_target local n = f.name:GetNumPoints() local out = {} for i = 1, n do local _, _, _, _, y = f.name:GetPoint(i) out[#out + 1] = y end return out`);
+  expect(new Set(ys).size, "the name's anchors share one height").toBe(1);
+});
+
+// H47-5-104: a shield past a full bar shows the raid tiles' overshield mark on the player, target and party frames.
+it("a shield past a full health bar lights the overshield mark on the unit frames, a hidden answer to its opacity", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + "VanguardDB.profiles.Default = { modules = { RaidFrames = false } }" });
+  addon.eval(UNITS_ENV + HEALING_ENV);
+  addon.login();
+  addon.eval(`__pred.player = { max = 1000, heals = 0, shields = 150, over = true }
+    __pred.target = { max = 1000, heals = 0, shields = 150, over = { __secret = true } }`);
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "player");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "target");
+  // A frame's overshield mark: shown, opacity, width, its first point and the side its fill runs from.
+  const mark = (key) => addon.eval(`local m = Vanguard_${key}.overshield return { m:IsShown(), m:GetAlpha(), m:GetWidth(), (m:GetPoint(1)), ns.GetModule("UnitFrames").FillsFromRight(Vanguard_${key}) }`);
+  const [shown, opacity, width, point, fromRight] = mark("player");
+  expect([shown, opacity, width, point.endsWith(fromRight ? "LEFT" : "RIGHT")], "shields past a full bar: a lit mark of the raid tiles' width at the end the fill runs toward").toEqual([true, 1, 2, true]);
+  expect(addon.eval("return Vanguard_target.overshield.__alphaFromBoolean ~= nil"), "a hidden answer goes to its opacity untouched").toBe(true);
+  addon.eval("__pred.player.over = false");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "player");
+  expect(mark("player").slice(0, 2), "shields within the bar: unlit").toEqual([true, 0]);
+  addon.eval("ns.GetModule('UnitFrames').settings.absorbs = false ns.GetModule('UnitFrames').ApplyPrediction()");
+  expect(mark("player")[0], "shields turned off: no mark").toBe(false);
+});
+
+// A leader and PvP-flagged player of a class, a target and 3 combo points: the left and right edges of the frame, the
+// two marks and the class row (the combo points, else the totems) on the Tabs look.
+const statusRects = (cls) => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.eval(`__wfgWorld.units.player.class = "${cls}" __wfgWorld.units.player.leader = true UnitIsPVP = function(u) return u == "player" end`);
+  addon.login();
+  addon.world.setUnit("target", { name: "Boar", hp: 50, maxhp: 100, reaction: 2 });
+  addon.world.setUnit("player", { combo: 3 });
+  for (const event of ["PLAYER_FLAGS_CHANGED", "PARTY_LEADER_CHANGED"]) addon.fire(event, "player");
+  addon.update(0.3);
+  return addon.eval(`local function r(x) return { x:GetLeft(), x:GetRight() } end
+    local CP, CB = ns.GetModule("ComboPoints"), ns.GetModule("ClassBars")
+    return { player = r(Vanguard_player), leader = r(Vanguard_player.status.leader), pvp = r(Vanguard_player.status.pvp), row = r(CP.bar or CB.totems or Vanguard_player) }`);
+};
+
+// H47-5-1: the status row stands on the player frame's inner top corner while a class row is built on the outer one.
+it("the status marks clear the combo points and the totems on your frame; a class with no row keeps them at the outer corner", () => {
+  for (const cls of ["ROGUE", "SHAMAN"]) {
+    const { player, leader, pvp, row } = statusRects(cls);
+    expect(Math.min(leader[0], pvp[0]) >= row[1], `${cls}: the crown and the PvP tag stand past the class row's end`).toBe(true);
+    expect(Math.max(leader[1], pvp[1]) <= player[1] + 0.01, `${cls}: and inside the frame's width`).toBe(true);
+  }
+  const mage = statusRects("MAGE");
+  expect(mage.leader[0] - mage.player[0], "no class row: the crown stays at the outer corner (a couple of units in)").toBeLessThan(5);
+});
+
+// H47-5-2: a frame too narrow for the level beside the number hides the level, so the name and the number stay readable.
+it("a narrow target frame with Health as Both hides the level instead of squeezing the name or overlapping the number", () => {
+  // A booted client with the target frame this wide, a 62 elite target and Health as Both.
+  const boot = (width) => {
+    const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, UnitFrames = { targetWidth = ${width}, targetHeight = 24, healthFormat = 'both' } }` });
+    addon.login();
+    addon.world.setUnit("target", { name: "Archmage Arugal", hp: 45678, maxhp: 98765, reaction: 2, level: 62, classification: "elite" });
+    return addon;
+  };
+  const narrow = boot(100);
+  const problems = narrow.textFit("Vanguard_target").filter((x) => x.kind === "overlap" || /squeezed/.test(x.other ?? ""));
+  expect([problems, narrow.eval("return Vanguard_target.level:IsShown()")], "100 wide: the level gives way, nothing overlaps or is squeezed").toEqual([[], false]);
+  expect(boot(240).eval("return Vanguard_target.level:IsShown()"), "240 wide: the level stays").toBe(true);
+});
+
+// H47-5-101: under the Tabs look the pet and focus frames wear no tab at their Like the game's spots, where they stand
+// under your frame and the focus's cast bar; the other frames keep theirs, and a Centered layout gives the tabs back.
+it("Like the game's layout: no name tab on the pet and focus frames under the Tabs look", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.login();
+  // Whether the pet, focus, player and target frames show their tab.
+  const tabs = () => addon.eval("return { Vanguard_pet.tab:IsShown(), Vanguard_focus.tab:IsShown(), Vanguard_player.tab:IsShown(), Vanguard_target.tab:IsShown() }");
+  expect(tabs(), "Centered: every frame wears its tab").toEqual([true, true, true, true]);
+  addon.eval("ns.Setup.ApplyLayout('classic')");
+  expect(tabs(), "Like the game's: the pet and the focus have none, your frame and the target keep theirs").toEqual([false, false, true, true]);
+  addon.eval("ns.Setup.ApplyLayout('damage')");
+  expect(tabs(), "a Centered layout gives them back").toEqual([true, true, true, true]);
+});
+
+// H47-5-103: under the Tabs look a name tab grows past half its frame, up to where the marks at the inner corner begin.
+it("a long name on a party frame's tab is shown whole, the tab clear of the inner corner's marks", () => {
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.login();
+  addon.world.setUnit("party1", { name: "Thunderhoofx", hp: 4567, maxhp: 9876, isPlayer: true, connected: true, level: 60, class: "DRUID" });
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.3);
+  const cut = addon.textFit("Vanguard_party1").filter((x) => x.kind === "cut" && x.text === "Thunderhoofx");
+  const tab = addon.eval("local f = Vanguard_party1 return { f.tab:GetWidth(), f:GetWidth() }");
+  expect([cut, tab[0] > tab[1] / 2, tab[0] <= tab[1] - 42], "the name whole on a tab wider than half the frame, short of the inner corner").toEqual([[], true, true]);
 });

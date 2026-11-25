@@ -243,6 +243,25 @@ it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.down == true, b.dispel:IsShown() }"), "offline: no wash, as no icon").toEqual([true, false]);
 });
 
+it("H47-7-2: the fallback's HoT row takes the soonest to end, not the first cast", () => {
+  expectErrors(AURA_FALLBACK);
+  // Client rule: AuraUtil.ExpirationOnlyAuraCompare (forever Blizzard_FrameXMLUtil/AuraUtil.lua): timed auras by end, permanent last.
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + `
+    __auras = { raid1 = { ["HELPFUL|PLAYER|RAID"] = {
+      { icon = "MOTW", expirationTime = 2800, duration = 1800, auraInstanceID = 31 },
+      { icon = "PERM", expirationTime = 0, duration = 0, auraInstanceID = 35 },
+      { icon = "THORNS", expirationTime = 1600, duration = 600, auraInstanceID = 32 },
+      { icon = "REJUV", expirationTime = 1012, duration = 12, auraInstanceID = 33 },
+      { icon = "HIDDEN", expirationTime = { __secret = true }, duration = 9, auraInstanceID = 36 },
+      { icon = "REGROWTH", expirationTime = 1020, duration = 21, auraInstanceID = 34 } } } }
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return ((__auras[unit] or {})[filter] or {})[i] end }
+    __wfgStub.noAuraContainer = true`);
+  addon.eval('__spawn(1, "raid1")');
+  // The textures of the HoT icons shown, in order.
+  const shown = () => addon.eval(`local shown = {} for _, f in ipairs(Vanguard_RaidUnitButton1.hotRow.groups[1].icons) do if f:IsShown() then shown[#shown + 1] = f.icon:GetTexture() end end return shown`);
+  expect(shown(), "soonest to end first, permanent and hidden ones last").toEqual(["REJUV", "REGROWTH", "THORNS"]);
+});
+
 it("raid indicators on the fallback", () => {
   expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
@@ -1313,4 +1332,24 @@ it("H45-5-2 raid auras: a Height change that keeps the icon size still moves the
     expect(spots.length, `height ${height}: the indicator rows are there`).toBeGreaterThan(0);
     expect(spots.map((s) => s.slice(0, 2)), `height ${height}: every slot at the spot the zones give`).toEqual(spots.map((s) => s.slice(2, 4)));
   }
+});
+
+// H47-6-2: the weapon enchant cell follows the buffs' Timer numbers switch, its number on the bottom edge.
+it("H47-6-2 the weapon enchant cell shows its countdown only with the buffs' timers on, on the icon's bottom edge", () => {
+  // The first enchant cell's countdown state under a Timer numbers setting.
+  const cell = (timers) => loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end",
+    { savedVariables: `VanguardDB.profiles = { Default = { PlayerAuras = { timers = ${timers} } } }` })
+    .eval(`local cd = ns.GetModule("PlayerAuras").cells[1].cooldown
+      return { hidden = cd.__hideNumbers, edge = cd:GetCountdownFontString().__points.BOTTOM ~= nil }`);
+  expect(cell(false), "timers off: no number").toMatchObject({ hidden: true, edge: false });
+  expect(cell(true), "timers on: the number sits on the bottom edge").toMatchObject({ hidden: false, edge: true });
+});
+
+// H47-6-103: the smallest aura icons draw their stack count in the smaller role, so two digits stay inside the icon.
+it("H47-6-103 an aura icon under 14 wide draws its stack count in the smaller role", () => {
+  const addon = loggedIn(UNITS_ENV);
+  // The font size of a dressed icon's stack count.
+  const countSize = (size) => addon.eval(`local f = CreateFrame("Frame", nil, UIParent)
+    local _, px = ns.Auras.Dress(f, { size = ${size} }).count:GetFont() return px`);
+  expect([countSize(12), countSize(13), countSize(14), countSize(20)], "8 under 14, the role's own 10 from 14").toEqual([8, 8, 10, 10]);
 });

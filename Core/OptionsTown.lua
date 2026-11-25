@@ -159,7 +159,7 @@ end
 
 -- Gear upgrades: the role (and damage style) the weights are for, and where upgrades show.
 local function upgradeRows()
-  local roles = { { "auto", L["group role, else damage"] }, { "damage", L["damage"] }, { "tank", L["tank"] }, { "healer", L["healer"] } }
+  local roles = { { "auto", L["Group role, else damage"] }, { "damage", L["Damage"] }, { "tank", L["Tank"] }, { "healer", L["Healer"] } }
   local rows = { { "header", L["Gear upgrades"] }, { "cycle", L["Weigh stats for"], roles, liveMethod("Upgrades", "role", "Changed") } }
   return append(append(rows, styleRows()), {
     check(L["Upgrade or downgrade on item tooltips"], setting("Upgrades", "tooltip")),

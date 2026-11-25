@@ -238,7 +238,7 @@ local function defaultText(w, kind, initial)
 end
 
 -- The reset arrow's side, and its button's size: the arrow sits in the card's margin, left of the row's caption (pixels).
-O.RESET = { icon = 12, width = 14, height = 16, x = -6 }
+O.RESET = { icon = 10, width = 14, height = 16, x = -5 }
 
 -- The reset arrow itself, centered on its button, in the accent.
 local function resetMark(d)
@@ -280,10 +280,13 @@ local function defaultOf(row)
   return at and row[at + 1]
 end
 
--- Whether a row with a default holds another value now.
+-- Whether a row with a default holds another value now. A row whose getter fails counts as unchanged (kept in
+-- /vg errors), so one broken row costs its own card and dot, never the window.
 local function rowChanged(row)
   local initial = defaultOf(row)
-  return initial ~= nil and getterOf(row)() ~= initial
+  if initial == nil then return false end
+  local ok, now = ns.Try("read options row", getterOf(row))
+  return ok and now ~= initial
 end
 
 -- Whether any of the rows differs from its default.
@@ -611,7 +614,7 @@ O.WithoutReload = withoutReload
 -- bracket). The English says whether it has one, so a translated caption loses its bracket too.
 local function moveReload(row)
   if type(row[2]) ~= "string" then return end
-  row.english = ns.English(row[2])
+  row.english = row.english or ns.English(row[2])
   if setterOf(row) and row.english:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
     row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), not O.AppliesLive(setterOf(row))
   end
@@ -783,9 +786,31 @@ local function profileChoices()
   return out
 end
 
--- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
-local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
+local profileDropdown
+
+do
+  -- The picker's box shows the bare profile name, so a long one keeps the whole box (its menu rows say "Profile: ").
+  local function showProfileName(d)
+    d.text:SetText(ns.SelectedProfileName())
+  end
+
+  -- The picker's tooltip: the full profile name, for one the box still cuts.
+  local function profileTip(d)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(d, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(ns.Format(L["Profile: {profile}"], { profile = ns.SelectedProfileName() }))
+    GameTooltip:Show()
+  end
+
+  -- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
+  function profileDropdown(parent)
+    local d = W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
+    d.Refresh = showProfileName
+    d:HookScript("OnEnter", ns.Guard("profile picker tip", profileTip))
+    d:HookScript("OnLeave", ns.Guard("profile picker tip", function() if GameTooltip then GameTooltip:Hide() end end))
+    d:Refresh()
+    return d
+  end
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
@@ -824,6 +849,7 @@ local function addHeaderControls(f)
   f.search = W.Search(f.header, SEARCH_WIDTH, L["Search settings"], function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
   f.search:SetScript("OnEnterPressed", ns.Guard("search enter", searchEnter))
+  f.search:HookScript("OnEscapePressed", ns.Guard("search escape", O.HideHits))
   T.Ornament(f, "rule", f.header)
 end
 
@@ -904,7 +930,7 @@ local function fillNavItem(b, page)
   b.icon = W.IconTexture(b, page.icon or "NavGeneral", NAV_ICON, "text2")
   b.icon:SetPoint("LEFT", T.SPACE.pad, 0)
   navTitle(b, page.title)
-  b:SetScript("OnClick", ns.Guard("click options page", function() O.Show(page.key) end))
+  b:SetScript("OnClick", ns.Guard("click options page", function() O.HideHits() O.Show(page.key) end))
 end
 
 -- Pages in nav order.
@@ -988,8 +1014,9 @@ local function pressableRows()
   return out
 end
 
--- Scrolls the current page just enough to show a row.
+-- Scrolls the current page just enough to show a row. The page bar's Reset this page sits outside the scrolling.
 local function scrollToRow(view, w)
+  if w.card == view.bar then return end
   local top, h = view:GetVerticalScroll() or 0, view:GetHeight()
   if w.pageY < top then view:ScrollTo(w.pageY - T.SPACE.gap) end
   if w.pageY + w:GetHeight() > top + h then view:ScrollTo(w.pageY + w:GetHeight() - h + T.SPACE.gap) end
@@ -1358,10 +1385,12 @@ do
     rebuildKeepingScroll(key, function() O.DropPage(key) end, O.Show)
   end
 
-  -- Throws every built page away, and the rows read for pages not built yet.
+  -- Throws every built page away, and the rows read for pages not built yet. The nav's changed dots go too (they
+  -- belonged to the old settings; the next Show or Refresh marks them again, which reads rows).
   local function dropAllPages()
     for key in pairs(pages) do O.DropPage(key) end
     forgetUnbuiltRows()
+    for _, b in pairs(window and window.nav or {}) do b.changed:Hide() end
   end
 
   -- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is thrown away, since
@@ -1472,7 +1501,7 @@ end
 -- Filters the nav by search text: pages that don't match fade; the settings that match are listed under the box
 -- (Core/OptionsSearch.lua); Enter opens the first.
 function O.Search(text)
-  text = ns.Lower(text or "")
+  text = ns.Lower(text or ""):match("^%s*(.-)%s*$")
   if window and window.found then window.found:Hide() end
   matchPages(text)
   O.ShowHits(text)

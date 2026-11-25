@@ -16,7 +16,6 @@
     "cut | Vanguard_Options | As each chat type is set | wider than its box",
     "cut | Vanguard_Options | Game windows | wider than its box",
     "cut | Vanguard_Options | On, but its own switch is off (CooldownsCool)Onbutitsownswi | wider than its box",
-    "cut | Vanguard_Options | Profile: DefaultProfile | wider than its box",
     "cut | Vanguard_Options | Search settings | wider than its box",
     "cut | Vanguard_Options | The quest addon's tracker | wider than its box",
     "cut | Vanguard_Options | Town and gear | wider than its box",
@@ -26,7 +25,6 @@
   "options window, pages 11 on": [],
   "options window, pages 11 on @130": [
     "cut | Vanguard_Options | Game windows | wider than its box",
-    "cut | Vanguard_Options | Profile: DefaultProfile | wider than its box",
     "cut | Vanguard_Options | Search settings | wider than its box",
     "cut | Vanguard_Options | Town and gear | wider than its box"
   ],

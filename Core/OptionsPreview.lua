@@ -12,13 +12,6 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 -- The rows' heights.
 local SWATCHES_H, PREVIEW_H = 30, 52
 
--- Applies the typed #rrggbb as the accent (a bad one is ignored), then leaves the box.
-local function applyHex(self)
-  local cr, cg, cb = T.ParseHex(self:GetText())
-  if cr then T.SetAccent(cr, cg, cb) end
-  self:ClearFocus()
-end
-
 -- The swatches before the hex box (units): a swatch's size, the step from one to the next, the gap between the last
 -- one and the hex box, and the extra gap that sets the class swatch apart from the presets.
 local SWATCH = { size = 22, step = 26, gap = 12, apart = 8 }
@@ -40,6 +33,14 @@ local function refreshAccent(self)
   local following = T.Settings().accentClass == true
   for _, s in ipairs(self.swatches) do s.check:SetShown(not following and s.rgb[1] == r and s.rgb[2] == g and s.rgb[3] == b) end
   refreshClassSwatch(self.classSwatch, following)
+end
+
+-- Applies the typed #rrggbb as the accent (a bad one is ignored), leaves the box, and shows the accent in use there.
+local function applyHex(self)
+  local cr, cg, cb = T.ParseHex(self:GetText())
+  if cr then T.SetAccent(cr, cg, cb) end
+  self:ClearFocus()
+  refreshAccent(self:GetParent())
 end
 
 -- The accent row: a swatch per preset and a hex box (Enter applies).

@@ -411,7 +411,7 @@ function startClient(S, client, textFit) {
 function loadAddon(S, client, savedVariables, pseudoLocale) {
   for (const file of tocFiles(client)) {
     S.runFile(path.join(root, file), `@${file}`, true);
-    if (pseudoLocale && file === "Core/Locale.lua") evalIn(S, "__wfgPseudoLocale(ns.L)");
+    if (pseudoLocale && file === "Core/Locale.lua") evalIn(S, "__wfgPseudoLocale(ns.L, ns)");
   }
   if (savedVariables) S.run(savedVariables, "=SavedVariables");
 }

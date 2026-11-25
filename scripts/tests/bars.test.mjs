@@ -129,7 +129,7 @@ it("action bar paging and events", () => {
     local snippet = assert(loadstring and loadstring(ns.GetModule("ActionBars").ON_PAGE) or load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", setmetatable({}, { __index = _G })))
     local kids = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
-    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
+    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function() end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
     if setfenv then setfenv(snippet, env) else snippet = load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env) end
     snippet()`);
   const paged = button(addon, 1, 1);
@@ -372,6 +372,20 @@ it("Hidden bar bindings stay intact", () => {
   expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "Vanguard_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
   const help = addon.eval('local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end local rows = page.rows() for i, r in ipairs(rows) do if r[2] == "Visibility" then return rows[i + 1] end end');
   expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
+});
+
+// H47-8-7 (decide: option 1, built): keybind mode shows a Hidden bar, so its buttons can be hovered and bound.
+it("H47-8-7 keybind mode shows a Hidden bar while it is on, and the bar hides again after", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"hidden"');
+  addon.slash("keybind");
+  addon.update(0);
+  expect(barVis(addon).driver, "keybind mode on: its driver says show").toBe("show");
+  addon.slash("keybind");
+  addon.update(0);
+  expect(barVis(addon).driver, "keybind mode off: hidden again").toBe("hide");
+  addon.eval("ns.GetModule('ActionBars').binding = true");
+  expect(addon.eval("return ns.GetModule('ActionBars').Driver(2)"), "(the driver follows the mode)").toBe("show");
 });
 
 it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
