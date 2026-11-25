@@ -430,6 +430,9 @@ end
 -- screen; "-1440" and "Offline" end in "..." on the smallest tiles), and the most of a narrow tile it takes,
 -- so the name keeps the rest: 31 units after the role mark on a 25 or 40 player tile, enough for a 7 letter name.
 RF.STATUS_W, RF.STATUS_SHARE = 32, 0.4
+-- The room the name keeps after the role mark and its gap (4 + 10 + 3 units in): about seven letters. The
+-- status at the name row's right gives way to it, so on the narrowest tiles it is cut sooner.
+RF.NAME_MIN, RF.NAME_START = 31, 17
 
 -- The name row and status line (its text `size` tall, a pixel of air each
 -- side): status under the name when it fits above the icon strip, else at the
@@ -441,7 +444,8 @@ local function textZones(z, w, top, size)
     z.name, z.status = { 4, 4, w - 20, nameH }, { 4, 4 + nameH, w - 8, size + 2, "CENTER" }
   else
     size = math.min(size, top - 6)
-    local room = math.min(RF.STATUS_W, math.floor(w * RF.STATUS_SHARE))
+    local left = w - 20 - RF.NAME_START - RF.NAME_MIN
+    local room = math.max(0, math.min(RF.STATUS_W, math.floor(w * RF.STATUS_SHARE), left))
     z.name, z.status = { 4, 4, w - 24 - room, nameH }, { w - 16 - room, 4, room, size + 2, "RIGHT" }
   end
   z.statusSize = size

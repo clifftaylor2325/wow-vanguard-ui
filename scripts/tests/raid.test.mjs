@@ -785,7 +785,12 @@ it("raid frames: on a big grid the tile's status takes 32 units on one line and 
   expect(zones(100, 48, 0.8), "25 players: status 32 wide at the tile's right, the name before it").toEqual([44, 52, 32, "RIGHT"]);
   expect(zones(100, 48, 0.72), "40 players: the same").toEqual([44, 52, 32, "RIGHT"]);
   expect(zones(100, 48, 0.72)[0], "the 44 unit name zone leaves 31 after the role mark and its gap: Aldren, Brielle and Jorund (30.4 units at most in the game's font) fit").toBeGreaterThanOrEqual(44);
-  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it (28 of 72), so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
+  expect(zones(72, 36, 0.72), "H47-7-1: a 72 wide tile gives the status only what is left after the name's 31 units (4 of 72)").toEqual([44, 52, 4, "RIGHT"]);
+  for (const [w, room] of [[72, 4], [80, 12], [90, 22], [100, 32], [120, 32]]) {
+    const z = zones(w, 36, 0.8);
+    expect(z[0] + 4 - 17, `H47-7-101: the name keeps 31 units after the role mark at ${w} wide`).toBeGreaterThanOrEqual(31);
+    expect(z[2], `and the status gets ${room} at ${w} wide`).toBe(room);
+  }
   expect(zones(100, 48, 1)[3], "a full-size tile keeps the status under the name").toBe("CENTER");
   addon.slash("preview 25");
   expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
