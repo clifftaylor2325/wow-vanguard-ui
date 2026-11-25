@@ -545,11 +545,12 @@ CB.OVER_FRAME = { target = true, focus = true }
 
 -- Moves the target's and the focus's cast bars' default spots up by the tab their unit's frame wears now
 -- (Modules/UnitFrames.lua UF.TabLift: 0 under the other looks, and for a frame the Versus deck holds, a banner or
--- one of the keep's small frames); a position you dragged them to still wins.
+-- one of the keep's small frames), and the target's by the height its buff row takes over one line of default icons
+-- (Modules/FrameAuras.lua FA.BuffLift); a position you dragged them to still wins.
 function CB.FitLook()
-  local UF = ns.GetModule("UnitFrames")
+  local UF, FA = ns.GetModule("UnitFrames"), ns.GetModule("FrameAuras")
   for unit in pairs(CB.OVER_FRAME) do
-    local lift = UF and UF.TabLift(UF.frames[unit]) or 0
+    local lift = (UF and UF.TabLift(UF.frames[unit]) or 0) + (unit == "target" and FA and FA.BuffLift() or 0)
     ns.SetMoverDefault("cast_" .. unit, ns.RaisedDefault(LAYOUT[unit].point, lift))
   end
 end

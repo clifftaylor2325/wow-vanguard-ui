@@ -106,6 +106,32 @@ function FA.BuffSpec(f, look)
     gap = 2, timer = look.timers, masque = FA.MASQUE, groups = buffGroups(look) }
 end
 
+-- The height of the target's buff row at the default icon size and count, one line: the cast bar's default spot
+-- (Modules/CastBars.lua) leaves room for that much over the frame.
+FA.DEFAULT_BUFF_ROW = 18
+
+-- How tall the target's buff row stands, lines of icons (look.size - 2 wide, 2 apart) that wrap at the row's line.
+local function buffRowHeight(look, line)
+  local icon, gap = look.size - 2, 2
+  local lines = math.ceil(look.buffs / math.max(1, math.floor((line + gap) / (icon + gap))))
+  return lines * icon + (lines - 1) * gap
+end
+
+-- How much taller the target's buff row can stand than the default one line: a second line, or bigger icons. The
+-- target's cast bar rises by it (CB.FitLook), since the row grows up from the frame's top to where that bar sits.
+function FA.BuffLift()
+  local f = UF.frames.target
+  if not (FA.settings and f) then return 0 end
+  local look = FA.Look(FA.settings)
+  if look.buffs == 0 then return 0 end
+  return math.max(0, buffRowHeight(look, lineWidth(f) - FA.ThreatRoom()) - FA.DEFAULT_BUFF_ROW)
+end
+
+-- Puts the target's cast bar's default spot over the buff row as it stands now (when the cast bars are on).
+local function refitCastBar()
+  if ns.ModuleLive("CastBars") then ns.GetModule("CastBars").FitLook() end
+end
+
 -- Building ---------------------------------------------------------------------------
 
 -- A row (or none) put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
@@ -170,6 +196,7 @@ end
 -- Adds the containers, and the client's own parts, to the target and focus frames.
 local function build(settings, scope)
   buildRows()
+  refitCastBar()
   for _, key in ipairs(FA.FRAMES) do
     local f = UF.frames[key]
     for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do ns.Try("frame aura part", part, f, key, settings, scope) end
@@ -234,6 +261,7 @@ function FA.Disable()
     local f = UF.frames[key]
     if f then park(f, key) end
   end
+  refitCastBar()
 end
 
 -- Options ------------------------------------------------------------------------------------
