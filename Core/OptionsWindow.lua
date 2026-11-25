@@ -991,8 +991,9 @@ local function pressableRows()
   return out
 end
 
--- Scrolls the current page just enough to show a row.
+-- Scrolls the current page just enough to show a row. The page bar's Reset this page sits outside the scrolling.
 local function scrollToRow(view, w)
+  if w.card == view.bar then return end
   local top, h = view:GetVerticalScroll() or 0, view:GetHeight()
   if w.pageY < top then view:ScrollTo(w.pageY - T.SPACE.gap) end
   if w.pageY + w:GetHeight() > top + h then view:ScrollTo(w.pageY + w:GetHeight() - h + T.SPACE.gap) end

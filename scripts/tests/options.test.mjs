@@ -2583,6 +2583,21 @@ it("options: after Reset profile the nav keeps no changed dot from the old setti
   expect(addon.eval("return Vanguard_Options.nav.chat.changed:IsShown()"), "the reset profile is all defaults").toBe(false);
 });
 
+it("options: Tab onto the page's Reset this page leaves the scrolled page where it is (H47-2-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("__wfgStub.setScreen(1280, 720)");
+  addon.eval('ns.Options.Show("general") __click("Window ornaments")');
+  const view = "(function() for _, x in ipairs(__wfgStub.frames) do if x.fadeTop and x:IsVisible() then return x end end end)()";
+  addon.eval(`local v = ${view} v:ScrollTo(10000)`);
+  const isReset = "return Vanguard_Options.focusRow and Vanguard_Options.focusRow.source.isReset";
+  let before = 0;
+  for (let i = 0; i < 80 && !addon.eval(isReset); i++) {
+    before = addon.eval(`return ${view}:GetVerticalScroll()`);
+    addon.key("Vanguard_Options", "TAB");
+  }
+  expect([before > 0, addon.eval(`return ${view}:GetVerticalScroll()`)], "the page stays scrolled").toEqual([true, before]);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
