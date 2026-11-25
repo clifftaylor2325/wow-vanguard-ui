@@ -1031,6 +1031,21 @@ it("A-13 the AFK screen waits while you cast or channel, tries once more 30 s on
   addon.eval("__cast = { __secret = true }");
   expect(goAway(addon), "a hidden cast answer: shut").toBe(false);
 });
+it("H47-10-2 the AFK card's clock reads the game clock, as the info strip does", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + `GameTime_GetTime = function() return "9:04 PM" end`);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return Vanguard_AfkScreen.clock:GetText()")).toBe("9:04 PM");
+});
+
+it("H47-10-3 with XP gain locked the AFK card shows no XP bar, as the XP data bar hides", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + "IsXPUserDisabled = function() return true end");
+  addon.fire("DISABLE_XP_GAIN");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return { Vanguard_AfkScreen:IsShown(), Vanguard_AfkScreen.xp:IsShown() }")).toEqual([true, false]);
+});
+
 it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_AfkScreen)");
@@ -1060,6 +1075,18 @@ it("the AFK screen: a long zone line wraps clear of the faction crest and above 
   expect(where.left, "the zone line starts right of the crest").toBeGreaterThanOrEqual(crest.right);
   expect(where.bottom, "and its second line stays above the away row").toBeGreaterThanOrEqual(away.top);
   expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
+});
+
+it("H47-10-102 a long German passage at the largest Text size on a short screen raises the card until the band is on screen", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + '__faction = "Alliance" UnitFactionGroup = function() return __faction end ' + "__wfgStub.setScreen(1365, 560) ", { client: '__wfgStub.textMetrics = "font" __wfgWorld.locale = "deDE"' });
+  addon.eval("ns.Theme.Settings().textScale = ns.Theme.TEXT_SCALE.max ns.Theme.Refresh() __afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  // The band's bottom, the card's rise, and whether the card is under the screen's top.
+  const read = () => addon.eval("local A = Vanguard_AfkScreen return { A.passageShade:GetBottom(), A.card.__points.CENTER.y, A.card:GetTop() <= A:GetTop() }");
+  const [bottom, rise, cardOnScreen] = read();
+  expect([bottom >= 0, rise > 60, cardOnScreen], "band on screen, card raised, card still under the top").toEqual([true, true, true]);
+  addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+  expect(read()[1], "back to its usual spot at a normal size").toBe(60);
 });
 
 it("H27-3-1: a main tank's target line keeps its reaction colour through a look change", () => {

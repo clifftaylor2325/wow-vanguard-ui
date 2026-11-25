@@ -96,11 +96,11 @@ end
 
 -- Painting ---------------------------------------------------------------------------------------
 
--- The XP bar: your XP into this level, hidden at the cap or when the client hides it.
+-- The XP bar: your XP into this level, hidden wherever the XP data bar hides (the cap, XP gain locked, the realm's
+-- rules) or when the client gives no figures.
 local function paintXP(bar)
   local cur, max = ns.PlainNumber(ask("UnitXP", "player")), ns.PlainNumber(ask("UnitXPMax", "player"))
-  local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
-  local show = cur ~= nil and max ~= nil and max > 0 and not (level and cap and level >= cap)
+  local show = cur ~= nil and max ~= nil and max > 0 and not ns.GetModule("DataBars").XPHidden()
   bar:SetShown(show)
   if not show then return end
   bar:SetMinMaxValues(0, max)
@@ -108,7 +108,7 @@ local function paintXP(bar)
 end
 
 -- Your faction's passage under the card, in the crest's color on a dark band; gone while the faction look is off.
-function AFK.PaintPassage()
+function AFK.FillPassage()
   local f, faction = AFK.frame, T.Faction()
   local passage = faction and AFK.PASSAGES[faction]
   f.passage:SetShown(passage ~= nil)
@@ -119,6 +119,26 @@ function AFK.PaintPassage()
   f.passage:SetText(passage.text)
   f.by:SetText(passage.by)
   f.passage:SetTextColor(T.RGB(T.CRESTS[faction][2]))
+end
+
+-- How far the card's centre sits above the screen's, before the passage asks for more room (units).
+AFK.CARD_RISE = 60
+
+-- Raises the card by however far the passage's band would run below the screen's bottom edge (a long
+-- translation at a large Text size on a short screen), but never past the screen's top.
+function AFK.KeepOnScreen()
+  local f = AFK.frame
+  f.card:SetPoint("CENTER", f, "CENTER", 0, AFK.CARD_RISE)
+  local bottom = ns.PlainNumber(f.passageShade:GetBottom())
+  local room = (ns.PlainNumber(f:GetTop()) or 0) - (ns.PlainNumber(f.card:GetTop()) or 0)
+  local overflow = f.passageShade:IsShown() and bottom and math.max(0, -bottom) or 0
+  f.card:SetPoint("CENTER", f, "CENTER", 0, AFK.CARD_RISE + math.min(overflow, math.max(0, room)))
+end
+
+-- The passage as it reads now, with the card kept so that all of it is on screen.
+function AFK.PaintPassage()
+  AFK.FillPassage()
+  AFK.KeepOnScreen()
 end
 
 -- Your faction's painted scene under a lighter dim (the camp for anyone else), or the plain dim while the switch is off.
@@ -149,7 +169,7 @@ end
 function AFK.Tick()
   local f = AFK.frame
   f.away:SetText(AFK.AwayText((ask("GetTime") or 0) - (AFK.since or 0)))
-  f.clock:SetText(ask("date", "%H:%M") or "")
+  f.clock:SetText(ns.GetModule("InfoStrip").TEXT.clock() or "")
 end
 
 -- Showing ---------------------------------------------------------------------------------------
@@ -292,7 +312,8 @@ local function build()
   local f = dimmer()
   local card = T.Panel(CreateFrame("Frame", nil, f), { shadow = true })
   card:SetSize(AFK.CARD_W, AFK.CARD_H)
-  card:SetPoint("CENTER", f, "CENTER", 0, 60)
+  card:SetPoint("CENTER", f, "CENTER", 0, AFK.CARD_RISE)
+  f.card = card
   addTexts(f, card)
   addCrest(f, card)
   addPassage(f, card)
