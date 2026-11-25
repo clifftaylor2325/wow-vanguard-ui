@@ -395,6 +395,16 @@ it("the window grows to fit; on a 768 px screen at UI scale 1 the game keeps eve
   expect(fitted(openFilled(...FULL_BAG, screen)), "a full bag: taller than the 683 px above the game's bag offset, so the game draws it a little smaller, all of it on screen").toEqual([753, 0.9, true, true]);
 });
 
+it("a sectioned bag too tall for the screen at the game's smallest scale falls back to the game's plain grid (H47-9-102)", () => {
+  const big = [[16, 36, 36, 36, 36], { equipment: 40, consumables: 40, trade: 40, other: 10, junk: 10 }];
+  const tall = openFilled(...big, "__wfgStub.setScreen(1365, 768)");
+  expect([headers(tall).length, tall.eval("return ContainerFrameCombinedBags:GetHeight()")], "768 px: no headers, the game's own height").toEqual([0, 774]);
+  const roomy = openFilled(...big, "__wfgStub.setScreen(1920, 1080)");
+  expect(headers(roomy).length, "1080 px: the sections show").toBeGreaterThan(0);
+  tall.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(headers(tall).length, "stays plain as items update").toBe(0);
+});
+
 it("the money line keeps the padding when the game puts it back, and sits on the currency tracker when that shows", () => {
   const addon = loggedIn(BAG_ENV + "__token = CreateFrame('Frame', nil, ContainerFrameCombinedBags) __token:SetHeight(17)");
   addon.eval("__openBag()");
