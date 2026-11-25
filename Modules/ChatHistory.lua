@@ -252,10 +252,23 @@ local STATUS = {
   },
 }
 
+-- The same sentences for the one-day choice, so the line never says "1 days".
+local STATUS_ONE_DAY = {
+  [true] = {
+    [true] = L["Chat history is on: up to {lines} lines per window for 1 day; whispers are kept."],
+    [false] = L["Chat history is on: up to {lines} lines per window for 1 day; whispers are not kept."],
+  },
+  [false] = {
+    [true] = L["Chat history is off: up to {lines} lines per window for 1 day; whispers are kept."],
+    [false] = L["Chat history is off: up to {lines} lines per window for 1 day; whispers are not kept."],
+  },
+}
+
 -- Prints whether history is on, its limits, whether whispers are kept and what is saved.
 local function status()
   local s, lines, windows = ns.Settings("ChatHistory", CHH.defaults), CHH.Counts()
-  ns.Chat(ns.Format(STATUS[s.on == true][s.whispers == true], { lines = s.lines, days = s.days }))
+  local sentences = s.days == 1 and STATUS_ONE_DAY or STATUS
+  ns.Chat(ns.Format(sentences[s.on == true][s.whispers == true], { lines = s.lines, days = s.days }))
   ns.Chat(ns.Format(L["Saved chat lines: {lines}, in windows: {windows}."], { lines = lines, windows = windows }))
 end
 
