@@ -185,6 +185,22 @@ it("at the level cap the reputation bar takes the XP bar's spot, unless it was m
   expect(repY(), "a spot the player picked stays").toBe(300);
 });
 
+it("H47-4-102 at the level cap the reputation handle stands above the XP one while unlocked, and goes back on lock", () => {
+  const addon = loggedIn(DATA_ENV);
+  addon.eval("__maxLevel = true");
+  addon.fire("PLAYER_LEVEL_UP");
+  // The bottom edge of a mover's handle.
+  const handleBottom = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w:GetBottom() end end`);
+  // How high the reputation bar sits above the screen's bottom.
+  const repY = () => addon.eval("return Vanguard_repbar.__points.BOTTOM.y");
+  addon.slash("unlock");
+  expect(handleBottom("repbar") - handleBottom("xpbar"), "the reputation handle clears the XP one's 14 units").toBeGreaterThanOrEqual(14);
+  addon.eval("ns.PlaceMover('repbar') __maxLevel = true");
+  addon.fire("PLAYER_XP_UPDATE");
+  addon.slash("lock");
+  expect(repY(), "locked: back in the XP bar's spot").toBe(4);
+});
+
 it("with the XP bar turned off the reputation bar starts in the XP bar's spot", () => {
   const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { xp = false } } }" });
   expect(addon.eval("return Vanguard_repbar.__points.BOTTOM.y")).toBe(4);

@@ -321,6 +321,21 @@ function ns.OnLayoutChanged(fn)
   layoutListeners[#layoutListeners + 1] = fn
 end
 
+-- Functions told when unlock mode begins or ends (ns.Unlocked() answers which): a module that gives a frame a spot
+-- of its own while its handle is up.
+local unlockListeners = {}
+
+-- Registers fn() to run after the frames unlocked or locked, before the handles show.
+---@param fn fun()
+function ns.OnUnlockChanged(fn)
+  unlockListeners[#unlockListeners + 1] = fn
+end
+
+-- Tells the ns.OnUnlockChanged listeners; one that fails is reported and the rest still run.
+local function tellUnlockListeners()
+  for _, fn in ipairs(unlockListeners) do ns.Try("unlock changed", fn) end
+end
+
 -- Forgets where a frame stands in the profile, its point and offsets and its anchor link (a link is a position too),
 -- and keeps the rest of its entry: its scale, its opacity and a matched or own size. An entry left empty goes. For a
 -- frame whose handle is gone and whose next spot is the game's to choose, as well as a layout's frames.
@@ -350,6 +365,14 @@ function ns.SetHudLayout(layout)
     for key in pairs(spots) do ns.ForgetMoverPoint(key) end
   end
   for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
+  tellLayoutListeners()
+end
+
+-- Sets the profile's HUD layout back to `layout` (what it was: nil for Centered) and tells the ns.OnLayoutChanged
+-- listeners, without SetHudLayout's forgetting of spots or placing (Exit without saving puts the spots back itself).
+---@param layout string|nil
+function ns.RestoreHudLayout(layout)
+  ns.Profile().hudLayout = layout
   tellLayoutListeners()
 end
 
@@ -734,11 +757,13 @@ local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5,
 
 -- The strata a mover's handle goes on: HIGH, so it sits over the frame it moves and the game's own Edit Mode
 -- selections (MEDIUM) but under Edit Mode's window and dialogs (DIALOG), which stay on top while they are
--- open. A frame that itself sits above HIGH (the quest dialog, on DIALOG) would cover a HIGH handle, so its
--- handle rides on its own strata instead.
+-- open. A frame that itself sits above HIGH (the quest dialog, on DIALOG) and is shown would cover a HIGH
+-- handle, so its handle rides on its own strata instead. A closed one's handle stays on HIGH: on DIALOG it would
+-- draw over, and take the mouse from, every other handle inside its rect (the closed quest dialog's is 560 x 360).
 local function handleStrata(frame)
   local own = frame.GetFrameStrata and frame:GetFrameStrata()
-  return (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and own or "HIGH"
+  local over = (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and frame:IsShown()
+  return over and own or "HIGH"
 end
 
 -- Builds the handle for a mover: accent-bordered panel with its label, well over
@@ -762,8 +787,20 @@ function ns.SetMoverSuffix(text)
   for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
--- The handle for a mover, created on first use; sized and placed over its frame (at least 40 x 14, so a thin bar
--- can still be grabbed without its handle spilling onto the frame above it). The handle is drawn at UIParent's
+-- The least a mover's handle measures (units), so the smallest frame can still be grabbed.
+ns.HANDLE_MIN = { width = 24, height = 14, unknownWidth = 40 }
+
+-- The width a frame's handle takes: the frame's on screen, at least the minimum; a secret width (the chat window's)
+-- takes a wider grab minimum.
+local function handleWidth(f, s)
+  local width = ns.PlainNumber(f:GetWidth())
+  if not width then return ns.HANDLE_MIN.unknownWidth end
+  return math.max(width * s, ns.HANDLE_MIN.width)
+end
+
+-- The handle for a mover, created on first use; sized and placed over its frame (at least 24 x 14, so a thin bar
+-- can still be grabbed without its handle spilling onto the frame above it, and a narrow banner's handle keeps
+-- its own width instead of spilling onto its neighbours, as the Standards layout's 30-apart banners need). The handle is drawn at UIParent's
 -- scale with the frame's size on screen, so its label stays readable and its grab minimum holds at any Scale %.
 -- A mover whose frame draws past its own rect sets m.insets (SetClampRectInsets' left, right, top, bottom, in
 -- the frame's units), so the handle can't be dropped where that part would leave the screen. A frame of the
@@ -772,7 +809,7 @@ local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
   local s = ns.PlainNumber(f:GetScale()) or 1
-  m.handle:SetSize(math.max((ns.PlainNumber(f:GetWidth()) or 0) * s, 40), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, 14))
+  m.handle:SetSize(handleWidth(f, s), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, ns.HANDLE_MIN.height))
   if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
   ns.ShowCoords(m)
@@ -826,6 +863,7 @@ end
 -- Marks the frames unlocked and shows every handle on strata (nil: each handle's own).
 local function showAllHandles(strata)
   unlocked = true
+  tellUnlockListeners()
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
 end
 
@@ -864,6 +902,7 @@ end
 -- Hides every handle, the grid and unlock mode's bar, keeping every change.
 function ns.Lock()
   unlocked, editUnlocked = false, false
+  tellUnlockListeners()
   ns.UnlockEnded()
   selectMover(nil)
   if ns.CloseMoverPopover then ns.CloseMoverPopover() end
