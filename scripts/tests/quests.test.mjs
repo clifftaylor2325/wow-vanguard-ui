@@ -139,6 +139,7 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   addon.fire("QUEST_COMPLETE");
   key(addon, "SPACE");
   expect([dialog(addon).enabled, calls(addon)], "with a choice of rewards, Complete waits for a pick").toEqual([false, []]);
+  expect(addon.eval("local e = Vanguard_QuestDialog.escape return { e:IsShown(), e.text:GetText() }"), "H47-15-1: the reward page has Goodbye, as the game's own reward panel has a cancel button (Vanilla/QuestFrame.xml QuestFrameCancelButton)").toEqual([true, "Goodbye"]);
   key(addon, "9");
   key(addon, "2");
   expect(addon.eval("local c = Vanguard_QuestDialog.cards return { c[1].picked:IsShown(), c[2].picked:IsShown(), Vanguard_QuestDialog.primary:IsEnabled() }"), "2 picks the gloves (9 has no reward)").toEqual([false, true, true]);
