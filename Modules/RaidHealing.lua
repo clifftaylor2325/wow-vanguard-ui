@@ -701,8 +701,8 @@ end
 
 ns.Options.AddRowKind("buffnames", buffEditor, 34)
 
--- The switches at the top of the Healing page, one per thing drawn on the raid frames,
--- ending with the header the buff rows go under.
+-- The switches at the top of the Healing page, one per thing drawn on the raid frames. The buff rows after them
+-- come under a header per class (addBuffRows).
 local function switchRows()
   return {
     { "header", L["On the raid frames"] },
@@ -710,7 +710,6 @@ local function switchRows()
     { "check", L["Shields (white, after incoming heals)"], switch("absorbs") },
     { "check", L["Aggro strip along the top"], switch("aggro") },
     { "check", L["Mark players missing a buff you can give"], switch("buffWatch") },
-    { "header", L["Buffs to watch"] },
   }
 end
 
@@ -718,6 +717,7 @@ end
 local function pageRows()
   local rows = switchRows()
   addBuffRows(rows)
+  rows[#rows + 1] = { "header", L["Buffs to watch"] }
   rows[#rows + 1] = { "text", L["Other buffs: names, separated by commas. None on = your class's usual buffs."] }
   rows[#rows + 1] = { "buffnames" }
   return rows

@@ -2265,7 +2265,7 @@ it("options tabs: a page of one card has no tabs and keeps its card's title; a h
   expect(addon.eval("return ns.Options.ShowTab(1)"), "so no tab to show").toBe(false);
   addon.eval('ns.Options.Show("healing")');
   const names = tabsOf(addon)[0].map((t) => t[0]);
-  expect([names.includes("Buffs to watch"), names[0], names[1]], "Healing: the Buffs to watch heading over the class cards is no tab of its own").toEqual([false, "On the raid frames", "Mage"]);
+  expect([names.includes("Buffs to watch"), names[0], names[1], names[names.length - 1]], "Healing: a tab per class, the typed list on its own last tab (H47-2-104)").toEqual([true, "On the raid frames", "Mage", "Buffs to watch"]);
 });
 
 it("options tabs: the tabs wrap onto a new line where the next would run past the page, and the page's view starts under them", () => {
