@@ -25,8 +25,10 @@ local T = ns.Theme
 AB.FLYOUT = { max = 20, size = 32, gap = 2, slots = 180, frame = "Vanguard_Flyout", close = "Vanguard_FlyoutClose", edgeCVar = "ActionButtonUseKeyDown" }
 
 -- Runs in the secure environment before a bar button's click. On a flyout slot it lists the flyout's
--- spells beside the button (above it, below it, or toward the screen's middle from a side edge) and
--- stops the click; on anything else it closes the list. The click's other edge (the game acts on
+-- spells beside the button and stops the click. The list runs away from the bar, as the game's own does
+-- (ActionBarMixin:UpdateSpellFlyoutDirection in Blizzard_ActionBar/Shared/ActionBar.lua): up or down from a
+-- horizontal bar by which half of the screen it is in, left or right from a vertical one. A bar with no
+-- stored orientation goes by the button's own place; on anything else it closes the list. The click's other edge (the game acts on
 -- key down or up, by the Action Button key-down setting) is stopped too, so the list opens once.
 AB.FLYOUT_PRE = [[
   local kind, id = GetActionInfo(self:GetAttribute("action") or 0)
@@ -36,12 +38,17 @@ AB.FLYOUT_PRE = [[
   local count = control:GetAttribute("flyout-" .. id .. "-count") or 0
   if count == 0 then control:Hide() return false end
   local gap, dir = control:GetAttribute("gap"), "UP"
-  local left, bottom, width, height = self:GetRect()
+  local bar = self:GetParent()
+  local orientation = bar and bar:GetAttribute("orientation")
+  local source = orientation and bar or self
+  local left, bottom, width, height = source:GetRect()
   if left then
-    local scale = self:GetEffectiveScale()
+    local scale = source:GetEffectiveScale()
     local x, y = (left + width / 2) * scale, (bottom + height / 2) * scale
     local screenWidth, screenHeight = control:GetAttribute("screen-width"), control:GetAttribute("screen-height")
-    if x < screenWidth * 0.15 then dir = "RIGHT" elseif x > screenWidth * 0.85 then dir = "LEFT" elseif y > screenHeight / 2 then dir = "DOWN" end
+    if orientation == "horizontal" then dir = y > screenHeight / 2 and "DOWN" or "UP"
+    elseif orientation == "vertical" then dir = x > screenWidth / 2 and "LEFT" or "RIGHT"
+    elseif x < screenWidth * 0.15 then dir = "RIGHT" elseif x > screenWidth * 0.85 then dir = "LEFT" elseif y > screenHeight / 2 then dir = "DOWN" end
   end
   local point, relative, dx, dy = "BOTTOM", "TOP", 0, gap
   if dir == "DOWN" then point, relative, dy = "TOP", "BOTTOM", -gap
