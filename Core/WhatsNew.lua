@@ -141,9 +141,12 @@ local function addGroup(child, group, y)
   return y + GROUP_GAP
 end
 
--- A new, empty list in the scroll view (the old one hidden).
+-- A new, empty list in the scroll view (the old one hidden, and out of the theme's walks: the game never frees it).
 local function newChild(view)
-  if view.child then view.child:Hide() end
+  if view.child then
+    T.Forget(view.child)
+    view.child:Hide()
+  end
   view.child = CreateFrame("Frame", nil, view)
   view.child:SetWidth(LIST_W)
   view.child.lines = {}

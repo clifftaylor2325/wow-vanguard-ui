@@ -684,3 +684,44 @@ it("H46-30-3 situations: a setting changed in a module switched on while recordi
   addon.slash("situation stop");
   expect(addon.eval("return tostring(ns.Settings('Situations').overrides.raid)")).toBe("nil");
 });
+
+// H48-7-R1: the page is built again only when the situation it names changes.
+it("H48-7-R1: roster events inside one situation leave the open Situations page alone; moving to another situation builds it again", () => {
+  const addon = situated(saved());
+  addon.slash("");
+  addon.eval('__click("Situations")');
+  addon.update(0.02);
+  // How many widgets the client has made so far.
+  const widgets = () => addon.eval("return #__wfgStub.frames");
+  const built = widgets();
+  addon.world.setUnit("raid1", { name: "TEST-ONLY Ally" });
+  addon.advance(0.5);
+  expect(addon.eval("return ns.GetModule('Situations').pageFor"), "solo to raid: the page is built for the new situation").toBe("raid");
+  const inRaid = widgets();
+  expect(inRaid, "and was built again").toBeGreaterThan(built);
+  for (let i = 2; i <= 6; i++) {
+    addon.world.setUnit(`raid${i}`, { name: `TEST-ONLY Ally ${i}` });
+    addon.advance(0.1);
+  }
+  expect(widgets(), "five more players in the same raid build nothing").toBe(inRaid);
+  for (let i = 1; i <= 6; i++) addon.world.removeUnit(`raid${i}`);
+  addon.advance(0.5);
+  expect(widgets(), "leaving the raid builds the page again").toBeGreaterThan(inRaid);
+  expect(addon.eval("return ns.GetModule('Situations').pageFor"), "for the old one again").toBe("solo");
+});
+
+it("H48-7-R1: a profile change builds the open Situations page again even in the same situation", () => {
+  const addon = situated(saved());
+  addon.slash("");
+  addon.eval('__click("Situations")');
+  addon.update(0.02);
+  // How many times the options window was asked to build a page again.
+  const rebuilds = () => addon.eval("return ns.Options.__rebuilds or 0");
+  addon.eval('local o = ns.Options local rebuild = o.RebuildPage ns.Options.__rebuilds = 0 o.RebuildPage = function(...) o.__rebuilds = o.__rebuilds + 1 return rebuild(...) end');
+  addon.eval("ns.GetModule('Situations').Refresh()");
+  addon.update(0.02);
+  expect(rebuilds(), "an unchanged situation: no rebuild").toBe(0);
+  addon.eval("ns.GetModule('Situations').ProfileChanged()");
+  addon.update(0.02);
+  expect(rebuilds(), "a profile change: rebuilt").toBe(1);
+});

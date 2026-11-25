@@ -391,12 +391,15 @@ end
 
 -- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client keeps
 -- from addons, for good or for now (A.ShutFrom), is left as it is; false then, so the caller keeps it.
+-- The game never frees the frame, so it also leaves the theme's walks (T.Forget): a hidden one would be repainted on
+-- every theme change.
 ---@param c table  a container from A.Container
 ---@return boolean put
 function A.Retire(c)
   if A.ShutFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
+  ns.Try("aura retire forget", T.Forget, c.frame)
   A.followed[c.frame] = nil
   return true
 end

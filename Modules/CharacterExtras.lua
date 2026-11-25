@@ -131,6 +131,17 @@ function CE.PaintAll()
   end
 end
 
+-- Paints the pane unless the module was switched off since the call was asked for.
+function CE.PaintAllIfOn()
+  if CE.settings then CE.PaintAll() end
+end
+
+-- The game loaded an item (once per item, in bursts when a bag or the auction house loads): the pane is painted
+-- once on the next frame, for one burst, so a late item level still fills in.
+function CE.OnItemInfo()
+  ns.Soon("character extras", CE.PaintAllIfOn)
+end
+
 -- /vg gear ----------------------------------------------------------------------------------------------
 
 -- The melee line /vg gear prints: damage per second and swing time, and the off hand's damage per second when one is worn.
@@ -182,7 +193,8 @@ function CE.Enable(settings, scope)
   local pane = _G.CharacterFrame
   if type(pane) ~= "table" or type(GetInventoryItemLink) ~= "function" then return end
   scope:Gate("pane shown", CE.PaintAll, function(gate) pane:HookScript("OnShow", ns.Guard("character extras", gate)) end)
-  for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do scope:On(e, CE.PaintAll) end
+  scope:On("PLAYER_EQUIPMENT_CHANGED", CE.PaintAll)
+  scope:On("GET_ITEM_INFO_RECEIVED", CE.OnItemInfo)
   scope:On("UNIT_INVENTORY_CHANGED", CE.OnUnitInventory)
   if ns.ModulesBuilt() then CE.PaintAll() end
 end

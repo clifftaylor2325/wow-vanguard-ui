@@ -126,6 +126,7 @@ it("raid frames: growing the grid within one spot (25 to 40) works the tiles' bo
   const grow = (n) => {
     addon.eval(`__members, __rescales = ${n}, 0`);
     addon.fire("GROUP_ROSTER_UPDATE");
+    addon.update(0);
   };
   grow(25);
   grow(40);
@@ -155,6 +156,7 @@ it("raid frames: a new grid scale places the role-mark and status-mark shadows a
     addon.eval(`__members = ${n}`);
     addon.fire("GROUP_ROSTER_UPDATE");
     addon.update(0);
+    addon.update(0); // the fit on the first frame, the icons' insets worked out for its scale on the next
     expect(offsets(), `${n} players, the grid drawn smaller: each still one pixel at the new scale`).toEqual([1, 1, 1, 1]);
   }
   expect(addon.eval("return Vanguard_Raid:GetScale()"), "drawn at the 40-player size").toBe(0.72);
@@ -399,7 +401,7 @@ it("raid tiles: a class-colored top line in the softened look, and missing healt
     "on the health bar, one sublevel under the aggro strip, which covers it while the player has aggro").toEqual([true, "OVERLAY", -1]);
   expect([t.size, t.justify, t.text], "a 10-player grid: the missing health at its usual size, under the name").toEqual([10, "CENTER", "-700"]);
   // The grid fitted to n players: the status size in tile units and on screen, its justification, the line's pixels.
-  const fit = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); t = tile(); return [r3(t.size), r3(t.onScreen), t.justify, r3(t.px)]; };
+  const fit = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); addon.update(0); t = tile(); return [r3(t.size), r3(t.onScreen), t.justify, r3(t.px)]; };
   expect(fit(25), "25 players (drawn at 80%): 10 px on screen, the floor (#258), beside the name, the line still 1 px").toEqual([12.5, 10, "RIGHT", 1]);
   expect(fit(40), "40 players (drawn at 72%): still 10 px on screen").toEqual([13.889, 10, "RIGHT", 1]);
   expect(t.text, "with the missing health in it").toBe("-700");
@@ -578,6 +580,7 @@ it("raid bursts: a roster burst is one refresh of every tile; a new target repai
   addon.eval("__members = 40");
   addon.eval("__scales = 0 local set = Vanguard_Raid.SetScale Vanguard_Raid.SetScale = function(...) __scales = __scales + 1 return set(...) end");
   for (let i = 0; i < 20; i++) addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
   setCombat(addon, false);
   expect([addon.eval("return __scales"), addon.eval("return Vanguard_Raid:GetScale()")], "in combat the grid's fit waits once, not once per event, and fits the raid after").toEqual([1, 0.72]);
   addon.eval("__updates = 0 __units.target = __units.raid3");
@@ -960,4 +963,26 @@ it("H44-7-R1 raid frames: a tile size set in a fight touches no secure frame unt
   setCombat(addon, false);
   expect(sizeChanges(addon), "after it, both attribute changes see the 72 x 36 tile").toEqual([["vg-width", 72, 36], ["vg-height", 72, 36]]);
   expect(addon.eval("return #ns.errors"), "no error").toBe(0);
+});
+
+// H48-7-55: roster events in one frame fit the grid once, on the next frame, and never lose the fit.
+it("H48-7-55: a burst of roster events fits the grid once, before the tiles refresh, and a fight waits for it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 20 GetNumGroupMembers = function() return __members end");
+  addon.eval(`__spawn(1, "raid1") __order = {}
+    local RF = ns.GetModule("RaidFrames") local place, update = RF.PlaceAllTexts, RF.UpdateAll
+    RF.PlaceAllTexts = function(...) __order[#__order + 1] = "fit" return place(...) end
+    RF.UpdateAll = function(...) __order[#__order + 1] = "tiles" return update(...) end`);
+  for (let i = 0; i < 25; i++) addon.fire("GROUP_ROSTER_UPDATE");
+  expect(addon.eval("return #__order"), "nothing is fitted inside the frame").toBe(0);
+  addon.update(0);
+  expect(addon.eval("return __order"), "one fit, then the tiles, on the next frame").toEqual(["fit", "tiles"]);
+  expect(addon.eval("return Vanguard_Raid:GetScale()"), "to the group's size").toBe(addon.eval("return ns.GetModule('RaidFrames').Scale(20)"));
+  addon.eval("__order = {} __members = 40");
+  setCombat(addon, true);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
+  addon.update(0);
+  expect(addon.eval("return __order"), "in a fight the tiles refresh, the fit waits").toEqual(["tiles"]);
+  setCombat(addon, false);
+  expect([addon.eval("local n = 0 for _, step in ipairs(__order) do if step == 'fit' then n = n + 1 end end return n"), addon.eval("return Vanguard_Raid:GetScale()")], "and it is made once when the fight ends").toEqual([1, 0.72]);
 });

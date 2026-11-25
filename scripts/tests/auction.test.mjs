@@ -653,3 +653,61 @@ it("H46-31-201 the Lists and Posting tabs switch is a reload row; tabs already b
   addon.update(0);
   expect(addon.eval("return { #AuctionHouseFrame.Tabs, __paints > 0 }"), "the built tabs are still painted at the next opening").toEqual([5, true]);
 });
+
+// TEST-ONLY: a house of 1000 items, two listings each, and a count of the price records made in each frame.
+const BIG_HOUSE = `local rows = {}
+  for i = 1, 1000 do
+    rows[#rows + 1] = { itemID = 5000 + i, count = 1, buyoutPrice = 100 + i % 50 }
+    rows[#rows + 1] = { itemID = 5000 + i, count = 2, buyoutPrice = 300 + i % 70 }
+  end
+  __wfgWorld.ah.replicate = rows`;
+// Starts a scan of BIG_HOUSE with its list in and every AP.Record counted (in __made).
+function startBigScan(addon) {
+  addon.eval(`${BIG_HOUSE} ${HELPER}.PaintScan() __made = 0
+    local record = ns.AuctionPrices.Record
+    ns.AuctionPrices.Record = function(...) __made = __made + 1 return record(...) end`);
+  addon.click(SCAN_BUTTON);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+}
+// Runs frames until the scan ends; the records made in each frame that made any.
+function bigScan(addon, afterFrame = () => {}) {
+  startBigScan(addon);
+  const frames = [];
+  for (let i = 0; i < 20 && addon.eval(`return ${HELPER}.scan ~= nil`); i++) {
+    addon.update(0.016);
+    frames.push(addon.eval("local n = __made __made = 0 return n"));
+    afterFrame(i);
+  }
+  return frames.filter((n) => n > 0);
+}
+
+it("H48-7-52: a scan records at most AH.SCAN_ROWS items a frame, all with the scan's moment, and then finishes as before", () => {
+  const addon = atAuctionHouse();
+  const frames = bigScan(addon);
+  expect(frames.reduce((a, b) => a + b, 0), "every item recorded").toBe(1000);
+  expect(Math.max(...frames), "none of the frames records more than the walk reads").toBeLessThanOrEqual(400);
+  expect(addon.eval("local p = ns.AuctionPrices.House().prices return { p[5001].t == p[6000].t, p[5001].min, p[5001].listings, ns.AuctionPrices.House().count }"), "one moment for all").toEqual([true, 101, 2, 1000]);
+  expect(chatHas(addon, /Auction house scanned: 2000 listings, prices for 1000 items\./), "the same line").toBe(true);
+  expect([lastLine(addon), addon.eval(`return ${HELPER}.scan == nil and ${HELPER}.walker:IsShown()`)], "stamped, the walker stopped").toEqual(["Scanned 0 min ago · 1,000 items", false]);
+});
+
+it("H48-7-52: the house closing while the prices are recorded still records them all and stamps the scan", () => {
+  const addon = atAuctionHouse();
+  let closed = false;
+  const frames = bigScan(addon, () => {
+    if (closed || addon.eval(`return ${HELPER}.scan == nil or ${HELPER}.scan.ids == nil`)) return;
+    closed = true;
+    addon.world.closeAuctionHouse();
+  });
+  expect([closed, frames.reduce((a, b) => a + b, 0)], "closed after the walk, in the recording").toEqual([true, 1000]);
+  expect(addon.eval(`return { ${HELPER}.scan == nil, ${HELPER}.walker:IsShown(), ns.AuctionPrices.House().count, ns.AuctionPrices.House().lastScan > 0, #ns.errors }`), "finished, stamped and stopped").toEqual([true, false, 1000, true, 0]);
+});
+
+it("H48-7-52: recording a price a row already has makes no tables for its days", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`ns.AuctionPrices.Record(2589, 90, __now) __fills = 0 local fill = ns.Fill ns.Fill = function(t, defaults) if defaults.days then __fills = __fills + 1 end return fill(t, defaults) end`);
+  addon.eval("ns.AuctionPrices.Record(2589, 80, __now + 1) ns.AuctionPrices.Record(2589, 70, __now + 2)");
+  expect(addon.eval("return { __fills, ns.AuctionPrices.House().prices[2589].min }"), "none filled, the price still noted").toEqual([0, 70]);
+  addon.eval("ns.AuctionPrices.House().prices[2589].qtys = 'broken' ns.AuctionPrices.Record(2589, 60, __now + 3)");
+  expect(addon.eval("return { __fills, type(ns.AuctionPrices.House().prices[2589].qtys) }"), "a damaged row is mended").toEqual([1, "table"]);
+});
