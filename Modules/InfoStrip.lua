@@ -933,14 +933,15 @@ local function watchVisibility(f)
 end
 
 -- How far under its home the strip starts: a round minimap's holder is a band (MM.BAND.top) taller than a
--- square one's, so its bottom sits that far below the home; a square map, or none, leaves it (0).
+-- square one's, so its bottom sits that far below the home; a square map, or none, leaves it (0). Read from
+-- the map's setting, not its built frames: after a /reload in a fight the map is built only when the fight ends.
 function IS.RoundExtra()
   local map = ns.GetModule("Minimap")
-  return map and map.round and map.BAND.top or 0
+  return map and ns.ModuleLive("Minimap") and map.settings and map.IsRound(map.settings) and map.BAND.top or 0
 end
 
--- Where the strip sits by default: IS.HOME, lower by IS.RoundExtra (the minimap is built before the strip, and
--- its shape is a reload setting, so this needs no re-apply).
+-- Where the strip sits by default: IS.HOME, lower by IS.RoundExtra (the map's shape is a reload setting, so this
+-- needs no re-apply).
 function IS.Home()
   return { IS.HOME[1], IS.HOME[2], IS.HOME[3], IS.HOME[4] - IS.RoundExtra() }
 end

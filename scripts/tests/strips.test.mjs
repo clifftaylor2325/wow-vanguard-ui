@@ -21,6 +21,13 @@ it("the info strip and the quest tracker start under a round minimap's band; a s
   const square = spots("square");
   expect([square[3][3], square[2]], "square: today's spots").toEqual([-200, -200 - 18 * 7 - 4 - 6]);
 });
+it("H47-10-4 a /reload in a fight with a round minimap still puts the strip's home under the band", () => {
+  const sv = 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }';
+  const addon = loggedIn("__wfgStub.inCombat = true\n" + UI_ENV + TIDY_ENV + UNITS_ENV, { savedVariables: sv });
+  expect(addon.eval("return { ns.MoverPoint('infostrip') }")[3], "in the fight, before the map is built").toBe(-220);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_InfoStrip:GetTop() <= Vanguard_Minimap:GetBottom()"), "after it, clear of the map").toBe(true);
+});
 it("the info strip: your DPS in the last fight, from the game's damage meter", () => {
   const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
   const before = addon.eval("return Vanguard_InfoStrip:GetHeight()");
