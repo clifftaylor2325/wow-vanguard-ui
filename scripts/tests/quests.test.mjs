@@ -1108,6 +1108,11 @@ it("A1-5: the switch on the Quests page stops zones being opened by themselves, 
   addon.advance(0.25);
   expect(addon.eval("return __log[4].isCollapsed"), "switched back on: opened again at the next zone-in, with no reload").toBe(false);
 });
+it("H47-15-3 quest log: one quest is counted in the singular", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("ns.GetModule('QuestLog').Count = function() return 1 end ns.GetModule('QuestLog').Open()");
+  expect(addon.eval("return Vanguard_QuestLog.count:GetText()"), "1 quest, not 1 quests").toBe("1 quest");
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });
@@ -1127,7 +1132,7 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect(questLog(addon).track, "a watch change from elsewhere (the tracker's right-click) redraws the button").toBe("Track");
   addon.eval("__full = true IsShiftKeyDown = function() return true end");
   logLine(addon, 2);
-  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quests tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
+  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quest tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
   addon.eval("__full = nil IsShiftKeyDown = function() return false end");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
   expect(addon.eval("local l = Vanguard_QuestLog.lines return { l[2].selected, l[1].selected, l[3].selected }"), "the chosen quest's line is marked").toEqual([true, false, false]);
