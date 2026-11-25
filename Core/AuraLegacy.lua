@@ -145,18 +145,51 @@ local function fresh(aura)
   return true
 end
 
--- Up to `max` auras through a group's filter that no earlier group shows, into `auras`.
--- An index the client refuses is stepped over (up to A.REFUSED_LIMIT of them), so the
--- auras after it still show; the first index with no aura ends the list.
+-- How many of a unit's auras a sorted group reads to find the soonest to end (a unit holds fewer than this).
+local SORTED_READS = 40
+
+-- How many auras `g` reads: its icons, or more for a sorted group, which picks the best of them.
+local function reads(g)
+  return g.def.sort == "ExpirationOnly" and SORTED_READS or #g.icons
+end
+
+-- When an aura ends, for ordering: a plain time after 0, else (permanent or hidden) last, as the client's own sort puts them.
+local function endsAt(aura)
+  local at = ns.PlainNumber(aura.expirationTime)
+  return at and at > 0 and at or math.huge
+end
+
+-- Whether `a` ends before `b`; equal ends keep the client's order by instance id (a hidden id is no tiebreak).
+local function endsFirst(a, b)
+  local x, y = endsAt(a), endsAt(b)
+  if x ~= y then return x < y end
+  local i, j = ns.PlainNumber(a.auraInstanceID), ns.PlainNumber(b.auraInstanceID)
+  return i ~= nil and j ~= nil and i < j
+end
+
+-- Keeps the soonest to end of `auras` that a sorted group has room for (the client's ExpirationOnly order,
+-- AuraUtil.ExpirationOnlyAuraCompare in Blizzard_FrameXMLUtil); the rest are left for later groups to show.
+local function keepSoonest(g)
+  table.sort(auras, endsFirst)
+  for i = #g.icons + 1, #auras do
+    seen[ns.PlainNumber(auras[i].auraInstanceID) or 0] = nil
+    auras[i] = nil
+  end
+end
+
+-- Up to `max` auras through a group's filter that no earlier group shows, into `auras` (a sorted group: the
+-- soonest to end of those it reads). An index the client refuses is stepped over (up to A.REFUSED_LIMIT of
+-- them), so the auras after it still show; the first index with no aura ends the list.
 local function collect(unit, g)
   clear(auras)
   local i, refusals = 1, 0
-  while unit and #auras < #g.icons and refusals <= A.REFUSED_LIMIT do
+  while unit and #auras < reads(g) and refusals <= A.REFUSED_LIMIT do
     local aura, refused = A.Get(unit, i, g.filter)
-    if aura == nil and not refused then return end
+    if aura == nil and not refused then break end
     if refused then refusals = refusals + 1 elseif fresh(aura) then auras[#auras + 1] = aura end
     i = i + 1
   end
+  if g.def.sort == "ExpirationOnly" then keepSoonest(g) end
 end
 
 -- Notes a shown aura's id on the container (a hidden id: it can't tell, so every update counts).

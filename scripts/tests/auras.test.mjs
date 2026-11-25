@@ -243,6 +243,25 @@ it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.down == true, b.dispel:IsShown() }"), "offline: no wash, as no icon").toEqual([true, false]);
 });
 
+it("H47-7-2: the fallback's HoT row takes the soonest to end, not the first cast", () => {
+  expectErrors(AURA_FALLBACK);
+  // Client rule: AuraUtil.ExpirationOnlyAuraCompare (forever Blizzard_FrameXMLUtil/AuraUtil.lua): timed auras by end, permanent last.
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + `
+    __auras = { raid1 = { ["HELPFUL|PLAYER|RAID"] = {
+      { icon = "MOTW", expirationTime = 2800, duration = 1800, auraInstanceID = 31 },
+      { icon = "PERM", expirationTime = 0, duration = 0, auraInstanceID = 35 },
+      { icon = "THORNS", expirationTime = 1600, duration = 600, auraInstanceID = 32 },
+      { icon = "REJUV", expirationTime = 1012, duration = 12, auraInstanceID = 33 },
+      { icon = "HIDDEN", expirationTime = { __secret = true }, duration = 9, auraInstanceID = 36 },
+      { icon = "REGROWTH", expirationTime = 1020, duration = 21, auraInstanceID = 34 } } } }
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return ((__auras[unit] or {})[filter] or {})[i] end }
+    __wfgStub.noAuraContainer = true`);
+  addon.eval('__spawn(1, "raid1")');
+  // The textures of the HoT icons shown, in order.
+  const shown = () => addon.eval(`local shown = {} for _, f in ipairs(Vanguard_RaidUnitButton1.hotRow.groups[1].icons) do if f:IsShown() then shown[#shown + 1] = f.icon:GetTexture() end end return shown`);
+  expect(shown(), "soonest to end first, permanent and hidden ones last").toEqual(["REJUV", "REGROWTH", "THORNS"]);
+});
+
 it("raid indicators on the fallback", () => {
   expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
