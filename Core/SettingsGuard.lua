@@ -169,7 +169,9 @@ local function putRestored(name, data, stamp)
   accountGuard().restored[name] = tonumber(stamp)
   VanguardDB.setupDone, VanguardCharDB.setupDone = true, true
   ns.UseProfile(name)
-  if name == ns.ProfileName() then ns.ProfileChanged() end
+  if name ~= ns.ProfileName() then return end
+  ns.ProfileChanged()
+  O.ProfileReplaced()
 end
 
 -- The backup string's profile, read as an import reads one (an older format upgraded, a newer one

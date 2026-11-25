@@ -615,3 +615,12 @@ it("H48-6-2 answering the loss with Keep these settings puts the login question 
   expect(lost.eval('return __click("Keep these settings")'), "Keep these settings answers the loss").toBe(true);
   expect(question(lost), "the question is put away").toBe(null);
 });
+
+it("H48-6-5 Restore into the profile in use makes the footer say to reload before changing more", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.slash("accent arcane");
+  const lost = relog(first, { account: "nil" });
+  lost.eval('ns.Options.Show("general")');
+  expect(lost.eval('return __click("Restore the backup")'), "Restore puts the backup back into Default").toBe(true);
+  expect(lost.eval("return { Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText() }"), "the footer warns").toEqual([true, "Profile replaced: reload before you change more"]);
+});
