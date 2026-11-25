@@ -456,29 +456,26 @@ local function fitActionColumn(t)
   if need > 0 then action.width = action.width + need t:SetColumns(AH.OWNED_COLUMNS) end
 end
 
--- The heading's count fills the room between the heading and Cancel next undercut, fitted to it on one line (a long
--- translation shrinks, then ends in "..."): the buttons beside it keep their whole labels.
-local function countRoom(c)
-  local room = CreateFrame("Frame", nil, c.box)
-  room:SetHeight(T.CONTROL_H)
-  room:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
-  room:SetPoint("RIGHT", c.cancelNext, "LEFT", -T.SPACE.gap, 0)
+-- The count sits on the table's heading line, after "Item", in the name column's room (up to where the price column
+-- starts), fitted to it on one line (a long translation shrinks, then ends in "..."): it never shares the card's
+-- heading line with the buttons, so how many are undercut stays readable in a long language.
+local function countLine(c, t)
+  local room = CreateFrame("Frame", nil, t)
+  room:SetHeight(T.RoleSize("small"))
+  room:SetPoint("TOPLEFT", t.nameHead, "TOPRIGHT", T.SPACE.gap, 0)
+  room:SetPoint("TOPRIGHT", t, "TOPRIGHT", -(t.nameEnd + T.SPACE.tight), -2)
   c.count:ClearAllPoints()
-  c.count:SetHeight(T.CONTROL_H)
-  c.count:SetPoint("LEFT", room, "LEFT")
-  c.count:SetPoint("RIGHT", room, "RIGHT")
   T.FitText(ns.SingleLine(c.count), room, 0)
 end
 
 -- The card's toolbar: Check undercuts at the right and Cancel next undercut (what it cancels next and the cost on
--- hover) before it, each as wide as its label needs; the heading's count (c.count) takes what room is left.
+-- hover) before it, each as wide as its label needs (the count is on the table's heading line, countLine).
 local function toolbar(c)
   c.check = ns.WidenToLabel(W.Button(c, L["Check undercuts"], function() AH.CheckUndercuts() end, 120))
   c.check:SetHeight(T.CONTROL_H)
   c.check:SetPoint("TOPRIGHT", 0, 2)
   c.cancelNext = ns.WidenToLabel(costButton(c, L["Cancel next undercut"], function() AH.CancelNext() end, 140, nextTip))
   c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -T.SPACE.tight, 0)
-  countRoom(c)
 end
 
 -- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table
@@ -491,4 +488,5 @@ function AH.BuildOwned(column, y, h)
   AH.TableUnder(c.table, c)
   for _, r in ipairs(c.table.rows) do ownedButtons(r) end
   fitActionColumn(c.table)
+  countLine(c, c.table)
 end

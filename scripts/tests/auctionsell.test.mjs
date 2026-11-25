@@ -658,8 +658,8 @@ it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, an
     expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
     const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
     expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
-    const room = addon.eval(`local c = ${OWNED_CARD} return { c.title:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
-    expect(room, `${locale}: heading, count, Cancel next, Check undercuts in a row inside the card, the count with room to be drawn`).toEqual([true, true, true, true, true]);
+    const room = addon.eval(`local c, t = ${OWNED_CARD}, ${OWNED_CARD}.table return { t.nameHead:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= t.heads[1]:GetLeft(), c.title:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: the count after Item on the table's heading line, before the price column; heading, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true, true, true, true]);
     const other = addon.textFit(OWNED_CARD).filter((f) => f.text === count && f.kind !== "cut");
     expect(other, `${locale}: the count only ever ends in an ellipsis, never runs over its neighbours`).toEqual([]);
   }
@@ -998,5 +998,17 @@ it("H47-18-105 a long shopping list name ends in an ellipsis before the toolbar'
     addon.eval(`local AH = ${HELPER} AH.NewList("TEST-ONLY Mats") AH.AddEntry("Strange Dust", "TEST-ONLY Mats") AH.PaintShop()`);
     const short = addon.textFit("Vanguard_AuctionShopping").filter((f) => f.text !== long);
     expect([short, addon.eval(`return ${HELPER}.shopCard.title:GetText()`)], `${locale}: a short name is whole`).toEqual([[], "TEST-ONLY Mats"]);
+  }
+});
+it("H47-18-102 (recommended pick, awaits Cliff) the Your auctions count is on the table's heading line after Item, whole in German, French, Italian and Portuguese", () => {
+  for (const locale of ["enUS", "deDE", "frFR", "itIT", "ptBR"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = true },
+      { id = 2, status = "up", unit = 10, key = { itemID = 10940 } } } ${HELPER}.PaintOwned()`);
+    const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
+    expect(count, `${locale}: two up, one undercut`).toMatch(/^2 · 1 \S/);
+    expect(addon.textFit(OWNED_CARD).filter((f) => f.text === count), `${locale}: ${count} whole, over nothing`).toEqual([]);
+    const line = addon.eval(`local c, t = ${OWNED_CARD}, ${OWNED_CARD}.table return { math.abs(c.count:GetTop() - t.nameHead:GetTop()) < 1, c.count:GetLeft() > t.nameHead:GetRight() }`);
+    expect(line, `${locale}: on the Item heading's line, after it`).toEqual([true, true]);
   }
 });
