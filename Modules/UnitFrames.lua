@@ -391,10 +391,20 @@ local function decked(f)
 end
 UF.Decked = decked
 
+-- The pet and focus frames' mover keys: under the Like the game's layout they stand under your frame and the focus's
+-- cast bar, where a tab would cover them (the keep's small frames have no tab for the same reason, UF.Layouts.Stacked).
+UF.CLASSIC_UNDER = { pet = "uf_pet", focus = "uf_focus" }
+
+-- Whether a frame stands under another at its Like the game's spot.
+local function underClassic(f)
+  local mover = UF.CLASSIC_UNDER[f.key]
+  return mover ~= nil and ns.Setup.AtClassicSpot(mover)
+end
+
 -- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
--- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
+-- stand as a banner and it isn't one of the keep's or the Like the game's small frames.
 local function tabbed(f)
-  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f) and not underClassic(f)
 end
 
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
@@ -1106,6 +1116,11 @@ function UF.ApplyLook()
   restack("boss", UF.BOSS.count, UF.BOSS)
   local CB = ns.GetModule("CastBars")
   if CB then CB.FitLook() end
+end
+
+-- Lays the frames out again, out of combat, after a layout moved the pet and focus frames to where they wear no tab.
+function UF.RefitTabs()
+  if UF.frames.player then ns.OutOfCombat(UF.ApplyLook, "unit frame tabs") end
 end
 
 -- Updating ------------------------------------------------------------------------------

@@ -1276,3 +1276,17 @@ it("a narrow target frame with Health as Both hides the level instead of squeezi
   expect([problems, narrow.eval("return Vanguard_target.level:IsShown()")], "100 wide: the level gives way, nothing overlaps or is squeezed").toEqual([[], false]);
   expect(boot(240).eval("return Vanguard_target.level:IsShown()"), "240 wide: the level stays").toBe(true);
 });
+
+// H47-5-101: under the Tabs look the pet and focus frames wear no tab at their Like the game's spots, where they stand
+// under your frame and the focus's cast bar; the other frames keep theirs, and a Centered layout gives the tabs back.
+it("Like the game's layout: no name tab on the pet and focus frames under the Tabs look", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.login();
+  // Whether the pet, focus, player and target frames show their tab.
+  const tabs = () => addon.eval("return { Vanguard_pet.tab:IsShown(), Vanguard_focus.tab:IsShown(), Vanguard_player.tab:IsShown(), Vanguard_target.tab:IsShown() }");
+  expect(tabs(), "Centered: every frame wears its tab").toEqual([true, true, true, true]);
+  addon.eval("ns.Setup.ApplyLayout('classic')");
+  expect(tabs(), "Like the game's: the pet and the focus have none, your frame and the target keep theirs").toEqual([false, false, true, true]);
+  addon.eval("ns.Setup.ApplyLayout('damage')");
+  expect(tabs(), "a Centered layout gives them back").toEqual([true, true, true, true]);
+});

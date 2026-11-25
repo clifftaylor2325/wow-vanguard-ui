@@ -67,6 +67,16 @@ S.CLASSIC = {
   raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
   rolls = { "TOP", "TOP", 280, -300 },
 }
+-- Whether a mover stands at its Like the game's spot now (the pet and focus frames stand under other frames there,
+-- so the unit frames give them no name tab, Modules/UnitFrames.lua).
+---@param key string a mover key (uf_pet, uf_focus)
+---@return boolean
+function S.AtClassicSpot(key)
+  local spot = S.CLASSIC[key]
+  local point, relPoint, x, y = ns.MoverPoint(key)
+  return spot ~= nil and point == spot[1] and relPoint == spot[2] and x == spot[3] and y == spot[4]
+end
+
 -- What each centered layout sizes on top of Vanguard's defaults: a mover's scale (it keeps its default
 -- spot, so a big raid still moves to the left), and how tall the target frame stands (UnitFrames'
 -- targetHeight; it grows up from its bottom edge, so nothing beside it moves). Damage raises the target
@@ -249,6 +259,7 @@ local APPLY = {
   classic = function()
     restoreDefaults()
     for key, p in pairs(S.CLASSIC) do place(key, p) end
+    ns.GetModule("UnitFrames").RefitTabs()
   end,
   -- Keep: moves nothing.
   keep = function() end,
