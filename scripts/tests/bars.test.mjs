@@ -374,6 +374,20 @@ it("Hidden bar bindings stay intact", () => {
   expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
 });
 
+// H47-8-7 (decide: option 1, built): keybind mode shows a Hidden bar, so its buttons can be hovered and bound.
+it("H47-8-7 keybind mode shows a Hidden bar while it is on, and the bar hides again after", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setBarOption(addon, 2, "Visibility", '"hidden"');
+  addon.slash("keybind");
+  addon.update(0);
+  expect(barVis(addon).driver, "keybind mode on: its driver says show").toBe("show");
+  addon.slash("keybind");
+  addon.update(0);
+  expect(barVis(addon).driver, "keybind mode off: hidden again").toBe("hide");
+  addon.eval("ns.GetModule('ActionBars').binding = true");
+  expect(addon.eval("return ns.GetModule('ActionBars').Driver(2)"), "(the driver follows the mode)").toBe("show");
+});
+
 it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
   const addon = loggedIn(ACTIONS_ENV, { client: RETAIL_CLIENT });
   // What key 1 is bound to click (nil: nothing of Vanguard's).
