@@ -134,6 +134,14 @@ it("/vg factionart: its words come from the string table, the neutral faction to
   const lines = addon.chat().join("\n");
   expect([/du bist keine\)/.test(lines), /TEST-ONLY Atlas MountJournalIcons-Horde\s+\|c\w+TEST-ONLY ja/.test(lines), /TEST-ONLY Atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+fehlt/.test(lines), /TEST-ONLY Datei /.test(lines)], "no faction, found, missing and file, each in the client's words").toEqual([true, true, true, true]);
 });
+it("/vg factionart: your faction is named in the client's language (H47-1-56)", () => {
+  // UnitFactionGroup returns factionGroupTag, localized (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, both clients).
+  const addon = loggedIn(`C_Texture = { GetAtlasInfo = function() end }
+    UnitFactionGroup = function() return "Horde", "Horda" end`, { client: '__wfgWorld.locale = "esES"' });
+  addon.slash("factionart");
+  expect(addon.chat().join("\n"), "the localized name in the line").toMatch(/Horda/);
+  expect(addon.eval("return { ns.FactionArt.Faction(), ns.FactionArt.FactionName() }"), "the token for logic, the name for showing").toEqual(["Horde", "Horda"]);
+});
 it("the faction look: the crest only by default, the crest and heading font, and Off", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
