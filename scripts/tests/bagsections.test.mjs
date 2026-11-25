@@ -887,6 +887,7 @@ it("the bag's Groups button makes groups, files the held item, sends to the bank
   expect(menuRows(addon), "only New group before any exists").toEqual(["New group..."]);
   addon.click("Vanguard_Menu.items[1]");
   addon.eval("Vanguard_TextEdit:SetText('Food items') Vanguard_TextDialog.primary:Click()");
+  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "Create closes the name box, as the other Create buttons do").toBe(false);
   expect(addon.eval("return ns.Settings('Bags').categories[1].name"), "the typed name becomes one word").toBe("Food-items");
   addon.eval("ns.GetModule('Bags').NewGroup('food-ITEMS') ns.GetModule('Bags').NewGroup('   ')");
   expect(chat(), "the same name twice is refused").toMatch(/food-ITEMS already exists/);
