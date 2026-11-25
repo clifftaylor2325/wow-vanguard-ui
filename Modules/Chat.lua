@@ -742,7 +742,7 @@ end
 -- tab on it (the bar stays while a tab alerts).
 local function wantsBar(frame)
   if alerting(frame) or inEditBox(frame) then return true end
-  return frame:IsMouseOver(CH.BAR + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
+  return frame:IsMouseOver(CH.BAR + topInset(frame) + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
 end
 
 -- One look at a window's bar: wanted, it comes in (T.CHAT_BAR_HOVER.showIn) and the idle count
