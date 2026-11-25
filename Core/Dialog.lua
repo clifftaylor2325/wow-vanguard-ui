@@ -160,11 +160,12 @@ local function hangTitle(f)
   f.title:SetMaxLines(0)
 end
 
--- The text dialog's title: two lines at most (its words are the sentence that says what to do with the box,
--- "Ctrl+C to copy"), hung from the top.
+-- The text dialog's title: three lines at most, hung from the top. Its words say what to do with the box ("Ctrl+C
+-- to copy") or what is asked (a list's import line, a mail preset's name and words), which runs to three lines at
+-- Text size 130%; past three the client ends it with an ellipsis.
 local function limitTitle(f)
   hangTitle(f)
-  f.title:SetMaxLines(2)
+  f.title:SetMaxLines(3)
 end
 
 -- Sets the text dialog's title: the text area keeps a gap under it, so a title of two lines pushes the area

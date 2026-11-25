@@ -351,6 +351,16 @@ it("text fits: the question's Yes grows to a long translated label and No keeps 
   }
 });
 
+it("text fits: the text dialog's title shows whole in three lines at Text size 130% (H47-1-102)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  atLargestText(addon);
+  addon.eval(`ns.AskText(ns.L["New preset: a name, the character, then words in the items' names (none: every item)"], function() end, ns.L["Add"])`);
+  const title = addon.eval("return Vanguard_TextDialog.title:GetText()");
+  const found = addon.textFit("Vanguard_TextDialog").filter((finding) => finding.text === title);
+  expect(found, "the title is cut by nothing, runs over nothing and has no more lines than it may draw").toEqual([]);
+});
+
 it("text fits: a dialog's long title stays on one line instead of wrapping over its content (B1-8)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
   addon.login();
