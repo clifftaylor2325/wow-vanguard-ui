@@ -951,3 +951,14 @@ it("H47-18-1 Auction length changed in the options window repaints the sell card
   pickTownRow(addon, "Auction length", 4);
   expect(card(addon)[0][2], "48 hours, shown before Post").toBe("45c · TEST-ONLY 48 Hours");
 });
+it("H47-18-2 bag updates after the house closed never repaint the hidden sell card, and the next visit paints it", () => {
+  const addon = atAuctionHouse(BAGS);
+  addon.world.closeAuctionHouse();
+  addon.update(0);
+  addon.eval(`local AH = ${HELPER} __paints = 0 local up = AH.PaintUp AH.PaintUp = function(...) __paints = __paints + 1 return up(...) end`);
+  for (let i = 0; i < 3; i++) { addon.fire("BAG_UPDATE_DELAYED"); addon.update(0); }
+  expect(addon.eval("return __paints"), "no repaint while closed").toBe(0);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval("return __paints"), "painted once on the next visit").toBe(1);
+});

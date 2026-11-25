@@ -814,9 +814,11 @@ end
 -- The sell card: the item, the form, the posting guide (what to do next, or why Post is off), its
 -- history line, and Post, which works only when the next stack can go up (AH.PostCheck) or the game
 -- asks to confirm one (then it reads Confirm); the Up now card beside it (the listings, or Your history).
+-- Only while the house is open: bag updates out in the world never repaint the hidden card, and AH.OnShow
+-- paints it on the next visit.
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
-  if not c then return end
+  if not (c and AH.open) then return end
   local why = AH.PostCheck(s)
   paintItem(c, s)
   paintForm(c, s)
