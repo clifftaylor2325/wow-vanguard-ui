@@ -99,12 +99,12 @@ end
 -- Anchors the shown marks one after another from the row's corner inward. Out of combat: the frame is a secure button.
 local function layout(f)
   local side, home, reach = cornerOf(f)
-  local step, prev = side == "LEFT" and 1 or -1, nil
+  local step, prev, first = side == "LEFT" and 1 or -1, nil, ST.GAP + reach
   for _, name in ipairs(ST.ORDER) do
     local mark = f.status[name]
     mark:ClearAllPoints()
     if mark:IsShown() then
-      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, step * (ST.GAP + (prev and 0 or reach)), prev and 0 or ST.LIFT)
+      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, step * (prev and ST.GAP or first), prev and 0 or ST.LIFT)
       prev = mark
     end
   end
