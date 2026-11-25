@@ -62,7 +62,7 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 
 ### Being told about new prices
 
-`RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in Vanguard's error list (`/vg errors`) and does not stop the others.
+`RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in Vanguard's error list (`/vg errors`) and does not stop the others. Registering the same function again does nothing, so it is safe to register from an event or a window's `OnShow`.
 
 ### Shopping lists and searches
 

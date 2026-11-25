@@ -103,11 +103,16 @@ function API.GetDisenchantPriceByItemLink(callerID, itemLink)
   return disenchantPrice(itemLink)
 end
 
+-- The callbacks already registered, so an addon that registers one on every show or login step is heard once.
+local registered = {}
+
 -- callback() runs (with no arguments) on the frame after prices are recorded: once after a whole
 -- scan, and after each search that saw a price. One that fails is reported by Vanguard (/vg
--- errors) and doesn't stop the others.
+-- errors) and doesn't stop the others. Registering the same function again does nothing.
 function API.RegisterForDBUpdate(callerID, callback)
   checkCall("RegisterForDBUpdate", callerID, "callback", callback, "function")
+  if registered[callback] then return end
+  registered[callback] = true
   AP.OnChange(function() ns.Try("Vanguard.API.v1 update for " .. callerID, callback) end)
 end
 
