@@ -28,8 +28,9 @@ local AH = ns.GetModule("AuctionHelper")
 
 -- Your auctions: how many rows (until AH.Build counts them), and the table's columns: what the
 -- price column says (your price per unit, sold and the amount, expired and where the item is),
--- and the room for a row's Cancel or Relist button.
+-- and the room for a row's Cancel or Relist button (OWNED_BUTTON_W wide, wider for a longer translation).
 AH.OWNED_ROWS = 4
+AH.OWNED_BUTTON_W = 60
 AH.OWNED_COLUMNS = { { key = "price", title = L["Your price"], width = 120, side = "RIGHT", role = "number", color = "gold" },
   { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" }, name = L["Item"] }
 -- A row's status by Enum.AuctionStatus (Active 0, Sold 1; AuctionHouseDocumentation.lua); an
@@ -439,11 +440,20 @@ local function costButton(parent, text, onClick, width, tip)
   return b
 end
 
--- An auction row's buttons, at its right: Cancel (its cost on hover) and Relist in the same place.
+-- An auction row's buttons, at its right: Cancel (its cost on hover) and Relist in the same place, each as wide as
+-- its label needs.
 local function ownedButtons(r)
-  r.cancel = costButton(r, L["Cancel"], function(self) AH.Cancel(self:GetParent().id) end, 60, cancelTip)
-  r.relist = W.Button(r, L["Relist"], function(self) AH.Relist(self:GetParent().id) end, 60)
-  for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
+  r.cancel = costButton(r, L["Cancel"], function(self) AH.Cancel(self:GetParent().id) end, AH.OWNED_BUTTON_W, cancelTip)
+  r.relist = W.Button(r, L["Relist"], function(self) AH.Relist(self:GetParent().id) end, AH.OWNED_BUTTON_W)
+  for _, b in ipairs({ r.cancel, r.relist }) do ns.WidenToLabel(b):SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
+end
+
+-- The action column as wide as the wider of Cancel and Relist plus its room beside them, so a translation's longer
+-- label moves the price column left instead of running over it; the name column takes what is left.
+local function fitActionColumn(t)
+  local r, action = t.rows[1], AH.OWNED_COLUMNS[2]
+  local need = math.max(r.cancel:GetWidth(), r.relist:GetWidth()) - AH.OWNED_BUTTON_W
+  if need > 0 then action.width = action.width + need t:SetColumns(AH.OWNED_COLUMNS) end
 end
 
 -- The heading's count fills the room between the heading and Cancel next undercut, fitted to it on one line (a long
@@ -480,4 +490,5 @@ function AH.BuildOwned(column, y, h)
   c.table = AH.Table(c, AH.OWNED_COLUMNS, AH.OWNED_ROWS, { flag = "bad", paintRow = paintOwnedRow })
   AH.TableUnder(c.table, c)
   for _, r in ipairs(c.table.rows) do ownedButtons(r) end
+  fitActionColumn(c.table)
 end

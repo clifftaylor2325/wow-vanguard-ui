@@ -962,3 +962,13 @@ it("H47-18-2 bag updates after the house closed never repaint the hidden sell ca
   addon.update(0);
   expect(addon.eval("return __paints"), "painted once on the next visit").toBe(1);
 });
+it("H47-18-103 an expired auction's Relist button keeps its whole label in real translations, and the price column moves left for it", () => {
+  for (const locale of ["deDE", "frFR", "itIT", "ruRU", "ptBR", "esES", "enUS"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.owned = { { id = 1, status = "expired", key = { itemID = 10940 } } } ${HELPER}.PaintOwned()`);
+    const label = addon.eval(`return ${OWNED_CARD}.table.rows[1].relist.text:GetText()`);
+    expect(addon.textFit(OWNED_CARD).filter((f) => f.text === label), `${locale}: ${label} is not cut`).toEqual([]);
+    const r = addon.eval(`local r = ${OWNED_CARD}.table.rows[1] return { r.relist:IsShown(), r.cells.price:GetRight() <= r.relist:GetLeft(), r.name:GetRight() <= r.cells.price:GetLeft() }`);
+    expect(r, `${locale}: Relist shown, right of the price, the name before it`).toEqual([true, true, true]);
+  }
+});
