@@ -677,6 +677,16 @@ local function placeRaidIcon(f, side)
   f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, f.vgHeight))
 end
 
+-- How far in from the inner top corner the raid target icon reaches (units): on a frame wearing a tab the icon stands
+-- UF.RAID_ICON_BESIDE in from that corner (placeRaidIcon), so marks moved there start past it; 0 on any other frame,
+-- whose icon sits over the top edge's middle.
+---@param f table a unit frame
+---@return number
+function UF.RaidIconReach(f)
+  if not (f.raidIcon and tabbed(f)) then return 0 end
+  return UF.RAID_ICON_BESIDE + UF.RAID_ICON / 2
+end
+
 -- The frame a frame's name sits in: its tab while it wears one, else its health bar.
 local function nameHome(f)
   if tabbed(f) then return f.tab end
