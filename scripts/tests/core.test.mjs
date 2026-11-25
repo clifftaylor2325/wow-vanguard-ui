@@ -718,6 +718,15 @@ it("the question dialog: Enter presses a Yes that is not a danger button, out of
   addon.click(`${name}.no`);
 });
 
+it("the question dialog: the keypad's Enter presses the focused button like Enter (H47-1-51)", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  // The client's own scripts name only ENTER (Blizzard_SharedXML), so the keypad name is a guard; Vanguard already reads it at askKey.
+  addon.eval(`__answers = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() __answers[#__answers + 1] = "no" end)`);
+  addon.key(name, "TAB");
+  addon.key(name, "NUMPADENTER");
+  expect(addon.eval("return __answers"), "No had the focus: the keypad's Enter answers No").toEqual(["no"]);
+});
 it("the question dialog does not keep swallowing keys: the pass-on flag is reset when it hides, and a question shown in a fight reads no keys until it ends", () => {
   const addon = loggedIn();
   const name = "Vanguard_Question";
