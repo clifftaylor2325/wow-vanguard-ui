@@ -375,6 +375,18 @@ it("the bag's search box keeps its magnifier after the skin (SearchBoxTemplate's
   expect(addon.eval("return { BagItemSearchBox.searchIcon:GetAlpha(), BagItemSearchBox.searchIcon:IsShown() }"), "magnifier drawn").toEqual([1, true]);
 });
 
+// With the gamepad interface on, Forever's ContainerFrameCombinedBagsMixin:SetSearchBoxPoint (Blizzard_UIPanels_Game/Mainline/
+// ContainerFrame.lua:3043) anchors the box's TOPRIGHT to the window's too (-12, -37) and gives it no width.
+it("with the gamepad layout's second anchor on the search box, Filter, Groups and Sort still end inside the window", () => {
+  const stretch = `function ContainerFrameCombinedBags:UpdateSearchBox()
+    BagItemSearchBox:SetParent(self) BagItemSearchBox:ClearAllPoints() BagItemSearchBox:SetPoint("TOPLEFT", self, "TOPLEFT", 62, -37)
+    BagItemSearchBox:SetPoint("TOPRIGHT", self, "TOPRIGHT", -12, -37) BagItemSearchBox:Show()
+  end`;
+  const addon = loggedIn(BAG_ENV + stretch);
+  addon.eval("__openBag()");
+  expect(addon.eval("return ContainerFrameCombinedBags:GetRight() - ns.GetModule('Bags').sort:GetRight()"), "Sort ends the padding inside the right edge").toBe(PAD);
+});
+
 it("the window grows to fit; on a 768 px screen at UI scale 1 the game keeps even a full bag on screen", () => {
   const screen = "__wfgStub.setScreen(1365, 768)";
   // The window's height, the game's scale for it, and whether all of it is on the screen.

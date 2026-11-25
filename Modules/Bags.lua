@@ -278,10 +278,12 @@ end
 
 -- Starts the game's search box the padding inside the window's left edge (the game left room there
 -- for the bag's portrait, which the skin fades), when the game set it by its left side on the window's (and the
--- client shows where).
+-- client shows where). The game's gamepad layout (Forever, ContainerFrameCombinedBagsMixin:SetSearchBoxPoint) also
+-- anchors the box's right side to the window's, so all its points are cleared first and FitSearch sets its width.
 local function alignSearch(frame, box)
   local point, rel, relPoint, _, y = ns.PlainPoint(box, 1)
   if rel ~= frame or not y or type(point) ~= "string" or not point:find("LEFT") or not relPoint:find("LEFT") then return end
+  if box:GetNumPoints() > 1 then box:ClearAllPoints() end
   box:SetPoint(point, rel, relPoint, BG.PAD, y)
 end
 
