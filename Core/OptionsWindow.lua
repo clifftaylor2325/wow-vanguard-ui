@@ -827,6 +827,7 @@ local function addHeaderControls(f)
   f.search = W.Search(f.header, SEARCH_WIDTH, L["Search settings"], function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
   f.search:SetScript("OnEnterPressed", ns.Guard("search enter", searchEnter))
+  f.search:HookScript("OnEscapePressed", ns.Guard("search escape", O.HideHits))
   T.Ornament(f, "rule", f.header)
 end
 
@@ -907,7 +908,7 @@ local function fillNavItem(b, page)
   b.icon = W.IconTexture(b, page.icon or "NavGeneral", NAV_ICON, "text2")
   b.icon:SetPoint("LEFT", T.SPACE.pad, 0)
   navTitle(b, page.title)
-  b:SetScript("OnClick", ns.Guard("click options page", function() O.Show(page.key) end))
+  b:SetScript("OnClick", ns.Guard("click options page", function() O.HideHits() O.Show(page.key) end))
 end
 
 -- Pages in nav order.

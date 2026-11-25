@@ -2618,6 +2618,23 @@ it("options General: a colour the accent box cannot read is put back to the acce
   expect(box[0], "the box names the accent in use").toBe(box[1]);
 });
 
+it("options: the search list closes when another page opens and when Escape is pressed in the box (H47-2-3, H47-2-103)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  // Types text into the options search box.
+  const type = (text) => addon.eval(`local s = Vanguard_Options.search s:SetText("${text}") s:GetScript("OnTextChanged")(s)`);
+  // Whether the search list shows.
+  const listed = () => addon.eval("return Vanguard_Options.results:IsShown()");
+  type("font");
+  addon.eval('__click("Chat")');
+  const afterNav = listed();
+  type("font");
+  addon.eval('local s = Vanguard_Options.search s:GetScript("OnEscapePressed")(s)');
+  expect([afterNav, listed()], "gone after a page click, and after Escape in the box").toEqual([false, false]);
+  type("fon");
+  expect(listed(), "typing brings it back").toBe(true);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
