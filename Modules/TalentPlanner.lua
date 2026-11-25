@@ -813,14 +813,22 @@ local function orderTree()
   return TP.ReadTree()
 end
 
--- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
+-- Swaps a talent with its neighbour a step away in a list of node ids; false when it has none (the first row up,
+-- the last down) or is not in the list.
+local function swapNeighbour(ids, nodeID, step)
+  for i, id in ipairs(ids) do
+    if id == nodeID and ids[i + step] then ids[i], ids[i + step] = ids[i + step], id return true end
+  end
+  return false
+end
+
+-- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on. At
+-- an end of the list nothing moves and the plan keeps the order it had.
 function TP.MoveInOrder(nodeID, step)
   local tree, plan = orderTree(), TP.Plan()
   if not tree then return end
   local ids = TP.OrderedIDs(tree, plan)
-  for i, id in ipairs(ids) do
-    if id == nodeID and ids[i + step] then ids[i], ids[i + step] = ids[i + step], id break end
-  end
+  if not swapNeighbour(ids, nodeID, step) then return end
   plan.order = ids
   TP.Refresh()
   TP.RefreshOrder()

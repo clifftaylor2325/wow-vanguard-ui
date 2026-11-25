@@ -598,6 +598,15 @@ it("talent planner: the order window lists the plan, moves talents up and down, 
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("talent planner: Move up on the first row (or Move down on the last) leaves the plan without an order of its own (H47-20-3)", () => {
+  const addon = open();
+  addon.eval(`${TP}.ToggleOrder() ${TP}.SetPlanning(true) __click(102) __click(201)`);
+  addon.eval(`local f = ${TP}.orderFrame f.rows[1].up:GetScript('OnClick')(f.rows[1].up) f.rows[2].down:GetScript('OnClick')(f.rows[2].down)`);
+  expect(addon.eval(`return ${TP}.Plan().order == nil`), "no order of its own after the end buttons").toBe(true);
+  addon.eval("__click(101)");
+  expect(addon.eval(`return table.concat(${TP}.OrderedIDs(${TP}.ReadTree(), ${TP}.Plan()), ",")`), "a talent planned later keeps its top-row place").toBe("101,102,201");
+});
+
 it("talent planner: the bar's Order button and /vg talents order open the window; import and clear drop the order; nothing is built in combat", () => {
   const addon = open();
   addon.eval("Vanguard_TalentPlan.order:GetScript('OnClick')(Vanguard_TalentPlan.order)");
