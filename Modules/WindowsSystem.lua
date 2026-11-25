@@ -142,7 +142,7 @@ end
 -- Paints the flat panel with a shadow: on the window, or on its backdrop for one of the game's layout frames
 -- (GW.PanelHost: Edit Mode's windows and the report window resize themselves from every child frame and region).
 local function paint(frame)
-  T.Panel(GW.PanelHost(frame), { shadow = true })
+  T.Panel(GW.PanelHost(frame), { shadow = true, alpha = T.ALPHA.opaque })
 end
 
 -- Builds a skin from a spec: the frame's own textures faded, a flat panel with a shadow
@@ -763,7 +763,7 @@ function GW.SkinSplash(frame)
     vgBack[frame]:SetAllPoints(frame)
     vgBack[frame]:SetFrameLevel(math.max(0, (ns.PlainNumber(frame:GetFrameLevel()) or 1) - 1))
   end
-  T.Panel(vgBack[frame], { shadow = true })
+  T.Panel(vgBack[frame], { shadow = true, alpha = T.ALPHA.opaque })
   dress(frame, { close = { "TopCloseButton" }, buttons = { "BottomCloseButton" } })
 end
 

@@ -666,12 +666,16 @@ const DIALOGS_ENV = BUTTON_FRAME_ENV + `
   OpacityFrameSlider.Plus, OpacityFrameSlider.Minus = __label(OpacityFrameSlider, "+"), __label(OpacityFrameSlider, "-")
 `;
 
+const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
+
 it("report-cheating dialog, splash window, colour picker and opacity window", () => {
   const addon = loggedIn(DIALOGS_ENV);
   addon.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
   expect(addon.eval(`local d = ReportCheatingDialog
     return { __faded(d), d.Border.__alpha, __panelled(d), __titled(ReportCheatingDialogTitle), __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
     "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
+  // docs/THEME.md T.ALPHA: a skinned game window is opaque.
+  expect([fillAlpha(addon, "ReportCheatingDialog"), fillAlpha(addon, "ns.FrameState('vgBack')[SplashFrame]")], "report window and splash panels are opaque").toEqual([1, 1]);
   expect(addon.eval(`local s = SplashFrame
     return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, ns.FrameState('vgBack')[s] ~= nil and __panelled(ns.FrameState('vgBack')[s]), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
     "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);

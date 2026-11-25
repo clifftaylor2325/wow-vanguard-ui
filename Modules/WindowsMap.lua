@@ -697,7 +697,7 @@ end
 -- The finder's window: a panel with a shadow, the close button in the theme, and the eye (its portrait)
 -- without its static picture (the animations it plays while you are listed stay).
 function GW.SkinLFGParent(frame)
-  T.Panel(frame, { shadow = true })
+  T.Panel(frame, { shadow = true, alpha = T.ALPHA.opaque })
   GW.DressClose(frame, _G.LFGParentFrameCloseButton)
   if type(_G.LFGParentFramePortrait) == "table" then GW.FadeParts(_G.LFGParentFramePortrait, { "texture" }) end
 end
@@ -1142,7 +1142,7 @@ end
 -- the filter and class buttons, the weekday and year texts, and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
-  T.Panel(frame, { shadow = true })
+  T.Panel(frame, { shadow = true, alpha = T.ALPHA.opaque })
   GW.DressClose(frame, _G.CalendarCloseButton)
   GW.BesideClose(_G.CalendarFilterButton or frame.FilterButton, _G.CalendarCloseButton)
   for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do skinMonthArrow(_G[name]) end

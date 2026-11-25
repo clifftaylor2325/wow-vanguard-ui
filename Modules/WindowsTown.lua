@@ -336,7 +336,7 @@ end
 -- The coins window the money frame opens: a panel, its plate faded (the coin icons stay), the buttons themed,
 -- the typed figure and its label in the theme font with a field round the figure.
 function GW.SkinCoinPickup(frame)
-  T.Panel(frame, { shadow = true })
+  T.Panel(frame, { shadow = true, alpha = T.ALPHA.dialog })
   local keep = {}
   for _, name in ipairs(COIN_ICONS) do GW.KeepAlso(keep, _G[name]) end
   T.FadeRegions(frame, keep)
