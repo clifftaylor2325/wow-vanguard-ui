@@ -493,3 +493,25 @@ it("H46-G2-5 the probe's channel words are the options' check captions, in the o
   expect(pair[0], "four channel switches, Numbered channels first").toEqual(["Numbered channels", "Yell", "Say", "Guild"]);
   expect(pair[1], "GB.CHANNEL_NAMES in GB.CHANNEL_ORDER").toEqual(pair[0]);
 });
+
+// A board at Text size 130% in a shipped language, with three long-named senders posting (H47-20-104).
+function wideBoard(locale) {
+  const saved = "VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = 1.3 } } }, setupDone = true }\nVanguardCharDB = {}\n";
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `__wfgWorld.locale = "${locale}"` });
+  addon.login();
+  addon.eval("__wfgWorld.units.player.level = 58 ns.GetModule('GroupBoard').settings.mine = false");
+  for (const name of ["Thrallmarine", "Tyrandewhisp", "Bloodhoofer"]) post(addon, "LFM LBRS need tank healer dps", name);
+  addon.slash("lfg");
+  return addon;
+}
+
+it("H47-20-104 at Text size 130% the board's sender names and its level switch are whole, on one line", () => {
+  for (const locale of ["deDE", "frFR", "ruRU", "esES"]) {
+    const addon = wideBoard(locale);
+    const mine = addon.eval("return ns.L['Only dungeons for my level']");
+    const findings = addon.textFit("Vanguard_GroupBoard").filter((f) => f.text === mine || ["Thrallmarine", "Tyrandewhisp", "Bloodhoofer"].includes(f.text));
+    expect(findings.map((f) => `${f.kind} | ${f.text}`), `${locale}: cut or crowded text`).toEqual([]);
+    const height = addon.eval("return Vanguard_GroupBoard.mine.label:GetStringHeight()");
+    expect(height, `${locale}: the switch's label is one line`).toBeLessThanOrEqual(20);
+  }
+});

@@ -123,20 +123,11 @@ local function addBox(r, list)
   r.box:SetScript("OnEditFocusLost", ns.Guard("type weight", function() typed(r) end))
 end
 
--- Keeps a slider's caption on one line in the room it has, its text shrinking to fit (a translation or the largest
--- Text size runs longer than 28 units of row can hold over two lines).
-local function oneLineCaption(r)
-  local room = CreateFrame("Frame", nil, r)
-  room:SetSize(r.label:GetWidth(), T.ROW.height)
-  room:SetPoint("LEFT", r, "LEFT", 8, 0)
-  T.FitText(r.label, room, 0)
-end
-
 -- The slider for the stat at place i in the list, with its box.
 local function sliderRow(list, i)
   local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, SLIDER_WIDTH)
   r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
-  oneLineCaption(r)
+  W.ShrinkCaption(r)
   -- Takes a typed weight as it is: the slider's own setter rounds to two places for its float noise, not for the player's number.
   r.exact = function(v) state.draft[state.stats[i]] = v end
   addBox(r, list)

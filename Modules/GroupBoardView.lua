@@ -51,6 +51,15 @@ local function cell(row, x, w, role)
   return fs
 end
 
+-- A cell whose text shrinks to fit its width (T.FitText over a box of that width): a long name at the largest Text size.
+local function fitCell(row, x, w)
+  local box = CreateFrame("Frame", nil, row)
+  box:SetSize(w, GB.ROW_H)
+  box:SetPoint("LEFT", row, "LEFT", x, 0)
+  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
+  return T.FitText(fs, box, 0)
+end
+
 -- Hides the game's tooltip when the mouse leaves a row.
 function GB.HideTip()
   if GameTooltip then GameTooltip:Hide() end
@@ -67,7 +76,7 @@ end
 local function makeRow(parent)
   local b = W.Row(parent, GB.ROW_H, { width = SPAN })
   b.kind, b.dungeon, b.roles = cell(b, INDENT, 34, "small"), cell(b, 40, 164), cell(b, 208, 92, "small")
-  b.sender, b.age = cell(b, 304, 82), cell(b, 388, 48, "small")
+  b.sender, b.age = fitCell(b, 304, 82), cell(b, 388, 48, "small")
   b:SetScript("OnClick", ns.Guard("click group board row", function(self) GB.Whisper(self.entry) end))
   hookTip(b)
   return b
@@ -82,8 +91,8 @@ end
 local function addFilters(f)
   f.filter = W.Button(f, GB.FILTERS.all[2], function() GB.CycleFilter() end, 150)
   f.filter:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -FILTER_TOP)
-  f.mine = W.Check(f, L["Only dungeons for my level"], function() return GB.settings.mine end,
-    function(v) GB.settings.mine = v GB.Refresh() end, 250)
+  f.mine = W.ShrinkCaption(W.Check(f, L["Only dungeons for my level"], function() return GB.settings.mine end,
+    function(v) GB.settings.mine = v GB.Refresh() end, SPAN - 150 - T.SPACE.gap))
   f.mine:SetPoint("LEFT", f.filter, "RIGHT", T.SPACE.gap, 0)
 end
 
