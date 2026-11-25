@@ -261,7 +261,10 @@ it("text fits: the Click casting page's starter layout rows: Click to heal's gui
   // The rows shown: the guide (Click to heal before the game binds its clicks), Undo, and the offer of Heal for Middle.
   const rows = addon.eval('local out = { "" } for _, row in ipairs(ns.ClickCastPresets.PageRows()) do out[#out + 1] = row[1] end return out').slice(1);
   expect(rows, "all three kinds are on the page").toEqual(["bindguide", "bindundo", "bindupgrade"]);
-  expect(addon.textFit("Vanguard_Options"), "their texts and buttons fit, with every string a third longer").toEqual([]);
+  // A seven-column grid cell cuts its name to two lines on purpose (H47-19-101: the tooltip names the spell), and the
+  // pseudo-locale's longer "Unit menu" on the starter layout's Middle click is the one name that runs over.
+  const cutCellName = (f) => f.kind === "cut" && f.text === "Unit menu";
+  expect(addon.textFit("Vanguard_Options").filter((f) => !cutCellName(f)), "their texts and buttons fit, with every string a third longer").toEqual([]);
 });
 
 it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl + Shift + a mouse button, H46-19-55)", () => {
@@ -287,7 +290,6 @@ it("text fits: a hover key's long macro ends before its note and Remove (H47-19-
   expect(drawnOver(addon, "Vanguard_Options"), "the text stays off the note and the button").toEqual([]);
 });
 
-
 it("text fits: the spell picker's Ranks button shows its label whole, open and closed (H47-19-2)", () => {
   const addon = fitClient();
   addon.eval('__wfgWorld.units.player.class = "PRIEST"');
@@ -302,6 +304,15 @@ it("text fits: the spell picker's Ranks button shows its label whole, open and c
   expect(addon.textFit("Vanguard_SpellPicker"), "open").toEqual([]);
 });
 
+it("text fits: grid cells with the extra modifier columns keep a long name inside the cell (H47-19-101)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.eval(`local CC = ns.GetModule("ClickCast")
+    CC.Add("ctrl-shift-BUTTON2", "spell", "Prayer of Healing") CC.Add("alt-shift-BUTTON3", "macro", "/cast [@mouseover] Greater Heal")
+    CC.Add("ctrl-BUTTON2", "spell", "Renew") ns.Options.Show("clickcast")`);
+  expect(addon.frames('w.key == "ctrl-shift-BUTTON2" and w.name ~= nil and w:IsVisible()').length, "the seven-column grid is shown").toBe(1);
+  expect(drawnOver(addon, "Vanguard_Options"), "no name runs over the cells around it").toEqual([]);
+});
 
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "frFR" end' });
