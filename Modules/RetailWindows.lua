@@ -116,13 +116,32 @@ local function dressScene(scene)
   GW.KeepFaded(scene.BackgroundOverlay)
 end
 
+-- A category card's name in the theme: light text, the muted tier while the card is disabled.
+local function paintCardName(name, disabled)
+  GW.SkinText(name, "name", disabled and "muted" or "text")
+end
+
+-- Whether the game's font for a card name (GroupFinderFrameButton_SetEnabled, PVPQueueFrame_SetCategoryButtonState)
+-- is the disabled one. The game sets it before the button's own SetEnabled, so the font says it, not IsEnabled.
+local function isDisabledFont(font)
+  return font == "GameFontDisableLarge" or (font ~= nil and font == _G.GameFontDisableLarge)
+end
+
+-- A category card's name: in the theme now (muted when the card is disabled), and again after each SetFontObject the
+-- game makes on it when a card is enabled or disabled.
+local function dressCardName(card, name)
+  if type(name) ~= "table" then return end
+  paintCardName(name, type(card.IsEnabled) == "function" and not card:IsEnabled())
+  GW.HookAfter(name, "SetFontObject", function(fs, font) paintCardName(fs, isDisabledFont(font)) end)
+end
+
 -- A category card: its plate and ring faded, its blue hover plate (the unkeyed highlight texture) too, a flat inset
 -- panel behind it, its name (the game's gold) in the light text colour. The round icon stays the game's.
 local function dressCard(card)
   GW.FadeParts(card, GW.FINDER_CARD_ART)
   if type(card.GetHighlightTexture) == "function" then GW.FadeFrame(card:GetHighlightTexture()) end
   T.Panel(card, { inset = true, noSheen = true })
-  GW.SkinText(card.name or card.Name, "name", "text")
+  dressCardName(card, card.name or card.Name)
 end
 
 -- Marks the open category card of a Retail window (a key of GW.RETAIL_PARTS) with an accent border and gives the others
