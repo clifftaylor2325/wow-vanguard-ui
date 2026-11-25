@@ -273,6 +273,21 @@ it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl +
   expect(addon.textFit("Vanguard_Options"), "the key name stays short of the icon, with every string a third longer").toEqual([]);
 });
 
+// The audit's overlap and spill findings (a long name ends in an ellipsis on purpose, which it reports as a cut).
+const drawnOver = (addon, root) => addon.textFit(root).filter((f) => f.kind !== "cut");
+
+it("text fits: a hover key's long macro ends before its note and Remove (H47-19-1)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.eval(`local CC = ns.GetModule("ClickCast") CC.Add("1", "macro", "/cast [@mouseover,help,nodead] Flash Heal")
+    ns.Options.Show("clickcast") ns.Options.ShowTab(ns.L["Keys while hovering a frame"])`);
+  addon.eval('__wfgWorld.bindings.ACTIONBUTTON1 = { "1" }');
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.frames('w.key == "1" and w.remove ~= nil and w:IsVisible()').length, "the row is on the page").toBe(1);
+  expect(drawnOver(addon, "Vanguard_Options"), "the text stays off the note and the button").toEqual([]);
+});
+
+
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "frFR" end' });
   addon.login();

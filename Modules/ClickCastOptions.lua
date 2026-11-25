@@ -638,6 +638,8 @@ local function keyRowTexts(row)
   row.text:SetPoint("LEFT", 176, 0)
   row.note = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")
   row.note:SetPoint("RIGHT", -90, 0)
+  row.text:SetPoint("RIGHT", row.note, "LEFT", -T.SPACE.gap, 0)
+  row.text:SetMaxLines(1)
 end
 
 -- One hover-key row (in the list's scroll view): a list row (W.Row) with the key, the spell's icon and name, the
