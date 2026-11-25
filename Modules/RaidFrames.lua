@@ -46,7 +46,7 @@ RF.SPOT = { "BOTTOM", "BOTTOM", -240, 344 }
 RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -500, 344 }
 -- How far from the screen's left edge a big raid's grid may start: the roll tracker's 6 + 136 + 6 units.
 RF.CLEAR_LEFT = 148
--- The big-raid spots made for narrow canvases, by their x, so the same canvas gets the same table (RF.PlaceFor compares them).
+-- The big-raid spots made for narrow or short canvases, by their x and y, so the same canvas gets the same table (RF.PlaceFor compares them).
 RF.narrowSpots = {}
 -- The party and ten-player spot raised for the Tabs look (RF.Lift), by spot and lift, for the same reason.
 RF.raisedSpots = {}
@@ -719,14 +719,38 @@ function RF.LayoutFor(n)
   return (RF.settings.layout == "rows" or big(n)) and "rows" or "columns"
 end
 
--- The big-raid spot on a canvas `width` wide: RF.SPOT_BIG, or on a canvas too narrow for it (the grid's left edge
--- would pass the roll tracker, or leave the screen) the same spot moved right so the edge sits at RF.CLEAR_LEFT.
-function RF.BigSpotFor(width)
-  if type(width) ~= "number" or width <= 0 then return RF.SPOT_BIG end
-  local x = math.ceil(RF.CLEAR_LEFT - width / 2)
-  if x <= RF.SPOT_BIG[3] then return RF.SPOT_BIG end
-  RF.narrowSpots[x] = RF.narrowSpots[x] or { RF.SPOT_BIG[1], RF.SPOT_BIG[2], x, RF.SPOT_BIG[4] }
-  return RF.narrowSpots[x]
+-- How far below the canvas's top the Main tanks column's foot is, plus a margin (Modules/MainTanks.lua: its spot is 20
+-- down, four tiles 22 high and 4 apart), and the lowest a big raid's grid is put (still over the frames around your
+-- character) on a canvas too short to hold a 40 player grid under that column.
+RF.TANKS_FOOT, RF.BIG_FLOOR_Y = 124, 200
+-- The big-raid spot's x on a canvas `width` wide: RF.SPOT_BIG's, or on a canvas too narrow for it (the grid's left edge
+-- would pass the roll tracker, or leave the screen) moved right so the edge sits at RF.CLEAR_LEFT.
+local function bigSpotX(width)
+  if type(width) ~= "number" or width <= 0 then return RF.SPOT_BIG[3] end
+  return math.max(RF.SPOT_BIG[3], math.ceil(RF.CLEAR_LEFT - width / 2))
+end
+
+-- How tall a 40 player grid stands on screen: its rows of tiles at the compact scale and the raid mover's look.
+local function bigGridHeight()
+  local s, rows = RF.settings, math.ceil(MAX_UNITS / RF.GROUP)
+  return (rows * (s.height + s.spacing) - s.spacing) * RF.Scale(MAX_UNITS) * RF.LookScale(MAX_UNITS)
+end
+
+-- The big-raid spot's y on a canvas `height` high: RF.SPOT_BIG's, or lower on a canvas where a 40 player grid from
+-- there would reach the Main tanks column (never below RF.BIG_FLOOR_Y).
+local function bigSpotY(height)
+  if type(height) ~= "number" or height <= 0 then return RF.SPOT_BIG[4] end
+  return math.min(RF.SPOT_BIG[4], math.max(RF.BIG_FLOOR_Y, math.floor(height - RF.TANKS_FOOT - bigGridHeight())))
+end
+
+-- The big-raid spot on a canvas `width` wide and `height` high: RF.SPOT_BIG moved right on a narrow canvas and
+-- down on a short one, one table per spot so the same canvas gets the same table.
+function RF.BigSpotFor(width, height)
+  local x, y = bigSpotX(width), bigSpotY(height)
+  if x == RF.SPOT_BIG[3] and y == RF.SPOT_BIG[4] then return RF.SPOT_BIG end
+  local key = x .. "," .. y
+  RF.narrowSpots[key] = RF.narrowSpots[key] or { RF.SPOT_BIG[1], RF.SPOT_BIG[2], x, y }
+  return RF.narrowSpots[key]
 end
 
 -- How far the grid's spot over your player frame (RF.SPOT: a party, a raid of ten) stands higher under the Tabs look:
@@ -749,7 +773,7 @@ end
 
 -- The grid's default spot for n players under the HUD look now (a saved spot wins over it).
 function RF.SpotFor(n)
-  if big(n) then return RF.BigSpotFor(UIParent:GetWidth()) end
+  if big(n) then return RF.BigSpotFor(UIParent:GetWidth(), UIParent:GetHeight()) end
   return raisedSpot(RF.SPOT, RF.Lift())
 end
 

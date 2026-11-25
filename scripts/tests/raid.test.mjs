@@ -796,6 +796,23 @@ it("raid frames: on a big grid the tile's status takes 32 units on one line and 
   expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
 });
 
+it("H47-7-102: on a short canvas a 40 player grid is put lower, so it clears the Main tanks column", () => {
+  // Main tanks (Modules/MainTanks.lua): TOPLEFT 400,-20 with four 22 high tiles 4 apart: its foot is 120 below the canvas top.
+  const spot = (w, h, size = "") => {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.setScreen(${w}, ${h})`);
+    if (size) addon.eval(size);
+    return addon.eval("local y = ns.GetModule('RaidFrames').SpotFor(40)[4] return { y, (8 * (ns.GetModule('RaidFrames').settings.height + ns.GetModule('RaidFrames').settings.spacing) - ns.GetModule('RaidFrames').settings.spacing) * 0.72 }");
+  };
+  for (const [w, h] of [[1187, 668], [1280, 720], [1366, 768]]) {
+    const [y, tall] = spot(w, h);
+    expect(y + tall, `${w}x${h}: the grid's top is under the Main tanks' foot (120)`).toBeLessThanOrEqual(h - 120);
+    expect(y, `${w}x${h}: never above the usual 344`).toBeLessThanOrEqual(344);
+  }
+  expect(spot(1920, 1080)[0], "a tall canvas keeps the usual spot").toBe(344);
+  expect(spot(1187, 400)[0], "a very short canvas stops at the floor (200)").toBe(200);
+  expect(spot(1366, 768, "ns.GetModule('RaidFrames').settings.height = 56")[0], "bigger tiles go lower still").toBeLessThan(spot(1366, 768)[0]);
+});
+
 it("raid frames: the raid mover's Scale and Opacity reach the tiles; a Scale above 100% grows the grid only up to 25 players", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 0 GetNumGroupMembers = function() return __members end");
   // The tiles' size on screen (the header's effective scale: the tiles are drawn at 1 inside it) and the header's opacity with `n` players and the raid mover at `scale`, `alpha`.
