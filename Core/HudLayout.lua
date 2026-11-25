@@ -67,7 +67,7 @@ ns.LayoutSpots("standards", {
   uf_focus = { "BOTTOM", "BOTTOM", -208, 196 },
   uf_focustarget = { "BOTTOM", "BOTTOM", -238, 196 },
   uf_targettarget = { "BOTTOM", "BOTTOM", 178, 196 },
-  cast_target = { "BOTTOM", "BOTTOM", 320, 196 },
+  cast_target = { "BOTTOM", "BOTTOM", 340, 196 },
 })
 
 -- Each layout's frame sizes by mover key ({ w, h } in units): the keep's wall holds 200 x 40 frames for you and

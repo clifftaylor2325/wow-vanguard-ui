@@ -463,3 +463,13 @@ it("H46-40-102 a spark mid-sweep is shaped again for the bar when the layout tur
   const [orient, , , , , barH, lyingW, lyingH, flat] = addon.eval(SPARK_LUA);
   expect([orient, lyingW, lyingH, flat], "lying again: a thin streak as tall as the bar, not turned").toEqual(["HORIZONTAL", 6, barH, 0]);
 });
+
+it("H47-4-104 under Standards your target's cast bar icon stands clear of the target of target banner, and of the quest tracker's foot at 1280x720", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, onLayout("standards"));
+  canvas(addon, 1280, 720);
+  const r = addon.eval(`local cb, tot, qt = ns.MoverFrame("cast_target"), ns.MoverFrame("uf_targettarget"), ns.MoverFrame("questtracker")
+    return { cb:GetLeft(), cb:GetRight(), cb:GetTop(), tot:GetRight(), qt and qt:GetLeft() or 0, qt and qt:GetBottom() or 0 }`);
+  // The icon is 16 wide and 3 left of the bar (Modules/CastBars.lua), so it needs 19 clear of the banner.
+  expect(r[0] - r[3], "the bar's left end 19 or more past the banner's right edge").toBeGreaterThanOrEqual(19);
+  expect(r[2] - r[5], "moving the bar right changes no height: it still reaches 2 units into the tracker's foot, no more").toBeLessThanOrEqual(2);
+});
