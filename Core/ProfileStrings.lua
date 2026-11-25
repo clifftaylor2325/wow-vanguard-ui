@@ -414,6 +414,7 @@ local nextStep
 -- One frame's share of an import: decoding until it has finished, then the import itself
 -- (ns.ApplyImport). Without the client's timer every step runs at once.
 local function step(job)
+  if job.cancelled then running = false return end
   local done, a, b = job.decode()
   if done then return finish(job, ns.ApplyImport(a, b)) end
   job.progress(math.floor(a * 100))
@@ -434,10 +435,19 @@ end
 -- Imports a pasted string a frame's work at a time (S.BUDGET; the first step runs at once,
 -- so a small string is imported before this returns). progress(percent) runs after each step
 -- that isn't the last; done(message, result) or done(nil, why not) at the end. Returns
--- false, doing nothing, while another import is still running.
+-- the import's job (for ns.CancelImport), or false, doing nothing, while another import is
+-- still running.
 function ns.StartImport(text, progress, done)
   if running then return false end
   running = true
-  run({ decode = S.Decoder(text), progress = progress, done = done })
-  return true
+  local job = { decode = S.Decoder(text), progress = progress, done = done }
+  run(job)
+  return job
+end
+
+-- Stops an import started from the text box: its next step ends it without importing, so nothing
+-- is saved or staged and done is never called. A job that has ended is left as it is.
+---@param job table|nil the job ns.StartImport returned
+function ns.CancelImport(job)
+  if job then job.cancelled = true end
 end

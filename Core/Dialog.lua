@@ -202,14 +202,23 @@ local function textButtons()
   return list
 end
 
+-- Runs, once, what ns.OnTextDismissed asked for when the box's work is dismissed.
+local function dismissText(f)
+  local fn = f.onDismiss
+  f.onDismiss = nil
+  if fn then fn() end
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
+-- A hide that comes down from UIParent (Alt-Z) leaves the box shown and dismisses nothing.
 local function textBox()
   if box then return box end
   box = dialog("Vanguard_TextDialog", TEXT_W, TEXT_H)
   addEditBox(box)
   limitTitle(box)
   addTextButtons(box)
+  box:HookScript("OnHide", ns.Guard("hide text box", function() if not box:IsShown() then dismissText(box) end end))
   ns.TabFocus(box, textButtons)
   return box
 end
@@ -228,6 +237,7 @@ end
 -- Shows text selected for copying (Ctrl+C); Close is the only button.
 function ns.ShowText(title, text)
   local f = takePlace(textBox(), find)
+  dismissText(f)
   titleText(f, title)
   boxText(f, text)
   f.primary:Hide()
@@ -286,6 +296,13 @@ function ns.AskText(title, onImport, label)
   f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
   f.edit:SetFocus()
+end
+
+-- Runs fn once when the text dialog is closed, or shown with text to copy (ns.ShowText), whichever comes
+-- first: the work it was showing, such as an import, stops then. Asking again (ns.AskText) leaves it pending.
+---@param fn function
+function ns.OnTextDismissed(fn)
+  textBox().onDismiss = fn
 end
 
 -- Shows work under way in the text dialog's title (as "Importing… 40%"), its primary
