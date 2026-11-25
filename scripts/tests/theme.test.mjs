@@ -2049,3 +2049,10 @@ it("a padded square panel stays on whole pixels when Pixel-perfect scale goes on
   expect(after.length, "the panel's parts are anchored").toBeGreaterThan(4);
   expect(offPixel(after), "no offset between screen pixels").toEqual([]);
 });
+
+it("H48-5-1 the standard font list names the 15 point shadow font as the game does, Game15Font_Shadow", () => {
+  const addon = loggedIn();
+  // Blizzard_Fonts_Shared/Shared/Fonts.xml:1477 declares Game15Font_Shadow (both clients); no Game15FontShadow exists.
+  const names = addon.eval("return ns.Theme.FONT_OBJECTS.standard");
+  expect([names.includes("Game15Font_Shadow"), names.includes("Game15FontShadow")], "the real name is listed, the misspelling is not").toEqual([true, false]);
+});
