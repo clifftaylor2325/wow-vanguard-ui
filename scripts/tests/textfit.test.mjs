@@ -261,7 +261,10 @@ it("text fits: the Click casting page's starter layout rows: Click to heal's gui
   // The rows shown: the guide (Click to heal before the game binds its clicks), Undo, and the offer of Heal for Middle.
   const rows = addon.eval('local out = { "" } for _, row in ipairs(ns.ClickCastPresets.PageRows()) do out[#out + 1] = row[1] end return out').slice(1);
   expect(rows, "all three kinds are on the page").toEqual(["bindguide", "bindundo", "bindupgrade"]);
-  expect(addon.textFit("Vanguard_Options"), "their texts and buttons fit, with every string a third longer").toEqual([]);
+  // A seven-column grid cell cuts its name to two lines on purpose (H47-19-101: the tooltip names the spell), and the
+  // pseudo-locale's longer "Unit menu" on the starter layout's Middle click is the one name that runs over.
+  const cutCellName = (f) => f.kind === "cut" && f.text === "Unit menu";
+  expect(addon.textFit("Vanguard_Options").filter((f) => !cutCellName(f)), "their texts and buttons fit, with every string a third longer").toEqual([]);
 });
 
 it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl + Shift + a mouse button, H46-19-55)", () => {
@@ -271,6 +274,44 @@ it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl +
     ns.Options.Show("clickcast") ns.Options.ShowTab(ns.L["Keys while hovering a frame"])`);
   expect(addon.frames('w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON4" and w:IsVisible()').length, "the row is on the page").toBe(1);
   expect(addon.textFit("Vanguard_Options"), "the key name stays short of the icon, with every string a third longer").toEqual([]);
+});
+
+// The audit's overlap and spill findings (a long name ends in an ellipsis on purpose, which it reports as a cut).
+const drawnOver = (addon, root) => addon.textFit(root).filter((f) => f.kind !== "cut");
+
+it("text fits: a hover key's long macro ends before its note and Remove (H47-19-1)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.eval(`local CC = ns.GetModule("ClickCast") CC.Add("1", "macro", "/cast [@mouseover,help,nodead] Flash Heal")
+    ns.Options.Show("clickcast") ns.Options.ShowTab(ns.L["Keys while hovering a frame"])`);
+  addon.eval('__wfgWorld.bindings.ACTIONBUTTON1 = { "1" }');
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.frames('w.key == "1" and w.remove ~= nil and w:IsVisible()').length, "the row is on the page").toBe(1);
+  expect(drawnOver(addon, "Vanguard_Options"), "the text stays off the note and the button").toEqual([]);
+});
+
+it("text fits: the spell picker's Ranks button shows its label whole, open and closed (H47-19-2)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
+  addon.world.learn(9472, { name: "Flash Heal", rank: 2, helpful: true });
+  addon.eval('ns.Options.Show("clickcast")');
+  const cell = addon.frames('w.key == "BUTTON3" and w.iconFrame ~= nil and w.empty ~= nil')[0].id;
+  addon.eval(`local c = __wfgStub.frames[${cell}] c:GetScript("OnClick")(c, "LeftButton")`);
+  expect(addon.eval('for _, r in ipairs(Vanguard_SpellPicker.rows) do if r.chevron:IsShown() then return true end end return false'), "a ranked spell shows its button").toBe(true);
+  expect(addon.textFit("Vanguard_SpellPicker"), "closed").toEqual([]);
+  addon.eval('Vanguard_SpellPicker.open["Flash Heal"] = true Vanguard_SpellPicker:Refresh()');
+  expect(addon.textFit("Vanguard_SpellPicker"), "open").toEqual([]);
+});
+
+it("text fits: grid cells with the extra modifier columns keep a long name inside the cell (H47-19-101)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.eval(`local CC = ns.GetModule("ClickCast")
+    CC.Add("ctrl-shift-BUTTON2", "spell", "Prayer of Healing") CC.Add("alt-shift-BUTTON3", "macro", "/cast [@mouseover] Greater Heal")
+    CC.Add("ctrl-BUTTON2", "spell", "Renew") ns.Options.Show("clickcast")`);
+  expect(addon.frames('w.key == "ctrl-shift-BUTTON2" and w.name ~= nil and w:IsVisible()').length, "the seven-column grid is shown").toBe(1);
+  expect(drawnOver(addon, "Vanguard_Options"), "no name runs over the cells around it").toEqual([]);
 });
 
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
