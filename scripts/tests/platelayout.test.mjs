@@ -291,3 +291,14 @@ it("a plate's aura row the client has closed is never pointed at a unit: a remov
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   expect(addon.eval("return { __plateOf('nameplate1'):IsShown(), #ns.errors }"), "drawn again with the closed row left as it is").toEqual([true, 0]);
 });
+
+// H47-6-101: the cast bar's spell name ends where the seconds begin, not 30 units before the bar's end, so a narrow
+// plate (80 x 10: a 67 wide bar) still shows the start of the spell.
+it("H47-6-101 a narrow plate's cast bar gives the spell name the room the seconds do not take", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved("width = 80, height = 10"));
+  const box = addon.eval(`local c = __plateOf("nameplate1").cast
+    return { bar = c:GetWidth(), name = c.text:GetRight() - c.text:GetLeft(), nameRight = c.text:GetRight(), timeLeft = c.time:GetLeft() }`);
+  expect(box.bar, "the plate's cast bar at 80 x 10").toBe(67);
+  expect(box.name, "the spell name's box").toBeGreaterThanOrEqual(40);
+  expect(box.nameRight, "ends short of the seconds").toBeLessThan(box.timeLeft);
+});
