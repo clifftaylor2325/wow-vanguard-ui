@@ -1324,3 +1324,11 @@ it("H47-6-2 the weapon enchant cell shows its countdown only with the buffs' tim
   expect(cell(false), "timers off: no number").toMatchObject({ hidden: true, edge: false });
   expect(cell(true), "timers on: the number sits on the bottom edge").toMatchObject({ hidden: false, edge: true });
 });
+
+// H47-6-103: the smallest aura icons draw their stack count in the smaller role, so two digits stay inside the icon.
+it("H47-6-103 an aura icon under 14 wide draws its stack count in the smaller role", () => {
+  const addon = loggedIn(UNITS_ENV);
+  const countSize = (size) => addon.eval(`local f = CreateFrame("Frame", nil, UIParent)
+    local _, px = ns.Auras.Dress(f, { size = ${size} }).count:GetFont() return px`);
+  expect([countSize(12), countSize(13), countSize(14), countSize(20)], "8 under 14, the role's own 10 from 14").toEqual([8, 8, 10, 10]);
+});
