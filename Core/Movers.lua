@@ -772,8 +772,20 @@ function ns.SetMoverSuffix(text)
   for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
--- The handle for a mover, created on first use; sized and placed over its frame (at least 40 x 14, so a thin bar
--- can still be grabbed without its handle spilling onto the frame above it). The handle is drawn at UIParent's
+-- The least a mover's handle measures (units), so the smallest frame can still be grabbed.
+ns.HANDLE_MIN = { width = 24, height = 14, unknownWidth = 40 }
+
+-- The width a frame's handle takes: the frame's on screen, at least the minimum; a secret width (the chat window's)
+-- takes a wider grab minimum.
+local function handleWidth(f, s)
+  local width = ns.PlainNumber(f:GetWidth())
+  if not width then return ns.HANDLE_MIN.unknownWidth end
+  return math.max(width * s, ns.HANDLE_MIN.width)
+end
+
+-- The handle for a mover, created on first use; sized and placed over its frame (at least 24 x 14, so a thin bar
+-- can still be grabbed without its handle spilling onto the frame above it, and a narrow banner's handle keeps
+-- its own width instead of spilling onto its neighbours, as the Standards layout's 30-apart banners need). The handle is drawn at UIParent's
 -- scale with the frame's size on screen, so its label stays readable and its grab minimum holds at any Scale %.
 -- A mover whose frame draws past its own rect sets m.insets (SetClampRectInsets' left, right, top, bottom, in
 -- the frame's units), so the handle can't be dropped where that part would leave the screen. A frame of the
@@ -782,7 +794,7 @@ local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
   local s = ns.PlainNumber(f:GetScale()) or 1
-  m.handle:SetSize(math.max((ns.PlainNumber(f:GetWidth()) or 0) * s, 40), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, 14))
+  m.handle:SetSize(handleWidth(f, s), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, ns.HANDLE_MIN.height))
   if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
   ns.ShowCoords(m)

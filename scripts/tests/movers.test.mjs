@@ -188,6 +188,13 @@ it("handles stay readable and grabbable at any Scale %: their label keeps its si
   expect(handle("box"), "200%: the label is not doubled").toEqual([1, 400, 80, 1]);
 });
 
+it("H47-4-103: a narrow frame's handle keeps its frame's width (24 at least), so handles 30 apart don't overlap", () => {
+  const addon = loggedIn("__n = CreateFrame('Frame', 'TESTONLY_Narrow', UIParent) __n:SetSize(24, 100) ns.Mover(__n, 'narrow', 'TEST-ONLY narrow', { 'BOTTOM', 'BOTTOM', 0, 300 }) __s = CreateFrame('Frame', 'TESTONLY_Sliver', UIParent) __s:SetSize(10, 100) ns.Mover(__s, 'sliver', 'TEST-ONLY sliver', { 'BOTTOM', 'BOTTOM', 60, 300 })");
+  addon.slash("unlock");
+  const width = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w:GetWidth() end end`);
+  expect([width("narrow"), width("sliver")], "24 stays 24 (30 apart leaves a gap); 10 is lifted to the 24 minimum").toEqual([24, 24]);
+});
+
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
   const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
   const addon = loggedIn(BOX, { savedVariables: `VanguardDB.profiles = { Default = { positions = {
