@@ -2650,6 +2650,16 @@ it("options: a changed setting's reset arrow sits inside its card, clear of the 
   expect([r.markL >= r.card + 1, r.label - r.markR >= 1], "the arrow clears the card's edge and the caption").toEqual([true, true]);
 });
 
+it("options: the header's profile picker shows the bare profile name and its tooltip the full one (H47-2-102)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("Raid healing Holy Priest") ns.PickProfile("Raid healing Holy Priest") ns.Options.Show("general")');
+  addon.eval('local p = Vanguard_Options.profile p.__scripts.OnEnter(p)');
+  expect(addon.eval("local p = Vanguard_Options.profile return { p.text:GetText(), GameTooltip:IsShown(), GameTooltip.__lines[1].text }"), "the box has the name, the tooltip the prefixed full name")
+    .toEqual(["Raid healing Holy Priest", true, "Profile: Raid healing Holy Priest"]);
+  addon.eval("local p = Vanguard_Options.profile p.__scripts.OnLeave(p)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");

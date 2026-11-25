@@ -786,9 +786,31 @@ local function profileChoices()
   return out
 end
 
--- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
-local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
+local profileDropdown
+
+do
+  -- The picker's box shows the bare profile name, so a long one keeps the whole box (its menu rows say "Profile: ").
+  local function showProfileName(d)
+    d.text:SetText(ns.SelectedProfileName())
+  end
+
+  -- The picker's tooltip: the full profile name, for one the box still cuts.
+  local function profileTip(d)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(d, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(ns.Format(L["Profile: {profile}"], { profile = ns.SelectedProfileName() }))
+    GameTooltip:Show()
+  end
+
+  -- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
+  function profileDropdown(parent)
+    local d = W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
+    d.Refresh = showProfileName
+    d:HookScript("OnEnter", ns.Guard("profile picker tip", profileTip))
+    d:HookScript("OnLeave", ns.Guard("profile picker tip", function() if GameTooltip then GameTooltip:Hide() end end))
+    d:Refresh()
+    return d
+  end
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
