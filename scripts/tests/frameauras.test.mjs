@@ -118,6 +118,7 @@ it("target and focus auras: a row woken by switching the module off and on follo
 // Modules/UnitExtras.lua puts your threat percent 12 in from the target frame's top right corner, 3 above it, where the
 // buff row also starts to grow: the row's line stops short of it while the readout is on.
 it("target buffs: the row's line stops short of the threat percent while that readout is on", () => {
+  // The target's buff row spec's line width and the frame's width, for a profile.
   const spec = (saved) => loggedIn(UNITS_ENV + FRAME_AURAS, saved).eval(`local FA = ns.GetModule("FrameAuras")
     return { line = FA.BuffSpec(Vanguard_target, FA.Look(FA.settings)).lineSize, width = Vanguard_target:GetWidth() }`);
   const on = spec(saved("size = 30"));
@@ -158,6 +159,7 @@ it("H47-6-1 the target's cast bar stands over every buff icon, with a second lin
 
 it("H47-6-1 the cast bar's default spot comes back down when the buffs shrink, and a dragged spot still wins", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + CASTING_TARGET, saved("buffs = 16"));
+  // How much the target's buff row lifts its cast bar now.
   const spot = () => addon.eval("return ns.GetModule('FrameAuras').BuffLift()");
   expect(spot(), "16 buffs at the default size: a second line").toBeGreaterThan(0);
   addon.eval("ns.Settings('FrameAuras').buffs = 8 ns.GetModule('FrameAuras').Apply()");

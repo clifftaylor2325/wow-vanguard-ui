@@ -305,6 +305,7 @@ it("H47-6-101 a narrow plate's cast bar gives the spell name the room the second
 
 // H47-6-102: at the smallest plate height the cast bar's name and seconds are drawn no taller than the bar.
 it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, and a tall one keeps the role's size", () => {
+  // The cast bar's text sizes and the seconds' width on a plate of this height.
   const sizeAt = (height) => loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved(`width = 80, height = ${height}`))
     .eval(`local c = __plateOf("nameplate1").cast local _, nameSize = c.text:GetFont() local _, timeSize = c.time:GetFont()
       return { nameSize, timeSize, c.time:GetWidth() }`);
@@ -320,6 +321,7 @@ it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, 
 it("H47-6-3 a name-only plate's raid icon stands over its name, and goes back left of the bar when the plate is whole", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end GetRaidTargetIndex = function() return 8 end",
     { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  // Where the friendly plate's raid icon stands against its name.
   const icon = () => addon.eval(`local f = __plateOf("nameplate2") local p = f.raidIcon.__points
     return { shown = f.raidIcon:IsShown(), mid = (f.raidIcon:GetLeft() + f.raidIcon:GetRight()) / 2, nameMid = (f.name:GetLeft() + f.name:GetRight()) / 2,
       bottom = f.raidIcon:GetBottom(), nameTop = f.name:GetTop(), point = p.BOTTOM ~= nil and "BOTTOM" or p.RIGHT ~= nil and "RIGHT" or "?" }`);
