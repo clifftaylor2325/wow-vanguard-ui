@@ -2609,6 +2609,15 @@ it("options: the Show a grid while moving switch shows or hides the grid at once
   expect([off, addon.eval("return { ns.MoverOptions().grid, __grid }")], "off hides the grid, on shows it").toEqual([[false, false], [true, true]]);
 });
 
+it("options General: a colour the accent box cannot read is put back to the accent in use (H47-2-7)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const box = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.hex and w.swatches then
+      w.hex:SetText("#ZZZZZZ") w.hex:GetScript("OnEnterPressed")(w.hex)
+      return { w.hex:GetText(), "#" .. ns.Theme.Hex("accent"):sub(3):upper() } end end`);
+  expect(box[0], "the box names the accent in use").toBe(box[1]);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
