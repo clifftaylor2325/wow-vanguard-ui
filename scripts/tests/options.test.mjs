@@ -2642,6 +2642,14 @@ it("options: a search of only spaces lists nothing and dims no page, like an emp
   expect(addon.eval("return { Vanguard_Options.results and Vanguard_Options.results:IsShown() or false, ns.Options.matches == nil }"), "no list, no filter").toEqual([false, true]);
 });
 
+it("options: a changed setting's reset arrow sits inside its card, clear of the caption (H47-2-101)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Settings("UnitFrames").healthText = false ns.Options.Show("unitframes")');
+  const r = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w:IsVisible() and w.label then
+    local mark = w.reset.mark return { card = w:GetParent():GetLeft(), markL = mark:GetLeft(), markR = mark:GetRight(), label = w.label:GetLeft() } end end`);
+  expect([r.markL >= r.card + 1, r.label - r.markR >= 1], "the arrow clears the card's edge and the caption").toEqual([true, true]);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");

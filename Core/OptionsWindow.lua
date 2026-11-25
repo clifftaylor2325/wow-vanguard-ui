@@ -238,7 +238,7 @@ local function defaultText(w, kind, initial)
 end
 
 -- The reset arrow's side, and its button's size: the arrow sits in the card's margin, left of the row's caption (pixels).
-O.RESET = { icon = 12, width = 14, height = 16, x = -6 }
+O.RESET = { icon = 10, width = 14, height = 16, x = -5 }
 
 -- The reset arrow itself, centered on its button, in the accent.
 local function resetMark(d)
