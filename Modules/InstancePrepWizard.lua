@@ -125,7 +125,7 @@ end
 
 -- The footer: Use suggested (first page), Back and Next or Done (the window applies as you go, so it ends in Done).
 local function footer(f)
-  f.suggest = W.Button(f, L["Use suggested"], WZ.UseSuggested)
+  f.suggest = ns.WidenToLabel(W.Button(f, L["Use suggested"], WZ.UseSuggested))
   f.suggest:SetPoint("BOTTOMLEFT", WZ.PAD, WZ.PAD)
   f.next = W.Primary(f, L["Next"], function() WZ.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -WZ.PAD, WZ.PAD)

@@ -527,3 +527,13 @@ it("text fits: the stat weights wizard's captions stay on one line, drawn over n
     expect(addon.eval("local out = {} for _, r in ipairs(Vanguard_WeightsWizard.rows) do if r.label:GetStringHeight() > 20 then out[#out + 1] = r.label:GetText() end end return #out"), `${locale}: wrapped captions`).toBe(0);
   }
 });
+
+it("text fits: the prep wizard's Use suggested button is as wide as its label at Text size 130% (H47-20-2)", () => {
+  for (const locale of ["deDE", "frFR"]) {
+    const addon = localeClient(locale, 1.3);
+    addon.eval('ns.GetModule("InstancePrep").Wizard.Open()');
+    const label = addon.eval('return ns.L["Use suggested"]');
+    const cut = addon.textFit("Vanguard_PrepWizard").filter((finding) => finding.text === label);
+    expect(cut.map(line), `${locale}: the label is whole`).toEqual([]);
+  }
+});
