@@ -727,6 +727,25 @@ it("the question dialog: the keypad's Enter presses the focused button like Ente
   addon.key(name, "NUMPADENTER");
   expect(addon.eval("return __answers"), "No had the focus: the keypad's Enter answers No").toEqual(["no"]);
 });
+it("the question dialog: a question asked over an open one starts with no focus ring, so Enter never presses the old ring's button (H47-1-52)", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  // Asks a question that logs "<tag> yes" or "<tag> no".
+  const ask = (tag, kind) => addon.eval(`ns.Ask("${tag}?", "Go", function() __log[#__log + 1] = "${tag} yes" end, function() __log[#__log + 1] = "${tag} no" end, ${kind})`);
+  const logged = () => addon.eval(`return table.concat(__log, ",")`);
+  addon.eval("__log = {}");
+  ask("A");
+  addon.key(name, "TAB");
+  ask("B", '"danger"');
+  addon.key(name, "ENTER");
+  expect([logged().includes("B"), addon.eval(`return ${name}:IsShown()`)], "Enter on a fresh danger question presses nothing").toEqual([false, true]);
+  addon.eval(`__log = {}`);
+  ask("C");
+  addon.key(name, "TAB");
+  ask("D");
+  addon.key(name, "ENTER");
+  expect(logged().split(",").filter((x) => x.startsWith("D")), "Enter on the replaced plain question presses the new primary Yes, not No").toEqual(["D yes"]);
+});
 it("the question dialog does not keep swallowing keys: the pass-on flag is reset when it hides, and a question shown in a fight reads no keys until it ends", () => {
   const addon = loggedIn();
   const name = "Vanguard_Question";

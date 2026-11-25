@@ -428,14 +428,21 @@ local function pickConfirm(f, kind)
   f.sure:SetShown(f.confirm == f.sure)
 end
 
--- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
--- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
-function ns.Ask(text, yes, onYes, onNo, kind)
-  local f = questionDialog()
+-- Puts a question's text, its Yes and its kind on the dialog, with no focus ring left from the question it replaces
+-- (the dialog may already be shown, so no OnShow clears it: Enter would press the old ring's button).
+local function fillQuestion(f, text, yes, kind)
   f.title:SetText(text)
   fitTitle(f)
   pickConfirm(f, kind)
   f.confirm.text:SetText(yes)
+  ns.FocusClear(f)
+end
+
+-- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
+-- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
+function ns.Ask(text, yes, onYes, onNo, kind)
+  local f = questionDialog()
+  fillQuestion(f, text, yes, kind)
   f.waiting = onNo
   f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
   f.no:SetScript("OnClick", ns.Guard("click question no", function() f:Hide() end))
