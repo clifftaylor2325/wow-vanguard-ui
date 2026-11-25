@@ -742,11 +742,13 @@ local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5,
 
 -- The strata a mover's handle goes on: HIGH, so it sits over the frame it moves and the game's own Edit Mode
 -- selections (MEDIUM) but under Edit Mode's window and dialogs (DIALOG), which stay on top while they are
--- open. A frame that itself sits above HIGH (the quest dialog, on DIALOG) would cover a HIGH handle, so its
--- handle rides on its own strata instead.
+-- open. A frame that itself sits above HIGH (the quest dialog, on DIALOG) and is shown would cover a HIGH
+-- handle, so its handle rides on its own strata instead. A closed one's handle stays on HIGH: on DIALOG it would
+-- draw over, and take the mouse from, every other handle inside its rect (the closed quest dialog's is 560 x 360).
 local function handleStrata(frame)
   local own = frame.GetFrameStrata and frame:GetFrameStrata()
-  return (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and own or "HIGH"
+  local over = (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and frame:IsShown()
+  return over and own or "HIGH"
 end
 
 -- Builds the handle for a mover: accent-bordered panel with its label, well over

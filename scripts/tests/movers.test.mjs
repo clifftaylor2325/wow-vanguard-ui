@@ -653,6 +653,20 @@ it("hunt H44-11-R3: a frame on a high strata registered in plain unlock mode kee
   expect(addon.eval("return __m.handle:GetFrameStrata()"), "above the frame").toBe("DIALOG");
 });
 
+it("H47-4-101: a closed frame on a high strata keeps its handle on HIGH, so it doesn't take the mouse from other handles", () => {
+  // Draw order is the addon's own assumption (Core/Movers.lua STRATA_RANK): DIALOG draws over HIGH; the strata order is the game's.
+  const addon = loggedIn();
+  addon.slash("lock");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(560, 360) __d:SetFrameStrata("DIALOG") __d:Hide()
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  addon.slash("unlock");
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "closed: with the other handles").toBe("HIGH");
+  addon.slash("lock");
+  addon.eval("__d:Show()");
+  addon.slash("unlock");
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "open: over the dialog (H44-11-R3)").toBe("DIALOG");
+});
+
 // Picks a choice in the open popover's "Anchor to" menu.
 const pickAnchorTo = (addon, choice) => addon.eval(`local d = Vanguard_MoverPopover.target d:GetScript("OnClick")(d)
   for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "${choice}" then b:GetScript("OnClick")(b) break end end`);
