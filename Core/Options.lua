@@ -142,6 +142,16 @@ local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end, ns.MoverDefault(key)
 end
 
+-- get/set for the unlock grid's switch, applied at once while frames are unlocked, and its default.
+local function gridSwitch()
+  -- Saves the switch and shows or hides the grid to match.
+  local function set(on)
+    ns.MoverOptions().grid = on
+    ns.RefreshGrid()
+  end
+  return function() return ns.MoverOptions().grid end, set, ns.MoverDefault("grid")
+end
+
 -- get/set for the unlock grid's spacing, redrawn at once while frames are unlocked with the grid on, and its default.
 local function gridSpacing()
   -- Saves the spacing and redraws the grid when it is showing.
@@ -492,7 +502,7 @@ end
 local function layoutRows()
   return append(setupRows(), {
     O.Essential(O.MoveFramesRow()),
-    O.Essential(check(L["Show a grid while moving"], moverOption("grid"))),
+    O.Essential(check(L["Show a grid while moving"], gridSwitch())),
     { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },
     O.Essential(check(L["Snap to other frames"], moverOption("snap"))),
     check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),

@@ -2598,6 +2598,17 @@ it("options: Tab onto the page's Reset this page leaves the scrolled page where 
   expect([before > 0, addon.eval(`return ${view}:GetVerticalScroll()`)], "the page stays scrolled").toEqual([true, before]);
 });
 
+it("options: the Show a grid while moving switch shows or hides the grid at once while frames are unlocked (H47-2-5)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("unlock");
+  addon.eval('ns.Options.Show("general") ns.ShowGrid = function() __grid = true end ns.HideGrid = function() __grid = false end');
+  addon.eval('ns.MoverOptions().grid = true');
+  addon.eval('__click("Show a grid while moving")');
+  const off = addon.eval("return { ns.MoverOptions().grid, __grid }");
+  addon.eval('__click("Show a grid while moving")');
+  expect([off, addon.eval("return { ns.MoverOptions().grid, __grid }")], "off hides the grid, on shows it").toEqual([[false, false], [true, true]]);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
