@@ -89,10 +89,45 @@ AB.FLYOUT_ON_SHOW = 'self:SetBindingClick(true, "ESCAPE", "' .. AB.FLYOUT.close 
 -- Clicking the close button hides the list.
 AB.FLYOUT_CLOSE = 'self:GetFrameRef("flyout"):Hide()'
 
--- The icon of a spell button, from the spell the snippet set on it.
+-- The sweep of a spell button from the client's duration object for its spell (none: no sweep). The object goes to
+-- the widget as it is and is never compared; a call the client refuses is kept for /vg errors.
+local function sweepFromObject(child, spell)
+  local duration = C_Spell.GetSpellCooldownDuration(spell)
+  if duration == nil then return child.cooldown:Clear() end
+  ns.Quiet("flyout cooldown", child.cooldown.SetCooldownFromDurationObject, child.cooldown, duration)
+end
+
+-- The sweep on a client with no duration object: plain start and length; hidden ones clear it (SetCooldown takes no secret).
+local function sweepFromNumbers(child, spell)
+  local info = C_Spell.GetSpellCooldown(spell)
+  local start, length = type(info) == "table" and info.startTime, type(info) == "table" and info.duration
+  if not start or ns.IsSecret(start) or ns.IsSecret(length) then return child.cooldown:Clear() end
+  ns.Quiet("flyout cooldown", child.cooldown.SetCooldown, child.cooldown, start, length)
+end
+
+-- A spell button's cooldown sweep, as the game's list buttons show it (UpdateCooldown on SPELL_UPDATE_COOLDOWN).
+local function paintCooldown(child, spell)
+  if not spell then return child.cooldown:Clear() end
+  if child.cooldown.SetCooldownFromDurationObject and C_Spell.GetSpellCooldownDuration then return sweepFromObject(child, spell) end
+  if C_Spell.GetSpellCooldown then sweepFromNumbers(child, spell) end
+end
+
+-- The tint token of a spell for what the client says of it: no power blue, unusable grey, else none. A hidden answer
+-- counts as usable.
+local function usableTint(spell)
+  if not (spell and C_Spell.IsSpellUsable) then return "white" end
+  local usable, noPower = C_Spell.IsSpellUsable(spell)
+  if ns.IsSecret(usable) or usable then return "white" end
+  return (not ns.IsSecret(noPower) and noPower) and "noPower" or "unusable"
+end
+
+-- The icon of a spell button, from the spell the snippet set on it, with its cooldown sweep and usable tint (the
+-- game's list buttons dim a spell you can't cast now, UpdateUsable on SPELL_UPDATE_USABLE).
 local function paintChild(child)
   local spell = child:GetAttribute("spell")
   child.icon:SetTexture(spell and C_Spell.GetSpellTexture(spell))
+  T.Tint(child.icon, usableTint(spell))
+  paintCooldown(child, spell)
 end
 
 -- The tooltip of a spell button's spell.
@@ -109,6 +144,12 @@ local function hideSpell()
   GameTooltip:Hide()
 end
 
+-- The cooldown sweep over a spell button's icon.
+local function addSweep(child)
+  child.cooldown = CreateFrame("Cooldown", nil, child, "CooldownFrameTemplate")
+  child.cooldown:SetAllPoints(child.icon)
+end
+
 -- One spell button of the list: a secure button that casts its spell, in the bar buttons' skin.
 local function makeChild(flyout, i)
   local child = CreateFrame("Button", string.format("%s%d", AB.FLYOUT.frame, i), flyout, "SecureActionButtonTemplate")
@@ -119,6 +160,7 @@ local function makeChild(flyout, i)
   child.icon = child:CreateTexture(nil, "ARTWORK")
   child.icon:SetAllPoints()
   T.Crop(child.icon)
+  addSweep(child)
   return child
 end
 
@@ -140,6 +182,12 @@ end
 -- Paints the spell buttons when the list opens (the snippet has set their spells just before).
 local function paintOpen(flyout)
   for _, child in ipairs(flyout.vgChildren) do paintChild(child) end
+end
+
+-- Repaints the shown list's buttons when a cooldown or usable state changes (nothing while the list is shut).
+local function repaintOpen()
+  local flyout = AB.flyout
+  if flyout and flyout:IsShown() then paintOpen(flyout) end
 end
 
 -- The list's spell buttons, wired.
@@ -276,6 +324,9 @@ end
 local function watchFlyouts()
   for _, event in ipairs({ "SPELLS_CHANGED", "ACTIONBAR_SLOT_CHANGED", "PLAYER_ENTERING_WORLD", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
     ns.On(event, refresh)
+  end
+  for _, event in ipairs({ "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_FLYOUT_UPDATE" }) do
+    ns.On(event, repaintOpen)
   end
   ns.On("CVAR_UPDATE", onSettingChanged)
   ns.OutOfCombat(ensureFlyout, "action bar flyout list")

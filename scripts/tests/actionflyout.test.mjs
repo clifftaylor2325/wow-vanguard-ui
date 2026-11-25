@@ -209,6 +209,39 @@ it("H47-8-1 the list opens away from its bar: up or down from a horizontal bar, 
   expect(point(), "a bar with no rect yet: above the button").toBe("BOTTOM");
 });
 
+// H47-8-3. The game's list buttons run UpdateCooldown and UpdateUsable on SPELL_UPDATE_COOLDOWN, SPELL_UPDATE_USABLE
+// and SPELL_FLYOUT_UPDATE (Blizzard_ActionBar/Shared/SpellFlyout.lua, SpellFlyoutMixin:OnEvent).
+it("H47-8-3 the list's spell buttons show a cooldown sweep and dim a spell that can't be cast, and follow the events while open", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS + "__cd = {} C_Spell.GetSpellCooldownDuration = function(id) return __cd[id] end C_Spell.IsSpellUsable = function(id) return id ~= 13, id == 13 end");
+  place(addon, 1, 1);
+  run(addon, PRE);
+  // Whether button i's icon wears the theme's token (by its vertex colour).
+  const tinted = (i, token) => addon.eval(`local c = Vanguard_Flyout.vgChildren[${i}].icon.__vertexColor local r, g, b = ns.Theme.RGB("${token}") return c[1] == r and c[2] == g and c[3] == b`);
+  expect(tinted(1, "white"), "a castable spell keeps its colour").toBe(true);
+  expect(tinted(2, "noPower"), "a spell short of power wears the no-power tint").toBe(true);
+  addon.eval("__cd[11] = { TEST_ONLY_DURATION = true }");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[1].cooldown.__durationObject ~= nil"), "a spell on cooldown sweeps").toBe(true);
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[2].cooldown.__durationObject == nil"), "its neighbour does not").toBe(true);
+  addon.eval("C_Spell.IsSpellUsable = function() return false, false end");
+  addon.fire("SPELL_UPDATE_USABLE");
+  expect(tinted(1, "unusable"), "a spell that can't be cast now is dimmed on the usable event").toBe(true);
+  addon.eval("Vanguard_Flyout:Hide() __cd[11] = nil");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout.vgChildren[1].cooldown.__durationObject ~= nil"), "a shut list is left as it was").toBe(true);
+});
+
+it("H47-8-3 a client with no duration object sweeps from plain numbers, and a hidden cooldown or usable answer leaves a plain, castable button", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS + "C_Spell.GetSpellCooldownDuration = nil __info = { [11] = { startTime = 5, duration = 10 }, [13] = { startTime = __wfgWorld.secret(5), duration = __wfgWorld.secret(10) } } C_Spell.GetSpellCooldown = function(id) return __info[id] end C_Spell.IsSpellUsable = function() return __wfgWorld.secret(false), __wfgWorld.secret(false) end");
+  place(addon, 1, 1);
+  run(addon, PRE);
+  expect(addon.eval("local c = Vanguard_Flyout.vgChildren[1].cooldown return c.__cooldown and c.__cooldown[2]"), "plain numbers go to the sweep").toBe(10);
+  expect(addon.eval("local c = Vanguard_Flyout.vgChildren[2] local v = c.icon.__vertexColor local r, g, b = ns.Theme.RGB('white') return v[1] == r and v[2] == g and v[3] == b"), "a hidden usable answer counts as castable").toBe(true);
+  addon.eval("C_Spell.GetSpellCooldown = nil C_Spell.IsSpellUsable = nil");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a client with neither call paints without error").toBe(true);
+});
+
 // H47-8-2. The game closes its list on ACTIONBAR_PAGE_CHANGED (Blizzard_ActionBar/Shared/SpellFlyout.lua, SpellFlyoutMixin:OnEvent).
 it("H47-8-2 a page change on the bar closes the list its button opened", () => {
   const addon = loggedIn(KEY_UP + FLYOUTS);
