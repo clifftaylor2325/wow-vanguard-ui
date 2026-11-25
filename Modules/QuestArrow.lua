@@ -336,11 +336,17 @@ end
 -- The frame ---------------------------------------------------------------------------------------
 
 -- The distance line, hanging from the panel's middle on edge points only (the title stands on it), so the
--- two lines grow away from each other with Text size instead of toward each other.
+-- two lines grow away from each other with Text size instead of toward each other. A long line (a translation,
+-- a five-figure distance) shrinks to the room (T.FitText on a box of that width), then hangs from its top again.
 local function distLine(f)
-  f.dist = ns.SingleLine(T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2"))
-  f.dist:SetPoint("TOPLEFT", f.arrow, "RIGHT", QA.PAD, -1)
-  f.dist:SetPoint("TOPRIGHT", f, "RIGHT", -QA.PAD, -1)
+  local box = CreateFrame("Frame", nil, f)
+  box:SetHeight(1)
+  box:SetPoint("TOPLEFT", f.arrow, "RIGHT", QA.PAD, -1)
+  box:SetPoint("TOPRIGHT", f, "RIGHT", -QA.PAD, -1)
+  f.dist = T.FitText(ns.SingleLine(T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")), box, 0)
+  f.dist:ClearAllPoints()
+  f.dist:SetPoint("TOPLEFT", box, "TOPLEFT")
+  f.dist:SetPoint("TOPRIGHT", box, "TOPRIGHT")
 end
 
 -- The arrow and its two lines of text on the frame.
