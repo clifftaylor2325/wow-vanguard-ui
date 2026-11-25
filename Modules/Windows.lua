@@ -2660,10 +2660,13 @@ local function refitPopups()
 end
 GW.HookGlobalOnce("StaticPopup_ReparentDialogs", "popup panels", refitPopups)
 
--- Skins one popup and has its panel refit when the game stacks the popups or this one closes.
+-- Skins one popup and has its panel refit when the game stacks the popups, this one shows or this one closes. The
+-- game stacks a popup before it shows it (StaticPopup_Show), so a popup put above an open one is only shown, and the
+-- open one only stacked under it, once the show has run.
 local function skinPopup(frame)
   GW.SkinFramed(frame)
   GW.HookGlobalOnce("StaticPopup_SetUpPosition", "popup panels stacked", refitPopups)
+  GW.HookScriptOnce(frame, "OnShow", "popup panels shown", refitPopups)
   GW.HookScriptOnce(frame, "OnHide", "popup panels closed", refitPopups)
 end
 GW.Add("popups", GW.POPUPS, skinPopup)

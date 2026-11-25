@@ -7525,6 +7525,42 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The Only dungeons for my level label is one line and does not touch the title, and 11 to 12 letter sender names are whole.
 - If it fails, paste: A screenshot of the board's top.
 
+### 33.917 A popup that opens above one left open joins it as one panel (H47-22-51; WoW Forever and Retail)
+
+- Do: Get two popups up at once (a group invite and a destroy-item confirm), answer the upper one, then raise a new popup while the lower one is still open. [Client: Forever and Retail.]
+- Expect: The two popups read as one joined panel: no band where one panel's edge and shadow cut across the other.
+- If it fails, paste: a screenshot of the two popups.
+
+### 33.918 A long ranked spell name ends before the Ranks button (H47-22-52; WoW Forever and Retail)
+
+- Do: At Text size 130%, open Click casting, click an empty cell and find a spell with ranks and a long name (a German client shows it best). [Client: Forever and Retail.]
+- Expect: The name ends in "…" before the Ranks button and never runs under it; pointing at the row shows the spell.
+- If it fails, paste: a screenshot of the picker row.
+
+### 33.919 A second Accept or Complete click keeps the quest (H47-22-1; WoW Forever and Retail)
+
+- Do: Talk to an NPC offering a quest that flags you for PvP (or a hand-in that costs gold) and click Accept (or Complete) twice before answering the question. Then click No. [Client: Forever and Retail.]
+- Expect: The question stays up after the second click and the quest is still offered; only the No declines it.
+- If it fails, paste: what happened to the quest, and `/vg errors`.
+
+### 33.920 The level comes back on a narrow frame under Tabs (H47-22-2; WoW Forever and Retail)
+
+- Do: Make the target frame about 100 wide with Health as Both, target a level 60 elite, then switch the HUD look to Tabs. [Client: Forever and Retail.]
+- Expect: The level is hidden on the narrow frame before, and shows on the name tab under Tabs without a reload.
+- If it fails, paste: a screenshot of the target frame.
+
+### 33.921 Your status marks clear your raid target icon under Tabs (H47-22-3; WoW Forever and Retail)
+
+- Do: On a rogue or shaman under the Tabs look, be group leader and PvP flagged, mark yourself with a raid target, and build combo points (or drop a totem). [Client: Forever and Retail.]
+- Expect: The crown and the PvP tag start past the raid target icon at the frame's inner top corner; nothing lies on the icon or the combo points.
+- If it fails, paste: a screenshot of your frame.
+
+### 33.922 A long cast's seconds stay whole (H47-22-4; WoW Forever and Retail)
+
+- Do: Watch a cast or channel of 10 s or more on your target's cast bar and on a nameplate, at Text size 100%, then change Text size to 130% and watch another. [Client: Forever and Retail.]
+- Expect: The seconds read in full ("14.0", never "1…"); the spell name ends before them.
+- If it fails, paste: a screenshot of the cast bar.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

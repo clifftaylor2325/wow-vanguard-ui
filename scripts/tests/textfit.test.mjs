@@ -311,6 +311,17 @@ it("text fits: the spell picker's Ranks button shows its label whole, open and c
   expect(addon.textFit("Vanguard_SpellPicker"), "open").toEqual([]);
 });
 
+it("text fits: a long ranked spell's name ends short of the Ranks button at the largest Text size (H47-22-52)", () => {
+  const addon = atLargestText(fitClient());
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(1243, { name: "Machtwort: Seelenstärke", rank: 1, helpful: true });
+  addon.world.learn(1244, { name: "Machtwort: Seelenstärke", rank: 2, helpful: true });
+  addon.eval('ns.Options.Show("clickcast")');
+  const cell = addon.frames('w.key == "BUTTON3" and w.iconFrame ~= nil and w.empty ~= nil')[0].id;
+  addon.eval(`local c = __wfgStub.frames[${cell}] c:GetScript("OnClick")(c, "LeftButton")`);
+  expect(drawnOver(addon, "Vanguard_SpellPicker"), "the name ends in an ellipsis, never under the button").toEqual([]);
+});
+
 it("text fits: grid cells with the extra modifier columns keep a long name inside the cell (H47-19-101)", () => {
   const addon = fitClient();
   addon.eval('__wfgWorld.units.player.class = "PRIEST"');

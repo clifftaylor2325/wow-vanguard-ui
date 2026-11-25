@@ -311,14 +311,24 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
--- How far the text sits in from a bar's ends, the gap between the spell name and the seconds, and the room the seconds
--- keep as a share of their text size ("12.3" is about 1.2 wide): a long spell name (a translation runs longer) stops
--- short of the seconds, cut on one line, instead of running under them, and a narrow bar still shows most of it.
-CB.TEXT_INSET, CB.TIME_GAP, CB.TIME_EM = 4, 3, 1.3
+-- How far the text sits in from a bar's ends, the gap between the spell name and the seconds, and the widest seconds
+-- the box keeps room for (a cast or channel under 100 s): a long spell name (a translation runs longer) stops short of
+-- the seconds, cut on one line, instead of running under them, and a narrow bar still shows most of it.
+CB.TEXT_INSET, CB.TIME_GAP, CB.TIME_WIDEST = 4, 3, "00.0"
 
 -- The text role of a bar's name and seconds: the label on a tall bar, the small one on the rest.
 local function textRole(h)
   return h >= 18 and "label" or "small"
+end
+
+-- Sizes a bar's seconds box to the widest seconds at its font now (measured on the string itself, its text then put
+-- back), so a cast of 10 s or more keeps its seconds whole, at any Text size, and the name ends where they begin.
+local function fitTimeBox(bar)
+  local text = bar.time:GetText()
+  bar.time:SetText(CB.TIME_WIDEST)
+  local width = ns.PlainNumber(bar.time:GetUnboundedStringWidth()) or 0
+  bar.time:SetText(text)
+  bar.time:SetWidth(math.ceil(width) + 1)
 end
 
 -- The seconds left at the bar's right end, and the spell name from its left end up to them.
@@ -327,7 +337,7 @@ local function addTexts(bar, h)
   bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "white")
   bar.time:SetPoint("RIGHT", -CB.TEXT_INSET, 0)
   bar.time:SetJustifyH("RIGHT")
-  bar.time:SetWidth(math.ceil(CB.TIME_EM * T.RoleSize(role)))
+  fitTimeBox(bar)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
   bar.text:SetPoint("LEFT", CB.TEXT_INSET, 0)
   bar.text:SetPoint("RIGHT", bar.time, "LEFT", -CB.TIME_GAP, 0)
@@ -341,7 +351,12 @@ function CB.SizeTexts(bar, h)
   local size = h < role and h or nil
   T.TextSize(bar.text, size)
   T.TextSize(bar.time, size)
-  bar.time:SetWidth(math.ceil(CB.TIME_EM * (size or role)))
+  fitTimeBox(bar)
+end
+
+-- Sizes every unit cast bar's seconds box again, after the theme's Text size or font changed.
+function CB.RefitTimes()
+  for _, bar in pairs(CB.bars) do fitTimeBox(bar) end
 end
 
 -- The icon to the left, the spell name on the bar and the seconds left at its right.
@@ -831,5 +846,5 @@ function CB.Enable(settings)
   listen(units)
   CB.ApplyRing()
   T.OnChanged(CB.PaintSweeps)
-  T.OnChanged(function() ns.OutOfCombat(CB.FitLook, "cast bar look") end)
+  T.OnChanged(function() CB.RefitTimes() ns.OutOfCombat(CB.FitLook, "cast bar look") end)
 end

@@ -89,21 +89,22 @@ end
 
 -- The corner the row stands on and what it stands on: the frame's outer top corner (over its name tab, where the look
 -- gives it one), but your player frame's inner top corner while a class row (combo points, totems, class pips) is
--- built on the outer one, so the marks stay clear of the first points.
+-- built on the outer one, so the marks stay clear of the first points. The third value is how far in the first mark
+-- starts: past the raid target icon, which stands in from that inner corner on a frame wearing a tab.
 local function cornerOf(f)
-  if f.key == "player" and UF.ClassRowBuilt() then return INNER[f.outer], f end
-  return f.outer, UF.StatusHome(f)
+  if f.key == "player" and UF.ClassRowBuilt() then return INNER[f.outer], f, UF.RaidIconReach(f) end
+  return f.outer, UF.StatusHome(f), 0
 end
 
 -- Anchors the shown marks one after another from the row's corner inward. Out of combat: the frame is a secure button.
 local function layout(f)
-  local side, home = cornerOf(f)
-  local gap, prev = side == "LEFT" and ST.GAP or -ST.GAP, nil
+  local side, home, reach = cornerOf(f)
+  local step, prev, first = side == "LEFT" and 1 or -1, nil, ST.GAP + reach
   for _, name in ipairs(ST.ORDER) do
     local mark = f.status[name]
     mark:ClearAllPoints()
     if mark:IsShown() then
-      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, gap, prev and 0 or ST.LIFT)
+      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, step * (prev and ST.GAP or first), prev and 0 or ST.LIFT)
       prev = mark
     end
   end

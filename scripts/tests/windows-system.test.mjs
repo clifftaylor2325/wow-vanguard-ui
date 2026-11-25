@@ -1233,6 +1233,20 @@ it("popups: a popup stacked under a shown one has its panel start where the uppe
   expect(top(2), "the upper closed: the lower popup's panel is whole again").toEqual([0, true]);
 });
 
+// H47-22-51: the game positions a popup before it shows it (StaticPopup_Show: StaticPopup_SetUpPosition, then
+// dialog:Show()), and takes the first free dialog, so a new one in StaticPopup1 goes above a StaticPopup2 left open.
+it("popups: a new popup shown above one left open has the lower panel start where the upper ends (H47-22-51)", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV + `
+    __popup("StaticPopup2")
+    function StaticPopup_SetUpPosition() StaticPopup2:ClearAllPoints() StaticPopup2:SetPoint("TOP", StaticPopup1, "BOTTOM", 0, 0) end`);
+  // The top-left point of a popup's backdrop: its offset, and what it hangs on.
+  const top = (n) => addon.eval(`local pt = __panelHost(StaticPopup${n}).__points.TOPLEFT return { pt.y or 0, pt.rel == StaticPopup${n} }`);
+  addon.eval("StaticPopup1:Show() StaticPopup2:Show() StaticPopup_SetUpPosition() StaticPopup1:Hide()");
+  expect(top(2), "the upper answered: the lower is whole").toEqual([0, true]);
+  addon.eval("StaticPopup_SetUpPosition() StaticPopup1:Show()");
+  expect(top(2), "stacked under the new one once it shows: 24 down").toEqual([-24, true]);
+});
+
 it("popups: shown and hidden in a fight, the backdrop is nothing protected and nothing is blocked", () => {
   const addon = loggedIn(LAYOUT_POPUP_ENV);
   setCombat(addon, true);
