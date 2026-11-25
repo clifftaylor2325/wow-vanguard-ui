@@ -227,11 +227,11 @@ it("each kind of tooltip has its own position: units in the world, units on fram
   const addon = loggedIn(OWNERS_ENV);
   expect(spots(addon), "all in the movable corner at first").toEqual(["corner", "corner", "corner", "corner"]);
   addon.eval('ns.Options.Show("windows")');
-  expect(pick(addon, "Unit tooltips in the world", 2), "the world units' dropdown, on the Game windows page").toBe("at the cursor");
+  expect(pick(addon, "Unit tooltips in the world", 2), "the world units' dropdown, on the Game windows page").toBe("At the cursor");
   expect(spots(addon), "only the unit under the mouse in the world follows the cursor").toEqual(["cursor", "corner", "corner", "corner"]);
-  expect(pick(addon, "Unit tooltips on frames", 3)).toBe("client default");
+  expect(pick(addon, "Unit tooltips on frames", 3)).toBe("Client default");
   expect(spots(addon), "a unit frame's tooltip stays where the client put it").toEqual(["cursor", "client", "corner", "corner"]);
-  expect(pick(addon, "Tooltip position", 2)).toBe("at the cursor");
+  expect(pick(addon, "Tooltip position", 2)).toBe("At the cursor");
   expect(spots(addon), "the rest (a bar button, a world object) follow the cursor; the unit kinds keep theirs").toEqual(["cursor", "client", "cursor", "cursor"]);
   expect(addon.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.unitAnchor, s.frameAnchor, s.anchor }"), "three settings").toEqual(["cursor", "default", "cursor"]);
   expect(addon.eval("return { Vanguard_Options.reload:IsShown(), #ns.errors }"), "no reload asked for, no error").toEqual([false, 0]);

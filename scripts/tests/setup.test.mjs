@@ -566,3 +566,26 @@ it("H46-24-3: Tab on the Look step walks the accent swatches and the style tiles
   const total = addon.eval("local p = Vanguard_Setup.pages.look return #p.choices == #p.swatches + #p.styles");
   expect(total, "the style tiles follow the swatches").toBe(true);
 });
+
+it("setup: the Move things page says Next locks the frames, and Next does", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  for (let i = 0; i < 7; i += 1) addon.eval('local b = Vanguard_Setup.next b:GetScript("OnClick")(b, "LeftButton")');
+  expect(addon.eval("return { Vanguard_Setup.pages.move.lines[5]:GetText(), ns.Unlocked() }"), "unlocked on Move things").toEqual(["Next locks them. /vg unlock moves them any time.", true]);
+  addon.eval('local b = Vanguard_Setup.next b:GetScript("OnClick")(b, "LeftButton")');
+  expect(addon.eval("return ns.Unlocked()"), "locked on All set").toBe(false);
+});
+
+it("setup: the window is dragged by its title line on every step, and stops when it closes", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  // The title strip against the window's top, and whether a drag is on.
+  const state = () => addon.eval(`local f = Vanguard_Setup return { f.drag:GetTop() == f:GetTop(), f.__moving == true }`);
+  expect(state(), "strip on step 1, not moving").toEqual([true, false]);
+  addon.eval('local d = Vanguard_Setup.drag d:GetScript("OnDragStart")(d)');
+  expect(state()[1], "a drag of the title moves the window").toBe(true);
+  addon.eval('local d = Vanguard_Setup.drag d:GetScript("OnDragStop")(d)');
+  expect(state()[1], "dropping stops it").toBe(false);
+  for (let i = 0; i < 7; i += 1) addon.eval('local b = Vanguard_Setup.next b:GetScript("OnClick")(b, "LeftButton")');
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.drag:IsShown() }"), "the strip is still there on Move things").toEqual(["Step 8 of 9 · Move things", true]);
+  addon.eval('local d = Vanguard_Setup.drag d:GetScript("OnDragStart")(d) Vanguard_Setup:Hide()');
+  expect(state()[1], "closing the window ends a drag").toBe(false);
+});

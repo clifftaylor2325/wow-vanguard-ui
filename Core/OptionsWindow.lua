@@ -614,7 +614,7 @@ O.WithoutReload = withoutReload
 -- bracket). The English says whether it has one, so a translated caption loses its bracket too.
 local function moveReload(row)
   if type(row[2]) ~= "string" then return end
-  row.english = ns.English(row[2])
+  row.english = row.english or ns.English(row[2])
   if setterOf(row) and row.english:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
     row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), not O.AppliesLive(setterOf(row))
   end

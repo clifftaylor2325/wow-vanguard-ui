@@ -78,6 +78,13 @@ it("text fits: the setup wizard, every step", () => {
   expectFits("setup wizard", wizardSteps(fitClient(true)));
 });
 
+it("text fits: the setup wizard's audit builds every guided row, so each is measured (H47-3-104)", () => {
+  const addon = fitClient(true);
+  wizardSteps(addon);
+  const built = addon.eval(`local out = {} for _, k in ipairs({ "comfort", "game", "helpers", "combat" }) do out[#out + 1] = #Vanguard_Setup.pages[k].rows end return out`);
+  expect(built, "comfort, game, helpers and combat build all their rows under the pseudo-locale, as in a real client").toEqual([5, 3, 6, 6]);
+});
+
 // Audits the options window on each of its pages from first to last (1-based, inclusive), each tab of a page in
 // turn (a page shows one card at a time), in one client.
 function optionsPages(first, last, addon = fitClient()) {

@@ -37,9 +37,10 @@ local function calmRow()
   return check(L["Calm HUD out of combat"], calmSetting("calm"))
 end
 
--- What a part of the HUD does out of combat with the Calm HUD on; your unit frames can't fade away (V.CALM_PARTS).
+-- What a part of the HUD does out of combat with the Calm HUD on; your unit frames can't fade away (V.CALM_PARTS), so
+-- their row keeps Hide's place empty and Dim and Leave as is stay in the columns the other rows use.
 local CALM_CHOICES = { { "dim", L["Dim"] }, { "hide", L["Hide"] }, { "leave", L["Leave as is"] } }
-local CALM_FRAME_CHOICES = { CALM_CHOICES[1], CALM_CHOICES[3] }
+local CALM_FRAME_CHOICES = { CALM_CHOICES[1], { "hide", L["Hide"], spare = true }, CALM_CHOICES[3] }
 
 -- One part's row: its choice out of combat (CALM_CHOICES unless given), applied at once.
 local function calmPart(label, key, choices)
@@ -316,7 +317,7 @@ end
 local function raidAuraRows()
   return {
     dispelRow(),
-    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
+    { "cycle", L["Debuff icons (reload)"], { { 0, L["None"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
     check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons at each tile's right edge under the missing-buff mark; the second and third sit under the name, where they fit."], "note" },
     { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator1") },

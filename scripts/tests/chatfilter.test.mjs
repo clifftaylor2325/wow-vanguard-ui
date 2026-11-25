@@ -185,15 +185,16 @@ it("chat filter card: the shown card's lines follow catches and the Caught lines
   addon.eval('ns.Options.Hide() ns.Options.Show("chat")');
   expect(addon.texts("Caught this session: 1 (Gold selling 1)").length, "reopened, the count is new").toBe(1);
   addon.eval('__click("Caught lines")');
-  expect(addon.texts("Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that.").length, "the hint shows once the choice is Are hidden").toBe(1);
+  expect(addon.texts("Caught this session: 1 (Gold selling 1) Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that.").length, "the hint shows with the count line once the choice is Are hidden").toBe(1);
 });
 
 it("chat filter card: with caught lines hidden, a hint points to the Filtered tab", () => {
   const addon = filtering();
   const hint = "Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that.";
-  expect(pageTexts(addon), "not while they go to the tab").not.toContain(hint);
+  expect(pageTexts(addon).filter((t) => t.includes(hint)), "not while they go to the tab").toEqual([]);
+  expect(pageTexts(addon), "and no empty line sits between the status lines").not.toContain("");
   addon.slash("filter hide");
-  expect(pageTexts(addon), "hidden: the hint").toContain(hint);
+  expect(pageTexts(addon).filter((t) => t.includes(hint)), "hidden: the hint").toHaveLength(1);
 });
 
 it("chat filter: gold selling needs a sale word, so honest posts that mention Discord or a little gold pass", () => {

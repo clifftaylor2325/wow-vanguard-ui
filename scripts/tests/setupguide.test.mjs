@@ -426,3 +426,9 @@ it("H46-24-4: a first run's Next keeps the HUD look the profile already picked; 
   setupClick(addon, "next");
   expect(addon.eval("return ns.Theme.Settings().hudLook"), "Use recommended sets Shield").toBe("shield");
 });
+
+it("guided setup: the Combat step builds its bars 4 and 5 row on a translated client (the row is found by its English caption)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true, client: '__wfgWorld.locale = "deDE"' });
+  nexts(addon, 6);
+  expect(rows(addon, "combat").map((r) => r[0]), "every combat row, bars included").toContain("bars");
+});
