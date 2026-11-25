@@ -189,7 +189,9 @@ it("H47-4-102 at the level cap the reputation handle stands above the XP one whi
   const addon = loggedIn(DATA_ENV);
   addon.eval("__maxLevel = true");
   addon.fire("PLAYER_LEVEL_UP");
+  // The bottom edge of a mover's handle.
   const handleBottom = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w:GetBottom() end end`);
+  // How high the reputation bar sits above the screen's bottom.
   const repY = () => addon.eval("return Vanguard_repbar.__points.BOTTOM.y");
   addon.slash("unlock");
   expect(handleBottom("repbar") - handleBottom("xpbar"), "the reputation handle clears the XP one's 14 units").toBeGreaterThanOrEqual(14);
