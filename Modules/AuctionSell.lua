@@ -690,11 +690,12 @@ local function statusText(s)
   return AH.PostedText(s)
 end
 
--- The form for the sale s (or nil): its boxes, the toggle, the length, the count line, and Skip
--- and Stop while there is a sale.
+-- The form for the sale s (or nil): its boxes, the toggle, the undercut rule and the length (both
+-- may change in the options window), the count line, and Skip and Stop while there is a sale.
 local function paintForm(c, s)
   paintBoxes(c, s)
   c.perStack.text:SetText(AH.perStack and L["per stack"] or L["per unit"])
+  c.undercut:Refresh()
   c.length:Refresh()
   c.status:SetText(statusText(s))
   enable(c.skip, s ~= nil)

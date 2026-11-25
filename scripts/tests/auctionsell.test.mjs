@@ -918,3 +918,36 @@ it("a click on a price row that is all yours takes its price as it is", () => {
   addon.click(`${UP}.table.rows[1]`);
   expect(card(addon)[0][3], "all yours: as it is").toBe("10s 0c");
 });
+// Sets the Town and gear row labelled `label` to its choice number `n`, as a click in the options window does.
+function pickTownRow(addon, label, n) {
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then
+    for _, r in ipairs(p.rows()) do if r[2] == "${label}" then r[5](r[3][${n}][1]) end end end end`);
+}
+// The sell card's lit undercut segment, its Your price and its Price box.
+const undercutShown = (addon) => addon.eval(`local c = ${CARD} local lit
+  for _, s in ipairs(c.undercut.segments) do if s.fill.shown then lit = s.value end end
+  return { lit, c.lines[4].value:GetText(), c.price:GetText() }`);
+it("H47-18-1 Undercut by changed in the options window repaints the sell card, and Post sends the price it shows", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 500000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(undercutShown(addon), "1 silver under 50g").toEqual(["silver", "49g 99s 0c", "49g 99s 0c"]);
+  pickTownRow(addon, "Undercut by", 3);
+  expect(undercutShown(addon), "1 % under 50g, lit at once").toEqual(["percent", "49g 50s 0c", "49g 50s 0c"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0][6], "the buyout the card showed").toBe(495000);
+});
+it("H47-18-1 the sell card lights the saved undercut rule after the house is closed and opened again", () => {
+  const addon = atAuctionHouse(BAGS);
+  addon.eval(`${HELPER}.settings.undercut = "copper"`);
+  addon.world.closeAuctionHouse();
+  addon.update(0);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(undercutShown(addon)[0], "the rule saved while the house was closed").toBe("copper");
+});
+it("H47-18-1 Auction length changed in the options window repaints the sell card's deposit line", () => {
+  const addon = atAuctionHouse(BAGS + "AUCTION_DURATION_THREE = 'TEST-ONLY 48 Hours' __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  pickTownRow(addon, "Auction length", 4);
+  expect(card(addon)[0][2], "48 hours, shown before Post").toBe("45c · TEST-ONLY 48 Hours");
+});
