@@ -828,6 +828,17 @@ local function nameOnly(unit)
   return not ns.IsSecret(can) and can == false
 end
 
+-- How far a name-only plate's raid icon stands over its name (the game's own: Blizzard_NamePlateUnitFrame.lua, where
+-- IsShowOnlyName anchors RaidTargetFrame BOTTOM to the name's TOP, 10 up).
+NP.RAID_ICON_NAME_GAP = 10
+
+-- A plate's raid icon over its name while the plate shows only the name, else left of the bar's end.
+local function placeRaidIcon(f, only)
+  f.raidIcon:ClearAllPoints()
+  if only then f.raidIcon:SetPoint("BOTTOM", f.name, "TOP", 0, NP.RAID_ICON_NAME_GAP)
+  else f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0) end
+end
+
 -- Makes a plate name-only, or whole again. Name-only, Vanguard's frame is drawn at no opacity, so the bar,
 -- its border and glow, the level, marks, numbers, aura icons and cast bar all go with it, and the parts in
 -- NP.NAME_ONLY_KEEPS are told not to follow it; the name takes the bar's colour (class or reaction).
@@ -835,6 +846,7 @@ local function setNameOnly(f, unit, only)
   f.vgNameOnly = only
   f:SetAlpha(only and 0 or 1)
   for _, key in ipairs(NP.NAME_ONLY_KEEPS) do f[key]:SetIgnoreParentAlpha(only) end
+  placeRaidIcon(f, only)
   if only then T.ColorRGB(f.name, UF.UnitColor(unit)) else T.Color(f.name, "text") end
 end
 

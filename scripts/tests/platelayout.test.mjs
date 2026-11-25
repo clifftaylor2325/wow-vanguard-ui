@@ -313,3 +313,20 @@ it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, 
   expect(timeWidth, "the seconds' room follows the text").toBe(Math.ceil(1.3 * 6));
   expect(sizeAt(10)[0], "at the default height the role's own size").toBe(10);
 });
+
+// H47-6-3: a name-only plate's raid icon stands over the name, as the game's own name-only plates place it
+// (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua: when
+// IsShowOnlyName, RaidTargetFrame is anchored BOTTOM to the name's TOP, 10 up; else RIGHT of the health bars' LEFT).
+it("H47-6-3 a name-only plate's raid icon stands over its name, and goes back left of the bar when the plate is whole", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end GetRaidTargetIndex = function() return 8 end",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  const icon = () => addon.eval(`local f = __plateOf("nameplate2") local p = f.raidIcon.__points
+    return { shown = f.raidIcon:IsShown(), mid = (f.raidIcon:GetLeft() + f.raidIcon:GetRight()) / 2, nameMid = (f.name:GetLeft() + f.name:GetRight()) / 2,
+      bottom = f.raidIcon:GetBottom(), nameTop = f.name:GetTop(), point = p.BOTTOM ~= nil and "BOTTOM" or p.RIGHT ~= nil and "RIGHT" or "?" }`);
+  const only = icon();
+  expect(only, "over the name").toMatchObject({ shown: true, point: "BOTTOM" });
+  expect(only.mid, "centred on it").toBeCloseTo(only.nameMid, 0);
+  expect(only.bottom - only.nameTop, "10 above its top").toBeCloseTo(10, 0);
+  addon.eval('ns.Options.Show("nameplates") __click("Names only on friendly plates")');
+  expect(icon().point, "whole again: left of the bar's end").toBe("RIGHT");
+});
