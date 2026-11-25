@@ -166,3 +166,14 @@ it("H47-6-1 the cast bar's default spot comes back down when the buffs shrink, a
   settle(addon);
   expect(spot(), "eight buffs again: one line, no lift").toBe(0);
 });
+
+it("H47-6-1 a frame resize settles the rows and stops: the cast bar's spot is re-placed only when the lift changes", () => {
+  const addon = loggedIn(UNITS_ENV, saved(""));
+  addon.eval('__applies = 0 local FA = ns.GetModule("FrameAuras") local apply = FA.Apply FA.Apply = function() __applies = __applies + 1 return apply() end');
+  addon.eval('ns.GetModule("UnitFrames").ApplySizes()');
+  addon.advance(2, 0.1);
+  addon.eval("__applies = 0");
+  addon.advance(5, 0.1);
+  expect(addon.eval("return __applies"), "no longer asked again by its own rescale").toBe(0);
+  expect(addon.eval('return ns.ticker.vgJobs["frame auras settle"] == nil'), "nothing waits to settle").toBe(true);
+});

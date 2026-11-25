@@ -127,9 +127,14 @@ function FA.BuffLift()
   return math.max(0, buffRowHeight(look, lineWidth(f) - FA.ThreatRoom()) - FA.DEFAULT_BUFF_ROW)
 end
 
--- Puts the target's cast bar's default spot over the buff row as it stands now (when the cast bars are on).
+-- Puts the target's cast bar's default spot over the buff row as it stands now (when the cast bars are on), only when
+-- the row's lift changed: re-placing the bar asks for a rescale, which sizes the frames again, which rebuilds the
+-- rows and comes back here, so an unchanged lift would loop for good.
 local function refitCastBar()
-  if ns.ModuleLive("CastBars") then ns.GetModule("CastBars").FitLook() end
+  local lift = FA.BuffLift()
+  if lift == FA.castLift or not ns.ModuleLive("CastBars") then return end
+  FA.castLift = lift
+  ns.GetModule("CastBars").FitLook()
 end
 
 -- Building ---------------------------------------------------------------------------
