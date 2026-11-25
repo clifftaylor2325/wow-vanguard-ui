@@ -339,6 +339,8 @@ end
 -- width it shares with the crafting cost panel (so the two stack as one column).
 CQ.PAD, CQ.ROWS, CQ.REMOVE_W = T.SPACE.gap, 5, 64
 CQ.WIDTH = CR.WIDTH
+-- The list's width: the panel less its inset each side and the room the scroll thumb takes at the right (inside the panel).
+CQ.LIST_WIDTH = CQ.WIDTH - 2 * CQ.PAD - T.SPACE.col
 -- The panel's height with a note of one line or none, and the room the note has above the buttons before it must
 -- grow the panel (the gap under the list and above the buttons, less the note's own gap under the list: two lines).
 CQ.BASE_HEIGHT = -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H
@@ -362,10 +364,10 @@ end
 
 -- A queue row (W.Row: the list's hover wash): "3 x Linen Bag" and a remove button at its right.
 local function makeRow(parent)
-  local row = W.Row(parent, T.ROW.height, { width = CQ.WIDTH - 2 * CQ.PAD })
+  local row = W.Row(parent, T.ROW.height, { width = CQ.LIST_WIDTH })
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
   row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
-  row.text:SetWidth(CQ.WIDTH - 2 * CQ.PAD - CQ.REMOVE_W - T.SPACE.gap)
+  row.text:SetWidth(CQ.LIST_WIDTH - CQ.REMOVE_W - T.SPACE.gap)
   row.text:SetJustifyH("LEFT")
   row.text:SetWordWrap(false)
   row.remove = W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W)
@@ -422,9 +424,9 @@ end
 
 -- The list's scroll view and the note under it (small text, wrapped inside the panel).
 local function addList(f)
-  f.list = ns.ScrollView(f, { width = CQ.WIDTH - 2 * CQ.PAD })
+  f.list = ns.ScrollView(f, { width = CQ.LIST_WIDTH })
   f.list:SetPoint("TOPLEFT", f, "TOPLEFT", CQ.PAD, CR.TOP)
-  f.list:SetSize(CQ.WIDTH - 2 * CQ.PAD, CQ.ROWS * T.ROW.height)
+  f.list:SetSize(CQ.LIST_WIDTH, CQ.ROWS * T.ROW.height)
   f.rows = ns.QuestParts.Pool(f.list.child, makeRow)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.note:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.SPACE.tight, -T.SPACE.tight)

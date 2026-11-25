@@ -505,3 +505,12 @@ it("H47-20-51 the panel grows to hold a long Short of note above its buttons", (
   addon.slash("craft clear");
   expect(addon.eval(`return ${CQ}.frame:GetHeight() == ${CQ}.BASE_HEIGHT`), "and shrinks back with the note").toBe(true);
 });
+
+it("H47-20-101 a scrolling queue keeps its scroll thumb inside the panel", () => {
+  const addon = crafter();
+  for (const id of [100, 102]) { addon.world.openProfession(id); addon.slash("craft add"); }
+  addon.eval(`for i = 1, 6 do ${CQ}.Mine().queue[i] = { id = 100 + i, n = 1, name = "R" .. i } end ${CQ}.Repaint()`);
+  const out = addon.eval(`local f = ${CQ}.frame return { f.list.thumb:IsShown(), math.max(f.list.thumb:GetRight(), f.list.grip:GetRight()), f:GetRight() }`);
+  expect(out[0], "the thumb shows with more than five rows").toBe(true);
+  expect(out[1], "the thumb and its grip end inside the panel").toBeLessThanOrEqual(out[2]);
+});
