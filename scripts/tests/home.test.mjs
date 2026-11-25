@@ -212,12 +212,19 @@ it("home: the Town and gear page has a button that asks first, naming what would
   addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
   expect(left(addon)[0], "No: kept").toBe(3);
   press();
-  addon.eval("Vanguard_Question.yes:GetScript('OnClick')(Vanguard_Question.yes)");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(left(addon)[0], "Yes: cleared").toBe(1);
   press();
   expect(chatHas(addon, /No prices, sales or characters saved from before launch\./), "with nothing saved it only says so").toBe(true);
   addon.eval("time = function() return " + BETA_DAY + " end");
   expect(press(), "before launch the button is off").toBe(false);
+});
+
+it("H48-6-6 the question before clearing the beta data is a danger question, so Enter never answers Yes", () => {
+  const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
+  liveMe(addon);
+  addon.eval("ns.Home.AskClear()");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Question.confirm.kind }"), "danger kind: askKey leaves Enter alone").toEqual([true, "danger"]);
 });
 
 it("home: on Retail, which had no beta, the notice, /vg launch, /vg help and the Town page's beta section stay out", () => {

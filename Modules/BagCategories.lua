@@ -10,6 +10,23 @@ local BG = ns.GetModule("Bags")
 -- The built-in sections are keyed by name; a category's key starts with this, so the two never meet.
 local KEY = "cat:"
 
+-- Whether a saved category can be read: a table with a name; its items become a table when they are not one.
+local function readable(cat)
+  if type(cat) ~= "table" or type(cat.name) ~= "string" or cat.name == "" then return false end
+  if type(cat.items) ~= "table" then cat.items = {} end
+  return true
+end
+
+-- Keeps the categories a reader can index: a crafted or damaged string's other entries are dropped.
+ns.Migrate("Bags", function(saved)
+  if type(saved.categories) ~= "table" then return end
+  local kept = {}
+  for _, cat in ipairs(saved.categories) do
+    if readable(cat) then kept[#kept + 1] = cat end
+  end
+  saved.categories = kept
+end)
+
 -- The categories, in priority order: { name = "Potions", items = { [itemID] = true } }.
 local function list()
   return ns.Settings("Bags", BG.defaults).categories

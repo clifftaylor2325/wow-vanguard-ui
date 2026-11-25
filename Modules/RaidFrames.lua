@@ -1034,11 +1034,11 @@ ns.Migrate("RaidFrames", function(saved)
   cleanSizes(saved)
 end)
 
--- The roster changed (or you zoned in): the grid is fitted to the group now,
--- and every tile is refreshed once on the next frame, however many roster
--- events come in this one (the marks and heal parts refresh with the tiles).
+-- The roster changed (or you zoned in): the grid is fitted to the group, and every tile is refreshed (the marks
+-- and heal parts with the tiles), each once on the next frame however many roster events come in this one. The
+-- fit is asked for first, so it runs before the tiles refresh; in a fight it waits for the fight to end (RF.Fit).
 function RF.RosterChanged()
-  RF.Fit()
+  ns.Soon("raidfit", RF.Fit)
   ns.Soon("raidtiles", RF.UpdateAll)
 end
 

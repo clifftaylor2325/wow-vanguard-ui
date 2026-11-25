@@ -202,14 +202,23 @@ local function textButtons()
   return list
 end
 
+-- Runs, once, what ns.OnTextDismissed asked for when the box's work is dismissed.
+local function dismissText(f)
+  local fn = f.onDismiss
+  f.onDismiss = nil
+  if fn then fn() end
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
+-- A hide that comes down from UIParent (Alt-Z) leaves the box shown and dismisses nothing.
 local function textBox()
   if box then return box end
   box = dialog("Vanguard_TextDialog", TEXT_W, TEXT_H)
   addEditBox(box)
   limitTitle(box)
   addTextButtons(box)
+  box:HookScript("OnHide", ns.Guard("hide text box", function() if not box:IsShown() then dismissText(box) end end))
   ns.TabFocus(box, textButtons)
   return box
 end
@@ -228,6 +237,7 @@ end
 -- Shows text selected for copying (Ctrl+C); Close is the only button.
 function ns.ShowText(title, text)
   local f = takePlace(textBox(), find)
+  dismissText(f)
   titleText(f, title)
   boxText(f, text)
   f.primary:Hide()
@@ -273,10 +283,18 @@ function ns.ShowTextAtEnd(title, text)
   f.edit:HighlightText()
 end
 
+-- The text box taken over for a new use: the find box's place is its, and work it was showing (an import
+-- still being read) ends, as when text opens in it.
+local function takeOverText()
+  local f = takePlace(textBox(), find)
+  dismissText(f)
+  return f
+end
+
 -- An empty box to type or paste into; onImport(text) runs when the primary button
 -- (Import, or the label given) is clicked, and Cancel sits beside it.
 function ns.AskText(title, onImport, label)
-  local f = takePlace(textBox(), find)
+  local f = takeOverText()
   f.ownTitle = title
   titleText(f, title)
   boxText(f, "")
@@ -286,6 +304,13 @@ function ns.AskText(title, onImport, label)
   f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
   f.edit:SetFocus()
+end
+
+-- Runs fn once when the text dialog is closed, or shown with text to copy (ns.ShowText), whichever comes
+-- first, or asked again (ns.AskText): the work it was showing, such as an import, stops then.
+---@param fn function
+function ns.OnTextDismissed(fn)
+  textBox().onDismiss = fn
 end
 
 -- Shows work under way in the text dialog's title (as "Importing… 40%"), its primary

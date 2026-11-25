@@ -116,3 +116,25 @@ it("A1-15: a slot shows the item's detailed level where the client gives one, el
   without.eval("CharacterFrame:Show()");
   expect(label(without, "Head", "level")[1], "a client without the call: the base level").toBe(40);
 });
+
+it("H48-7-56: a burst of item-info events repaints the open pane once, on the next frame, and a late item level still fills in", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("CharacterFrame:Show()");
+  addon.eval(`__links = 0 local g = GetInventoryItemLink GetInventoryItemLink = function(...) __links = __links + 1 return g(...) end
+    __wfgWorld.worn[1] = 'item:1005:0'`);
+  for (let i = 0; i < 100; i++) addon.fire("GET_ITEM_INFO_RECEIVED", 5000 + i, true);
+  expect(addon.eval("return __links"), "nothing is read inside the frame").toBe(0);
+  addon.update(0);
+  expect([addon.eval("return __links"), label(addon, "Head", "level")], "one paint of the three slots, with the news").toEqual([3, [true, 30]]);
+  addon.fire("PLAYER_EQUIPMENT_CHANGED");
+  expect(addon.eval("return __links"), "a worn item changing is still painted at once").toBe(6);
+});
+
+it("H48-7-56: item-info events waiting when the module is switched off paint nothing and raise nothing", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("CharacterFrame:Show()");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 5000, true);
+  addon.eval("ns.SetModuleEnabled('CharacterExtras', false)");
+  addon.update(0);
+  expect([label(addon, "Head", "level")[0], addon.eval("return #ns.errors")], "the labels stay away, no error").toEqual([false, 0]);
+});

@@ -128,9 +128,16 @@ local function rebuildPages()
   O.RebuildPage("profiles")
 end
 
--- The loss is answered (restored, a string pasted, or a fresh start): the notice goes.
+-- Not now: says where the restore still is.
+local function later()
+  ns.Chat(G.LATER)
+end
+
+-- The loss is answered (restored, a string pasted, or a fresh start): the notice goes, and so does the login
+-- question when it is still up (its Restore would otherwise overwrite what the player kept or set up since).
 function G.Resolve()
   G.lost = nil
+  ns.CancelAsk(later)
   rebuildPages()
 end
 
@@ -162,7 +169,9 @@ local function putRestored(name, data, stamp)
   accountGuard().restored[name] = tonumber(stamp)
   VanguardDB.setupDone, VanguardCharDB.setupDone = true, true
   ns.UseProfile(name)
-  if name == ns.ProfileName() then ns.ProfileChanged() end
+  if name ~= ns.ProfileName() then return end
+  ns.ProfileChanged()
+  O.ProfileReplaced()
 end
 
 -- The backup string's profile, read as an import reads one (an older format upgraded, a newer one
@@ -218,11 +227,6 @@ end
 function G.Keep()
   G.Resolve()
   ns.Chat(L["Vanguard keeps the settings that loaded and won't ask about them again."])
-end
-
--- Not now: says where the restore still is.
-local function later()
-  ns.Chat(G.LATER)
 end
 
 -- Asks once at login: use the profile another character restored from a newer backup, restore from this
@@ -352,9 +356,15 @@ function G.Save()
 end
 
 -- Logout's stamp and backup run after every module's own logout work (a situation's recording saved, say), so the backup
--- holds the profile as it is written. Module files register their handlers after this file, so this waits for login.
-local function saveLast() ns.On("PLAYER_LOGOUT", G.Save) end
+-- holds the profile as it is written. Module files register their handlers after this file, so this waits for login; a
+-- module started again in the session (switched on, restarted, a live profile switch) registers its handler anew, so the
+-- guard goes back to the end of the list after each settle. Off first: the list keeps a handler where it already is.
+local function saveLast()
+  ns.Off("PLAYER_LOGOUT", G.Save)
+  ns.On("PLAYER_LOGOUT", G.Save)
+end
 ns.On("PLAYER_LOGIN", saveLast)
+ns.OnModulesChanged(saveLast)
 
 -- Options --------------------------------------------------------------------------------------
 

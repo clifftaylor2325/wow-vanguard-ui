@@ -87,11 +87,19 @@ function IV.BankBags()
   return out
 end
 
--- Reads the open bank into this character's record, only when the client names the bank's tabs: a missing or
--- empty answer (tab data not in yet) means no data, so the remembered bank stays until a real one arrives.
+-- How many slots a list of containers reports in all (0 when the client can't say).
+local function slotTotal(bags)
+  local slots, total = containerApi(), 0
+  for _, bag in ipairs(bags) do total = total + (slots and ns.PlainNumber(slots(bag)) or 0) end
+  return total
+end
+
+-- Reads the open bank into this character's record, only when the client names the bank's tabs and they report
+-- slots: a missing or empty answer (tab data not in yet, a bank that answers nothing as it closes) means no data,
+-- so the remembered bank stays until a real one arrives. A bought tab always has slots, even when it holds nothing.
 function IV.ReadBank(mine)
   local tabs = IV.BankBags()
-  if #tabs > 0 then mine.bank = countIn(tabs) end
+  if #tabs > 0 and slotTotal(tabs) > 0 then mine.bank = countIn(tabs) end
 end
 
 -- Notes this character's level, money and rested XP (as a percent of a level) on its record.
@@ -123,10 +131,20 @@ function IV.Scan()
   if IV.bankOpen then IV.ReadBank(mine) end
 end
 
--- Something in the bags or bank changed: the open bank is read at once (it may close before the scan,
--- and a closed bank is not read), and everything SCAN_DELAY later, once for a burst of changes.
+-- Reads the open bank once the frame's changes have come in (IV.OnChanged waits for it); nothing once the bank is
+-- shut or the module stopped.
+function IV.ReadOpenBank()
+  IV.bankDirty = false
+  if IV.Active() and IV.bankOpen then IV.ReadBank(IV.Mine()) end
+end
+
+-- Something in the bags or bank changed: the open bank is read on the next frame, once for a burst of changes
+-- (IV.OnBankClosed reads it first when it closes before then), and everything SCAN_DELAY later.
 function IV.OnChanged()
-  if IV.bankOpen then IV.ReadBank(IV.Mine()) end
+  if IV.bankOpen then
+    IV.bankDirty = true
+    ns.Soon("inventory bank", IV.ReadOpenBank)
+  end
   if IV.pending then return end
   IV.pending = true
   C_Timer.After(IV.SCAN_DELAY, ns.Guard("timer bag scan", IV.Scan))
@@ -138,8 +156,9 @@ function IV.OnBankOpened()
   IV.Scan()
 end
 
--- The bank closed: its last reading is kept.
+-- The bank closed: a change not read yet is read first (a closed bank is not read), then its last reading is kept.
 function IV.OnBankClosed()
+  if IV.bankDirty then IV.ReadOpenBank() end
   IV.bankOpen = false
 end
 
@@ -323,5 +342,5 @@ end
 -- Switched off: the bank counts as closed (its close event is no longer heard), so the next start reads the
 -- bags only until the bank opens again.
 function IV.Disable()
-  IV.bankOpen = false
+  IV.bankOpen, IV.bankDirty = false, false
 end

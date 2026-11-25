@@ -564,12 +564,20 @@ local function imported(done, detail)
   ns.OfferDisplay(detail.display, function() if detail.reload then offerImportReload(done, detail) end end)
 end
 
+-- Reads the pasted string; Cancel, closing the box or text to copy opening in it stops a string that takes
+-- more than a frame (ns.OnTextDismissed), so nothing is imported that the player walked away from.
+local function startImport(text)
+  local job = ns.StartImport(text, importProgress, imported)
+  if not job then return chat(L["Import failed: an import is still running."]) end
+  ns.OnTextDismissed(function() ns.CancelImport(job) end)
+end
+
 -- /vg import: a box to paste into. A large string is read a frame's work at a time, with
--- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport).
+-- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport). One still running is
+-- refused here, before the box is asked for again (which would end it).
 local function importCommand()
-  ns.AskText(L["Paste a Vanguard string, then Import"], function(text)
-    if not ns.StartImport(text, importProgress, imported) then chat(L["Import failed: an import is still running."]) end
-  end)
+  if ns.ImportRunning() then return chat(L["Import failed: an import is still running."]) end
+  ns.AskText(L["Paste a Vanguard string, then Import"], startImport)
 end
 
 ns.ImportDialog = importCommand

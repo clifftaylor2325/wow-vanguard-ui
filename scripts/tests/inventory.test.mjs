@@ -168,3 +168,55 @@ it("inventory: /vg alts and /vg inventory forget find a name with an accented ca
   expect(addon.eval("return ns.GetModule('Inventory').Characters()['Élodie']"), "forgotten").toBeNull();
   expect(addon.eval("return { strcmputf8i('a', 'B'), strcmputf8i('b', 'A'), strcmputf8i('×', '÷') }"), "the harness compare orders too").toEqual([-1, 1, -1]);
 });
+
+// Counts the game's per-slot reads of the bank's tabs (bags 6 and up) from here on: 16 for a read of BAGS_ENV's bank.
+const COUNT_READS = `__reads = 0 local get = C_Container.GetContainerItemInfo
+  C_Container.GetContainerItemInfo = function(bag, ...) if bag >= 6 then __reads = __reads + 1 end return get(bag, ...) end`;
+
+it("inventory: a burst of bank slot changes in one frame reads the bank once", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval(COUNT_READS);
+  addon.fire("PLAYERBANKSLOTS_CHANGED", 1);
+  addon.advance(0.1, 0.05);
+  const one = addon.eval("local n = __reads __reads = 0 return n");
+  addon.eval("__wfgWorld.bags[7][1] = { itemID = 118, count = 2 }");
+  for (let slot = 1; slot <= 20; slot++) addon.fire("PLAYERBANKSLOTS_CHANGED", slot);
+  expect(addon.eval("return __reads"), "nothing is read inside the frame").toBe(0);
+  addon.advance(0.1, 0.05);
+  expect([addon.eval("return __reads"), mine(addon).bank], "one read of the whole bank for the twenty events, with the change").toEqual([one, { 2589: 4, 118: 2 }]);
+});
+
+it("inventory: a bank that closes in the frame of its last change keeps that change, and is not read again", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bags[7][1] = { itemID = 118, count = 2 }");
+  addon.fire("PLAYERBANKSLOTS_CHANGED", 1);
+  addon.fire("BANKFRAME_CLOSED");
+  expect(mine(addon).bank, "read as it closed").toEqual({ 2589: 4, 118: 2 });
+  addon.eval(COUNT_READS);
+  addon.advance(0.6, 0.1);
+  expect(addon.eval("return __reads"), "the waiting read finds the bank shut and reads nothing").toBe(0);
+});
+
+it("inventory: a bank that answers no slots as it closes keeps the remembered bank", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bagSizes[6], __wfgWorld.bagSizes[7] = 0, 0");
+  addon.fire("PLAYERBANKSLOTS_CHANGED", 1);
+  addon.fire("BANKFRAME_CLOSED");
+  expect(mine(addon).bank, "no slots in all is no data: the last reading stays").toEqual({ 2589: 4 });
+  addon.eval("__wfgWorld.bagSizes[6], __wfgWorld.bagSizes[7] = 8, 8 __wfgWorld.bags[6] = {}");
+  addon.fire("BANKFRAME_OPENED");
+  expect(mine(addon).bank, "a bank with slots and nothing in them is a real, empty reading").toEqual({});
+});
+
+it("inventory: a bank change waiting when the module is switched off is not read", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bags[7][1] = { itemID = 118, count = 2 }");
+  addon.fire("PLAYERBANKSLOTS_CHANGED", 1);
+  addon.eval("ns.SetModuleEnabled('Inventory', false)");
+  addon.advance(0.6, 0.1);
+  expect(mine(addon).bank, "the remembered bank stays as it was").toEqual({ 2589: 4 });
+});

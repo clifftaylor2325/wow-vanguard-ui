@@ -497,13 +497,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 4.8 Reset asks first and keeps a copy
 
 - Do: `/vg accent jade`, then `/vg` → Profiles. Hover **Delete** and **Copy here** on another profile's row (make one with `/vg profile new Spare` if there is none). Click **Reset profile**, then No; click it again, then Reset.
-- Expect: the tooltips say what each loses (`Deletes profile Spare for every character on this account. It can't be undone.`, `Replaces every setting in profile <yours> with profile Spare's. It can't be undone.`). Reset asks `Reset this profile? Every setting in profile <yours> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <yours> backup.`; No changes nothing; Reset says `Profile <yours> as it was is saved as profile <yours> backup.` and the list shows that backup. After the reload the accent is brass again, and **Copy here** on the backup brings jade back.
+- Expect: the tooltips say what each loses (`Deletes profile Spare for every character on this account. It can't be undone.`, `Replaces every setting in profile <yours> with profile Spare's. It can't be undone.`). Reset asks `Reset this profile? Every setting in profile <yours> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <yours> backup.`; No changes nothing; Reset says `Profile <yours> as it was is saved as profile <yours> backup.` and the list shows that backup. After the reload the accent is brass again, and **Copy here** on the backup (answer Yes) brings jade back.
 - If it fails, paste: the question's text, the chat lines and `/vg errors`.
 
-### 4.8a Sure? doesn't wait for later
+### 4.8a Delete asks a question that does not wait for later
 
-- Do: `/vg` → Profiles, click **Delete** once on a spare profile's row (it says `Sure?`), close the window, open it again on Profiles.
-- Expect: the button reads `Delete` again; one click only asks `Sure?` again and deletes nothing, and a second click deletes the profile.
+- Do: `/vg` → Profiles, click **Delete** once on a spare profile's row, leave the question up, close the window, open it again on Profiles.
+- Expect: the question is a danger question (Enter does not answer it); the row still reads `Delete`; answering Yes deletes the profile and No keeps it.
 - If it fails, paste: a screenshot of the row and `/vg errors`.
 
 ## 5. Pixel borders
@@ -4660,7 +4660,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.341 A guide site's weight string (both)
 
-- Do: Copy a stat weight string a guide site posts for your class (it starts with "( " and a tool name, then "v1:"), click Import stat weights under Gear upgrades, paste it and click Import. Then try one for another class.
+- Do: Copy a stat weight string a guide site posts for your class (it starts with "( " and a tool name, then "v1:"), click Import stat weights under Gear upgrades, paste it and click Import (if you set weights by hand it asks first: answer Yes). Then try one for another class.
 - Expect: Chat says "Imported weights for …" and names any stats it skipped; Set up stat weights shows the string's values and 0 for the stats it leaves out; the other class's string is refused with "the string is for another class".
 - If it fails, paste: the string, the chat lines and a screenshot of the wizard.
 
@@ -6234,7 +6234,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.702 Copy here writes into the profile the reload loads (H45-22-2; WoW Forever and Retail)
 
-- Do: with spec 2 using Heal and active, pick Raid by hand, then press Copy here on Default and answer Sure.
+- Do: with spec 2 using Heal and active, pick Raid by hand, then press Copy here on Default and answer Yes.
 - Expect: the tooltip and warning name Heal, and the Heal row has no Copy here.
 - If it fails, paste: the warning text.
 
@@ -6463,7 +6463,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.740 Reset theme in a fight waits for the fight to end (H46-4-1; WoW Forever and Retail)
 
-- Do: set HUD look to Hairline out of combat, start a fight (a training dummy), open General and press Reset theme, and watch your frame until the fight ends. [Client: Forever and Retail.]
+- Do: set HUD look to Hairline out of combat, start a fight (a training dummy), open General and press Reset theme (answer Yes), and watch your frame until the fight ends. [Client: Forever and Retail.]
 - Expect: the frames stay Hairline until the fight ends, then turn Shield in one step (bars and plates together).
 - If it fails, paste: what the player frame looked like during the fight, and /vg errors.
 
@@ -7560,6 +7560,96 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: Watch a cast or channel of 10 s or more on your target's cast bar and on a nameplate, at Text size 100%, then change Text size to 130% and watch another. [Client: Forever and Retail.]
 - Expect: The seconds read in full ("14.0", never "1…"); the spell name ends before them.
 - If it fails, paste: a screenshot of the cast bar.
+
+### 33.923 The addons button says so when a fight stops unlock (H48-1-2; WoW Forever and Retail)
+
+- Do: Start a fight (a training dummy) and right-click the addons button. [Client: Forever and Retail.]
+- Expect: A chat line says In combat. Try again once combat ends.; nothing unlocks.
+- If it fails, paste: the chat lines, and /vg errors
+
+### 33.924 The settings backup holds what a module recorded after it was switched off and on (H48-4-1; WoW Forever and Retail)
+
+- Do: With Situations on, switch it off and on again under /vg → Modules, then `/vg situation record raid`, scale the info strip, and `/logout`; log in again and use Restore the backup on the Profiles page. [Client: Forever and Retail. The game must confirm that logout handlers run in the order they were registered.]
+- Expect: The restored profile holds the situation you recorded after the switch (the info strip keeps its changed scale in the raid situation).
+- If it fails, paste: /vg errors
+
+### 33.925 Auto-accept switched off in a fight answers no summon afterwards (H48-4-51; WoW Forever and Retail)
+
+- Do: With Auto-accept's summons on, get summoned during a fight, switch Auto-accept off under /vg → Modules in that fight, then end the fight. [Client: Forever and Retail.]
+- Expect: No teleport and no Accepted a summon line; the summon prompt waits for your own click.
+- If it fails, paste: /vg errors
+
+### 33.926 The talent planner switched off in a fight spends nothing afterwards (H48-4-52; WoW Forever)
+
+- Do: With the planner's auto-spend on and a plan set, level up during a fight, switch the Talent planner off under /vg → Modules in that fight, then end the fight. [Client: Forever.]
+- Expect: No talent point is spent and no planner line appears in chat.
+- If it fails, paste: /vg errors
+
+### 33.927 The quest log key goes back to the game's when the quest log is switched off in a fight (H48-4-R1; WoW Forever and Retail)
+
+- Do: In a fight, switch Quest log off under /vg → Modules, open and close the game's Key Bindings window (or change a key), end the fight, and press your quest log key. [Client: Forever and Retail. The game must confirm whether it fires the bindings event in a fight.]
+- Expect: The game's own quest log opens, not Vanguard's.
+- If it fails, paste: /vg errors
+
+### 33.928 Keep these settings puts the Restore question away (H48-6-2; WoW Forever and Retail)
+
+- Do: Lose the account file (move Vanguard.lua out of WTF/Account/<name>/SavedVariables), log in, leave the Restore question up, open /vg → General and press Keep these settings. [Client: Forever and Retail.]
+- Expect: The Restore question closes at once, so Restore cannot be pressed and the settings you kept stay.
+- If it fails, paste: what happened to the question, and the chat lines
+
+### 33.929 Reset all positions and Reset theme ask first (H48-6-3; WoW Forever and Retail)
+
+- Do: Move two frames with /vg unlock then lock; open /vg → General and press Reset all positions, answer No, then press it again and answer Yes; then change the accent and press Reset theme, No, then Reset theme and Yes. [Client: Forever and Retail.]
+- Expect: Each button asks a question first (Enter does not answer it); No leaves the frames and the accent as they were; Yes puts every frame at its default spot, and Yes on Reset theme puts the brass accent back. /vg reset all and /vg theme reset still act at once.
+- If it fails, paste: the question's text and /vg errors
+
+### 33.930 Delete and Copy here ask a question; a double click does nothing (H48-6-4; WoW Forever and Retail)
+
+- Do: Make a spare profile with /vg profile new Spare; open /vg → Profiles and double-click Delete on Spare's row, answer No; click Copy here on Spare, answer No; then click Delete and answer Yes. [Client: Forever and Retail.]
+- Expect: The double click opens one question (the button label stays Delete, never Sure?), and Enter does not answer it; No keeps Spare and your settings; Yes deletes Spare.
+- If it fails, paste: the question's text and /vg errors
+
+### 33.931 An undercut mark is forgotten when the auction house closes (H48-6-51; WoW Forever and Retail)
+
+- Do: At the auction house with one of your auctions undercut, click Check undercuts (the heading says 1 · 1 undercut); close the auction house, then wait 10 minutes or have the undercutting auction sold or cancelled, and open it again. [Client: Forever and Retail.]
+- Expect: The heading shows only the count (no undercut), no red flag on the row, and Cancel next undercut is greyed until you press Check undercuts again; the row stays.
+- If it fails, paste: the heading text and /vg errors
+
+### 33.932 Import stat weights asks before it replaces weights you set (H48-6-R1; WoW Forever and Retail)
+
+- Do: Set a weight by hand (/vg weights set str 7), then Import stat weights under Town and gear → Gear upgrades, paste a string for your class and press Import, answer No; paste again and answer Yes. Then /vg weights reset and import again. [Client: Forever and Retail.]
+- Expect: With weights set by hand a question names the kind and Enter does not answer it; No keeps your weights; Yes replaces them and chat says Imported weights for …; with the kind back on its defaults the import happens at once with no question.
+- If it fails, paste: the question's text and /vg errors
+
+### 33.933 The bank you left in a hurry is still remembered (H48-7-51, H48-10-2; WoW Forever)
+
+- Do: With Inventory on, open the bank, shift-click a stack in and press Escape at once. Log on to another character and point at that item. Also sort a full bank and watch for stutter. [Client: Forever. The game must confirm that container reads still answer inside the bank-closed event; treat a failure as a release blocker.]
+- Expect: The tooltip lists the first character with (bank N) including the stack you moved, and its other bank items; the bank sort causes no stutter; /vg errors stays empty.
+- If it fails, paste: /vg alts <the first character> (the bank list), the item and count moved, and /vg errors
+
+### 33.934 A big auction scan ends smoothly and survives a reload (H48-7-52, H48-10-7; WoW Forever)
+
+- Do: At the auction house on a busy realm, click Scan the auction house and watch to the chat line Auction house scanned; run it again and /reload while the last prices are being recorded. [Client: Forever.]
+- Expect: No freeze at the end of the scan; the line appears, the scan line reads Scanned 0 min ago, prices show in item tooltips, and a reload at the end still leaves the scan stamped.
+- If it fails, paste: the realm, the item count in the chat line, how long any freeze lasted, and /vg errors
+
+### 33.935 Raid tiles settle as members join (H48-7-55; WoW Forever and Retail)
+
+- Do: Out of combat, with Raid frames on, form a group of 20 to 40 (a raid conversion with several people joining at once) and watch the tiles as members join, as the group converts from party to raid and as it drops back to party. [Client: Forever and Retail.]
+- Expect: The tiles settle at the right size and spot within a frame or two after each roster change, with no tile left at the old size and no hitch as many members join; a roster change in combat is fitted when the fight ends.
+- If it fails, paste: the group size, a screenshot of the tiles, and /vg errors
+
+### 33.936 The target and focus aura icons still follow the theme after Frame auras is switched off and on (H48-10-1; WoW Forever and Retail)
+
+- Do: With auras on your target, switch Frame auras off and on under /vg → Modules, then change the accent and the Text size. [Client: Forever and Retail.]
+- Expect: The target and focus aura icons repaint with the new accent and text size, like the other icons.
+- If it fails, paste: a screenshot of the target frame and /vg errors
+
+### 33.937 Upper-case words after /vg filter, craft, prep and ah prices are read (H48-8-2; WoW Forever and Retail)
+
+- Do: Type /vg filter ON, then /vg filter CLEAR and /vg prep BUFFS. [Client: Forever and Retail.]
+- Expect: Chat filter on., then Chat filter has no words now., then the buff report, and no usage line.
+- If it fails, paste: the three chat lines
 
 ## 34. Retail
 

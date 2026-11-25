@@ -323,9 +323,11 @@ function QL.Toggle()
   QL.Open()
 end
 
--- The game's quest log key(s) open this log instead (set out of combat; again when keys change).
+-- The game's quest log key(s) open this log instead (set out of combat; again when keys change). A bind that waited
+-- for the end of a fight does nothing once the module has stopped, or the stop's clear would be undone.
 function QL.BindKeys()
   ns.OutOfCombat(function()
+    if not QL.scope:Running() then return end
     ClearOverrideBindings(QL.toggle)
     for _, key in ipairs({ ns.CallIf(_G, "GetBindingKey", "TOGGLEQUESTLOG") }) do
       SetOverrideBindingClick(QL.toggle, false, key, "Vanguard_QuestLogToggle")
@@ -417,7 +419,7 @@ end
 -- Module entry point (Core/Modules.lua): the window and the key's button are made once a session; everything else
 -- goes through the scope.
 function QL.Enable(settings, scope)
-  QL.settings = settings
+  QL.settings, QL.scope = settings, scope
   if not settings.own then return pointAway(scope) end
   ns.GetModule("QuestTracker").KeepFoldsOpen()
   if not QL.frame then QL.Build() end

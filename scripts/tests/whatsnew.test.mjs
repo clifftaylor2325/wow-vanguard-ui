@@ -232,3 +232,16 @@ it("what's new: a look change keeps the off-by-default tag in the current warn, 
   addon.slash("whatsnew");
   expect(addon.find("TEST%-ONLY a new switch").text, "after a reopen").toContain(`|c${hex}(off by default)|r`);
 });
+
+it("what's new: laid out again at a new text size, the old lines leave the theme's repaint walks", () => {
+  const addon = loggedIn(ENV);
+  addon.eval(`repaints = 0 oldLines = Vanguard_WhatsNew.lines
+    for _, line in ipairs(Vanguard_WhatsNew.lines) do
+      local set = line.text.SetFont
+      line.text.SetFont = function(...) repaints = repaints + 1 return set(...) end
+    end
+    ns.Theme.Settings().textScale = 1.2 ns.Theme.Refresh()`);
+  const after = addon.eval("local n = repaints repaints = 0 ns.Theme.Refresh() return { n, repaints }");
+  expect(after[1], "the old lines' text is no longer re-fonted by a repaint").toBe(0);
+  expect(addon.eval("return Vanguard_WhatsNew.lines ~= oldLines and #Vanguard_WhatsNew.lines"), "the list was laid out again, with all its lines").toBe(3);
+});

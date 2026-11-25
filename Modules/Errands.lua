@@ -30,6 +30,24 @@ ER.BAR_W, ER.BAR_H = 200, 14
 -- Where the flight and boat bars start, above the cluster: one spot, as you never ride both at once.
 ER.TRAVEL_SPOT = { "TOP", "TOP", 0, -198 }
 
+-- Saved times ---------------------------------------------------------------------------------
+
+-- Drops every entry of t whose value is not of type kind.
+local function onlyOfType(t, kind)
+  if type(t) ~= "table" then return end
+  for key, value in pairs(t) do
+    if type(value) ~= kind then t[key] = nil end
+  end
+end
+
+-- Keeps the seconds of flights and boat rides as numbers and the last boat's destination as a name: a crafted or
+-- damaged string's other entries are dropped, so the timer bars can count down from what is left.
+ns.Migrate("Errands", function(saved)
+  onlyOfType(saved.flights, "number")
+  onlyOfType(saved.boats, "number")
+  onlyOfType(saved.boatLast, "string")
+end)
+
 -- Helpers ------------------------------------------------------------------------------------
 
 -- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.

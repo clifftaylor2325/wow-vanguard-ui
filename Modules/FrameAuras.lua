@@ -140,7 +140,7 @@ end
 -- Building ---------------------------------------------------------------------------
 
 -- A row (or none) put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
--- Retire dropped it from the follow set, so it follows the scale again and is refit once for any change made while it slept.
+-- Park dropped it from the follow set, so it follows the scale again and is refit once for any change made while it slept.
 local function wake(row, unit)
   if not (row and row.parked) then return end
   row.parked = nil
@@ -208,9 +208,9 @@ local function build(settings, scope)
   end
 end
 
--- Puts one row away: emptied and hidden (ns.Auras.Retire), marked so the next start shows it again.
+-- Puts one row away: emptied and hidden (ns.Auras.Park, which keeps it in the theme's repaint), marked so the next start shows it again.
 local function parkRow(row)
-  if row and ns.Auras.Retire(row) then row.parked = true end
+  if row and ns.Auras.Park(row) then row.parked = true end
 end
 
 -- Puts a frame's rows away and the client's parts with them.

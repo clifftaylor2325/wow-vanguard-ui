@@ -39,6 +39,7 @@ it("inventory: a bank answer that is missing or empty never wipes the remembered
   }
   addon.eval("__tabs = { { ID = 6 } } __wfgWorld.bags[6][1] = nil");
   addon.fire("PLAYERBANKSLOTS_CHANGED");
+  addon.advance(0.6, 0.1); // the read waits one frame since H48-7-51
   expect(bank(), "a real answer with no items clears it").toEqual({});
 });
 

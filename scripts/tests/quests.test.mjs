@@ -1545,6 +1545,30 @@ it("quest tracker: the nearest-first sort ticks only while that order is on", ()
   addon.eval("ns.GetModule('QuestTracker').settings.order = 'game' ns.GetModule('QuestTracker').ApplyOrder()");
   expect([ticking(), addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].title:GetText()")], "back to the game's order: no ticker, the game's order").toEqual([false, "[8] TEST-ONLY Wolves"]);
 });
+// The game's quest log keys after the module is switched off in a fight and, with `keysChange`, the keys change in the same fight.
+const keysAfterOffInFight = (keysChange) => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.eval('ns.SetModuleEnabled("QuestLog", false)');
+  if (keysChange) addon.fire("UPDATE_BINDINGS");
+  setCombat(addon, false);
+  return addon.eval("return { __overrides.L or false, ns.ModuleLive('QuestLog') }");
+};
+it("H48-4-R1 quest log: switched off in a fight, the quest log key goes back to the game", () => {
+  expect(keysAfterOffInFight(false)).toEqual([false, false]);
+});
+it("H48-4-R1 quest log: a key change later in that fight does not bind the key to the stopped module", () => {
+  expect(keysAfterOffInFight(true)).toEqual([false, false]);
+});
+it("H48-4-R1 quest log: a key change in a fight binds the new keys when the module still runs", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval('__wfgStub.inCombat = true __keys = { "K" }');
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.fire("UPDATE_BINDINGS");
+  setCombat(addon, false);
+  expect(addon.eval("return __overrides"), "the keys move once the fight ends").toEqual({ K: "Vanguard_QuestLogToggle:LeftButton" });
+});
 it("quest log: keys follow rebinding, /vg quests, closing, and switched off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval('__keys = { "K" }');

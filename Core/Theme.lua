@@ -3274,7 +3274,7 @@ do
     "SystemFont_InverseShadow_Small",
     "Game11Font", "Game12Font", "Game13Font", "Game15Font", "Game16Font", "Game18Font", "Game20Font", "Game24Font", "Game27Font", "Game30Font",
     "Game32Font", "Game36Font", "Game40Font", "Game42Font", "Game46Font", "Game48Font", "Game60Font", "Game72Font", "Game120Font",
-    "Game11Font_o1", "Game12Font_o1", "Game13Font_o1", "Game15Font_o1", "Game13FontShadow", "Game15FontShadow",
+    "Game11Font_o1", "Game12Font_o1", "Game13Font_o1", "Game15Font_o1", "Game13FontShadow", "Game15Font_Shadow",
     "FriendsFont_Normal", "FriendsFont_Small", "FriendsFont_Large", "FriendsFont_UserText", "FriendsFont_11",
     "ReputationDetailFont", "AchievementFont_Small", "CoreAbilityFont", "SpellFont_Small", "InvoiceFont_Med", "InvoiceFont_Small",
   }

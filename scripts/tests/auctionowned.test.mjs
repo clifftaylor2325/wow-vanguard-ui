@@ -287,7 +287,7 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   addon.eval("for i = #__wfgWorld.ah.owned, 1, -1 do local id = __wfgWorld.ah.owned[i].auctionID if id == 501 or id == 506 then table.remove(__wfgWorld.ah.owned, i) end end");
   addon.world.fireAuctionEvents({ itemID: 10940 }, 0);
   expect(restrictedLog(addon).length, "a click on it disabled, timers and every auction house event: nothing more").toBe(2);
-  expect([ownedRow(addon, 1)[1], ownedRow(addon, 3).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left (and the sold blade)").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
+  expect([ownedRow(addon, 1)[1], ownedRow(addon, 3).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left (and the sold blade); the event sweep closed the house, so the check's summary went with the visit").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["", false]]);
   expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the button").toBe(2);
 });
 it("the heading's count says how many auctions are listed, then how many are undercut (B10-1)", () => {
@@ -952,4 +952,24 @@ it("H45-31-101 an auction is undercut by another seller who shares a price row w
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   const marks = addon.eval(`local out = {} for i, a in ipairs(${HELPER}.owned) do out[i] = { a.id, a.undercut == true } end return out`);
   expect(marks, "501 is undercut by the other seller's 1s; 502 is at that price").toEqual([[501, true], [502, false]]);
+});
+
+it("H48-6-51 an undercut mark does not outlive the visit: reopening the house shows no undercut and Cancel next undercut waits for a new check", () => {
+  const addon = atAuctionHouse(`__wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+    __wfgWorld.ah.owned = { { auctionID = 501, itemKey = { itemID = 10940, itemLevel = 0, itemSuffix = 0 }, status = 0, quantity = 5, buyoutAmount = 150 } }
+    __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 }, { unitPrice = 150, quantity = 5, containsOwnerItem = true } }
+    __wfgWorld.ah.cancelCost = 0`);
+  const card = `${HELPER}.ownedCard`;
+  addon.click(`${card}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(addon.eval(`return { ${card}.count:GetText(), ${card}.cancelNext:IsEnabled() }`), "the check marked the auction").toEqual(["1 · 1 undercut", true]);
+  addon.world.closeAuctionHouse();
+  // The rival is gone by the time the house opens again.
+  addon.eval("__wfgWorld.ah.commodities[10940] = { { unitPrice = 150, quantity = 5, containsOwnerItem = true } }");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect(addon.eval(`return { ${card}.count:GetText(), ${card}.cancelNext:IsEnabled() }`), "the row stays, the mark and the button's go").toEqual(["1", false]);
 });

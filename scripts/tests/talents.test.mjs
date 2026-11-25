@@ -664,3 +664,24 @@ for (const locale of ["deDE", "ptBR", "ruRU"]) {
     });
   }
 }
+
+// A level-up with the auto-spend on and a point to spend, in a fight; with `off`, the planner switched off in that fight. The
+// planner after the fight ends: { ranks bought, commits }.
+const levelUpInFight = (off) => {
+  const addon = open();
+  addon.eval(`__points = 0 VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.settings.autoSpend = true`);
+  addon.eval("__wfgStub.inCombat = true __points = 1");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.fire("PLAYER_LEVEL_UP", 62);
+  addon.update(1.1);
+  if (off) addon.eval('ns.SetModuleEnabled("TalentPlanner", false)');
+  setCombat(addon, false);
+  addon.update(1);
+  return addon.eval("return { #__bought, __commits }");
+};
+it("H48-4-52 talent planner: control, a level-up spend queued in a fight buys when it ends", () => {
+  expect(levelUpInFight(false)).toEqual([1, 1]);
+});
+it("H48-4-52 talent planner: switched off in that fight, the queued level-up spend buys nothing", () => {
+  expect(levelUpInFight(true)).toEqual([0, 0]);
+});

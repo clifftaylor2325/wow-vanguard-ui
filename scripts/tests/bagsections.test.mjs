@@ -1093,3 +1093,22 @@ it("H44-30-50 a search box and money line whose anchoring the client hides are r
   addon.eval("__holdMoney = false ContainerFrameCombinedBags:UpdateCurrencyFrames() __holdMoney = true ContainerFrameCombinedBags:UpdateCurrencyFrames()");
   expect(addon.eval("return #ns.errors"), "the money line on the currency tracker, hidden again: nothing raised").toBe(0);
 });
+
+// H48-3-52: Fill checks a list's type, never its entries, so a crafted or damaged string (or a hand-edited file) could
+// leave a category with no name, no items table, or no table at all. Bags' upgrade (ns.Migrate) drops or mends them.
+const DAMAGED_CATEGORIES = `{ { name = "Odd" }, { name = "B", items = 5 }, 7, { items = {} }, { name = "Good", items = { [6948] = true } } }`;
+it("H48-3-52 bag categories: a saved list with wrong-shaped entries is cleaned at login, so the readers answer", () => {
+  const addon = loggedIn("", { savedVariables: `VanguardDB.profiles = { Default = { Bags = { categories = ${DAMAGED_CATEGORIES} } } }` });
+  const read = addon.eval(`local BG = ns.GetModule("Bags")
+    local ok, key = pcall(BG.CategoryOf, 6948)
+    local sections = {} for _, s in ipairs(BG.CategorySections()) do sections[#sections + 1] = s.label end
+    SlashCmdList.VANGUARD("bag")
+    return { ok, key, sections, #ns.errors }`);
+  expect(read, "the item is found in its category; the categories with a name stay, the others are gone; nothing raised").toEqual([true, "cat:good", ["Odd", "B", "Good"], 0]);
+});
+it("H48-3-52 bag categories: a string with wrong-shaped categories is saved clean", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ Bags = { categories = ${DAMAGED_CATEGORIES} } })))`);
+  const kept = addon.eval(`local out = {} for _, c in ipairs(VanguardDB.profiles.Imported.Bags.categories) do out[#out + 1] = { c.name, type(c.items) } end return out`);
+  expect(kept, "only the entries with a name are saved, each with an items table").toEqual([["Odd", "table"], ["B", "table"], ["Good", "table"]]);
+});

@@ -432,12 +432,15 @@ function AH.OnShow()
   ns.Every("auction scan countdown", AH.COUNTDOWN_TICK, AH.PaintScan, AH.scanCard)
 end
 
--- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
--- window), the sale and the game's last answer to it go, and the modes it was in are forgotten.
+-- The auction house closed: searches waiting and a scan still reading listings stop (the pages go with the
+-- window), the sale and the game's last answer to it go, and the modes it was in and the undercut marks are
+-- forgotten. A scan that has read every listing goes on recording its prices (a few frames), so none are lost.
 function AH.OnClosed()
-  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell, AH.sellAnswer = false, nil, nil, {}, nil, nil, nil
+  local recording = AH.scan and AH.scan.ids and AH.scan
+  AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell, AH.sellAnswer = false, recording, nil, {}, nil, nil, nil
   AH.mode, AH.lastMode, AH.lateScan, AH.checkedItems = nil, nil, nil, nil
-  AH.walker:Hide()
+  AH.ForgetUndercuts()
+  if not recording then AH.walker:Hide() end
   ns.Every("auction scan countdown", nil)
 end
 
@@ -560,37 +563,56 @@ function AH.ScanRow(s, i)
   AH.ScanGear(s, i, id, unit)
 end
 
--- One frame of the scan: the next AH.SCAN_ROWS listings; after the last, the prices are recorded.
+-- One item's prices go in the price store (the scan's own moment, s.now, the same for every item).
+local function recordItem(s, id)
+  local low, units, market = AP.Summary(s.items[id])
+  AP.Record(id, low, s.now, { units = units, market = market, listings = s.listings[id] })
+end
+
+-- Every listing is read: the items to record are listed, to go in the store AH.SCAN_ROWS a frame (RecordStep).
+local function beginRecording(s)
+  s.ids, s.recorded, s.now = {}, 0, AP.Now()
+  for id in pairs(s.items) do s.ids[#s.ids + 1] = id end
+end
+
+-- One frame of recording: the next AH.SCAN_ROWS items; after the last, the scan is finished.
+local function recordStep(s)
+  local last = math.min(s.recorded + AH.SCAN_ROWS, #s.ids)
+  for i = s.recorded + 1, last do recordItem(s, s.ids[i]) end
+  s.recorded = last
+  if last >= #s.ids then AH.FinishScan() end
+end
+
+-- One frame of the scan: the next AH.SCAN_ROWS listings; after the last, the prices are recorded the same way, the
+-- first of them in the same frame (so a small scan is done in one).
 function AH.ScanStep()
   local s = AH.scan
+  if s.ids then return recordStep(s) end
   local last = math.min(s.next + AH.SCAN_ROWS, s.total) - 1
   for i = s.next, last do AH.ScanRow(s, i) end
   s.next = last + 1
   AH.PaintScan()
-  if s.next >= s.total then AH.FinishScan() end
+  if s.next < s.total then return end
+  beginRecording(s)
+  recordStep(s)
 end
 
--- Each item's cheapest unit price, units up, market value and listings go in the price store; how many items.
-local function recordScan(s, now)
-  local n = 0
-  for id, prices in pairs(s.items) do
-    local low, units, market = AP.Summary(prices)
-    AP.Record(id, low, now, { units = units, market = market, listings = s.listings[id] })
-    n = n + 1
-  end
-  AP.Cap()
-  return n
+-- The game is logging out or reloading while a scan is still recording its prices: the rest are recorded now (one
+-- frame's hitch), so the store is capped and the scan stamped, as a scan that finished.
+function AH.OnLogout()
+  local s = AH.scan
+  while s and s.ids and AH.scan == s do recordStep(s) end
 end
 
--- The whole list is read: the prices are recorded, the gear found goes to be judged, and the 15
--- minutes run from the scan's start.
+-- Every item is recorded: the store is capped, the gear found goes to be judged, and the 15 minutes run from
+-- the scan's start.
 function AH.FinishScan()
   local s = AH.scan
-  local n = recordScan(s, AP.Now())
+  AP.Cap()
   AP.House().lastScan, AP.Store().scannedAt, AH.scan = s.started, s.started, nil
   AH.walker:Hide()
   AH.JudgeGear(s.gear)
-  local line = ns.Format(L["Auction house scanned: {listings} listings, prices for {items} items."], { listings = s.total, items = n })
+  local line = ns.Format(L["Auction house scanned: {listings} listings, prices for {items} items."], { listings = s.total, items = #s.ids })
   if s.mine > 0 then line = line .. " " .. ns.Format(L["{count} of them were yours and are left out."], { count = s.mine }) end
   ns.Chat(line)
   AH.PaintScan()
@@ -646,7 +668,7 @@ AH.COMMANDS = {
   scan = function() AH.StartScan() end,
   -- Forgets every price (of every realm and faction).
   prices = function(arg)
-    if arg ~= "clear" then return AH.Status() end
+    if arg:lower() ~= "clear" then return AH.Status() end
     AP.Store().houses = {}
     ns.Chat(L["Forgot every auction price."])
   end,
@@ -697,6 +719,7 @@ end
 -- The auction house's events the helper follows, then each file's own.
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
+  on("PLAYER_LOGOUT", AH.OnLogout) -- a scan that is recording its prices ends first
   ns.On("AUCTION_HOUSE_CLOSED", AH.OnClosed) -- only clears Vanguard's own state, however the house closed
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)

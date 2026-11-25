@@ -468,6 +468,12 @@ function O.ResetTheme()
   return false
 end
 
+-- Asks before the whole theme goes back to its defaults (no copy is kept).
+local function askResetTheme()
+  local question = L["Reset the theme? Your accent, variant, fonts, text size and every other theme setting go back to the defaults. This can't be undone."]
+  ns.Ask(question, L["Reset"], O.ResetTheme, function() end, "danger")
+end
+
 -- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", L["Look"] }, { "preview" }, { "swatches" },
@@ -478,7 +484,7 @@ local function lookRows()
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check(L["Pixel-perfect scale"], function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end, T.DEFAULTS.pixelScale)
-  rows[#rows + 1] = { "button", L["Reset theme"], function() O.ResetTheme() end }
+  rows[#rows + 1] = { "button", L["Reset theme"], askResetTheme }
   return rows
 end
 
@@ -510,6 +516,12 @@ local function layoutRows()
   }), ns.Graphics.Rows())
 end
 
+-- Asks before every frame goes back to its default spot, size, scale and opacity (no copy is kept).
+local function askResetPositions()
+  local question = L["Put every frame back at its default spot? Saved positions, sizes and scales go, those of switched-off modules too. This can't be undone."]
+  ns.Ask(question, L["Reset"], function() ns.ResetMovers("all"); O.Refresh() end, function() end, "danger")
+end
+
 -- General, part four: one frame's scale, opacity and size, and resetting every frame.
 local function sizeRows()
   return {
@@ -518,7 +530,7 @@ local function sizeRows()
     { "slider", L["Its opacity"], MOVER_ALPHAS, moverLook(2, ns.SetMoverAlpha) },
     { "slider", L["Its width"], moverSizes("width", 1200, 2), moverSize("width") },
     { "slider", L["Its height"], moverSizes("height", 80, 1), moverSize("height") },
-    { "button", L["Reset all positions"], function() ns.ResetMovers("all"); O.Refresh() end },
+    { "button", L["Reset all positions"], askResetPositions },
   }
 end
 
@@ -832,16 +844,23 @@ local function currentProfileText()
   return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
 end
 
+-- Yes to a reset: backs up and resets the profile that was asked about, then runs after(backup name). A profile
+-- switch that landed while the question was open (a spec change, the header picker) means nothing is reset.
+local function resetAnswered(name, after)
+  if ns.ProfileName() ~= name then return ns.Chat(L["Nothing was reset: the profile in use changed. Ask again."]) end
+  local backup = ns.BackupProfile()
+  ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
+  ns.ResetProfile()
+  after(backup)
+end
+
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
 -- using it) and where its copy goes; yes backs it up, resets it and runs after(backup name).
 local function confirmReset(what, yes, after)
   local name = ns.ProfileName()
   local q = L["{question} Every setting in profile {profile} goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile {backup}."]
   ns.Ask(ns.Format(q, { question = what, profile = name, backup = ns.BackupName(name) }), yes, function()
-    local backup = ns.BackupProfile()
-    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
-    ns.ResetProfile()
-    after(backup)
+    resetAnswered(name, after)
   end, function() end, "danger")
 end
 
@@ -1027,7 +1046,7 @@ do
   -- The addons button by the minimap: left-click options, right-click move frames.
   local function click(_, button)
     if button == "RightButton" then
-      if ns.Unlocked() then ns.Lock() else ns.Unlock() end
+      if ns.Unlocked() then ns.Lock() elseif not ns.Unlock() then ns.Chat(L["In combat. Try again once combat ends."]) end
     else
       O.Toggle()
     end

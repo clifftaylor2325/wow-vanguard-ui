@@ -671,16 +671,44 @@ local function sayImported(kind, skipped)
   if skipped and #skipped > 0 then ns.Chat(ns.Format(L["Skipped what Vanguard doesn't weigh: {stats}."], { stats = table.concat(skipped, ", ") })) end
 end
 
+-- Applies a pasted string and says what it did; the box closes once it took (a failure leaves it open).
+local function applyImport(text)
+  local done, detail, skipped = UP.Import(text)
+  if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
+  ns.HideText()
+  sayImported(detail, skipped)
+end
+
+-- The kind a pasted string would replace the weights of (a guide string sets the kind in use, a Vanguard string its own),
+-- or nil when it is not a string UP.Import would take (another class's guide string, no stat Vanguard weighs, a Vanguard string with no weights, garbage).
+local function importedKind(text)
+  local guide = ns.UpgradeStrings.Parse(text)
+  if guide then return (not guide.class or guide.class == UP.Class()) and next(guide.weights) and select(2, UP.Current()) or nil end
+  local scope, data = ns.Serialize.Decode(text)
+  local made = scope == "weights" and type(data) == "table" and type(data.weights) == "table"
+  return made and W.KINDS[data.kind] and data.kind or nil
+end
+
+-- Asks before an import replaces the weights you set by hand for its kind (a "danger" question: the old ones are not
+-- kept). The kind is taken when the question is asked: a role change before the click must not replace another kind's.
+local function askReplaceWeights(text, kind)
+  local question = ns.Format(L["Replace your own {kind} weights with the ones from this string? This can't be undone."], { kind = UP.Word(kind) })
+  ns.Ask(question, L["Replace"], function()
+    if importedKind(text) ~= kind then return ns.Chat(L["Nothing was imported: the weights in use changed. Paste the string again."]) end
+    applyImport(text)
+  end, nil, "danger")
+end
+
 -- The import box (Import stat weights under Gear upgrades, /vg weights import): paste a string from /vg weights
--- export or a guide site.
+-- export or a guide site. Weights you set by hand for its kind are replaced only on a Yes.
 function UP.ImportDialog()
   if not UP.settings then return UP.Wizard.SayNotStarted() end
   ns.AskText(L["Paste a Vanguard or guide site weights string, then Import"], function(text)
     if not UP.settings then ns.HideText() return UP.Wizard.SayNotStarted() end
-    local done, detail, skipped = UP.Import(text)
-    if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
+    local kind = importedKind(text)
+    if not (kind and next(UP.Own(kind) or {})) then return applyImport(text) end
     ns.HideText()
-    sayImported(detail, skipped)
+    askReplaceWeights(text, kind)
   end)
 end
 

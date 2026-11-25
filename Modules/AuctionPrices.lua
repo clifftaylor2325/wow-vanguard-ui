@@ -176,6 +176,13 @@ local function tellSeen(itemID, unitPrice, t)
   for _, fn in ipairs(AP.seenListeners) do ns.Try("auction price seen", fn, itemID, unitPrice, t) end
 end
 
+-- A price row's day tables, made when it has none or a saved one is of the wrong type; a row that has them costs
+-- no table (a scan records thousands).
+local function ensureDayTables(p)
+  if type(p.days) == "table" and type(p.qtys) == "table" and type(p.markets) == "table" then return end
+  ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+end
+
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
 -- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
 -- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS from a search evicts the
@@ -185,7 +192,7 @@ function AP.Record(itemID, unitPrice, t, scan)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
   if not p then p = {} house.prices[itemID] = p house.count = house.count + 1 end
-  ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  ensureDayTables(p)
   local listings = scan and scan.listings
   p.min, p.t, p.listings = unitPrice, t, listings or p.listings
   noteDay(p, day, unitPrice, scan)

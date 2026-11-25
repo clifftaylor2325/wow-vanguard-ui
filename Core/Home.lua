@@ -318,7 +318,7 @@ function H.AskClear()
   local text = betaText(H.Beta())
   if not text then return ns.Chat(L["No prices, sales or characters saved from before launch."]) end
   local question = ns.Format(L["Clear what was saved before launch ({saved})? Prices, sales and characters you saw after launch stay."], { saved = text })
-  ns.Ask(question, L["Clear"], function() H.Launch("clear") end, function() end)
+  ns.Ask(question, L["Clear"], function() H.Launch("clear") end, function() end, "danger")
 end
 
 -- Once per account, after launch, on WoW Forever (Retail had no beta): says when beta data is still saved and where to clear it.

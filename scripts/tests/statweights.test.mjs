@@ -248,6 +248,7 @@ it("stat weights: a guide site's weight string sets the weights in use for your 
   addon.clearChat();
   addon.slash("weights import");
   addon.eval(`Vanguard_TextEdit:SetText('( Tool: v1: "TEST-ONLY": Stamina=1 )') Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect([chatHas(addon, /Imported weights/), chatHas(addon, /Skipped what/)], "a string with only stats it weighs").toEqual([true, false]);
 });
 
@@ -284,4 +285,49 @@ it("H44-23-52: a per-kind entry from an older Vanguard does not replace a class'
   const addon = loggedIn(GEAR, { savedVariables: saved });
   const w = addon.eval("local w = ns.GetModule('Upgrades').settings.weights return { w.strength == nil, w.WARRIOR.strength.STR, w.PALADIN.strength.STR }");
   expect(w, "the per-kind key is gone, the warrior keeps its own 3, a class with none takes the per-kind 5").toEqual([true, 3, 5]);
+});
+
+it("H48-6-R1 Import stat weights asks before it replaces weights you set by hand; No keeps them, Yes replaces, a kind on defaults imports at once", () => {
+  const addon = loggedIn(GEAR);
+  const UP = "ns.GetModule('Upgrades')";
+  // Opens the import box, pastes the text and presses Import.
+  const paste = (text) => addon.eval(`${UP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  // The strength weight in use.
+  const strength = () => addon.eval(`return (${UP}.Current()).STR`);
+  const guide = '( Tool: v1: "TEST-ONLY": Class=Warrior, Strength=3 )';
+  paste(guide);
+  expect([strength(), addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false")], "weights on defaults: imported at once, no question").toEqual([3, false]);
+  addon.slash("weights set str 7");
+  paste(guide);
+  expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Question.confirm.kind, Vanguard_Question.title:GetText() }"), "hand-set weights: a danger question names the kind")
+    .toEqual([true, "danger", "Replace your own strength weights with the ones from this string? This can't be undone."]);
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect(strength(), "No keeps them").toBe(7);
+  paste(guide);
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect([strength(), chatHas(addon, /Imported weights for strength\./)], "Yes replaces them").toEqual([3, true]);
+  // Whether a question shows.
+  const asked = () => addon.eval("return Vanguard_Question:IsShown()");
+  paste('( Tool: v1: "TEST-ONLY": Class=Mage, Strength=1 )');
+  expect([asked(), chatHas(addon, /Import failed: the string is for another class/)], "another class's string just fails: no question").toEqual([false, true]);
+});
+
+it("H48-10-6 a Vanguard weights string with no weights fails in the open box, with no replace question", () => {
+  const addon = loggedIn(GEAR);
+  const UP = "ns.GetModule('Upgrades')";
+  addon.slash("weights set str 7");
+  const bad = addon.eval("return ns.Serialize.Encode('weights', { kind = 'strength' })");
+  addon.eval(`${UP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(bad)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Import failed: not a weights string/)], "no question, the box stays, the reason is said").toEqual([false, true, true]);
+});
+
+it("H48-6-R1 a role change while the replace question is open imports nothing", () => {
+  const addon = loggedIn(GEAR);
+  const UP = "ns.GetModule('Upgrades')";
+  addon.slash("weights set str 7");
+  addon.eval(`${UP}.ImportDialog() Vanguard_TextEdit:SetText('( Tool: v1: "TEST-ONLY": Class=Warrior, Strength=3 )') Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  addon.eval("__wfgWorld.units.player.role = 'TANK'");
+  addon.fire("PLAYER_ROLES_ASSIGNED");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect([chatHas(addon, /Nothing was imported: the weights in use changed\./), addon.eval(`return (${UP}.Own('strength')).STR`)], "the strength weights stay").toEqual([true, 7]);
 });

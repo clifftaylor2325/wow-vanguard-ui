@@ -38,6 +38,15 @@ it("options window", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
 });
 
+it("options: right-clicking the addons button in a fight says why the frames did not unlock", () => {
+  const addon = loggedIn();
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  addon.eval('Vanguard_OnAddonCompartmentClick("Vanguard", "RightButton")');
+  expect(addon.eval("return ns.Unlocked()"), "nothing unlocks in a fight").toBe(false);
+  expect(chatHas(addon, /In combat\. Try again once combat ends\./), "and the click says it is the fight").toBe(true);
+});
+
 it("options: pointing at the addons button says the version, what each click does and the errors caught", () => {
   const addon = loggedIn();
   // Hovers the addons button: the tooltip's lines and whether it shows; then leaves it.
@@ -177,6 +186,9 @@ const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.fra
 const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${name}" and w.card and ns.Options.RevealRow(w) then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
 
+// Presses the shown question's Yes (the one its kind picked).
+const answerYes = (addon) => addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+
 // Runs one of a profile row's button scripts (OnEnter, OnLeave) and returns the tooltip: shown, first line.
 const profileHover = (addon, name, button, script) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${name}" and w.card and ns.Options.RevealRow(w) then local b = w.${button} b:GetScript("${script}")(b)
@@ -220,12 +232,12 @@ it("options: after Copy here or Reset profile on the profile in use, the footer 
   staged.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
   profileButton(staged, "TEST-ONLY Tank", "use");
   profileButton(staged, "TEST-ONLY Healer", "copy");
-  profileButton(staged, "TEST-ONLY Healer", "copy");
+  answerYes(staged);
   expect(notice(staged), "Copy here into the staged profile leaves the profile on screen alone: the usual notice").toEqual([true, "Some changes need a reload"]);
   const copied = loggedIn(CLICK_LUA);
   copied.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
   profileButton(copied, "TEST-ONLY Healer", "copy");
-  profileButton(copied, "TEST-ONLY Healer", "copy");
+  answerYes(copied);
   expect(notice(copied), "Copy here into the profile in use: the modules keep its old settings until the reload").toEqual([true, "Profile replaced: reload before you change more"]);
   const reset = loggedIn(CLICK_LUA);
   reset.eval('ns.Options.Show("profiles") __click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
@@ -276,14 +288,14 @@ it("options: profiles in the window", () => {
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
   expect(profileRow(addon, "Default"), "the profile in use is marked and has no buttons").toEqual(["Default  (in use)", false, false, false]);
   expect(profileRow(addon, "TEST-ONLY Healer"), "every other profile can be used, copied here or deleted").toEqual(["TEST-ONLY Healer", true, true, true]);
-  expect(profileButton(addon, "TEST-ONLY Tank", "delete"), "Delete asks first").toBe("Sure?");
+  expect([profileButton(addon, "TEST-ONLY Tank", "delete"), addon.eval("return Vanguard_Question:IsShown()")], "Delete asks first, and keeps its label").toEqual(["Delete", true]);
   expect(addon.eval('return VanguardDB.profiles["TEST-ONLY Tank"] ~= nil'), "and deletes nothing yet").toBe(true);
-  profileButton(addon, "TEST-ONLY Tank", "delete");
-  expect([addon.eval('return VanguardDB.profiles["TEST-ONLY Tank"] == nil'), profileRow(addon, "TEST-ONLY Tank")], "the second click deletes it, and the page rebuilds without it").toEqual([true, null]);
+  answerYes(addon);
+  expect([addon.eval('return VanguardDB.profiles["TEST-ONLY Tank"] == nil'), profileRow(addon, "TEST-ONLY Tank")], "Yes deletes it, and the page rebuilds without it").toEqual([true, null]);
   addon.eval('VanguardDB.profiles["TEST-ONLY Healer"].Chat = { background = false }');
   profileButton(addon, "TEST-ONLY Healer", "copy");
-  profileButton(addon, "TEST-ONLY Healer", "copy");
-  expect(addon.eval("return VanguardDB.profiles.Default.Chat.background"), "Copy here (asked twice) copies that profile's settings over this one").toBe(false);
+  answerYes(addon);
+  expect(addon.eval("return VanguardDB.profiles.Default.Chat.background"), "Copy here (after its question) copies that profile's settings over this one").toBe(false);
   profileButton(addon, "TEST-ONLY Healer", "use");
   expect([addon.eval("return ns.ProfileName()"), addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Healer"), addon.eval("return Vanguard_Options.reload:IsShown()")], "Use stages the switch (it applies on reload): the profile on screen stays, the chosen one is marked and has no buttons")
     .toEqual(["Default", "TEST-ONLY Healer", ["TEST-ONLY Healer  (after reload)", false, false, false], true]);
@@ -585,7 +597,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
   expect(addon.eval("return { ns.MoverLook('minimap') }"), "the opacity slider sets the picked frame's opacity").toEqual([1, 0.5]);
   expect(addon.eval(`return { ${sliderRow("Its opacity")}.reset:IsShown(), ${sliderRow("Its opacity")}.value:GetText() }`), "a changed one shows the reset dot, as a percent").toEqual([true, "50%"]);
-  addon.eval('__click("Reset all positions")');
+  addon.eval('__click("Reset all positions") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval(`return { ns.MoverLook("${first}") }`).concat(addon.eval(`return ${sliderRow("Its opacity")}.get()`)), "Reset all positions puts every scale and opacity back").toEqual([1, 1, 1]);
 });
 
@@ -1487,14 +1499,21 @@ it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; t
   expect(addon.eval("return { Vanguard_Reload:IsShown(), Vanguard_Reload.accept.reloadOverlay:IsShown() }"), "Later hides the dialog and the overlay with it").toEqual([false, false]);
 });
 
-it("profiles: an armed Delete asks again after the window was closed, so one later click deletes nothing", () => {
-  const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Spare"] = {}');
+it("H48-6-4 a double click on Delete or Copy here only asks: nothing is deleted or copied until Yes, and No leaves both", () => {
+  const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Spare"] = { Chat = { background = false } }');
   addon.eval('ns.Options.Show("profiles")');
-  expect(addon.eval('return __click("Delete")'), "the first click arms Delete").toBe(true);
-  addon.eval("ns.Options.Hide() Vanguard_Options:Hide()");
-  addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show("profiles")');
-  expect(addon.eval('return { __click("Sure?"), VanguardDB.profiles["TEST-ONLY Spare"] ~= nil }'), "no button still says Sure?, and the profile is still there").toEqual([false, true]);
-  expect([addon.eval('return __click("Delete")'), addon.eval('return __click("Sure?")'), addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] == nil')], "two clicks still delete it").toEqual([true, true, true]);
+  profileButton(addon, "TEST-ONLY Spare", "delete");
+  profileButton(addon, "TEST-ONLY Spare", "delete");
+  expect([addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] ~= nil'), addon.eval("return Vanguard_Question.confirm.kind")], "two clicks delete nothing; the question is a danger one").toEqual([true, "danger"]);
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  profileButton(addon, "TEST-ONLY Spare", "copy");
+  profileButton(addon, "TEST-ONLY Spare", "copy");
+  expect(addon.eval("return (VanguardDB.profiles.Default.Chat or {}).background ~= false"), "two clicks on Copy here copy nothing").toBe(true);
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect(addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] ~= nil'), "No keeps the profile").toBe(true);
+  profileButton(addon, "TEST-ONLY Spare", "delete");
+  answerYes(addon);
+  expect(addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] == nil'), "Yes deletes it").toBe(true);
 });
 it("profiles: Use is a plain button, so Create is the page's one accent button", () => {
   const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Healer"] = {}');
@@ -1927,14 +1946,14 @@ const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsSho
 it("Reset theme: a reset that only changes the accent needs no reload", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("accent arcane");
-  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(reloadNotice(addon), "no notice").toBe(false);
   addon.slash("theme reset");
   expect(chatHas(addon, /Theme back to defaults\.$/), "chat says it plainly").toBe(true);
 });
 it("Reset theme with Safer colours on shows the reload notice, and /vg theme reset says to reload", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
   addon.eval("ns.Theme.Settings().hudShadow = true");
   addon.slash("theme reset");
@@ -1943,7 +1962,7 @@ it("Reset theme with Safer colours on shows the reload notice, and /vg theme res
 it("Reset theme from High contrast shows the reload notice, since its Safer colours go off with it", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("variant contrast");
-  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.ColorAssist()"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
   addon.slash("variant midnight");
   addon.slash("theme reset");
@@ -1970,7 +1989,7 @@ it("/vg variant offers a reload only when the variant turns Safer colours on or 
 });
 it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
 });
 it("a page rebuilt while it shows (a module filter picked on the Modules page) keeps its tab and its scroll", () => {
@@ -2865,4 +2884,31 @@ it("options: the choice words of Numbers, Tooltips, Debuff icons and Weigh stats
     return out`);
   expect(labels.length, "the rows were found").toBeGreaterThan(8);
   expect(labels.filter((label) => /^[a-z]/.test(label)), "no lower-case choice").toEqual([]);
+});
+
+it("H48-6-1 Reset profile asked about one profile resets nothing when another is in use by the time Yes is pressed", () => {
+  // Every reload-only module off, so a profile switch lands at once while the question is open.
+  const liveOff = `for _, name in ipairs(ns.ModuleNames()) do
+    if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules = p.modules or {} p.modules[name] = false end end
+  end`;
+  const addon = loggedIn(CLICK_LUA + liveOff, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } }, Raid = { Chat = { background = false } } }\n" });
+  addon.eval('ns.Options.Show("profiles") __click("Reset profile")');
+  expect(addon.eval('return ns.SwitchProfileNow("Raid")'), "the switch lands at once").toBe(true);
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat ~= nil, VanguardDB.profiles.Raid.Chat ~= nil, VanguardDB.profiles['Raid backup'] == nil, VanguardDB.profiles['Default backup'] == nil }"), "neither profile is reset or backed up").toEqual([true, true, true, true]);
+  expect(chatHas(addon, /Nothing was reset: the profile in use changed\. Ask again\./), "and chat says so").toBe(true);
+});
+
+it("H48-6-3 Reset all positions and Reset theme ask first (a danger question); No leaves everything as it was", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("accent arcane");
+  addon.eval('ns.SetMoverPoint("infostrip", "TOPLEFT", "TOPLEFT", 40, -60) ns.Options.Show("general")');
+  for (const label of ["Reset all positions", "Reset theme"]) {
+    addon.eval(`__click("${label}")`);
+    expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Question.confirm.kind }"), `${label} asks, and Enter never answers it`).toEqual([true, "danger"]);
+    addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  }
+  expect(addon.eval("return { VanguardDB.profiles.Default.positions.infostrip.x, select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1] }"), "No resets neither").toEqual([40, true]);
+  addon.eval('__click("Reset all positions") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.infostrip == nil"), "Yes forgets the saved spots").toBe(true);
 });

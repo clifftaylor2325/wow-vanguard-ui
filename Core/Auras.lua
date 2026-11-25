@@ -389,15 +389,26 @@ function A.Signature(spec)
   return table.concat(parts, " ")
 end
 
--- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client keeps
--- from addons, for good or for now (A.ShutFrom), is left as it is; false then, so the caller keeps it.
+-- Puts a container away to be shown again (a module switched off): emptied, hidden and out of the follow set. One the
+-- client keeps from addons, for good or for now (A.ShutFrom), is left as it is; false then, so the caller keeps it.
+-- It stays in the theme's walks, so a later look change still repaints it once it is shown.
 ---@param c table  a container from A.Container
 ---@return boolean put
-function A.Retire(c)
+function A.Park(c)
   if A.ShutFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
   A.followed[c.frame] = nil
+  return true
+end
+
+-- Puts a container away for good (a setting asked for other icons): parked, and out of the theme's walks (T.Forget).
+-- The game never frees the frame, so a hidden one would be repainted on every theme change.
+---@param c table  a container from A.Container
+---@return boolean put
+function A.Retire(c)
+  if not A.Park(c) then return false end
+  ns.Try("aura retire forget", T.Forget, c.frame)
   return true
 end
 

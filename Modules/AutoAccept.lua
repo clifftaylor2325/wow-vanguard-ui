@@ -13,9 +13,10 @@ local L = ns.L
 local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, loot = false }, live = true })
 
 -- Whether the module runs now. Stopped, it acts for the player in no way at all: not on a prompt that is
--- already waiting for the end of a fight either (that deferred call checks this too).
+-- already waiting for the end of a fight either (that deferred call checks this too). Switched off in a fight, the
+-- scope runs on until the settle after the fight, so the switch is read as well.
 function AA.Active()
-  return AA.scope ~= nil and AA.scope:Running()
+  return AA.scope ~= nil and AA.scope:Running() and ns.ModuleEnabled("AutoAccept")
 end
 
 -- Calls a function from C_SummonInfo, else the global of that name; nil when neither exists.
