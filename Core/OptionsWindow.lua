@@ -280,10 +280,13 @@ local function defaultOf(row)
   return at and row[at + 1]
 end
 
--- Whether a row with a default holds another value now.
+-- Whether a row with a default holds another value now. A row whose getter fails counts as unchanged (kept in
+-- /vg errors), so one broken row costs its own card and dot, never the window.
 local function rowChanged(row)
   local initial = defaultOf(row)
-  return initial ~= nil and getterOf(row)() ~= initial
+  if initial == nil then return false end
+  local ok, now = ns.Try("read options row", getterOf(row))
+  return ok and now ~= initial
 end
 
 -- Whether any of the rows differs from its default.

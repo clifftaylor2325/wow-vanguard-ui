@@ -2575,6 +2575,21 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
   addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
 });
 
+it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
+  addon.slash("");
+  const out = addon.eval(`local O = ns.Options
+    O.AddPage({ key = "zzbad", title = "TEST-ONLY page", icon = "NavProfiles", order = 99, rows = function() return {
+      { "header", "TEST-ONLY card" },
+      { "check", "TEST-ONLY bad", function() error("TEST-ONLY getter fails") end, function() end, true } } end })
+    local first = pcall(O.Show, "zzbad")
+    Vanguard_Options:Hide()
+    local second = pcall(O.Show, "general")
+    return { first, second, Vanguard_Options:IsShown(), #ns.errors > 0 }`);
+  expect(out, "both opens work and the failure is kept").toEqual([true, true, true, true]);
+  addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY getter') then table.remove(ns.errors, i) end end");
+});
+
 it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
