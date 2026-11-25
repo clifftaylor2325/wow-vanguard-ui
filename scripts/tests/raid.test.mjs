@@ -160,6 +160,29 @@ it("raid frames: a new grid scale places the role-mark and status-mark shadows a
   expect(addon.eval("return Vanguard_Raid:GetScale()"), "drawn at the 40-player size").toBe(0.72);
 });
 
+it("H47-7-103: the preview slides the options window clear of the sample tiles, and the window comes back when it stops", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(1920, 1080)");
+  addon.slash("");
+  // The options window and the preview overlap on screen (their rects, in screen units).
+  const covered = () => addon.eval(`local a, b = Vanguard_Options, Vanguard_RaidPreview
+    local sa, sb = a:GetEffectiveScale(), b:GetEffectiveScale()
+    return a:GetLeft() * sa < b:GetRight() * sb and b:GetLeft() * sb < a:GetRight() * sa and a:GetBottom() * sa < b:GetTop() * sb and b:GetBottom() * sb < a:GetTop() * sa`);
+  // The options window's left edge.
+  const left = () => addon.eval("return Vanguard_Options:GetLeft()");
+  const before = left();
+  addon.slash("preview 5");
+  expect([covered(), left() !== before], "the window moved off the party preview").toEqual([false, true]);
+  addon.slash("preview off");
+  expect(left(), "and is back where it was").toBe(before);
+  addon.slash("preview 10");
+  addon.slash("preview 40");
+  expect(covered(), "a 40 preview is clear of it too").toBe(false);
+  addon.eval("local w = Vanguard_Options w:ClearAllPoints() w:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, 0)");
+  const placed = left();
+  addon.slash("preview 25");
+  expect(left(), "a window the player already moved clear is left alone").toBe(placed);
+});
+
 it("raid preview: stepping from 25 to 40 sample players works the tiles' borders out again for the new scale, once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
   addon.slash("preview 25");
