@@ -283,10 +283,18 @@ function ns.ShowTextAtEnd(title, text)
   f.edit:HighlightText()
 end
 
+-- The text box taken over for a new use: the find box's place is its, and work it was showing (an import
+-- still being read) ends, as when text opens in it.
+local function takeOverText()
+  local f = takePlace(textBox(), find)
+  dismissText(f)
+  return f
+end
+
 -- An empty box to type or paste into; onImport(text) runs when the primary button
 -- (Import, or the label given) is clicked, and Cancel sits beside it.
 function ns.AskText(title, onImport, label)
-  local f = takePlace(textBox(), find)
+  local f = takeOverText()
   f.ownTitle = title
   titleText(f, title)
   boxText(f, "")
@@ -299,7 +307,7 @@ function ns.AskText(title, onImport, label)
 end
 
 -- Runs fn once when the text dialog is closed, or shown with text to copy (ns.ShowText), whichever comes
--- first: the work it was showing, such as an import, stops then. Asking again (ns.AskText) leaves it pending.
+-- first, or asked again (ns.AskText): the work it was showing, such as an import, stops then.
 ---@param fn function
 function ns.OnTextDismissed(fn)
   textBox().onDismiss = fn

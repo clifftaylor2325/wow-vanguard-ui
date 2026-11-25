@@ -445,6 +445,12 @@ function ns.StartImport(text, progress, done)
   return job
 end
 
+-- Whether an import is being read now (one stopped by ns.CancelImport counts until its next step).
+---@return boolean
+function ns.ImportRunning()
+  return running
+end
+
 -- Stops an import started from the text box: its next step ends it without importing, so nothing
 -- is saved or staged and done is never called. A job that has ended is left as it is.
 ---@param job table|nil the job ns.StartImport returned

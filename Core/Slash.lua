@@ -573,8 +573,10 @@ local function startImport(text)
 end
 
 -- /vg import: a box to paste into. A large string is read a frame's work at a time, with
--- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport).
+-- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport). One still running is
+-- refused here, before the box is asked for again (which would end it).
 local function importCommand()
+  if ns.ImportRunning() then return chat(L["Import failed: an import is still running."]) end
   ns.AskText(L["Paste a Vanguard string, then Import"], startImport)
 end
 

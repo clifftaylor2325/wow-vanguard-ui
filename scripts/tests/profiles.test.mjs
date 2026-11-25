@@ -1218,6 +1218,22 @@ it("text opening in the import box (such as /vg export) stops the import and sta
   const addon = bigImportThen((a) => a.eval('ns.ShowText("Other text", "TEST-ONLY other")'));
   expect(addon.eval("return { VanguardCharDB.pendingProfile or false, Vanguard_TextDialog:IsShown(), Vanguard_TextDialog.title:GetText() }")).toEqual([false, true, "Other text"]);
 });
+// H48-10-3: another feature's paste box takes the box over, which ends the import it was showing.
+it("another paste box opening while a large import runs ends the import, and the new box is usable", () => {
+  const addon = bigImportThen((a) => a.eval('ns.AskText("TEST-ONLY other box", function() end)'));
+  expect(addon.eval("return { VanguardCharDB.pendingProfile or false, Vanguard_TextDialog.title:GetText(), Vanguard_TextDialog.primary:IsShown() }"), "no import, and the new box shows its title and its button").toEqual([false, "TEST-ONLY other box", true]);
+});
+it("/vg import while an import runs is refused, and leaves the running import going", () => {
+  const text = loggedIn().eval(BIG);
+  const addon = loggedIn();
+  addon.eval("ns.Serialize.BUDGET = 20");
+  importText(addon, text);
+  addon.clearChat();
+  addon.slash("import");
+  expect([chatHas(addon, /Import failed: an import is still running\./), addon.eval("return ns.ImportRunning()")], "refused before the box is asked for").toEqual([true, true]);
+  for (let frames = 0; frames < 400; frames++) addon.update(0.02);
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, ns.ImportRunning() }"), "it finished by itself").toEqual(["Imported", false]);
+});
 it("hiding every UI (Alt-Z hides UIParent, not the box) does not cancel a large import", () => {
   const addon = bigImportThen((a) => a.eval("Vanguard_TextDialog.__scripts.OnHide(Vanguard_TextDialog)"));
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "the import went on").toBe("Imported");
