@@ -703,6 +703,19 @@ it("H48-7-52: the house closing while the prices are recorded still records them
   expect(addon.eval(`return { ${HELPER}.scan == nil, ${HELPER}.walker:IsShown(), ns.AuctionPrices.House().count, ns.AuctionPrices.House().lastScan > 0, #ns.errors }`), "finished, stamped and stopped").toEqual([true, false, 1000, true, 0]);
 });
 
+it("H48-10-7: a logout while the prices are recorded records the rest and stamps the scan", () => {
+  const addon = atAuctionHouse();
+  let atLogout = null;
+  bigScan(addon, () => {
+    if (atLogout || addon.eval(`return ${HELPER}.scan == nil or ${HELPER}.scan.ids == nil`)) return;
+    addon.fire("PLAYER_LOGOUT");
+    atLogout = addon.eval(`return { ${HELPER}.scan == nil, ns.AuctionPrices.House().count, ns.AuctionPrices.House().lastScan > 0, #ns.errors }`);
+  });
+  expect(atLogout, "by the end of the logout: finished, all recorded, stamped").toEqual([true, 1000, true, 0]);
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return #ns.errors"), "a logout with no scan does nothing").toBe(0);
+});
+
 it("H48-7-52: recording a price a row already has makes no tables for its days", () => {
   const addon = atAuctionHouse();
   addon.eval(`ns.AuctionPrices.Record(2589, 90, __now) __fills = 0 local fill = ns.Fill ns.Fill = function(t, defaults) if defaults.days then __fills = __fills + 1 end return fill(t, defaults) end`);

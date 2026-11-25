@@ -597,6 +597,13 @@ function AH.ScanStep()
   recordStep(s)
 end
 
+-- The game is logging out or reloading while a scan is still recording its prices: the rest are recorded now (one
+-- frame's hitch), so the store is capped and the scan stamped, as a scan that finished.
+function AH.OnLogout()
+  local s = AH.scan
+  while s and s.ids and AH.scan == s do recordStep(s) end
+end
+
 -- Every item is recorded: the store is capped, the gear found goes to be judged, and the 15 minutes run from
 -- the scan's start.
 function AH.FinishScan()
@@ -712,6 +719,7 @@ end
 -- The auction house's events the helper follows, then each file's own.
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
+  on("PLAYER_LOGOUT", AH.OnLogout) -- a scan that is recording its prices ends first
   ns.On("AUCTION_HOUSE_CLOSED", AH.OnClosed) -- only clears Vanguard's own state, however the house closed
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
