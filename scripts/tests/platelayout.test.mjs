@@ -292,26 +292,30 @@ it("a plate's aura row the client has closed is never pointed at a unit: a remov
   expect(addon.eval("return { __plateOf('nameplate1'):IsShown(), #ns.errors }"), "drawn again with the closed row left as it is").toEqual([true, 0]);
 });
 
+// The client measuring text with the addon's real font widths (the seconds' box is measured on its font).
+const FONT_METRICS = '__wfgStub.textMetrics = "font"';
+
 // H47-6-101: the cast bar's spell name ends where the seconds begin, not 30 units before the bar's end, so a narrow
 // plate (80 x 10: a 67 wide bar) still shows the start of the spell.
 it("H47-6-101 a narrow plate's cast bar gives the spell name the room the seconds do not take", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved("width = 80, height = 10"));
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", { ...saved("width = 80, height = 10"), client: FONT_METRICS });
   const box = addon.eval(`local c = __plateOf("nameplate1").cast
     return { bar = c:GetWidth(), name = c.text:GetRight() - c.text:GetLeft(), nameRight = c.text:GetRight(), timeLeft = c.time:GetLeft() }`);
   expect(box.bar, "the plate's cast bar at 80 x 10").toBe(67);
-  expect(box.name, "the spell name's box").toBeGreaterThanOrEqual(40);
+  expect(box.name, "the spell name's box: well past the 29 the old fixed room left, the seconds keeping room for 00.0 (H47-22-4)").toBeGreaterThanOrEqual(35);
   expect(box.nameRight, "ends short of the seconds").toBeLessThan(box.timeLeft);
 });
 
 // H47-6-102: at the smallest plate height the cast bar's name and seconds are drawn no taller than the bar.
 it("H47-6-102 a 6 high plate's cast bar draws its texts no taller than the bar, and a tall one keeps the role's size", () => {
   // The cast bar's text sizes and the seconds' width on a plate of this height.
-  const sizeAt = (height) => loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", saved(`width = 80, height = ${height}`))
+  const sizeAt = (height) => loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __cast.nameplate1 = true", { ...saved(`width = 80, height = ${height}`), client: FONT_METRICS })
     .eval(`local c = __plateOf("nameplate1").cast local _, nameSize = c.text:GetFont() local _, timeSize = c.time:GetFont()
-      return { nameSize, timeSize, c.time:GetWidth() }`);
-  const [nameSize, timeSize, timeWidth] = sizeAt(6);
+      local text = c.time:GetText() c.time:SetText(ns.GetModule("CastBars").TIME_WIDEST) local widest = c.time:GetUnboundedStringWidth() c.time:SetText(text)
+      return { nameSize, timeSize, c.time:GetWidth(), math.ceil(widest) + 1 }`);
+  const [nameSize, timeSize, timeWidth, widest] = sizeAt(6);
   expect([nameSize, timeSize], "text size follows the bar").toEqual([6, 6]);
-  expect(timeWidth, "the seconds' room follows the text").toBe(Math.ceil(1.3 * 6));
+  expect([timeWidth, widest < 6 * 2.5], "the seconds' room is the widest seconds at that size (H47-22-4)").toEqual([widest, true]);
   expect(sizeAt(10)[0], "at the default height the role's own size").toBe(10);
 });
 

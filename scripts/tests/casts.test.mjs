@@ -1,8 +1,8 @@
 // casts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FAKE_FADES, RISE, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, FAKE_FADES, RISE, SETUP_DONE, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -765,4 +765,34 @@ it("H27-4-1: the ring's and the interrupt mark's sweeps follow the accent and th
 it("H27-4-4: the cast bar's time text is white, as the swing timer's seconds", () => {
   const addon = loggedIn(CAST_ENV);
   expect(isTok(addon, addon.eval("return Vanguard_CastBar_player.time.__textColor"), "white"), "white over the bar").toBe(true);
+});
+
+// A text-fit client casting a `seconds`-long spell on the target at Text size `scale` (live, after login, when `live`).
+function longCast(seconds, scale, live) {
+  const theme = live ? "" : `, theme = { textScale = ${scale} }`;
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }${theme} }` });
+  addon.eval(`GetTime = function() return 1000 end
+    UnitCastingInfo = function(unit) if unit == "target" then return "TEST-ONLY Spell", "", "ICON", 999000, ${999000 + seconds * 1000}, false, nil, false end end
+    UnitChannelInfo = function() return nil end`);
+  addon.login();
+  if (live) addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
+  addon.world.setUnit("target", { name: "Boar", hp: 50, maxhp: 100, reaction: 2 });
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.update(0.01);
+  return addon;
+}
+
+// What the text-fit audit finds on the target's cast bar seconds.
+const timeFindings = (addon) => {
+  const text = addon.eval("return Vanguard_CastBar_target.time:GetText()");
+  return [text.length > 0, addon.textFit("Vanguard_CastBar_target").filter((f) => f.text === text)];
+};
+
+it("H47-22-4 a cast of 10 s or more keeps its seconds whole, at the default and the largest Text size", () => {
+  for (const scale of [1, 1.3]) expect(timeFindings(longCast(15, scale)), `Text size ${scale}`).toEqual([true, []]);
+});
+
+it("H47-22-4 after a live Text size change the seconds' box follows the bigger text", () => {
+  expect(timeFindings(longCast(15, 1.3, true))).toEqual([true, []]);
 });
