@@ -31,8 +31,9 @@ local ROW_H = T.ROW.height
 -- above the rows; and the whole list's height (MAX_KEYS rows in view, the rest scroll, and a gap under them).
 local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
 local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
--- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
-local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
+-- The spell picker's width, where its rows start (the search box, T.CONTROL_H, with a gap over and under it) and the
+-- width of a row's Ranks button (room for its longest label in the languages the addon ships).
+local PICKER_W, PICKER_TOP, CHEVRON_W = 280, T.CONTROL_H + 2 * T.SPACE.gap, 76
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show (nil: while a binding uses them, see moreShown), the key the
@@ -280,7 +281,7 @@ local function rowParts(b)
   b.section = W.SectionHeader(b, "")
   b.section:SetPoint("LEFT", 2, 0)
   b.section:SetPoint("RIGHT", -2, 0)
-  b.chevron = W.Button(b, "", nil, 56)
+  b.chevron = W.Button(b, "", nil, CHEVRON_W)
   b.chevron:SetPoint("RIGHT", -2, 0)
 end
 

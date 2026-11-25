@@ -288,6 +288,21 @@ it("text fits: a hover key's long macro ends before its note and Remove (H47-19-
 });
 
 
+it("text fits: the spell picker's Ranks button shows its label whole, open and closed (H47-19-2)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
+  addon.world.learn(9472, { name: "Flash Heal", rank: 2, helpful: true });
+  addon.eval('ns.Options.Show("clickcast")');
+  const cell = addon.frames('w.key == "BUTTON3" and w.iconFrame ~= nil and w.empty ~= nil')[0].id;
+  addon.eval(`local c = __wfgStub.frames[${cell}] c:GetScript("OnClick")(c, "LeftButton")`);
+  expect(addon.eval('for _, r in ipairs(Vanguard_SpellPicker.rows) do if r.chevron:IsShown() then return true end end return false'), "a ranked spell shows its button").toBe(true);
+  expect(addon.textFit("Vanguard_SpellPicker"), "closed").toEqual([]);
+  addon.eval('Vanguard_SpellPicker.open["Flash Heal"] = true Vanguard_SpellPicker:Refresh()');
+  expect(addon.textFit("Vanguard_SpellPicker"), "open").toEqual([]);
+});
+
+
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "frFR" end' });
   addon.login();
