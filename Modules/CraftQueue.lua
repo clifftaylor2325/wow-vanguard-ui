@@ -367,11 +367,10 @@ local function makeRow(parent)
   local row = W.Row(parent, T.ROW.height, { width = CQ.LIST_WIDTH })
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
   row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
-  row.text:SetWidth(CQ.LIST_WIDTH - CQ.REMOVE_W - T.SPACE.gap)
-  row.text:SetJustifyH("LEFT")
-  row.text:SetWordWrap(false)
-  row.remove = W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W)
+  row.remove = ns.WidenToLabel(W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W))
   row.remove:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  row.text:SetPoint("RIGHT", row.remove, "LEFT", -T.SPACE.gap, 0)
+  ns.SingleLine(row.text)
   return row
 end
 
@@ -393,7 +392,29 @@ local function paintNote(f, queue)
   local empty = #queue == 0
   f.note:SetText(empty and L["Nothing queued. Pick a recipe, then Add to queue."] or CQ.ShortText())
   T.Color(f.note, empty and "muted" or "text2")
-  f:SetHeight(CQ.BASE_HEIGHT + math.max(0, math.ceil(f.note:GetStringHeight()) - CQ.NOTE_ROOM))
+end
+
+-- Whether the three buttons are wider than the panel's room, so Next and Clear sit in a row under Add to queue.
+local function stacked(f)
+  local widths = f.add:GetWidth() + f.next:GetWidth() + f.clear:GetWidth() + 2 * T.SPACE.tight
+  return widths > CQ.WIDTH - 2 * CQ.PAD
+end
+
+-- Lays the buttons along the bottom, or in two rows (Add to queue above Next and Clear) when one row is too wide.
+local function placeButtons(f)
+  local two = stacked(f)
+  f.add:ClearAllPoints()
+  f.next:ClearAllPoints()
+  f.add:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD + (two and T.BUTTON_H + T.SPACE.tight or 0))
+  if two then f.next:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD) else f.next:SetPoint("LEFT", f.add, "RIGHT", T.SPACE.tight, 0) end
+  f.rowsOfButtons = two and 2 or 1
+end
+
+-- Sizes the panel to its note and its rows of buttons: the base height plus what the note's wrapped lines need beyond
+-- its room and a second row of buttons.
+local function sizePanel(f)
+  local note = math.max(0, math.ceil(f.note:GetStringHeight()) - CQ.NOTE_ROOM)
+  f:SetHeight(CQ.BASE_HEIGHT + note + (f.rowsOfButtons - 1) * (T.BUTTON_H + T.SPACE.tight))
 end
 
 -- Paints the panel: the queue's rows and the note; Next and Clear work only while something is queued.
@@ -402,6 +423,8 @@ function CQ.Paint()
   if not f then return end
   paintRows(f, queue)
   paintNote(f, queue)
+  placeButtons(f)
+  sizePanel(f)
   for _, b in ipairs({ f.next, f.clear }) do
     if #queue > 0 then b:Enable() else b:Disable() end
   end
@@ -414,12 +437,11 @@ end
 
 -- The panel's bottom line: Add to queue, Next and Clear.
 local function addButtons(f)
-  f.add = W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100)
-  f.next = W.Button(f, L["Next"], function() CQ.Next() end, 60)
-  f.clear = W.Button(f, L["Clear"], function() CQ.Clear() end, 60)
-  f.add:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD)
-  f.next:SetPoint("LEFT", f.add, "RIGHT", T.SPACE.tight, 0)
+  f.add = ns.WidenToLabel(W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100))
+  f.next = ns.WidenToLabel(W.Button(f, L["Next"], function() CQ.Next() end, 60))
+  f.clear = ns.WidenToLabel(W.Button(f, L["Clear"], function() CQ.Clear() end, 60))
   f.clear:SetPoint("LEFT", f.next, "RIGHT", T.SPACE.tight, 0)
+  placeButtons(f)
 end
 
 -- The list's scroll view and the note under it (small text, wrapped inside the panel).

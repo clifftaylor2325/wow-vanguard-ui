@@ -514,3 +514,17 @@ it("H47-20-101 a scrolling queue keeps its scroll thumb inside the panel", () =>
   expect(out[0], "the thumb shows with more than five rows").toBe(true);
   expect(out[1], "the thumb and its grip end inside the panel").toBeLessThanOrEqual(out[2]);
 });
+
+it("H47-20-102 the panel's buttons are as wide as their labels in German, Spanish and Russian at Text size 130%", () => {
+  for (const locale of ["deDE", "esES", "ruRU"]) {
+    const saved = `${ON}\nVanguardDB.profiles.Default.theme = { textScale = 1.3 }`;
+    const addon = loggedIn(ENV, { savedVariables: saved, client: `GetLocale = function() return "${locale}" end`, textFit: true });
+    addon.world.setUnit("player", { class: "WARRIOR", level: 60 });
+    addon.world.openProfession(100);
+    addon.slash("craft add");
+    const cut = addon.textFit("Vanguard_CraftQueuePanel").filter((finding) => finding.kind !== "spill");
+    expect(cut.map((f) => `${f.kind} | ${f.text}`), `${locale}: no button label cut or over another`).toEqual([]);
+    const inside = `local f = ${CQ}.frame for _, b in ipairs({ f.add, f.next, f.clear }) do if b:GetRight() > f:GetRight() or b:GetBottom() < f:GetBottom() then return false end end return true`;
+    expect(addon.eval(inside), `${locale}: the buttons stay in the panel (two rows when one is too wide)`).toBe(true);
+  }
+});
