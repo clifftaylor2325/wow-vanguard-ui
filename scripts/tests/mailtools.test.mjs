@@ -735,3 +735,19 @@ it("mail search, presets and preset words ignore the case of Russian letters, no
   addon.slash("mail send кузнец");
   expect(addon.eval("return __wfgWorld.usedItems"), "the preset found by its name, the item by a small-letter word").toEqual([[0, 3]]);
 });
+
+// H48-3-53: Fill checks a list's type, never its entries, so a crafted or damaged string (or a hand-edited file) could
+// leave a preset that is not a table or has no name or character. MailTools' upgrade (ns.Migrate) drops or mends them.
+const DAMAGED_PRESETS = `{ { name = "x" }, 5, { name = 5, to = {}, words = false }, { name = "Smith", to = "Bob", words = 3 }, { name = "Ore", to = "Al", words = "ore" } }`;
+it("H48-3-53 mail presets: a saved list with wrong-shaped entries is cleaned at login, so adding and listing work", () => {
+  const addon = mailer("", `VanguardDB.profiles = { Default = { MailTools = { on = true, presets = ${DAMAGED_PRESETS} } } }`);
+  addon.clearChat();
+  expect(addon.eval(`local ok = pcall(${MT}.AddPreset, "New", "Cy", "gem") return { ok, #ns.errors }`), "adding a preset raises nothing").toEqual([true, 0]);
+  expect(say(addon, "mail preset list", /Smith: to Bob, every item/), "a preset whose words are not text lists as every item").toBe(true);
+  expect(addon.eval(`local out = {} for _, p in ipairs(${MT}.settings.presets) do out[#out + 1] = p.name end return { out, #ns.errors }`), "only the usable presets are left, then the new one").toEqual([["Smith", "Ore", "New"], 0]);
+});
+it("H48-3-53 mail presets: a string with wrong-shaped presets is saved clean", () => {
+  const addon = mailer();
+  addon.eval(`ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ MailTools = { presets = ${DAMAGED_PRESETS} } })))`);
+  expect(addon.eval(`local out = {} for _, p in ipairs(VanguardDB.profiles.Imported.MailTools.presets) do out[#out + 1] = p.name .. "/" .. p.words end return out`)).toEqual(["Smith/", "Ore/ore"]);
+});

@@ -23,6 +23,20 @@ local T, W = ns.Theme, ns.Widgets
 
 local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} }, live = true })
 
+-- Keeps the presets a reader can use: a crafted or damaged string's other entries are dropped, and words that
+-- are not text are none.
+ns.Migrate("MailTools", function(saved)
+  if type(saved.presets) ~= "table" then return end
+  local kept = {}
+  for _, p in ipairs(saved.presets) do
+    if type(p) == "table" and type(p.name) == "string" and type(p.to) == "string" then
+      if type(p.words) ~= "string" then p.words = "" end
+      kept[#kept + 1] = p
+    end
+  end
+  saved.presets = kept
+end)
+
 -- Whether the tools work now: the module runs and its own switch (Town and gear -> Mail tools) is on.
 function MT.Active()
   return MT.scope ~= nil and MT.scope:Running() and MT.settings ~= nil and MT.settings.on == true
