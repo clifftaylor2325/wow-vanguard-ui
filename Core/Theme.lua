@@ -1309,6 +1309,10 @@ function corner.look(frame, entry)
   return "rounded"
 end
 
+-- Whether a painted frame wears the variant's thick ring (High contrast): only an accent-bordered frame does, never one
+-- with its own border colour (a check box's hover, a slot well, a quality border). Edge width and corner size share it.
+function corner.ringed(entry) return entry.opts.accent end
+
 -- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua;
 -- false there is square whatever the settings say) unless the deck rounds it; else one size from its corner look, in
 -- pixels (times the variant's ring on an accent-bordered frame); else nil for square corners.
@@ -1320,7 +1324,7 @@ function corner.geometry(frame, entry)
   end
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return nil end
-  local scale = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
+  local scale = corner.ringed(entry) and v and v.ring or 1
   return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
 end
 
@@ -1335,7 +1339,7 @@ end
 local function paintEdges(frame, entry, geo)
   local p = entry.parts
   colorEdges(p.edges, borderColor(entry))
-  sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
+  sizeEdges(p.edges, frame, corner.ringed(entry))
   placeEdges(p.edges, frame, entry.opts.pad, geo)
   corner.showEdges(p.edges, geo)
   corner.hideOpen(p.edges, entry)

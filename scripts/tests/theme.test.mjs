@@ -1731,6 +1731,28 @@ it("T.Slider: the game's SetEnabled on a stepped slider (it sets the thumb's alp
   const alphas = [true, false].map((on) => addon.eval(`TEST_SlSet:SetEnabled(${on}) return TEST_SlSet.Slider.Thumb.__alpha`));
   expect(alphas, "faded after SetEnabled(true) and (false)").toEqual([0, 0]);
 });
+it("High contrast: only an accent-bordered frame wears the thick ring; a check box keeps its edge width across hover and a slot well stays thin", () => {
+  const addon = loggedIn(`
+    local b = CreateFrame("CheckButton", "TEST_RingCheck", UIParent) b:SetSize(32, 32)
+    b:SetCheckedTexture(b:CreateTexture()) ns.Theme.CheckBox(b)
+    function TEST_RingEdge(f)
+      local px = ns.Theme.Pixel(f)
+      for _, r in ipairs({ f:GetRegions() }) do
+        local _, sub = r:GetDrawLayer()
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "BORDER" and sub == 0 and r:GetPoint(2) then
+          if select(1, r:GetPoint(1)) == "TOPLEFT" and select(1, r:GetPoint(2)) == "TOPRIGHT" then return r:GetHeight() / px end
+        end
+      end
+    end`);
+  addon.slash("variant contrast");
+  const edge = () => addon.eval("return TEST_RingEdge(ns.Theme.CheckParts(TEST_RingCheck).box)");
+  const rest = edge();
+  addon.hover("TEST_RingCheck");
+  const hovered = edge();
+  addon.hover(null);
+  const well = addon.eval('return TEST_RingEdge(ns.Theme.Slot(CreateFrame("Button", nil, UIParent), { well = true }))');
+  expect([rest, hovered, well], "1 px at rest, hovered and in a well").toEqual([1, 1, 1]);
+});
 it("switch commands: on and off in any case set the switch, a mistyped word changes nothing and shows the usage", () => {
   const addon = loggedIn();
   const toggles = { ornaments: "ornaments", gradient: "panelGradient", slug: "slugText", framebuffer: "frameBuffer", texelsnap: "texelSnap", nineslice: "sliceRings", icons: "sizedIcons" };
