@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, NO_RAID, expectErrors, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -1213,4 +1213,25 @@ it("the target's name stops short of the power text when it is wider than the he
   expect(fit, "the name does not run over the power number").toEqual([]);
   const ys = addon.eval(`local f = Vanguard_target local n = f.name:GetNumPoints() local out = {} for i = 1, n do local _, _, _, _, y = f.name:GetPoint(i) out[#out + 1] = y end return out`);
   expect(new Set(ys).size, "the name's anchors share one height").toBe(1);
+});
+
+// H47-5-104: a shield past a full bar shows the raid tiles' overshield mark on the player, target and party frames.
+it("a shield past a full health bar lights the overshield mark on the unit frames, a hidden answer to its opacity", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + "VanguardDB.profiles.Default = { modules = { RaidFrames = false } }" });
+  addon.eval(UNITS_ENV + HEALING_ENV);
+  addon.login();
+  addon.eval(`__pred.player = { max = 1000, heals = 0, shields = 150, over = true }
+    __pred.target = { max = 1000, heals = 0, shields = 150, over = { __secret = true } }`);
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "player");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "target");
+  // A frame's overshield mark: shown, opacity, width, its first point and the side its fill runs from.
+  const mark = (key) => addon.eval(`local m = Vanguard_${key}.overshield return { m:IsShown(), m:GetAlpha(), m:GetWidth(), (m:GetPoint(1)), ns.GetModule("UnitFrames").FillsFromRight(Vanguard_${key}) }`);
+  const [shown, opacity, width, point, fromRight] = mark("player");
+  expect([shown, opacity, width, point.endsWith(fromRight ? "LEFT" : "RIGHT")], "shields past a full bar: a lit mark of the raid tiles' width at the end the fill runs toward").toEqual([true, 1, 2, true]);
+  expect(addon.eval("return Vanguard_target.overshield.__alphaFromBoolean ~= nil"), "a hidden answer goes to its opacity untouched").toBe(true);
+  addon.eval("__pred.player.over = false");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "player");
+  expect(mark("player").slice(0, 2), "shields within the bar: unlit").toEqual([true, 0]);
+  addon.eval("ns.GetModule('UnitFrames').settings.absorbs = false ns.GetModule('UnitFrames').ApplyPrediction()");
+  expect(mark("player")[0], "shields turned off: no mark").toBe(false);
 });
