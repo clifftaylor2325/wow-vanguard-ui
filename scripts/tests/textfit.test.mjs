@@ -509,3 +509,21 @@ it("text fits: a 32-character profile name on the Profiles page stays clear of t
     }
   }
 });
+
+// An addon in the text-fit client in a shipped language at a Text size, logged in on a finished-setup account (H47 wave 20).
+function localeClient(locale, scale) {
+  const saved = `VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = ${scale} } } }, setupDone = true }\nVanguardCharDB = {}\n`;
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+  addon.login();
+  return addon;
+}
+
+it("text fits: the stat weights wizard's captions stay on one line, drawn over no other row, at Text size 130% (H47-20-1)", () => {
+  for (const locale of ["deDE", "frFR", "ruRU", "esES", "ptBR"]) {
+    const addon = localeClient(locale, 1.3);
+    addon.eval('ns.GetModule("Upgrades").Wizard.Open()');
+    const clash = addon.textFit("Vanguard_WeightsWizard").filter((finding) => finding.kind !== "cut");
+    expect(clash.map(line), `${locale}: a caption over another row`).toEqual([]);
+    expect(addon.eval("local out = {} for _, r in ipairs(Vanguard_WeightsWizard.rows) do if r.label:GetStringHeight() > 20 then out[#out + 1] = r.label:GetText() end end return #out"), `${locale}: wrapped captions`).toBe(0);
+  }
+});
