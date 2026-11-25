@@ -666,6 +666,7 @@ const DIALOGS_ENV = BUTTON_FRAME_ENV + `
   OpacityFrameSlider.Plus, OpacityFrameSlider.Minus = __label(OpacityFrameSlider, "+"), __label(OpacityFrameSlider, "-")
 `;
 
+// The alpha of the shown BACKGROUND fill on a skinned frame, the panel colour's fourth value.
 const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
 
 it("report-cheating dialog, splash window, colour picker and opacity window", () => {

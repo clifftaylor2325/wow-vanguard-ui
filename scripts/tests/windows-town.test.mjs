@@ -355,6 +355,7 @@ const DRESSUP_ENV = `${TOWN_READERS}${ARROWS_ENV}
   __arrow(c, "CoinPickupLeftButton") __arrow(c, "CoinPickupRightButton") c:CreateFontString("CoinPickupText", "ARTWORK") c:CreateFontString("CoinPickupLabel", "ARTWORK")
 `;
 
+// The alpha of the shown BACKGROUND fill on a skinned frame, the panel colour's fourth value.
 const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
 
 it("coin pickup with a panel texture picked: its skin fades the game's art but not the texture (H45-4-1)", () => {

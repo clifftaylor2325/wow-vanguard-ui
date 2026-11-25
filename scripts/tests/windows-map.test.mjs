@@ -533,6 +533,7 @@ const FINDER_ENV = WINDOWS_ENV + `
   LFG_LIST_NO_RESULTS_FOUND = "TEST-ONLY No groups found."
 `;
 
+// The alpha of the shown BACKGROUND fill on a skinned frame, the panel colour's fourth value.
 const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
 
 it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
