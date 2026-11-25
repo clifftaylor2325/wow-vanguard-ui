@@ -1314,3 +1314,13 @@ it("H45-5-2 raid auras: a Height change that keeps the icon size still moves the
     expect(spots.map((s) => s.slice(0, 2)), `height ${height}: every slot at the spot the zones give`).toEqual(spots.map((s) => s.slice(2, 4)));
   }
 });
+
+// H47-6-2: the weapon enchant cell follows the buffs' Timer numbers switch, its number on the bottom edge.
+it("H47-6-2 the weapon enchant cell shows its countdown only with the buffs' timers on, on the icon's bottom edge", () => {
+  const cell = (timers) => loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end",
+    { savedVariables: `VanguardDB.profiles = { Default = { PlayerAuras = { timers = ${timers} } } }` })
+    .eval(`local cd = ns.GetModule("PlayerAuras").cells[1].cooldown
+      return { hidden = cd.__hideNumbers, edge = cd:GetCountdownFontString().__points.BOTTOM ~= nil }`);
+  expect(cell(false), "timers off: no number").toMatchObject({ hidden: true, edge: false });
+  expect(cell(true), "timers on: the number sits on the bottom edge").toMatchObject({ hidden: false, edge: true });
+});
