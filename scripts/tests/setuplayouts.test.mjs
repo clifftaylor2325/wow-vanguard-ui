@@ -584,7 +584,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
   const RF = "ns.GetModule('RaidFrames')";
   // The raid after n players: its spot, then its layout and the header's point and column anchor.
-  const state = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); return addon.eval(`return { ns.MoverPoint('raid') }`).concat(addon.eval(`return { ${RF}.LayoutFor(${n}), Vanguard_Raid:GetAttribute('point'), Vanguard_Raid:GetAttribute('columnAnchorPoint') }`)); };
+  const state = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); addon.update(0); return addon.eval(`return { ns.MoverPoint('raid') }`).concat(addon.eval(`return { ${RF}.LayoutFor(${n}), Vanguard_Raid:GetAttribute('point'), Vanguard_Raid:GetAttribute('columnAnchorPoint') }`)); };
   expect(state(5), "a party: over your player frame, groups as columns").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
   expect(state(10), "10 players: the same").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
   expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames, "rows", "LEFT", "BOTTOM"]);
@@ -594,6 +594,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   setCombat(addon, true);
   addon.eval("__members = 5");
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
   expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames], "LEFT"]);
   setCombat(addon, false);
   expect([addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "and it follows when combat ends").toEqual([["BOTTOM", "BOTTOM", -240, 344 + RISE.frames], "BOTTOM"]);
@@ -610,6 +611,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   expect(addon.eval("return #ns.Options.ReloadWaiting()"), "and the footer does not wait for a reload for it (H44-13-51)").toBe(0);
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
   moved.fire("GROUP_ROSTER_UPDATE");
+  moved.update(0);
   expect(moved.eval("return { ns.MoverPoint('raid') }"), "frames you already moved keep their spot at every size").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344]);
   expect(moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMRIGHT ~= nil"), "the grid is pinned to the right of the holder at the saved spot").toBe(true);
   moved.eval("ns.ResetMovers('raid')");
@@ -624,14 +626,17 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   expect(grid(), "a party is full size, growing up from just above the player frame").toEqual([1, "center"]);
   addon.eval("__members = 40");
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
   expect(grid(), "a 40-man raid is drawn at 72%, pinned at its left (it stacks as rows, left of your character)").toEqual([0.72, "left"]);
   addon.eval('ns.SetMoverPoint("raid", "BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344)');
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
   expect(grid()[1], "moved to the right edge, it grows from there").toBe("right");
   addon.eval("ns.Setup.ApplyLayout('healing')");
   expect(grid()[1], "the healing layout puts the default back: a 40-man still sits at the left").toBe("left");
   addon.eval(`${RF}.settings.compact = false`);
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
   expect(grid()[0], "compact off: always full size").toBe(1);
   const old = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
   expect(old.eval("local p = VanguardDB.profiles.Default return { p.ActionBars.size, p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones, buttons too").toEqual([38, 2, 478, 6]);
