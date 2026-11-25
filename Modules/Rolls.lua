@@ -189,10 +189,11 @@ function R.RoundItem()
   return OL and (OL.focus or R.Rolling()) or nil
 end
 
--- " [SR]" when the player reserved the item (a link or name), else "".
+-- "[SR] " when the player reserved the item (a link or name), else "". It goes in front of the name, so a long name's cut
+-- tail (an ellipsis in the narrow panel) is never the mark.
 function R.Flag(name, item)
   local OL = R.Reserves()
-  return (OL and item and OL.Reserved(name, item)) and " [SR]" or ""
+  return (OL and item and OL.Reserved(name, item)) and "[SR] " or ""
 end
 
 -- The line naming who reserved the item, or nil when no one did.
@@ -215,7 +216,7 @@ function R.RollLines()
   if #R.rolls == 0 then return {} end
   local round, item = R.Round(), R.RoundItem()
   local out = { { ns.Format(L["Rolls {low}-{high}"], { low = round[1].low, high = round[1].high }), "", "head" } }
-  for _, r in ipairs(round) do out[#out + 1] = { ns.Home.Display(r.name) .. R.Flag(r.name, item), figures(r), r.roll == round[1].roll and "win" or "row" } end
+  for _, r in ipairs(round) do out[#out + 1] = { R.Flag(r.name, item) .. ns.Home.Display(r.name), figures(r), r.roll == round[1].roll and "win" or "row" } end
   return out
 end
 
@@ -224,7 +225,7 @@ function R.ItemLines(item)
   local out = { { item.link, item.done and "" or L["rolling"], "head" } }
   out[2] = R.ReservedLine(item.link)
   for _, p in ipairs(item.players) do
-    out[#out + 1] = { ns.Home.Display(p.name) .. R.Flag(p.name, item.link), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
+    out[#out + 1] = { R.Flag(p.name, item.link) .. ns.Home.Display(p.name), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
   end
   return out
 end
