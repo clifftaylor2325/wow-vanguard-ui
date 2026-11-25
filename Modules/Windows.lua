@@ -58,6 +58,7 @@ GW.FRAMED = {
   "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
+GW.POPUP_SET = { StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true }
 -- The breath and fatigue bars' holder (the bars are its unnamed children), skinned by GW.SkinTimerContainer.
 GW.TIMERS = { "MirrorTimerContainer" }
 -- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
@@ -82,7 +83,7 @@ GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = {
   "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText",
-  "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel",
+  "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText",
 }
 -- The strings of the quest rewards frame (keys of QuestInfoRewardsFrame) the game colors for its parchment too.
 GW.QUEST_REWARD_TEXTS = { "Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText" }
@@ -2080,6 +2081,12 @@ local function lightObjectives()
   end
 end
 
+-- The "Learn spell" objective line: muted once the game marks it done, the text colour otherwise.
+local function lightLearnLabel()
+  local fs = _G.QuestInfoSpellObjectiveLearnLabel
+  if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, objectiveDone(fs) and "muted" or "text") end
+end
+
 -- The quest window's texts in light body text and light headings (the quest's name included), its rewards and
 -- objective lines too, and its reward tiles (GW.SkinQuestRewards, in Modules/WindowsMap.lua: the map's details share
 -- them, so whichever group dresses its window dresses them).
@@ -2088,6 +2095,7 @@ function GW.LightQuestText()
   lightDressed(GW.QUEST_HEADS)
   lightRewardTexts()
   lightObjectives()
+  lightLearnLabel()
   GW.SkinQuestRewards()
 end
 
@@ -2618,14 +2626,47 @@ end
 -- windows that load later. Other groups register from Modules/Windows<Area>.lua.
 GW.Add("windows", GW.FRAMED, GW.SkinFramed)
 GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
-GW.Add("popups", GW.POPUPS, GW.SkinFramed)
+-- Whether a popup is stacked under another shown one: the game anchors each later popup's TOP to the previous
+-- popup's BOTTOM with no gap (Blizzard_StaticPopup/StaticPopup.lua StaticPopup_SetUpPosition), and a hide re-anchors
+-- nothing, so a lower popup stays anchored under a hidden one.
+local function stackedUnder(frame)
+  local point, above, abovePoint = ns.PlainPoint(frame, 1)
+  if point ~= "TOP" or abovePoint ~= "BOTTOM" or type(above) ~= "table" then return false end
+  local name = ns.PlainText(above.GetName and above:GetName())
+  return name ~= nil and GW.POPUP_SET[name] == true and ns.IsTrue(above:IsShown())
+end
+
+-- Lays a popup's panel on its backdrop: the whole popup, or, under another shown popup, starting where the upper
+-- panel ends (both reach GW.PAD past their frames, so the lower one's top goes 2 * GW.PAD down) instead of over it.
+local function fitPopupPanel(frame)
+  local back = GW.MadeBackdrop(frame)
+  if not back then return end
+  back:ClearAllPoints()
+  if stackedUnder(frame) then
+    back:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, -2 * GW.PAD)
+    back:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+  else
+    back:SetAllPoints(frame)
+  end
+end
 
 -- Refits each popup's panel after the game moves its shown popups to another top-level frame without showing them again
--- (the report window's screenshot mode), which runs no OnShow.
+-- (the report window's screenshot mode), which runs no OnShow, and each time the popups are stacked or one closes.
 local function refitPopups()
-  for _, name in ipairs(GW.POPUPS) do GW.FitBackdrop(_G[name]) end
+  for _, name in ipairs(GW.POPUPS) do
+    GW.FitBackdrop(_G[name])
+    fitPopupPanel(_G[name])
+  end
 end
 GW.HookGlobalOnce("StaticPopup_ReparentDialogs", "popup panels", refitPopups)
+
+-- Skins one popup and has its panel refit when the game stacks the popups or this one closes.
+local function skinPopup(frame)
+  GW.SkinFramed(frame)
+  GW.HookGlobalOnce("StaticPopup_SetUpPosition", "popup panels stacked", refitPopups)
+  GW.HookScriptOnce(frame, "OnHide", "popup panels closed", refitPopups)
+end
+GW.Add("popups", GW.POPUPS, skinPopup)
 GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
 for _, later in ipairs(GW.LATER) do GW.AddOnDemand("windows", later[1], later[2], GW.SkinFramed) end
 GW.Needs(GW.TIMERS, { methods = { "SetupTimer" } })

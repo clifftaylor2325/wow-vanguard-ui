@@ -339,12 +339,25 @@ end
 -- width it shares with the crafting cost panel (so the two stack as one column).
 CQ.PAD, CQ.ROWS, CQ.REMOVE_W = T.SPACE.gap, 5, 64
 CQ.WIDTH = CR.WIDTH
+-- The list's width: the panel less its inset each side and the room the scroll thumb takes at the right (inside the panel).
+CQ.LIST_WIDTH = CQ.WIDTH - 2 * CQ.PAD - T.SPACE.col
+-- The panel's height with a note of one line or none, and the room the note has above the buttons before it must
+-- grow the panel (the gap under the list and above the buttons, less the note's own gap under the list: two lines).
+CQ.BASE_HEIGHT = -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H
+CQ.NOTE_ROOM = 2 * T.SPACE.col + T.SPACE.gap - T.SPACE.tight
 
 -- Empties the queue (/vg craft clear and the panel's Clear).
 function CQ.Clear()
   VanguardCharDB.craftQueue = {}
   ns.Chat(L["Craft queue emptied."])
   CQ.Repaint()
+end
+
+-- The panel's Clear asks first (the queue can't be got back), as Keep stocked's Clear list does, then empties it; an
+-- empty queue has nothing to ask about.
+function CQ.AskClear()
+  if #CQ.Mine().queue == 0 then return end
+  ns.Ask(L["Clear the craft queue?"], L["Clear"], CQ.Clear, nil, "danger")
 end
 
 -- Takes a whole entry off the queue (the panel's remove button).
@@ -358,14 +371,13 @@ end
 
 -- A queue row (W.Row: the list's hover wash): "3 x Linen Bag" and a remove button at its right.
 local function makeRow(parent)
-  local row = W.Row(parent, T.ROW.height, { width = CQ.WIDTH - 2 * CQ.PAD })
+  local row = W.Row(parent, T.ROW.height, { width = CQ.LIST_WIDTH })
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
   row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
-  row.text:SetWidth(CQ.WIDTH - 2 * CQ.PAD - CQ.REMOVE_W - T.SPACE.gap)
-  row.text:SetJustifyH("LEFT")
-  row.text:SetWordWrap(false)
-  row.remove = W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W)
+  row.remove = ns.WidenToLabel(W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W))
   row.remove:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  row.text:SetPoint("RIGHT", row.remove, "LEFT", -T.SPACE.gap, 0)
+  ns.SingleLine(row.text)
   return row
 end
 
@@ -389,12 +401,37 @@ local function paintNote(f, queue)
   T.Color(f.note, empty and "muted" or "text2")
 end
 
+-- Whether the three buttons are wider than the panel's room, so Next and Clear sit in a row under Add to queue.
+local function stacked(f)
+  local widths = f.add:GetWidth() + f.next:GetWidth() + f.clear:GetWidth() + 2 * T.SPACE.tight
+  return widths > CQ.WIDTH - 2 * CQ.PAD
+end
+
+-- Lays the buttons along the bottom, or in two rows (Add to queue above Next and Clear) when one row is too wide.
+local function placeButtons(f)
+  local two = stacked(f)
+  f.add:ClearAllPoints()
+  f.next:ClearAllPoints()
+  f.add:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD + (two and T.BUTTON_H + T.SPACE.tight or 0))
+  if two then f.next:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD) else f.next:SetPoint("LEFT", f.add, "RIGHT", T.SPACE.tight, 0) end
+  f.rowsOfButtons = two and 2 or 1
+end
+
+-- Sizes the panel to its note and its rows of buttons: the base height plus what the note's wrapped lines need beyond
+-- its room and a second row of buttons.
+local function sizePanel(f)
+  local note = math.max(0, math.ceil(f.note:GetStringHeight()) - CQ.NOTE_ROOM)
+  f:SetHeight(CQ.BASE_HEIGHT + note + (f.rowsOfButtons - 1) * (T.BUTTON_H + T.SPACE.tight))
+end
+
 -- Paints the panel: the queue's rows and the note; Next and Clear work only while something is queued.
 function CQ.Paint()
   local f, queue = CQ.frame, CQ.Mine().queue
   if not f then return end
   paintRows(f, queue)
   paintNote(f, queue)
+  placeButtons(f)
+  sizePanel(f)
   for _, b in ipairs({ f.next, f.clear }) do
     if #queue > 0 then b:Enable() else b:Disable() end
   end
@@ -407,19 +444,19 @@ end
 
 -- The panel's bottom line: Add to queue, Next and Clear.
 local function addButtons(f)
-  f.add = W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100)
-  f.next = W.Button(f, L["Next"], function() CQ.Next() end, 60)
-  f.clear = W.Button(f, L["Clear"], function() CQ.Clear() end, 60)
-  f.add:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD)
-  f.next:SetPoint("LEFT", f.add, "RIGHT", T.SPACE.tight, 0)
+  f.add = ns.WidenToLabel(W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100))
+  f.next = ns.WidenToLabel(W.Button(f, L["Next"], function() CQ.Next() end, 60))
+  f.clear = ns.WidenToLabel(ns.DialogButton(f, L["Clear"], 60, "danger"))
+  f.clear:SetScript("OnClick", ns.Guard("click Clear", CQ.AskClear))
   f.clear:SetPoint("LEFT", f.next, "RIGHT", T.SPACE.tight, 0)
+  placeButtons(f)
 end
 
 -- The list's scroll view and the note under it (small text, wrapped inside the panel).
 local function addList(f)
-  f.list = ns.ScrollView(f, { width = CQ.WIDTH - 2 * CQ.PAD })
+  f.list = ns.ScrollView(f, { width = CQ.LIST_WIDTH })
   f.list:SetPoint("TOPLEFT", f, "TOPLEFT", CQ.PAD, CR.TOP)
-  f.list:SetSize(CQ.WIDTH - 2 * CQ.PAD, CQ.ROWS * T.ROW.height)
+  f.list:SetSize(CQ.LIST_WIDTH, CQ.ROWS * T.ROW.height)
   f.rows = ns.QuestParts.Pool(f.list.child, makeRow)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.note:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.SPACE.tight, -T.SPACE.tight)
@@ -430,7 +467,7 @@ end
 -- Builds the panel (once, out of combat; hidden): a card with the heading, the list, the note and the buttons.
 function CQ.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftQueuePanel", UIParent), { shadow = true })
-  f:SetSize(CQ.WIDTH, -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H)
+  f:SetSize(CQ.WIDTH, CQ.BASE_HEIGHT)
   f:SetClampedToScreen(true)
   ns.WindowTitle(f, L["Craft queue"], { kind = "card" })
   addList(f)

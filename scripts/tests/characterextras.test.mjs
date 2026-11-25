@@ -59,6 +59,16 @@ it("marks unenchanted enchantable pieces once switched on, an off hand when it i
   expect(label(addon, "Chest", "mark")[0], "a common piece is not marked").toBe(false);
 });
 
+it("repaints the slots on the player's inventory event only, not another unit's (H47-14-3)", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("CharacterFrame:Show()");
+  addon.eval("__wfgWorld.worn[1] = 'item:1005:0'");
+  addon.fire("UNIT_INVENTORY_CHANGED", "party1");
+  expect(label(addon, "Head", "level"), "another unit's change leaves the pane alone").toEqual([true, 40]);
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(label(addon, "Head", "level"), "the player's repaints it").toEqual([true, 30]);
+});
+
 it("follows the options switches and empties its label when a slot empties", () => {
   const addon = loggedIn(ENV);
   addon.eval("CharacterFrame:Show()");

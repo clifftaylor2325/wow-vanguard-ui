@@ -144,3 +144,38 @@ it("H46-33-R1: the Train all switch hides and shows the button at an open traine
   addon.eval('__click("Train all button at trainers")');
   expect(shown(), "switched on: it comes back with no new TRAINER_SHOW").toBe(true);
 });
+
+// Client rule (H47-20-52), forever Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.xml: the window is 338 wide
+// (Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml PortraitFrameBaseTemplate), its Train button 80 wide at the bottom
+// right, and the money line's copper coin ends 148 from the window's left.
+const WIDE_TRAINER = `
+  __services = {}
+  for i = 1, 12 do __services[i] = { "TEST-ONLY Spell " .. i, "available", 100 } end
+  GetMoney = function() return 10000000 end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], s[2], 134400, 1, "" end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  Enum.TrainerType = { General = 0, Tradeskills = 2, Pet = 3 }
+  C_Trainer = { GetTrainerType = function() return 0 end }
+  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+  ClassTrainerFrame:SetSize(338, 424)
+  ClassTrainerFrame:SetPoint("TOPLEFT", 16, -116)
+  ClassTrainerTrainButton = CreateFrame("Button", "ClassTrainerTrainButton", ClassTrainerFrame)
+  ClassTrainerTrainButton:SetSize(80, 22)
+  ClassTrainerTrainButton:SetPoint("BOTTOMRIGHT")
+`;
+
+it("H47-20-52 Train all stays right of the money line in long languages, and narrows again as the count drops", () => {
+  for (const locale of ["deDE", "frFR", "ruRU", "esES"]) {
+    const addon = loggedIn(WIDE_TRAINER, { client: `__wfgWorld.locale = "${locale}"` });
+    addon.fire("TRAINER_SHOW");
+    const left = 'local b = ns.GetModule("Errands").trainButton return b:GetLeft() - ClassTrainerFrame:GetLeft()';
+    expect(addon.eval(left), `${locale}: left of the button past the money line`).toBeGreaterThanOrEqual(148);
+    const width = 'return ns.GetModule("Errands").trainButton:GetWidth()';
+    const twelve = addon.eval(width);
+    addon.eval(`__services = { __services[1] } ns.GetModule("Errands").UpdateTrainButton()`);
+    expect(addon.eval(width), `${locale}: no wider with one skill than with twelve`).toBeLessThanOrEqual(twelve);
+    addon.eval(`__services = { __services[1], __services[1] } ns.GetModule("Errands").UpdateTrainButton()`);
+    expect(addon.eval(width), `${locale}: two skills never need more than the room`).toBeLessThanOrEqual(106);
+  }
+});

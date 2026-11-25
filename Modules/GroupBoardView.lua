@@ -36,6 +36,9 @@ GB.FILTERS = {
   all = { "LFM", L["All posts"] }, LFM = { "LFG", L["Looking for more"] }, LFG = { "role", L["Looking for a group"] },
   role = { "all", L["Needs my role"] },
 }
+-- Where each cell of a row starts and how wide it is (units, across SPAN): the roles keep their words, so the sender
+-- cell, which a name of up to twelve letters fits in, gives them its room.
+GB.CELLS = { kind = { 2, 34 }, dungeon = { 40, 148 }, roles = { 192, 102 }, sender = { 298, 80 }, age = { 382, 54 } }
 -- The row's cells drawn in the text colour (the kind and the dungeon have colours of their own).
 GB.PLAIN_CELLS = { "roles", "sender", "age" }
 
@@ -48,6 +51,24 @@ local function cell(row, x, w, role)
   fs:SetWidth(w)
   fs:SetJustifyH("LEFT")
   fs:SetWordWrap(false)
+  return fs
+end
+
+-- A cell whose text shrinks to fit its width (T.FitText over a box of that width): a long name at the largest Text size,
+-- or a translation. Returns the font string and its box.
+local function fitCell(row, cells, role)
+  local box = CreateFrame("Frame", nil, row)
+  box:SetSize(cells[2], GB.ROW_H)
+  box:SetPoint("LEFT", row, "LEFT", cells[1], 0)
+  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), role or "label", "text")
+  return T.FitText(fs, box, 0), box
+end
+
+-- The dungeon's level range, at the right end of the dungeon's cell, which its name (shrunk to fit) leaves whole.
+local function rangeCell(row)
+  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
+  fs:SetPoint("RIGHT", row, "LEFT", GB.CELLS.dungeon[1] + GB.CELLS.dungeon[2], 0)
+  fs:SetJustifyH("RIGHT")
   return fs
 end
 
@@ -66,8 +87,10 @@ end
 -- A post's row (W.Row: a faint wash under the mouse): kind, dungeon, roles, sender, age.
 local function makeRow(parent)
   local b = W.Row(parent, GB.ROW_H, { width = SPAN })
-  b.kind, b.dungeon, b.roles = cell(b, INDENT, 34, "small"), cell(b, 40, 164), cell(b, 208, 92, "small")
-  b.sender, b.age = cell(b, 304, 82), cell(b, 388, 48, "small")
+  local c = GB.CELLS
+  b.kind, b.range = cell(b, c.kind[1], c.kind[2], "small"), rangeCell(b)
+  b.dungeon, b.dungeonBox = fitCell(b, c.dungeon)
+  b.roles, b.sender, b.age = fitCell(b, c.roles, "small"), fitCell(b, c.sender), fitCell(b, c.age, "small")
   b:SetScript("OnClick", ns.Guard("click group board row", function(self) GB.Whisper(self.entry) end))
   hookTip(b)
   return b
@@ -82,8 +105,8 @@ end
 local function addFilters(f)
   f.filter = W.Button(f, GB.FILTERS.all[2], function() GB.CycleFilter() end, 150)
   f.filter:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -FILTER_TOP)
-  f.mine = W.Check(f, L["Only dungeons for my level"], function() return GB.settings.mine end,
-    function(v) GB.settings.mine = v GB.Refresh() end, 250)
+  f.mine = W.ShrinkCaption(W.Check(f, L["Only dungeons for my level"], function() return GB.settings.mine end,
+    function(v) GB.settings.mine = v GB.Refresh() end, SPAN - 150 - T.SPACE.gap))
   f.mine:SetPoint("LEFT", f.filter, "RIGHT", T.SPACE.gap, 0)
 end
 
@@ -155,11 +178,21 @@ function GB.Age(e, now)
   return minutes < 1 and L["now"] or ns.Format(L["{minutes}m"], { minutes = minutes })
 end
 
--- "Shadowfang Keep 22-30", or "Any dungeon" for a post that names none.
-local function dungeonText(e)
-  if not e.dungeon then return L["Any dungeon"] end
-  if e.dungeon.min == e.dungeon.max then return string.format("%s %d", e.dungeon.name, e.dungeon.min) end
-  return string.format("%s %d-%d", e.dungeon.name, e.dungeon.min, e.dungeon.max)
+-- A post's dungeon as its name and its level range: "Shadowfang Keep" and "22-30", or "Any dungeon" and "" for a post
+-- that names none.
+local function dungeonParts(e)
+  if not e.dungeon then return L["Any dungeon"], "" end
+  if e.dungeon.min == e.dungeon.max then return e.dungeon.name, tostring(e.dungeon.min) end
+  return e.dungeon.name, string.format("%d-%d", e.dungeon.min, e.dungeon.max)
+end
+
+-- Writes the dungeon cell: the range whole at its right end, the name shrinking to the room left of it.
+local function paintDungeon(b, e)
+  local name, range = dungeonParts(e)
+  b.range:SetText(range)
+  b.range:SetWidth(math.ceil(T.FullWidth(b.range)))
+  b.dungeon:SetText(name)
+  b.dungeonBox:SetWidth(GB.CELLS.dungeon[2] - (range == "" and 0 or b.range:GetWidth() + T.SPACE.tight))
 end
 
 -- "Tank, Healer", or "" when the post names no role.
@@ -180,7 +213,9 @@ end
 local function paintColors(b, e)
   local dim = GB.Dimmed(e)
   T.Color(b.kind, dim and "muted" or (e.kind == "LFM" and "accentText" or "info"))
-  if dim then T.Color(b.dungeon, "muted") else T.Color(b.dungeon, dungeonColor(e)) end
+  for _, key in ipairs({ "dungeon", "range" }) do
+    if dim then T.Color(b[key], "muted") else T.Color(b[key], dungeonColor(e)) end
+  end
   for _, key in ipairs(GB.PLAIN_CELLS) do T.Color(b[key], dim and "muted" or "text") end
 end
 
@@ -188,7 +223,7 @@ end
 function GB.PaintRow(b, e, now)
   b.entry = e
   b.kind:SetText(e.kind)
-  b.dungeon:SetText(dungeonText(e))
+  paintDungeon(b, e)
   paintColors(b, e)
   b.roles:SetText(rolesText(e))
   b.sender:SetText((e.sender:match("^[^%-]+")))

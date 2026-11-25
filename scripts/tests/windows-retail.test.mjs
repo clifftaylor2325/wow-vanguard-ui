@@ -55,6 +55,17 @@ it("windows-retail: the PvP tab is dressed when its part of the game loads, insi
   expect(state).toEqual({ card: true, wells: true, buttons: true, dropdown: true });
 });
 
+it("windows-retail: a category card's name keeps the theme font and its enabled or disabled colour after the game's SetFontObject (H47-14-1)", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`__wfgRetailWindows.build("PVPUIFrame") __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI")`);
+  // Blizzard_PVPUI.lua PVPQueueFrame_SetCategoryButtonState: the font first, then SetEnabled.
+  const game = (enabled) => addon.eval(`local b = PVPQueueFrame.CategoryButton2
+    b.Name:SetFontObject(${enabled} and "GameFontNormalLarge" or "GameFontDisableLarge") b:SetEnabled(${enabled})
+    return { __looks(b.Name, "name", "text"), __looks(b.Name, "name", "muted") }`);
+  expect(game(false), "disabled: the muted tier").toEqual([false, true]);
+  expect(game(true), "enabled again: the light text").toEqual([true, false]);
+});
+
 it("windows-retail: the premade groups' invite dialog takes the window skin and flat buttons, and keeps its role picture", () => {
   const addon = retail(["LFGListInviteDialog"]);
   addon.eval("LFGListInviteDialog:Show()");

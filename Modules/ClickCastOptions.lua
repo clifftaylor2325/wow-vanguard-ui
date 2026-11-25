@@ -31,8 +31,9 @@ local ROW_H = T.ROW.height
 -- above the rows; and the whole list's height (MAX_KEYS rows in view, the rest scroll, and a gap under them).
 local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
 local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
--- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
-local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
+-- The spell picker's width, where its rows start (the search box, T.CONTROL_H, with a gap over and under it) and the
+-- width of a row's Ranks button (room for its longest label in the languages the addon ships).
+local PICKER_W, PICKER_TOP, CHEVRON_W = 280, T.CONTROL_H + 2 * T.SPACE.gap, 76
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show (nil: while a binding uses them, see moreShown), the key the
@@ -280,7 +281,7 @@ local function rowParts(b)
   b.section = W.SectionHeader(b, "")
   b.section:SetPoint("LEFT", 2, 0)
   b.section:SetPoint("RIGHT", -2, 0)
-  b.chevron = W.Button(b, "", nil, 56)
+  b.chevron = W.Button(b, "", nil, CHEVRON_W)
   b.chevron:SetPoint("RIGHT", -2, 0)
 end
 
@@ -520,6 +521,7 @@ local function cellTexts(c)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small")
   c.name:SetPoint("LEFT", c.iconFrame, "RIGHT", 5, 0)
   c.name:SetPoint("RIGHT", -2, 0)
+  c.name:SetMaxLines(2)
   c.empty = T.Text(c:CreateFontString(nil, "OVERLAY"), "label", "disabled")
   c.empty:SetPoint("CENTER")
   c.empty:SetText("-")
@@ -638,6 +640,8 @@ local function keyRowTexts(row)
   row.text:SetPoint("LEFT", 176, 0)
   row.note = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")
   row.note:SetPoint("RIGHT", -90, 0)
+  row.text:SetPoint("RIGHT", row.note, "LEFT", -T.SPACE.gap, 0)
+  row.text:SetMaxLines(1)
 end
 
 -- One hover-key row (in the list's scroll view): a list row (W.Row) with the key, the spell's icon and name, the
@@ -1235,6 +1239,11 @@ local function leadRows()
   return out
 end
 
+-- Whether a row applies on this client: See all your keys leads to the Your keys tab, which only WoW Forever has.
+local function showsRow(row)
+  return row[3] ~= openYourKeys or ns.IsForever()
+end
+
 -- The page's rows (built again when its signature changes, see pageSignature), with the signature they are read with:
 -- the window keeps them, so that is what a change compares against. The game's click bindings are offered where the
 -- client has them.
@@ -1245,7 +1254,7 @@ local function rows()
     if row[1] == "bindlayout" then
       for _, lead in ipairs(leadRows()) do out[#out + 1] = lead end
     end
-    out[#out + 1] = row
+    if showsRow(row) then out[#out + 1] = row end
   end
   return out
 end

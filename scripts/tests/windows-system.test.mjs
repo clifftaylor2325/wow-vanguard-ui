@@ -666,12 +666,17 @@ const DIALOGS_ENV = BUTTON_FRAME_ENV + `
   OpacityFrameSlider.Plus, OpacityFrameSlider.Minus = __label(OpacityFrameSlider, "+"), __label(OpacityFrameSlider, "-")
 `;
 
+// The alpha of the shown BACKGROUND fill on a skinned frame, the panel colour's fourth value.
+const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
+
 it("report-cheating dialog, splash window, colour picker and opacity window", () => {
   const addon = loggedIn(DIALOGS_ENV);
   addon.eval("ReportCheatingDialog:Show() SplashFrame:Show() ColorPickerFrame:Show() OpacityFrame:Show()");
   expect(addon.eval(`local d = ReportCheatingDialog
     return { __faded(d), d.Border.__alpha, __panelled(d), __titled(ReportCheatingDialogTitle), __panelled(d.reportButton), __panelled(ReportCheatingDialogCancelButton), __panelled(d.CommentFrame) }`),
     "report cheating: art and Border faded, panel, named title themed, report and Cancel buttons, comment box an inset panel").toEqual([0, 0, true, true, true, true, true]);
+  // docs/THEME.md T.ALPHA: a skinned game window is opaque.
+  expect([fillAlpha(addon, "ReportCheatingDialog"), fillAlpha(addon, "ns.FrameState('vgBack')[SplashFrame]")], "report window and splash panels are opaque").toEqual([1, 1]);
   expect(addon.eval(`local s = SplashFrame
     return { s.LeftTexture.__alpha ~= 0, __faded(s) ~= 0, ns.FrameState('vgBack')[s] ~= nil and __panelled(ns.FrameState('vgBack')[s]), __panelled(s.BottomCloseButton), s.TopCloseButton.__piece.__alpha }`),
     "splash: its art is kept (nothing faded), the panel is on a frame behind it, the buttons themed").toEqual([true, true, true, true, 0]);
@@ -1209,6 +1214,23 @@ it("popups: the backdrop follows the popup's strata and level on each show, and 
   expect(place()[2], "hidden with the popup").toBe(false);
   addon.eval("StaticPopup1:SetFrameStrata('FULLSCREEN_DIALOG') StaticPopup1:SetFrameLevel(0) StaticPopup1:Show()");
   expect(place(), "the game moved it: followed on the next show, never below level 0").toEqual(["FULLSCREEN_DIALOG", 0, true]);
+});
+
+// H47-11-101: the game stacks a later popup's TOP on the previous popup's BOTTOM with no gap
+// (Blizzard_StaticPopup/StaticPopup.lua StaticPopup_SetUpPosition); both panels reach GW.PAD past their frames and
+// overlapped. The lower popup's backdrop now starts 2 * GW.PAD down while the upper one is shown.
+it("popups: a popup stacked under a shown one has its panel start where the upper panel ends, and gets it whole back when that closes", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV + `
+    __popup("StaticPopup2")
+    function StaticPopup_SetUpPosition() StaticPopup2:ClearAllPoints() StaticPopup2:SetPoint("TOP", StaticPopup1, "BOTTOM", 0, 0) end`);
+  addon.eval("StaticPopup1:Show() StaticPopup2:Show()");
+  // The top-left point of a popup's backdrop: its offset, and what it hangs on.
+  const top = (n) => addon.eval(`local pt = __panelHost(StaticPopup${n}).__points.TOPLEFT return { pt.y or 0, pt.rel == StaticPopup${n} }`);
+  expect(top(2), "alone, the lower popup's panel fills it").toEqual([0, true]);
+  addon.eval("StaticPopup_SetUpPosition()");
+  expect([top(1), top(2)], "stacked: the upper is whole, the lower starts 24 down so the panels meet").toEqual([[0, true], [-24, true]]);
+  addon.eval("StaticPopup1:Hide()");
+  expect(top(2), "the upper closed: the lower popup's panel is whole again").toEqual([0, true]);
 });
 
 it("popups: shown and hidden in a fight, the backdrop is nothing protected and nothing is blocked", () => {

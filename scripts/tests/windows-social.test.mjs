@@ -722,7 +722,7 @@ const FRIENDS_ENV = DIALOG_ENV + `
   local ff = __dialog("FriendsFriendsFrame")
   ff.Border = CreateFrame("Frame", nil, ff) ff.Border.Art = ff.Border:CreateTexture()
   ff.ScrollFrameBorder = CreateFrame("Frame", nil, ff) ff.ScrollFrameBorder.Art = ff.ScrollFrameBorder:CreateTexture()
-  ff.FriendsDropdown = CreateFrame("Button", nil, ff) ff.FriendsDropdown.Art = ff.FriendsDropdown:CreateTexture()
+  ff.FriendsDropdown = CreateFrame("Button", nil, ff) ff.FriendsDropdown.Art = ff.FriendsDropdown:CreateTexture() ff.FriendsDropdown.Arrow = ff.FriendsDropdown:CreateTexture(nil, "OVERLAY")
   ff.SendRequestButton = CreateFrame("Button", nil, ff)
   ff.CloseButton = CreateFrame("Button", nil, ff) ff.CloseButton:SetText("Close")
   local bn = __dialog("BattleNetInviteFrame") bn.SendButton = CreateFrame("Button", nil, bn) bn.CancelButton = CreateFrame("Button", nil, bn)
@@ -743,6 +743,10 @@ it("channels and friends dialogs: the window and each dialog skinned, borders fa
     return { p.Header.Art.__alpha, p.BG.Art.__alpha, p.Name.Art.__alpha, p.OKButton.Art.__alpha, f.Border.Art.__alpha, f.ScrollFrameBorder.Art.__alpha,
       f.FriendsDropdown.Art.__alpha, a.Border.Art.__alpha, AddFriendNameEditBox.Art.__alpha, AddFriendEntryFrameAcceptButton.Art.__alpha, AddFriendEntryFrameCancelButton.Art.__alpha }`),
   "the game's art faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  // The friend picker is a WowStyle1 dropdown (Blizzard_FriendsFrame/Mainline/FriendsFriendsFrame.xml:44): the game's arrow is faded and the theme's takes its place.
+  expect(addon.eval(`local d, down, n = FriendsFriendsFrame.FriendsDropdown, ns.Theme.Icon("Down"), 0
+    for _, r in ipairs({ d:GetRegions() }) do if r.GetTexture and r:GetTexture() == down and (r.__alpha or 1) ~= 0 then n = n + 1 end end
+    return { d.Arrow.__alpha, n }`), "the friend picker keeps an arrow").toEqual([0, 1]);
   expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { themed(AddFriendNameEditBox), themed(AddFriendEntryFrameAcceptButton), themed(CreateChannelPopup.Name), themed(CreateChannelPopup.OKButton),
       themed(FriendsFriendsFrame.SendRequestButton), themed(FriendsFriendsFrame.CloseButton), themed(BattleNetInviteFrame.SendButton), themed(ns.GetModule("Windows").MadeBackdrop(AddFriendFrame)), themed(BattleNetInviteFrame) }`),

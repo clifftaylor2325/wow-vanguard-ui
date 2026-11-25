@@ -103,15 +103,28 @@ local function reach(ox, oy)
   return math.max(math.abs(ox), math.abs(oy))
 end
 
+-- How far an offset reaches towards the edge, as a share of the room each way: the room is half the width less half
+-- a mark, less the band the Minimap module keeps the north or south edge clear for (the marks sit under it otherwise).
+local function squareReach(ox, oy, half)
+  local top, bottom = ns.GetModule("Minimap").EdgeInsets()
+  local room = half - QM.SIZE / 2
+  return math.max(math.abs(ox) / room, oy / math.max(room - top, 1), -oy / math.max(room - bottom, 1))
+end
+
 -- Where a spot (x, y on the map, 0 to 1) sits from the minimap's centre, in UI units, given `half` its half-width:
 -- x, y and true when it is past the edge (then it sits faint on the edge in its direction). A mark never
--- runs past the map's edge: one that would is drawn just inside it, its whole self on the map.
+-- runs past the map's edge, nor under its bands: one that would is drawn just inside, its whole self on the map.
 function QM.Offset(s, x, y, half)
   local east, north = rotated((x - s.px) * s.w, -(y - s.py) * s.h)
   local ox, oy = east / s.radius * half, north / s.radius * half
   local far, room = reach(ox, oy), half - QM.SIZE / 2
-  if far <= room then return ox, oy, false end
-  return ox * room / far, oy * room / far, far > half
+  if QM.Round() then
+    if far <= room then return ox, oy, false end
+    return ox * room / far, oy * room / far, far > half
+  end
+  local share = squareReach(ox, oy, half)
+  if share <= 1 then return ox, oy, false end
+  return ox / share, oy / share, far > half
 end
 
 -- Drawing -----------------------------------------------------------------------------------------

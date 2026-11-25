@@ -7369,6 +7369,162 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The whole passage and Varian's attribution are on screen.
 - If it fails, paste: A screenshot.
 
+### 33.891 A finished Learn spell objective is greyed in the map's quest details (H47-11-1; WoW Forever and Retail)
+
+- Do: With Game windows -> World map on, open the map's quest details for a quest whose Learn spell objective you have finished (skip if none). [Client: Forever and Retail.]
+- Expect: The Learn Spell line is greyed like the other finished objectives.
+- If it fails, paste: /vg errors.
+
+### 33.892 Two stacked popups share one panel (H47-11-101; WoW Forever and Retail)
+
+- Do: With Game windows -> Popups on, get two popups at once (drag an item out of the bag for the destroy confirm, then have a party member invite you), then close the upper one. [Client: Forever and Retail.]
+- Expect: The two panels join at one seam with no crossed band; closing the upper leaves the lower with its whole panel.
+- If it fails, paste: A screenshot of the two popups.
+
+### 33.893 The Friends of Friends dropdown has its arrow (H47-12-1; WoW Forever)
+
+- Do: Open Friends, right-click a Battle.net friend > View Friends. [Client: Forever.]
+- Expect: The dropdown at the top of the dialog is a flat button with the theme's down chevron at its right edge.
+- If it fails, paste: A screenshot.
+
+### 33.894 Skinned game windows are opaque (H47-13-1; WoW Forever)
+
+- Do: In front of a bright scene open Esc > Options, then the calendar and the group finder. [Client: Forever.]
+- Expect: None lets the world show through.
+- If it fails, paste: Pass/fail per window.
+
+### 33.895 Disabled group finder cards are dimmed in the theme (H47-14-1; Retail)
+
+- Do: On a Retail character below the level for Raid Finder or Rated PvP, open the group finder (I), then its PvP tab, then level past the requirement with the window open. [Client: Retail.]
+- Expect: The disabled card's name is in the theme font and dimmer than the usable cards; after the level-up it is light like the others.
+- If it fails, paste: A screenshot of the card column.
+
+### 33.896 The quest reward page has Goodbye (H47-15-1; WoW Forever and Retail)
+
+- Do: Finish a quest, talk to its giver and open the reward page. [Client: Forever and Retail.]
+- Expect: Goodbye at the far left of the buttons; clicking it ends the talk and leaves the quest in your log.
+- If it fails, paste: A line saying Goodbye was there.
+
+### 33.897 The expanded tracker keeps its stack under a strip moved above it (H47-15-2; WoW Forever and Retail)
+
+- Do: Expand the tracker, drag the menu strip above it. [Client: Forever and Retail.]
+- Expect: The tracker keeps its full stack.
+- If it fails, paste: How many quests show.
+
+### 33.898 The picked reward card is marked (H47-15-101; WoW Forever and Retail)
+
+- Do: Open a reward page with 2+ choices and click one card. [Client: Forever and Retail.]
+- Expect: The clicked card is washed in your accent colour, the others are not.
+- If it fails, paste: A line saying which card was marked.
+
+### 33.899 The expanded tracker ends above the target-of-target frame (H47-15-102; WoW Forever and Retail)
+
+- Do: At 1365x768 expand the tracker with 12 quests while you have a target of target. [Client: Forever and Retail.]
+- Expect: The last quest and Show fewer end above the target-of-target frame.
+- If it fails, paste: A line saying whether they overlap.
+
+### 33.900 The hidden tab bar stays under the mouse on the Combat Log strip (H47-16-1; WoW Forever and Retail)
+
+- Do: With Hide the tab bar until hovered on and the Combat Log tab shown, rest the mouse on its filter strip for 10 seconds. [Client: Forever and Retail.]
+- Expect: The tab bar stays.
+- If it fails, paste: Yes or no.
+
+### 33.901 The meter's Reset and Report buttons are whole in German (H47-17-1; WoW Forever)
+
+- Do: On a deDE client turn the meter on (Combat tools, Vanguard meter) and look at its title row. [Client: Forever.]
+- Expect: Zuruecksetzen and Bericht whole on their buttons, the title ending short of them.
+- If it fails, paste: A crop of the title row.
+
+### 33.902 The off-screen waypoint arrow is in your accent (H47-17-2; WoW Forever)
+
+- Do: /way 50 50 and turn so the spot is behind you. [Client: Forever.]
+- Expect: The arrow at the screen edge beside the pin in your accent.
+- If it fails, paste: A crop of pin and arrow.
+
+### 33.903 Far quest marks stay clear of the square minimap's bands (H47-17-101; WoW Forever)
+
+- Do: With the square minimap and coordinates on, watch a quest whose spot is far north or south of you. [Client: Forever.]
+- Expect: A faint dot just inside the zone band or above the coordinates band, not under it.
+- If it fails, paste: A crop of the minimap.
+
+### 33.904 The sell card follows a new Undercut by at once (H47-18-1; WoW Forever and Retail)
+
+- Do: At the auction house, Posting tab, drop an item that has listings up and note Your price; open the options window > Town and gear > Auction house and set Undercut by to 1 %. [Client: Forever and Retail.]
+- Expect: The card's Undercut by lights 1% and Your price changes at once; a click on Post sends that price.
+- If it fails, paste: The card's Your price and the chat 'Post: sending' line.
+
+### 33.905 The undercut count is readable on the table's heading line (H47-18-102; WoW Forever and Retail)
+
+- Do: With the client in Deutsch and two auctions up on the Posting tab, one undercut, click Unterbieten prüfen. [Client: Forever and Retail.]
+- Expect: The Deine Auktionen table's heading line reads 'Gegenstand 2 · 1 unterboten' in full, and the card's heading line holds only the title and the two buttons.
+- If it fails, paste: A screenshot of the card.
+
+### 33.906 Relist reads in full in German (H47-18-103; WoW Forever and Retail)
+
+- Do: With the client in Deutsch and an expired auction on the Posting tab, look at its row in Deine Auktionen. [Client: Forever and Retail.]
+- Expect: The button reads 'Neu einstellen' in full and the price text beside it is not drawn under it.
+- If it fails, paste: A screenshot of the row.
+
+### 33.907 The sell card's no-history line is whole in German (H47-18-104; WoW Forever and Retail)
+
+- Do: With the client in Deutsch, drop an item you never sold on the Posting tab's sell card. [Client: Forever and Retail.]
+- Expect: The line under 'x von y eingestellt' reads the whole sentence, slightly smaller, on one line.
+- If it fails, paste: A screenshot of the card.
+
+### 33.908 A long shopping list name ends before the toolbar (H47-18-105; WoW Forever and Retail)
+
+- Do: On the Lists tab, make a list named 'Things to buy for my alts every weekend before the raid night' and add one item. [Client: Forever and Retail.]
+- Expect: The card's heading ends in '...' before Restock, with '0 of 1' (or the count) after it, nothing drawn under the buttons.
+- If it fails, paste: A screenshot of the card's top line.
+
+### 33.909 A hover key's long macro stops before its note and Remove (H47-19-1; WoW Forever and Retail)
+
+- Do: Click casting, Keys while hovering a frame, bind hover key 1 to a long macro. [Client: Forever and Retail.]
+- Expect: The macro text stops short of 'also Action bar 1 slot 1' and Remove.
+- If it fails, paste: Screenshot of the row.
+
+### 33.910 The spell picker's Ranks button reads in full (H47-19-2; WoW Forever and Retail)
+
+- Do: Click casting, click a grid cell, find Flash Heal. [Client: Forever and Retail.]
+- Expect: 'Ranks v' reads in full, 'Ranks ^' after the click.
+- If it fails, paste: Screenshot.
+
+### 33.911 Grid cell names stay in their cells with seven columns (H47-19-101; WoW Forever and Retail)
+
+- Do: Click casting, Starter layout Healer. [Client: Forever and Retail.]
+- Expect: Every cell's spell name stays in its cell.
+- If it fails, paste: Screenshot of the grid.
+
+### 33.912 Spend planned is greyed on another spec's tab (H47-20-5; WoW Forever)
+
+- Do: Open the talents window on the other spec's tab, or inspect a player's talents. [Client: Forever.]
+- Expect: Spend planned and Plan are greyed there and lit again on your active spec's tab.
+- If it fails, paste: Nothing unless it differs.
+
+### 33.913 The craft queue's Short of note stays above its buttons (H47-20-51; WoW Forever and Retail)
+
+- Do: Switch Craft queue on, open a profession and Add to queue three recipes whose reagents you do not carry. [Client: Forever and Retail.]
+- Expect: The whole 'Short of: ...' line is readable above Add to queue, Next and Clear, the panel taller than with a short note.
+- If it fails, paste: A screenshot of the panel.
+
+### 33.914 Train all stays clear of the trainer's money line (H47-20-52; WoW Forever and Retail)
+
+- Do: Open a trainer with several skills you can afford on a German, French, Spanish or Russian client. [Client: Forever and Retail.]
+- Expect: The Train all button's left edge stays right of your copper and silver on the money line.
+- If it fails, paste: A screenshot of the window's bottom.
+
+### 33.915 The craft queue's scroll bar sits inside the panel (H47-20-101; WoW Forever and Retail)
+
+- Do: Add to queue six recipes so the list scrolls. [Client: Forever and Retail.]
+- Expect: The scroll bar sits inside the panel's right edge.
+- If it fails, paste: A screenshot.
+
+### 33.916 The group board's filter row and names fit at 130% (H47-20-104; WoW Forever)
+
+- Do: Set Text size to 130% on a French client, open the group board (the filter row). [Client: Forever.]
+- Expect: The Only dungeons for my level label is one line and does not touch the title, and 11 to 12 letter sender names are whole.
+- If it fails, paste: A screenshot of the board's top.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

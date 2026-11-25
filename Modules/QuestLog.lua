@@ -171,8 +171,8 @@ end
 
 -- What chat says when the game didn't change a quest's watch, by whether it was watched.
 local UNCHANGED = {
-  [true] = L["The game didn't untrack {quest} ({count} quests tracked)."],
-  [false] = L["The game didn't track {quest} ({count} quests tracked)."],
+  [true] = { one = L["The game didn't untrack {quest} (1 quest tracked)."], many = L["The game didn't untrack {quest} ({count} quests tracked)."] },
+  [false] = { one = L["The game didn't track {quest} (1 quest tracked)."], many = L["The game didn't track {quest} ({count} quests tracked)."] },
 }
 
 -- Starts or stops watching the chosen quest, then redraws it so the button shows what the game now says;
@@ -181,7 +181,8 @@ function QL.ToggleTrack(d)
   if d.watched then questLog("RemoveQuestWatch", d.id) else questLog("AddQuestWatch", d.id) end
   if QL.IsWatched(d.id) == d.watched then
     local values = { quest = ns.QuestParts.Plain(d.title), count = #ns.GetModule("QuestTracker").Watched() }
-    ns.Chat(ns.Format(UNCHANGED[d.watched == true], values))
+    local said = UNCHANGED[d.watched == true]
+    ns.Chat(ns.Format(values.count == 1 and said.one or said.many, values))
   end
   QL.Select(d.id)
 end

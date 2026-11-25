@@ -160,6 +160,13 @@ it("chat history: a trim while playing also drops lines past their age", () => {
   expect(saved(addon)[0].length, "only the 51 new lines are left").toBe(51);
 });
 
+it("chat history: /vg history says 1 day for the one-day choice, not 1 days", () => {
+  const addon = session();
+  addon.eval("ns.Settings('ChatHistory').days = 1");
+  addon.slash("history");
+  expect(chatHas(addon, /for 1 day; whispers are not kept\./), "singular").toBe(true);
+});
+
 it("chat history: /vg history says what is kept, clears it, and turns it on and off", () => {
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage("one") ChatFrame2:AddMessage("two")`);

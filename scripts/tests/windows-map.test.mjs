@@ -533,6 +533,9 @@ const FINDER_ENV = WINDOWS_ENV + `
   LFG_LIST_NO_RESULTS_FOUND = "TEST-ONLY No groups found."
 `;
 
+// The alpha of the shown BACKGROUND fill on a skinned frame, the panel colour's fourth value.
+const fillAlpha = (a, f) => a.eval(`for _, r in ipairs({ ${f}:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__layer == "BACKGROUND" and r.__vertexColor and r.__alpha ~= 0 then return r.__vertexColor[4] end end`);
+
 it("group finder: the window, its listing and browse pages and the group tooltip in the theme once the game loads it", () => {
   const addon = loggedIn(FINDER_ENV);
   addon.eval("__finder()");
@@ -541,6 +544,7 @@ it("group finder: the window, its listing and browse pages and the group tooltip
   addon.eval("LFGParentFrame:Show() LFGListingFrame:Show() LFGBrowseFrame:Show() LFGBrowseSearchEntryTooltip:Show()");
   expect([fills(addon, "LFGParentFrame"), addon.eval("return select('#', LFGParentFrameCloseButton:GetRegions()) > 1")], "the window gets one panel, and the close button is the theme's").toEqual([1, true]);
   expect(addon.eval("local e = LFGParentFramePortrait return { e.texture:GetAlpha(), e.Anim.Picture:GetAlpha() }"), "the eye's static picture is faded, its animation kept").toEqual([0, 1]);
+  expect(fillAlpha(addon, "LFGParentFrame"), "docs/THEME.md T.ALPHA: the finder window is opaque").toBe(1);
   const listing = windowState(addon, "LFGListingFrame");
   expect(listing, "the pages' template art is faded; they carry no panel of their own, the window does").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: false, title: true });
   expect(windowState(addon, "LFGBrowseFrame"), "both pages").toMatchObject({ art: 0, nine: 0, portrait: 0, panel: false, title: true });
@@ -1187,6 +1191,7 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(["CalendarFrameTopLeftTexture", "CalendarWeekday1Background", "CalendarMonthBackground"].map(n => calAlpha(addon, `_G.${n}`)), "the template textures are faded").toEqual([0, 0, 0]);
   expect(["CalendarWeekdaySelectedTexture", "CalendarLastDayDarkTexture"].map(n => calAlpha(addon, `_G.${n}`)), "the glow and the shadow stay").toEqual([1, 1]);
   expect(fills(addon, "CalendarFrame"), "the frame has a panel fill").toBe(1);
+  expect(fillAlpha(addon, "CalendarFrame"), "docs/THEME.md T.ALPHA: the window is opaque").toBe(1);
   expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
   expect(addon.eval("local p, rel, rp, x, y = CalendarFilterButton:GetPoint(1) return { CalendarFilterButton:GetNumPoints(), p, rel == CalendarCloseButton, rp, x, y }"),
     "the filter button sits level with the close button, its right edge where a maximize box's plate would end (clear of the close plate)").toEqual([1, "RIGHT", true, "CENTER", -addon.eval("return ns.Theme.PixelRound(CalendarCloseButton, 18)"), 0]);

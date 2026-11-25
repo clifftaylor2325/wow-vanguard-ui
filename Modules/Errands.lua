@@ -141,13 +141,40 @@ local function trainTip(b)
   GameTooltip:Show()
 end
 
--- The button's label (how many one click learns; the tooltip has the cost), the button growing left to hold it;
--- it's off while nothing is affordable.
+-- Where the game's money line ends, in units from the trainer window's left (its copper coin ends at 148; the game's
+-- own frame: Blizzard_TrainerUI.xml, the MoneyBg and its money frame), so Train all growing left stops short of it.
+ER.MONEY_END = 148
+
+-- The most width Train all can have: from the money line's end to the game's Train button, 4 units off it (nil when
+-- there is no Train button to sit beside, or the window has no width yet to measure).
+local function trainRoom()
+  local frame, train = _G.ClassTrainerFrame, _G.ClassTrainerTrainButton
+  if type(frame) ~= "table" or type(train) ~= "table" then return nil end
+  local width, trainWidth = ns.PlainNumber(frame:GetWidth()), ns.PlainNumber(train:GetWidth())
+  if not (width and trainWidth) or width <= 0 then return nil end
+  return width - trainWidth - 4 - ER.MONEY_END
+end
+
+-- Gives the button a label at its own width, widened to hold it but no wider than the room it has (a label still
+-- longer shrinks, T.FitText); false when the label needed more than that room.
+local function labelFits(b, label)
+  local room = trainRoom()
+  b:SetWidth(ER.TRAIN_WIDTH)
+  b.text:SetText(label)
+  ns.WidenToLabel(b)
+  local fits = not room or b:GetWidth() <= room
+  if not fits then b:SetWidth(room) T.Refit(b.text) end
+  return fits
+end
+
+-- The button's label (how many one click learns; the tooltip has the cost), the button growing left to hold it but
+-- not over the money line: past that room it says Train all alone. It narrows again as the count drops. It's off
+-- while nothing is affordable.
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
   if not b or not ER.settings then return end
-  b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
-  ns.WidenToLabel(b)
+  local counted = plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count })
+  if not (counted and labelFits(b, counted)) then labelFits(b, L["Train all"]) end
   if plan.count > 0 and not ER.training then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end

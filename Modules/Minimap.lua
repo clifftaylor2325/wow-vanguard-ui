@@ -662,6 +662,15 @@ function MM.ApplyCoords()
   if on then coordsTicker(MM.holder) else ns.Every("minimap coords", nil) end
 end
 
+-- How far the top and bottom bands (and the zone name and coordinates on them) reach in from the map's edge, 0 for a
+-- band that isn't there (Vanguard's minimap off, no top band on a round map, no coordinates). For marks that keep clear of them.
+---@return number top
+---@return number bottom
+function MM.EdgeInsets()
+  if not MM.enabled or not MM.top then return 0, 0 end
+  return MM.top:IsShown() and MM.BAND.top or 0, MM.bottom:IsShown() and MM.BAND.bottom or 0
+end
+
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
   MM.round, MM.rim, MM.size = MM.IsRound(settings), settings.size / 2 - MM.RIM_INSET, settings.size

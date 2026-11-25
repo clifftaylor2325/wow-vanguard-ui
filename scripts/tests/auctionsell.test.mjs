@@ -658,8 +658,8 @@ it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, an
     expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
     const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
     expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
-    const room = addon.eval(`local c = ${OWNED_CARD} return { c.title:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
-    expect(room, `${locale}: heading, count, Cancel next, Check undercuts in a row inside the card, the count with room to be drawn`).toEqual([true, true, true, true, true]);
+    const room = addon.eval(`local c, t = ${OWNED_CARD}, ${OWNED_CARD}.table return { t.nameHead:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= t.heads[1]:GetLeft(), c.title:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: the count after Item on the table's heading line, before the price column; heading, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true, true, true, true]);
     const other = addon.textFit(OWNED_CARD).filter((f) => f.text === count && f.kind !== "cut");
     expect(other, `${locale}: the count only ever ends in an ellipsis, never runs over its neighbours`).toEqual([]);
   }
@@ -917,4 +917,111 @@ it("a click on a price row that is all yours takes its price as it is", () => {
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
   addon.click(`${UP}.table.rows[1]`);
   expect(card(addon)[0][3], "all yours: as it is").toBe("10s 0c");
+});
+// Sets the Town and gear row labelled `label` to its choice number `n`, as a click in the options window does.
+function pickTownRow(addon, label, n) {
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then
+    for _, r in ipairs(p.rows()) do if r[2] == "${label}" then r[5](r[3][${n}][1]) end end end end`);
+}
+// The sell card's lit undercut segment, its Your price and its Price box.
+const undercutShown = (addon) => addon.eval(`local c = ${CARD} local lit
+  for _, s in ipairs(c.undercut.segments) do if s.fill.shown then lit = s.value end end
+  return { lit, c.lines[4].value:GetText(), c.price:GetText() }`);
+it("H47-18-1 Undercut by changed in the options window repaints the sell card, and Post sends the price it shows", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 500000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(undercutShown(addon), "1 silver under 50g").toEqual(["silver", "49g 99s 0c", "49g 99s 0c"]);
+  pickTownRow(addon, "Undercut by", 3);
+  expect(undercutShown(addon), "1 % under 50g, lit at once").toEqual(["percent", "49g 50s 0c", "49g 50s 0c"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0][6], "the buyout the card showed").toBe(495000);
+});
+it("H47-18-1 the sell card lights the saved undercut rule after the house is closed and opened again", () => {
+  const addon = atAuctionHouse(BAGS);
+  addon.eval(`${HELPER}.settings.undercut = "copper"`);
+  addon.world.closeAuctionHouse();
+  addon.update(0);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(undercutShown(addon)[0], "the rule saved while the house was closed").toBe("copper");
+});
+it("H47-18-1 Auction length changed in the options window repaints the sell card's deposit line", () => {
+  const addon = atAuctionHouse(BAGS + "AUCTION_DURATION_THREE = 'TEST-ONLY 48 Hours' __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  pickTownRow(addon, "Auction length", 4);
+  expect(card(addon)[0][2], "48 hours, shown before Post").toBe("45c · TEST-ONLY 48 Hours");
+});
+it("H47-18-2 bag updates after the house closed never repaint the hidden sell card, and the next visit paints it", () => {
+  const addon = atAuctionHouse(BAGS);
+  addon.world.closeAuctionHouse();
+  addon.update(0);
+  addon.eval(`local AH = ${HELPER} __paints = 0 local up = AH.PaintUp AH.PaintUp = function(...) __paints = __paints + 1 return up(...) end`);
+  for (let i = 0; i < 3; i++) { addon.fire("BAG_UPDATE_DELAYED"); addon.update(0); }
+  expect(addon.eval("return __paints"), "no repaint while closed").toBe(0);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval("return __paints"), "painted once on the next visit").toBe(1);
+});
+it("H47-18-103 an expired auction's Relist button keeps its whole label in real translations, and the price column moves left for it", () => {
+  for (const locale of ["deDE", "frFR", "itIT", "ruRU", "ptBR", "esES", "enUS"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.owned = { { id = 1, status = "expired", key = { itemID = 10940 } } } ${HELPER}.PaintOwned()`);
+    const label = addon.eval(`return ${OWNED_CARD}.table.rows[1].relist.text:GetText()`);
+    expect(addon.textFit(OWNED_CARD).filter((f) => f.text === label), `${locale}: ${label} is not cut`).toEqual([]);
+    const r = addon.eval(`local r = ${OWNED_CARD}.table.rows[1] return { r.relist:IsShown(), r.cells.price:GetRight() <= r.relist:GetLeft(), r.name:GetRight() <= r.cells.price:GetLeft() }`);
+    expect(r, `${locale}: Relist shown, right of the price, the name before it`).toEqual([true, true, true]);
+  }
+});
+it("H47-18-104 the sell card's no-history line fits whole on one line in German, and at larger text still ends inside the card over nothing", () => {
+  for (const [scale, whole] of [[1, true], [1.3, false]]) {
+    const addon = postingTab("deDE");
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
+    addon.eval(`${CARD}.historyLine:SetText(ns.L["No sales or expiries of this item yet."])`);
+    const history = addon.eval(`return ${CARD}.historyLine:GetText()`);
+    const found = addon.textFit(CARD).filter((f) => f.text === history).map((f) => f.kind);
+    expect(found, `${scale}: ${whole ? "the whole sentence" : "at most an ellipsis at the card's edge"}`).toEqual(whole ? [] : ["cut"]);
+    const r = addon.eval(`local c = ${CARD} return { c.historyLine:GetBottom() >= c.steps[1]:GetTop(), c.historyLine:GetTop() <= c.status:GetBottom(), c.historyLine:GetRight() <= c:GetRight() }`);
+    expect(r, `${scale}: under the count line, above the steps, inside the card`).toEqual([true, true, true]);
+  }
+});
+it("H47-18-105 a long shopping list name ends in an ellipsis before the toolbar's buttons, its count after it; a short one is whole", () => {
+  for (const locale of ["enUS", "frFR"]) {
+    const addon = postingTab(locale);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    const long = "TEST-ONLY Things to buy for my alts every weekend before the raid night";
+    addon.eval(`local AH = ${HELPER} AH.NewList("${long}") AH.AddEntry("Strange Dust", "${long}") AH.PaintShop()`);
+    const kinds = addon.textFit("Vanguard_AuctionShopping").map((f) => [f.kind, f.text]);
+    expect(kinds.filter(([kind]) => kind !== "cut"), `${locale}: nothing runs under a button`).toEqual([]);
+    expect(kinds.filter(([, text]) => text !== long), `${locale}: only the long name ends in an ellipsis (heading and pane row)`).toEqual([]);
+    const r = addon.eval(`local c = ${HELPER}.shopCard return { c.progress:GetRight() <= c.restock:GetLeft(), c.title:GetRight() < c.progress:GetLeft() }`);
+    expect(r, `${locale}: the name, then its count, before Restock`).toEqual([true, true]);
+    addon.eval(`local AH = ${HELPER} AH.NewList("TEST-ONLY Mats") AH.AddEntry("Strange Dust", "TEST-ONLY Mats") AH.PaintShop()`);
+    const short = addon.textFit("Vanguard_AuctionShopping").filter((f) => f.text !== long);
+    expect([short, addon.eval(`return ${HELPER}.shopCard.title:GetText()`)], `${locale}: a short name is whole`).toEqual([[], "TEST-ONLY Mats"]);
+  }
+});
+it("H47-18-102 (recommended pick, awaits Cliff) the Your auctions count is on the table's heading line after Item, whole in German, French, Italian and Portuguese", () => {
+  for (const locale of ["enUS", "deDE", "frFR", "itIT", "ptBR"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = true },
+      { id = 2, status = "up", unit = 10, key = { itemID = 10940 } } } ${HELPER}.PaintOwned()`);
+    const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
+    expect(count, `${locale}: two up, one undercut`).toMatch(/^2 · 1 \S/);
+    expect(addon.textFit(OWNED_CARD).filter((f) => f.text === count), `${locale}: ${count} whole, over nothing`).toEqual([]);
+    const line = addon.eval(`local c, t = ${OWNED_CARD}, ${OWNED_CARD}.table return { math.abs(c.count:GetTop() - t.nameHead:GetTop()) < 1, c.count:GetLeft() > t.nameHead:GetRight() }`);
+    expect(line, `${locale}: on the Item heading's line, after it`).toEqual([true, true]);
+  }
+});
+it("H47-18-101 the Up now card's Your history toggle keeps its whole label, a third longer too, and its width when clicked", () => {
+  for (const locale of ["enUS", "frFR", "itIT"]) {
+    const addon = postingTab(locale);
+    // The toggle's label and width.
+    const look = () => addon.eval(`local b = ${HELPER}.upCard.historyToggle return { b.text:GetText(), b:GetWidth() }`);
+    const before = look();
+    expect(addon.textFit(`${HELPER}.upCard`).filter((f) => f.text === before[0]), `${locale}: ${before[0]} not cut`).toEqual([]);
+    addon.click(`${HELPER}.upCard.historyToggle`);
+    const after = look();
+    expect(addon.textFit(`${HELPER}.upCard`).filter((f) => f.text === after[0]), `${locale}: ${after[0]} not cut`).toEqual([]);
+    expect(after[1], `${locale}: the same width either way`).toBe(before[1]);
+  }
 });

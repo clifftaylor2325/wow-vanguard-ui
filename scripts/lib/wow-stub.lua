@@ -388,7 +388,8 @@ function methods:SetTextColor(r, g, b, a) self.__textColor = { r, g, b, a or 1 }
 -- The text colour last set (white until one is).
 function methods:GetTextColor() local c = self.__textColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
 function methods:SetJustifyH(j) self.__justifyH = j end
-function methods:SetFontObject(font) self.__template = type(font) == "string" and font or self.__template self.__fontObject = font end
+-- A font object brings its own colour in the game, so the text colour set before is gone (nil reads as white).
+function methods:SetFontObject(font) self.__template = type(font) == "string" and font or self.__template self.__fontObject, self.__textColor = font, nil end
 function methods:SetBackdrop(b) self.__backdrop = b end
 function methods:SetBackdropColor(r, g, b, a) self.__backdropColor = { r, g, b, a or 1 } end
 function methods:SetBackdropBorderColor(r, g, b, a) self.__borderColor = { r, g, b, a or 1 } end

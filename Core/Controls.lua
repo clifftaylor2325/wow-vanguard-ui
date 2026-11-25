@@ -150,6 +150,18 @@ local function addSwitch(r)
   addKnob(r)
 end
 
+-- Keeps a row's caption on one line in the room it has, its text shrinking to fit (T.FitText over a box of the caption's
+-- width), for a caption a translation or the largest Text size would wrap over the row under it.
+---@param r table  a slider or switch row
+---@return table r
+function W.ShrinkCaption(r)
+  local room = CreateFrame("Frame", nil, r)
+  room:SetSize(r.label:GetWidth(), r:GetHeight())
+  room:SetPoint("LEFT", r, "LEFT", 8, 0)
+  T.FitText(r.label, room, 0)
+  return r
+end
+
 -- A switch row: set(on) runs on click, then the row re-reads get(). A long caption wraps left of the switch.
 function W.Check(parent, text, get, set, width)
   local r = row(parent, text, width)

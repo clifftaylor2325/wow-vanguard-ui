@@ -650,6 +650,15 @@ it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is 
   bare.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
   expect(bare.eval("return CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA"), "and off leaves it as it was (unset)").toBe(null);
 });
+it("chat bar hidden until hover: the Combat Log's filter strip counts as part of its hover zone, so the bar stays under a cursor resting on it", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + COMBAT_LOG_ENV + "function FCF_StartAlertFlash() end function FCF_StopAlertFlash() end");
+  addon.eval("__combatLogStrip()");
+  // The cursor 36 units over the log's top (the middle of its bar, which runs 24 to 48 over it): IsMouseOver is true only when the top offset reaches it (SimpleScriptRegionAPIDocumentation.lua IsMouseOver offsetTop).
+  addon.eval("ChatFrame2.IsMouseOver = function(_, top) return (top or 0) >= 36 end ChatFrame1:Hide()");
+  addon.eval("local C = ns.GetModule('Chat') C.settings.barHover = true C.ApplyBarHover()");
+  addon.advance(4.5, 0.1);
+  expect(addon.eval("return { ns.GetModule('Chat').frames[ChatFrame2].bar:IsShown(), #ns.errors }"), "the bar under the cursor stays").toEqual([true, 0]);
+});
 it("chat bar hidden until hover (off by default): the bar goes after 4 s away, comes back with the mouse over the chat, stays while a tab alerts; the tabs follow through the game's alphas; off brings every bar back", () => {
   const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + "function FCF_StartAlertFlash() end function FCF_StopAlertFlash() end");
   const B = "ns.GetModule('Chat').frames[ChatFrame1].bar";

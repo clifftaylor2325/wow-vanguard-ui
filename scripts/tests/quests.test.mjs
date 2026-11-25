@@ -139,9 +139,11 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   addon.fire("QUEST_COMPLETE");
   key(addon, "SPACE");
   expect([dialog(addon).enabled, calls(addon)], "with a choice of rewards, Complete waits for a pick").toEqual([false, []]);
+  expect(addon.eval("local e = Vanguard_QuestDialog.escape return { e:IsShown(), e.text:GetText() }"), "H47-15-1: the reward page has Goodbye, as the game's own reward panel has a cancel button (Vanilla/QuestFrame.xml QuestFrameCancelButton)").toEqual([true, "Goodbye"]);
   key(addon, "9");
   key(addon, "2");
   expect(addon.eval("local c = Vanguard_QuestDialog.cards return { c[1].picked:IsShown(), c[2].picked:IsShown(), Vanguard_QuestDialog.primary:IsEnabled() }"), "2 picks the gloves (9 has no reward)").toEqual([false, true, true]);
+  expect(addon.eval("return Vanguard_QuestDialog.cards[2].picked:GetTexture() == ns.Theme.WHITE"), "H47-15-101: the picked wash has a texture to tint, as every other wash does").toBe(true);
   addon.eval("local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c) c = Vanguard_QuestDialog.cards[3] c.__scripts.OnClick(c)");
   key(addon, "SPACE");
   expect(calls(addon), "a click picks too (bread is no choice); Space takes it").toEqual(["reward 1"]);
@@ -918,6 +920,32 @@ it("quest tracker: expanded, the list stops above the menu strip (the bags and m
   expect(tracker(addon).more, "with some quests still shown and the way back").toMatch(/^Show fewer/);
   expect(addon.eval("local QT = ns.GetModule('QuestTracker') Vanguard_MenuStrip:Hide() QT.Refresh() return Vanguard_QuestTrackerFrame.moreBtn:GetBottom()"), "with the strip hidden the stack is allowed to run lower").toBeLessThan(more.bottom);
 });
+// H47-15-2 and H47-15-102: the expanded tracker's floor ignores a frame above it and keeps clear of the target-of-target frame.
+const EXPANDED_FLOOR = `for i = 1, 20 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" } } } __watches[#__watches + 1] = id end`;
+// A tracker expanded on a 1365 x 768 canvas with 20 watched quests and the target-of-target frame at its default spot.
+const expandedAt1365 = () => {
+  const addon = strips(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(1365, 768)", { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, QuestTracker = { expanded = true } } } }" });
+  // The target-of-target frame at its default spot (UnitFrames' LAYOUT: 120 x 24, BOTTOM +426, +196), hidden as with no target.
+  addon.eval(`local t = CreateFrame("Frame", "Vanguard_targettarget", UIParent) t:SetSize(120, 24) t:SetPoint("BOTTOM", UIParent, "BOTTOM", 426, 196) t:Hide()`);
+  addon.eval(EXPANDED_FLOOR);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  return addon;
+};
+it("H47-15-2 quest tracker: a menu strip moved above the tracker is no floor for it", () => {
+  const addon = expandedAt1365();
+  const before = tracker(addon).blocks.length;
+  addon.eval(`local m = Vanguard_MenuStrip m:ClearAllPoints() m:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -16, -4) ns.GetModule("QuestTracker").Refresh()`);
+  addon.update(0);
+  expect([addon.eval("return Vanguard_MenuStrip:GetBottom() > Vanguard_QuestTrackerFrame.body:GetTop()"), tracker(addon).blocks.length >= before], "the strip sits above the tracker's body").toEqual([true, true]);
+  expect(before, "more than one quest is shown").toBeGreaterThan(1);
+});
+it("H47-15-102 quest tracker: expanded, the stack stops above the target-of-target frame at 1365 wide", () => {
+  const addon = expandedAt1365();
+  const gap = addon.eval(`local f = Vanguard_QuestTrackerFrame return { f.moreBtn:GetBottom(), Vanguard_targettarget:GetTop(), f.blocks[f.blocks.used]:GetBottom(), Vanguard_targettarget:GetLeft() < f:GetRight() and Vanguard_targettarget:GetRight() > f:GetLeft() }`);
+  expect(gap[3], "the target-of-target frame is under the tracker's columns here").toBe(true);
+  expect([gap[0] >= gap[1], gap[2] >= gap[1]], "the last quest and Show fewer both end above its top, hidden or not").toEqual([true, true]);
+});
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);
   const tight = layout(addon)[4];
@@ -1106,6 +1134,11 @@ it("A1-5: the switch on the Quests page stops zones being opened by themselves, 
   addon.advance(0.25);
   expect(addon.eval("return __log[4].isCollapsed"), "switched back on: opened again at the next zone-in, with no reload").toBe(false);
 });
+it("H47-15-3 quest log: one quest is counted in the singular", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("ns.GetModule('QuestLog').Count = function() return 1 end ns.GetModule('QuestLog').Open()");
+  expect(addon.eval("return Vanguard_QuestLog.count:GetText()"), "1 quest, not 1 quests").toBe("1 quest");
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });
@@ -1125,7 +1158,7 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   expect(questLog(addon).track, "a watch change from elsewhere (the tracker's right-click) redraws the button").toBe("Track");
   addon.eval("__full = true IsShiftKeyDown = function() return true end");
   logLine(addon, 2);
-  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quests tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
+  expect([questLog(addon).track, addon.chat().filter((l) => /The game didn't track TEST-ONLY Letter \(1 quest tracked\)/.test(l)).length], "Shift-click a line tracks it; when the game refuses, the button stays Track and chat says so").toEqual(["Track", 1]);
   addon.eval("__full = nil IsShiftKeyDown = function() return false end");
   expect([addon.eval("return { __removed, __added }"), questLog(addon).title], "Untrack the wolves; choose the letter and Track it").toEqual([[90051, 90052], "[12] TEST-ONLY Letter"]);
   expect(addon.eval("local l = Vanguard_QuestLog.lines return { l[2].selected, l[1].selected, l[3].selected }"), "the chosen quest's line is marked").toEqual([true, false, false]);
@@ -1774,6 +1807,9 @@ it("game windows: the quest's rewards heading, reward lines, objective lines, ti
   const tok = (expr, name) => isTok(addon, addon.eval(`return ${expr}.__textColor`), name);
   const named = ["QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel"];
   expect(named.map((n) => tok(n, "text")), "the type, group size, timer, money and learn lines are the text colour").toEqual([true, true, true, true, true]);
+  // client rule: QuestInfo_ShowSpecialObjectives adds " (Complete)" to the learn line when finished (Blizzard_UIPanels_Game/Mainline/QuestInfo.lua:301-303).
+  addon.eval("QuestInfoSpellObjectiveLearnLabel:SetFont('TEST-ONLY-GAME', 12, '') QuestInfoSpellObjectiveLearnLabel:SetText('Learn Spell: Fire (Complete)') QuestInfo_Display()");
+  expect(tok("QuestInfoSpellObjectiveLearnLabel", "muted"), "a finished learn line is muted like a finished objective").toBe(true);
   const keys = ["Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText"];
   expect(keys.map((k) => tok(`QuestInfoRewardsFrame.${k}`, "text")), "the rewards frame's heading and lines are the text colour").toEqual([true, true, true, true, true, true]);
   expect([tok("QuestInfoObjective1", "text"), tok("QuestInfoObjective2", "muted")], "an open objective is the text colour, a done one (its text says Complete) the muted one").toEqual([true, true]);

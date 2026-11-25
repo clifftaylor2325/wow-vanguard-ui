@@ -308,7 +308,7 @@ function QD.CompletePage()
   local choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices"))
   return {
     title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetRewardText"), choices = choices, rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")),
-    money = QD.MoneyLine(), extras = QD.PageExtras(), primary = { L["Complete"], QD.Complete, #choices <= 1 }, pick = #choices > 1,
+    money = QD.MoneyLine(), extras = QD.PageExtras(), primary = { L["Complete"], QD.Complete, #choices <= 1 }, pick = #choices > 1, escape = GOODBYE,
   }
 end
 

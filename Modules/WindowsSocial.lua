@@ -573,7 +573,7 @@ GW.SOCIAL_DIALOG_ART = { "NineSlice", "Bg", "BG", "Border", "Background", "Heade
 -- Their push buttons by parentKey, and by the name suffix the game gives them ($parentAcceptButton).
 GW.SOCIAL_DIALOG_BUTTONS = {
   "Accept", "Cancel", "Delete", "Close", "Copy", "LinkToChat", "GenerateLinkButton", "ChangeAvatarButton", "ContextButton",
-  "OKButton", "SendButton", "CancelButton", "SendRequestButton", "FriendsDropdown",
+  "OKButton", "SendButton", "CancelButton", "SendRequestButton",
   "UpdateButton", "BlockButton", "UnblockButton", "ExtendButton",
 }
 GW.SOCIAL_DIALOG_NAMED = { "AcceptButton" }
@@ -1015,9 +1015,10 @@ local function dressCreateChannel(popup)
   GW.SkinCheck(popup.UseVoiceChat)
 end
 
--- The friends of friends dialog: the box round its list an inset.
+-- The friends of friends dialog: the box round its list an inset, its friend picker a dropdown with the theme's arrow.
 local function dressFriendsFriends(frame)
   GW.InsetPanel(frame.ScrollFrameBorder)
+  GW.SkinDropdown(frame.FriendsDropdown)
 end
 
 -- The Battle.net invite dialog: the invitee's name light.

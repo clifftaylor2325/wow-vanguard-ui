@@ -62,9 +62,12 @@ const ACTIONS = `
 `;
 
 // TEST-ONLY default tooltip: a plain frame with the tooltip calls the addon uses; lines stack down from the top.
+// hooksecurefunc keeps a hook on a global function by name (the tooltip calls) and hands a hook on a frame's method to
+// the harness's own, so the auction house's tabs (SetDisplayMode) and the sell slot (SetPostItem) still work.
 const TOOLTIP = `
   __tipHooks = {}
-  hooksecurefunc = function(name, fn) __tipHooks[name] = fn end
+  __realHook = hooksecurefunc
+  hooksecurefunc = function(a, b, c) if type(a) == "string" then __tipHooks[a] = b else return __realHook(a, b, c) end end
   GameTooltip_SetDefaultAnchor = function() end
   Enum = Enum or {}
   Enum.TooltipDataType = { Unit = 2 }

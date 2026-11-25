@@ -117,6 +117,11 @@ function CE.PaintSlot(button)
   l.mark:SetShown(CE.settings.enchant and CE.MissingEnchant(slot, item))
 end
 
+-- A unit's gear changed: only yours is on the pane.
+function CE.OnUnitInventory(_, unit)
+  if unit == nil or unit == "player" then CE.PaintAll() end
+end
+
 -- Every gear slot on the character pane, while it is open.
 function CE.PaintAll()
   if not (_G.CharacterFrame and _G.CharacterFrame:IsShown()) then return end
@@ -177,7 +182,8 @@ function CE.Enable(settings, scope)
   local pane = _G.CharacterFrame
   if type(pane) ~= "table" or type(GetInventoryItemLink) ~= "function" then return end
   scope:Gate("pane shown", CE.PaintAll, function(gate) pane:HookScript("OnShow", ns.Guard("character extras", gate)) end)
-  for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do scope:On(e, CE.PaintAll) end
+  for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do scope:On(e, CE.PaintAll) end
+  scope:On("UNIT_INVENTORY_CHANGED", CE.OnUnitInventory)
   if ns.ModulesBuilt() then CE.PaintAll() end
 end
 

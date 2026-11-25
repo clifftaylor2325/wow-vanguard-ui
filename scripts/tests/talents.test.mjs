@@ -120,6 +120,22 @@ it("talent planner: no marks while the window shows another config than the plan
   expect(addon.eval("return __mark(101):IsShown()"), "a config ID the client hides is not read: the marks stay").toBe(true);
 });
 
+it("talent planner: Spend planned and Plan are greyed while the window shows another config, and lit again on the plan's (H47-20-5)", () => {
+  const addon = open(`
+    __shown = 501
+    function PlayerSpellsFrame.TalentsFrame:GetConfigID() return __shown end
+    function PlayerSpellsFrame.TalentsFrame:SetConfigID(id) __shown = id end`);
+  addon.eval(`${TP}.SetPlanning(true) __click(101) ${TP}.Refresh()`);
+  const lit = "local b = Vanguard_TalentPlan return { b.spend:IsEnabled(), b.plan:IsEnabled(), b:IsShown() }";
+  expect(addon.eval(lit), "the plan's own config: both usable").toEqual([true, true, true]);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(502)");
+  addon.update(0.01);
+  expect(addon.eval(lit), "another config: both greyed, the bar still there").toEqual([false, false, true]);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(501)");
+  addon.update(0.01);
+  expect(addon.eval(lit), "back on the plan's config: both usable again").toEqual([true, true, true]);
+});
+
 it("talent planner: a talent with two sufficient-for-availability parents needs only one of them", () => {
   const addon = open(`
     __nodes[301] = { g = 10, x = 3000, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
@@ -596,6 +612,15 @@ it("talent planner: the order window lists the plan, moves talents up and down, 
   addon.eval(`${TP}.ToggleOrder()`);
   expect(addon.eval(`return ${TP}.orderFrame:IsShown()`), "the second toggle closes it").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("talent planner: Move up on the first row (or Move down on the last) leaves the plan without an order of its own (H47-20-3)", () => {
+  const addon = open();
+  addon.eval(`${TP}.ToggleOrder() ${TP}.SetPlanning(true) __click(102) __click(201)`);
+  addon.eval(`local f = ${TP}.orderFrame f.rows[1].up:GetScript('OnClick')(f.rows[1].up) f.rows[2].down:GetScript('OnClick')(f.rows[2].down)`);
+  expect(addon.eval(`return ${TP}.Plan().order == nil`), "no order of its own after the end buttons").toBe(true);
+  addon.eval("__click(101)");
+  expect(addon.eval(`return table.concat(${TP}.OrderedIDs(${TP}.ReadTree(), ${TP}.Plan()), ",")`), "a talent planned later keeps its top-row place").toBe("101,102,201");
 });
 
 it("talent planner: the bar's Order button and /vg talents order open the window; import and clear drop the order; nothing is built in combat", () => {
