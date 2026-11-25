@@ -1361,10 +1361,12 @@ do
     rebuildKeepingScroll(key, function() O.DropPage(key) end, O.Show)
   end
 
-  -- Throws every built page away, and the rows read for pages not built yet.
+  -- Throws every built page away, and the rows read for pages not built yet. The nav's changed dots go too (they
+  -- belonged to the old settings; the next Show or Refresh marks them again, which reads rows).
   local function dropAllPages()
     for key in pairs(pages) do O.DropPage(key) end
     forgetUnbuiltRows()
+    for _, b in pairs(window and window.nav or {}) do b.changed:Hide() end
   end
 
   -- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is thrown away, since

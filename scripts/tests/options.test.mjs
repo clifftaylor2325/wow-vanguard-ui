@@ -2575,6 +2575,14 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
   addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
 });
 
+it("options: after Reset profile the nav keeps no changed dot from the old settings (H47-2-2)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat") __click("Copy button in the chat\'s tab bar") ns.Options.Show("profiles")');
+  expect(addon.eval("return Vanguard_Options.nav.chat.changed:IsShown()"), "the changed Chat page has its dot").toBe(true);
+  addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval("return Vanguard_Options.nav.chat.changed:IsShown()"), "the reset profile is all defaults").toBe(false);
+});
+
 it("options: one row whose value cannot be read leaves only its card out, the window still opens on every page (H47-2-1)", () => {
   const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
