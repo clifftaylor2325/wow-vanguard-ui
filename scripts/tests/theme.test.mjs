@@ -1686,6 +1686,20 @@ it("T.SetText: a section header's capitals reach the Latin-1 and Cyrillic letter
   expect(upper("ÀÉ Ж"), "capitals stay capitals").toBe("ÀÉ Ж");
 });
 
+it("variants keep one hue: a variant with its own raised also has its own raisedHover, borderHi and darkBar, and text clears 4.5:1 on the hover fill (H47-1-103)", () => {
+  const addon = loggedIn();
+  const shared = ["raisedHover", "borderHi", "darkBar"].map((n) => tok(addon, n).join(","));
+  const failures = [];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    if (name === "default" || name === "contrast") continue;
+    ["raisedHover", "borderHi", "darkBar"].forEach((n, i) => { if (tok(addon, n).join(",") === shared[i]) failures.push(`${name} ${n} is the default's`); });
+    for (const tier of ["text", "text2", "muted"]) {
+      if (contrastOf(tok(addon, tier), tok(addon, "raisedHover")) < 4.5) failures.push(`${name} ${tier} on raisedHover`);
+    }
+  }
+  expect(failures, "every named variant tints its hover fill, bevel line and well edge, and keeps its text readable on the hover fill").toEqual([]);
+});
 it("T.Slider: a game slider gets the pill look on its own geometry, a fill to the thumb, a knob on the thumb, a grey knob while disabled; vertical runs down; steppers become arrows", () => {
   const addon = loggedIn(`
     local function make(name, orientation)
@@ -1745,6 +1759,7 @@ it("High contrast: only an accent-bordered frame wears the thick ring; a check b
       end
     end`);
   addon.slash("variant contrast");
+  // The top edge of the check box, in screen pixels.
   const edge = () => addon.eval("return TEST_RingEdge(ns.Theme.CheckParts(TEST_RingCheck).box)");
   const rest = edge();
   addon.hover("TEST_RingCheck");

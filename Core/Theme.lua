@@ -198,6 +198,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
       sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "a4926a",
+      raisedHover = "352b20", borderHi = "5c4f3e", darkBar = "3f3124",
     },
   },
   -- Vellum & Ink: a warm dark with cream text and brass.
@@ -206,6 +207,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
       text = "efe6d2", text2 = "d2c6ad", muted = "a29780",
+      raisedHover = "302a23", borderHi = "4d463c", darkBar = "363028",
     },
   },
   -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.
@@ -214,6 +216,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "0d1220", 0.94 }, inset = { "080c16", 0.95 }, raised = "151c2e", divider = "2a3550",
       text = "e6eefc", text2 = "c3cfe6", muted = "9aa8c4",
+      raisedHover = "1f273b", borderHi = "40495f", darkBar = "232c44",
     },
   },
   -- Obsidian: neutral charcoal with no warm or cold tint, light grey text and a thin silver edge.
@@ -222,6 +225,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "141414", 0.94 }, inset = { "0c0c0c", 0.95 }, raised = "1e1e1e", divider = "343434", edge = "5c5c5c",
       text = "ececec", text2 = "cfcfcf", muted = "a8a8a8",
+      raisedHover = "292929", borderHi = "484848", darkBar = "2f2f2f",
     },
   },
   -- Moss: a dark forest green with mossy dividers and pale sage text.
@@ -230,6 +234,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "101a14", 0.94 }, inset = { "0a110d", 0.95 }, raised = "18261d", divider = "2c4232",
       text = "e4eee6", text2 = "c3d4c7", muted = "98ad9e",
+      raisedHover = "223228", borderHi = "445548", darkBar = "26382c",
     },
   },
   -- Ash and ember: smoky grey with a dim rust edge and dividers, warm grey text.
@@ -238,6 +243,7 @@ T.VARIANTS = {
     tokens = {
       panel = { "1a1718", 0.94 }, inset = { "110f10", 0.95 }, raised = "262223", divider = "4a2e2a", edge = "5a2c24",
       text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
+      raisedHover = "322d2e", borderHi = "5b4440", darkBar = "383334",
     },
   },
 }
