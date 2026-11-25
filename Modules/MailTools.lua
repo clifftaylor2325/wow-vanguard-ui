@@ -664,18 +664,6 @@ function MT.CycleFilter()
   MT.Paint()
 end
 
--- Labels the preset buttons with the presets (the rest hide), and puts + Add after them.
-function MT.PaintPresets()
-  if not MT.frame then return end
-  for i, b in ipairs(MT.frame.presets) do
-    local p = MT.settings.presets[i]
-    b.preset = p and p.name
-    b:SetShown(p ~= nil)
-    if p then b.text:SetText(p.name) end
-  end
-  MT.PaintAdd()
-end
-
 -- How wide + Add wants to be: its label at full size with air each side, never under a preset button's width.
 local function addWidth(add)
   return math.max(PRESET_W, math.ceil(T.FullWidth(add.text)) + 2 * T.SPACE.gap)
@@ -690,13 +678,41 @@ local function placeAdd(f, x)
   f.hint:SetWidth(MT.WIDTH - MT.PAD - x - f.addPreset:GetWidth() - T.SPACE.gap - MT.PAD)
 end
 
--- + Add in the first free place along the bottom (hidden once every place holds a preset), and the hint
+-- How wide a preset button wants to be: its name at full size with air each side, never under PRESET_W.
+local function wantedWidth(b)
+  return math.max(PRESET_W, math.ceil(T.FullWidth(b.text)) + 2 * T.SPACE.gap)
+end
+
+-- Puts button b at x along the bottom for preset p, as wide as its name wants within the room up to limit; hidden
+-- with no preset, or when not even a PRESET_W button fits. Returns where the next place starts (nil when hidden).
+local function placePreset(b, p, x, limit)
+  b.preset = p and p.name
+  b:SetShown(p ~= nil and limit - x >= PRESET_W)
+  if not b:IsShown() then return end
+  b.text:SetText(p.name)
+  b:ClearAllPoints()
+  b:SetPoint("BOTTOMLEFT", x, MT.PAD)
+  b:SetWidth(math.min(wantedWidth(b), limit - x))
+  return x + b:GetWidth() + T.SPACE.tight
+end
+
+-- Labels the preset buttons with the presets, each as wide as its name wants and as many as fit the panel (the rest
+-- hide; they still send by /vg mail send), and puts + Add after the last one shown.
+function MT.PaintPresets()
+  if not MT.frame then return end
+  local presets, x = MT.settings.presets, MT.PAD
+  local limit = MT.WIDTH - MT.PAD - (#presets < MT.BUTTONS and PRESET_W + T.SPACE.tight or 0)
+  for i, b in ipairs(MT.frame.presets) do x = placePreset(b, presets[i], x, limit) or x end
+  MT.PaintAdd(x)
+end
+
+-- + Add at x, after the last preset button shown (hidden once every place holds a preset), and the hint
 -- beside it while there are none.
-function MT.PaintAdd()
+function MT.PaintAdd(x)
   local f, n = MT.frame, #MT.settings.presets
   f.hint:SetShown(n == 0)
   f.addPreset:SetShown(n < MT.BUTTONS)
-  placeAdd(f, slot(math.min(n, MT.BUTTONS - 1) + 1))
+  placeAdd(f, x)
 end
 
 -- The command ---------------------------------------------------------------------------------
