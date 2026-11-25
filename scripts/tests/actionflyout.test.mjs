@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { loggedIn, setCombat } from "./helpers.mjs";
+import { loggedIn, pageBar1, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY flyouts in the world: 1 a three-spell Teleport (one spell not known), 2 a Call Pet (slot 1 without a
 // pet), 3 a flyout bigger than the list, and the spell icons by id.
@@ -207,6 +207,18 @@ it("H47-8-1 the list opens away from its bar: up or down from a horizontal bar, 
   expect(point(), "right half: to its left").toBe("RIGHT");
   run(addon, PRE, { rect: "1200, 500, 40, 40", barRect: "nil" });
   expect(point(), "a bar with no rect yet: above the button").toBe("BOTTOM");
+});
+
+// H47-8-2. The game closes its list on ACTIONBAR_PAGE_CHANGED (Blizzard_ActionBar/Shared/SpellFlyout.lua, SpellFlyoutMixin:OnEvent).
+it("H47-8-2 a page change on the bar closes the list its button opened", () => {
+  const addon = loggedIn(KEY_UP + FLYOUTS);
+  place(addon, 1, 1);
+  run(addon, PRE);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "open").toBe(true);
+  pageBar1(addon, 7);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a stance page closes it").toBe(false);
+  pageBar1(addon, 1);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "a page change with the list shut leaves it shut").toBe(false);
 });
 
 it("a click on anything but a flyout closes the list, a flyout with no known spell opens nothing, and the click's other edge is ignored", () => {

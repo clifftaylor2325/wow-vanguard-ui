@@ -173,8 +173,10 @@ local function makeFlyout()
   return flyout
 end
 
--- Wraps one bar button's click and its hiding with the snippets (out of combat: a bar's buttons are made then).
+-- Wraps one bar button's click and its hiding with the snippets, and gives its bar the list to close on a page change
+-- (out of combat: a bar's buttons are made then).
 local function wrapButton(b)
+  SecureHandlerSetFrameRef(b:GetParent(), "flyout", AB.flyout)
   SecureHandlerWrapScript(b, "OnClick", AB.flyout, AB.FLYOUT_PRE)
   SecureHandlerWrapScript(b, "OnHide", AB.flyout, AB.FLYOUT_BUTTON_HIDE)
   b.vgFlyoutWrapped = true

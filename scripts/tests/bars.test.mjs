@@ -129,7 +129,7 @@ it("action bar paging and events", () => {
     local snippet = assert(loadstring and loadstring(ns.GetModule("ActionBars").ON_PAGE) or load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", setmetatable({}, { __index = _G })))
     local kids = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
-    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
+    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function() end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
     if setfenv then setfenv(snippet, env) else snippet = load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env) end
     snippet()`);
   const paged = button(addon, 1, 1);

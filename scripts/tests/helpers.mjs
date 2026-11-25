@@ -155,7 +155,7 @@ export const ACTIONS_ENV = `
 export const pageBar1 = (addon, n) => addon.eval(`
   local bar, kids = Vanguard_Bar1, {}
   for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
-  local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end }
+  local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function(_, label) return bar.__frameRefs and bar.__frameRefs[label] end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end }
   local page = ns.GetModule("ActionBars").ON_PAGE
   ;(setfenv and setfenv(loadstring(page, "page"), env) or load(page, "page", "t", env))()`);
 
