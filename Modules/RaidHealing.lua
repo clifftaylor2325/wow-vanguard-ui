@@ -372,14 +372,20 @@ end
 -- The overshield mark's width in pixels.
 RH.OVERSHIELD_WIDTH = 2
 
--- The overshield mark: a thin bright line at the health bar's right end, over the bars, for shields past a full bar.
+-- The overshield mark: a thin bright line over the bars for shields past a full bar, made on `layer` (anchored by the caller).
+function RH.MakeOvershield(layer)
+  local mark = T.Tint(T.Snap(layer:CreateTexture(nil, "ARTWORK")), "text")
+  mark:SetTexture(T.WHITE)
+  mark:SetWidth(RH.OVERSHIELD_WIDTH)
+  mark:Hide()
+  return mark
+end
+
+-- Gives a raid tile its overshield mark, at its health bar's right end.
 local function addOvershield(b)
-  b.overshield = T.Tint(T.Snap(b.overlay:CreateTexture(nil, "ARTWORK")), "text")
-  b.overshield:SetTexture(T.WHITE)
+  b.overshield = RH.MakeOvershield(b.overlay)
   b.overshield:SetPoint("TOPRIGHT", b.health, "TOPRIGHT")
   b.overshield:SetPoint("BOTTOMRIGHT", b.health, "BOTTOMRIGHT")
-  b.overshield:SetWidth(RH.OVERSHIELD_WIDTH)
-  b.overshield:Hide()
 end
 
 -- Adds the heal, shield, threat and buff parts to a raid button (RF setup hook).
@@ -419,13 +425,17 @@ local function fill(b, bar, max, value, on)
   bar:SetValue(value)
 end
 
--- Lights the overshield mark when shields run past a full bar (a hidden answer goes to its opacity as it is);
--- shown only while shields are on.
-local function paintOvershield(b, over)
-  local mark = b.overshield
-  mark:SetShown(RH.settings.absorbs == true)
+-- Shows an overshield mark while `on` and lights it when shields run past a full bar (a hidden answer goes to its
+-- opacity as it is). The raid tiles and the unit frames (Modules/UnitPrediction.lua) share it.
+function RH.LightOvershield(mark, on, over)
+  mark:SetShown(on)
   if ns.IsSecret(over) and mark.SetAlphaFromBoolean then return mark:SetAlphaFromBoolean(over, 1, 0) end
   mark:SetAlpha(ns.IsTrue(over) and 1 or 0)
+end
+
+-- Lights a tile's overshield mark; shown only while shields are on.
+local function paintOvershield(b, over)
+  RH.LightOvershield(b.overshield, RH.settings.absorbs == true, over)
 end
 
 -- Incoming heals, shields and the overshield mark.

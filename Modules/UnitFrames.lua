@@ -391,10 +391,20 @@ local function decked(f)
 end
 UF.Decked = decked
 
+-- The pet and focus frames' mover keys: under the Like the game's layout they stand under your frame and the focus's
+-- cast bar, where a tab would cover them (the keep's small frames have no tab for the same reason, UF.Layouts.Stacked).
+UF.CLASSIC_UNDER = { pet = "uf_pet", focus = "uf_focus" }
+
+-- Whether a frame stands under another at its Like the game's spot.
+local function underClassic(f)
+  local mover = UF.CLASSIC_UNDER[f.key]
+  return mover ~= nil and ns.Setup.AtClassicSpot(mover)
+end
+
 -- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
--- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
+-- stand as a banner and it isn't one of the keep's or the Like the game's small frames.
 local function tabbed(f)
-  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f) and not underClassic(f)
 end
 
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
@@ -673,10 +683,40 @@ local function nameHome(f)
   return f.health
 end
 
--- Where a frame's name stops: at its tab's far end while it wears one, else short of the health text.
+-- How far in from the bar's far end the name must stop while power text shows (units): past the health text and its
+-- room, or the power text and its inset, whichever reaches further in. A width the client hides keeps the last one.
+function UF.NameEndReach(f)
+  local health = ns.PlainNumber(f.healthText:GetUnboundedStringWidth())
+  local power = f.powerText:IsShown() and ns.PlainNumber(f.powerText:GetUnboundedStringWidth()) or 0
+  if not (health and power) then return f.vgNameReach or 0 end
+  f.vgNameReach = math.max(f.vgTextRoom + health, UF.TEXT_INSET + power)
+  return f.vgNameReach
+end
+
+-- Re-sizes the spacer the name ends at, after the health or power text changed (a no-op while no spacer is in use).
+function UF.FitNameEnd(f)
+  if f.nameEnd then f.nameEnd:SetWidth(math.max(1, UF.NameEndReach(f))) end
+end
+
+-- The zero-height spacer on the bar's middle line that the name ends at while power text shows: the health text sits on
+-- the top line then, so ending the name at it would hold the name by two anchors at different heights.
+local function nameEndSpacer(f, far)
+  if not f.nameEnd then f.nameEnd = f.layer:CreateTexture(nil, "OVERLAY") end
+  f.nameEnd:ClearAllPoints()
+  f.nameEnd:SetPoint(far, f.health, far, 0, 0)
+  f.nameEnd:SetSize(1, 1)
+  UF.FitNameEnd(f)
+  return f.nameEnd
+end
+
+-- Where a frame's name stops: at its tab's far end while it wears one, else short of the health text (and of the power
+-- text under it, on a frame that shows one).
 local function endName(f, side)
   local far = INNER[side]
   if tabbed(f) then return f.name:SetPoint(far, f.tab, far, inward(far, UF.TEXT_INSET), 0) end
+  if f.powerText:IsShown() and not T.BareOf(f) then
+    return f.name:SetPoint(far, nameEndSpacer(f, far), side, inward(far, UF.TEXT_INSET), 0)
+  end
   f.name:SetPoint(far, f.healthText, side, inward(far, UF.TEXT_INSET), 0)
 end
 
@@ -698,12 +738,13 @@ end
 -- The name (with the level outside it, where shown) from `side` of its home (the health bar, or the tab), reading
 -- toward the health text at the other end, or the tab's end.
 local function placeName(f, side)
-  local far, first = INNER[side], f.level or f.name
-  first:ClearAllPoints()
-  first:SetPoint(side, nameHome(f), side, inward(side, nameInset(f, side)), textLift(f))
-  if f.level then
+  local level = f.level and not f.vgLevelOff and f.level
+  local start = level or f.name
+  start:ClearAllPoints()
+  start:SetPoint(side, nameHome(f), side, inward(side, nameInset(f, side)), textLift(f))
+  if level then
     f.name:ClearAllPoints()
-    f.name:SetPoint(side, f.level, far, inward(side, UF.TEXT_INSET), 0)
+    f.name:SetPoint(side, level, INNER[side], inward(side, UF.TEXT_INSET), 0)
   end
   endName(f, side)
   f.name:SetJustifyH(side)
@@ -730,12 +771,19 @@ local function textEndRoom(f)
   return (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
 end
 
+-- How far in from its end the health text stops, remembered for the name's end (UF.NameEndReach): the tag mark's room
+-- on the target in every look.
+local function healthTextRoom(f)
+  local room = textEndRoom(f)
+  f.vgTextRoom = f.tag and math.max(room, UF.TAG_ROOM) or room
+  return f.vgTextRoom
+end
+
 -- The health text at the other end from the name, short of the marks on a frame that has them and, on the target,
 -- short of the tag mark in every look; on the bar's top line while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
-  local room = textEndRoom(f)
-  room = f.tag and math.max(room, UF.TAG_ROOM) or room
+  local room = healthTextRoom(f)
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
@@ -875,14 +923,21 @@ local function tabWidth(f)
   return 2 * UF.TEXT_INSET + name + level
 end
 
--- Sizes a frame's tab to its name, no narrower than UF.TAB.min nor wider than half the frame (a longer name is cut
--- off at the tab's end), while the frame wears one; a width the client hides leaves the tab as it was.
+-- The widest a frame's tab grows (units): the frame's width less the room the raid target icon and the marks at the
+-- inner top corner take (UF.RAID_ICON_BESIDE past the corner), never under half the frame.
+local function tabLimit(f)
+  local reach = UF.RAID_ICON_BESIDE + UF.RAID_ICON / 2
+  return math.max(f.vgWidth / 2, f.vgWidth - reach)
+end
+
+-- Sizes a frame's tab to its name, no narrower than UF.TAB.min nor wider than tabLimit (a longer name is cut off at the
+-- tab's end), while the frame wears one; a width the client hides leaves the tab as it was.
 ---@param f table a unit frame
 function UF.FitTab(f)
   if not tabbed(f) then return end
   local width = tabWidth(f)
   if not width then return end
-  T.PixelSize(f.tab, math.min(f.vgWidth / 2, math.max(UF.TAB.min, width)), UF.TAB.height)
+  T.PixelSize(f.tab, math.min(tabLimit(f), math.max(UF.TAB.min, width)), UF.TAB.height)
 end
 
 -- Shows a frame's tab at its outer top corner, a pixel down over the body's top border so the two read as one shape,
@@ -910,6 +965,31 @@ local function placeTexts(f, side)
   placeHealthText(f, side)
   placePowerText(f, side)
   placeName(f, side)
+  UF.FitLevel(f)
+end
+
+-- The least width a name keeps beside the level, the number and their room before the level gives way (units).
+UF.NAME_MIN = 24
+
+-- Whether the level fits beside the name's least width and the health text: the bar's width less the level and its
+-- gap, the number and its room (UF.TEXT_END_ROOM, the marks, the tag), nil while the client hides a text's width.
+local function levelFits(f)
+  local level = ns.PlainNumber(f.level:GetUnboundedStringWidth())
+  local number = ns.PlainNumber(f.healthText:GetUnboundedStringWidth())
+  if not (level and number and f.vgBarWidth and f.vgTextRoom) then return nil end
+  local used = nameInset(f, readSide(f)) + level + UF.TEXT_INSET + UF.NAME_MIN + number + f.vgTextRoom
+  return f.vgBarWidth >= used
+end
+
+-- Hides the level of a frame too narrow to hold it beside the number (the name would be squeezed to nothing and the
+-- number run over the level; a name tab has its own room, so it keeps it), and shows it again once there is room.
+function UF.FitLevel(f)
+  if not f.level or tabbed(f) then return end
+  local fits = levelFits(f)
+  if fits == nil or fits == not f.vgLevelOff then return end
+  f.vgLevelOff = not fits or nil
+  f.level:SetShown(fits)
+  placeName(f, readSide(f))
 end
 
 -- Lays out the heal and shield bars, the status row and the portrait on the frames that carry them (they follow the
@@ -923,7 +1003,7 @@ end
 -- Shows a frame's texts (a small banner hid its name and number).
 local function showTexts(f)
   f.name:Show() f.healthText:Show()
-  if f.level then f.level:Show() end
+  if f.level then f.level:SetShown(not f.vgLevelOff) end
 end
 
 -- Lays a frame's parts out across it (Centered and the keep): the bars (under the name row on a bare frame), the
@@ -1045,6 +1125,11 @@ function UF.ApplyLook()
   if CB then CB.FitLook() end
 end
 
+-- Lays the frames out again, out of combat, after a layout moved the pet and focus frames to where they wear no tab.
+function UF.RefitTabs()
+  if UF.frames.player then ns.OutOfCombat(UF.ApplyLook, "unit frame tabs") end
+end
+
 -- Updating ------------------------------------------------------------------------------
 
 -- The health bar's colour: the dark bar for an offline or dead unit (as on the raid
@@ -1076,6 +1161,8 @@ local function paintHealthText(f, down)
   f.healthText:SetText(text)
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
+  UF.FitLevel(f)
+  UF.FitNameEnd(f)
 end
 
 -- Health bar value, color and text. Raw values go straight to the bar; the
@@ -1106,6 +1193,7 @@ end
 function UF.PaintPowerText(f)
   if not (f.powerText:IsShown() and ns.IsTrue(UnitExists(f.unit))) then return end
   f.powerText:SetText(f.vgDown and "" or UF.PowerText(f.unit))
+  UF.FitNameEnd(f)
 end
 
 -- The heal prediction or shield switch changed (Unit frames page): the player, target and party frames paint again.
@@ -1597,6 +1685,24 @@ local function deckReachNow()
   return reach
 end
 
+-- Whether a class row (the combo points, the totems or the class pips) is built over the player frame's top and its
+-- module runs: the status row then stands on the frame's inner corner (Modules/UnitStatus.lua).
+---@return boolean
+function UF.ClassRowBuilt()
+  for _, owner in ipairs({ "ComboPoints", "ClassBars" }) do
+    local rows = UF.DeckRows[owner]
+    if rows and rows.top and ns.ModuleLive(owner) then return true end
+  end
+  return false
+end
+
+-- The status row lays out again on the player frame, after a class row was built or its module started or stopped.
+local function moveStatusRow()
+  local player = UF.frames.player
+  if player and player.status then UF.Status.Place(player) end
+end
+ns.OnModulesChanged(moveStatusRow)
+
 -- Refits a live panel when the reach changed: a row was built, or its module stopped or started again.
 local function refitDeckReach()
   local reach = deckReachNow()
@@ -1615,6 +1721,7 @@ function UF.RaiseDeckReach(owner, side, extent)
   UF.DeckRows[owner] = rows
   if extent <= (rows[side] or 0) then return end
   rows[side] = extent
+  if side == "top" then moveStatusRow() end
   refitDeckReach()
 end
 
