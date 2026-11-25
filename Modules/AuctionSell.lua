@@ -926,6 +926,16 @@ local function wideLine(c, y)
   return ns.SingleLine(fs)
 end
 
+-- A small line at y across the whole card, on one line, its text shrinking (T.FitText) before it ends in "...": the
+-- history line's longest sentence (German) fits whole at 100%. Its box is one line of small text tall.
+local function fittedLine(c, y)
+  local box = CreateFrame("Frame", nil, c)
+  box:SetPoint("TOPLEFT", 0, y)
+  box:SetPoint("TOPRIGHT", 0, y)
+  box:SetHeight(T.RoleSize("small"))
+  return T.FitText(smallLine(c, y), box, 0)
+end
+
 -- The posting line: Skip, Stop and Post on the right, and the count and the item's history line under them.
 local function postRow(c)
   local y = AH.FORM_Y - 4 * AH.FORM_ROW - 32
@@ -936,7 +946,7 @@ local function postRow(c)
   c.skip = W.Button(c, L["Skip"], function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
   widenAll(c.post, c.stop, c.skip)
-  c.status, c.historyLine = wideLine(c, y - 32), wideLine(c, y - 56)
+  c.status, c.historyLine = wideLine(c, y - 32), fittedLine(c, y - 56)
 end
 
 -- The guide's steps along the card, each after the one before it (a column gap on): one that would end past the

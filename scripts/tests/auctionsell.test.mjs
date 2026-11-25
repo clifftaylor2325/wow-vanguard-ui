@@ -972,3 +972,15 @@ it("H47-18-103 an expired auction's Relist button keeps its whole label in real 
     expect(r, `${locale}: Relist shown, right of the price, the name before it`).toEqual([true, true, true]);
   }
 });
+it("H47-18-104 the sell card's no-history line fits whole on one line in German, and at larger text still ends inside the card over nothing", () => {
+  for (const [scale, whole] of [[1, true], [1.3, false]]) {
+    const addon = postingTab("deDE");
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
+    addon.eval(`${CARD}.historyLine:SetText(ns.L["No sales or expiries of this item yet."])`);
+    const history = addon.eval(`return ${CARD}.historyLine:GetText()`);
+    const found = addon.textFit(CARD).filter((f) => f.text === history).map((f) => f.kind);
+    expect(found, `${scale}: ${whole ? "the whole sentence" : "at most an ellipsis at the card's edge"}`).toEqual(whole ? [] : ["cut"]);
+    const r = addon.eval(`local c = ${CARD} return { c.historyLine:GetBottom() >= c.steps[1]:GetTop(), c.historyLine:GetTop() <= c.status:GetBottom(), c.historyLine:GetRight() <= c:GetRight() }`);
+    expect(r, `${scale}: under the count line, above the steps, inside the card`).toEqual([true, true, true]);
+  }
+});
