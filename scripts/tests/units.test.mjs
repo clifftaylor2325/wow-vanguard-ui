@@ -1261,3 +1261,18 @@ it("the status marks clear the combo points and the totems on your frame; a clas
   const mage = statusRects("MAGE");
   expect(mage.leader[0] - mage.player[0], "no class row: the crown stays at the outer corner (a couple of units in)").toBeLessThan(5);
 });
+
+// H47-5-2: a frame too narrow for the level beside the number hides the level, so the name and the number stay readable.
+it("a narrow target frame with Health as Both hides the level instead of squeezing the name or overlapping the number", () => {
+  // A booted client with the target frame this wide, a 62 elite target and Health as Both.
+  const boot = (width) => {
+    const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, UnitFrames = { targetWidth = ${width}, targetHeight = 24, healthFormat = 'both' } }` });
+    addon.login();
+    addon.world.setUnit("target", { name: "Archmage Arugal", hp: 45678, maxhp: 98765, reaction: 2, level: 62, classification: "elite" });
+    return addon;
+  };
+  const narrow = boot(100);
+  const problems = narrow.textFit("Vanguard_target").filter((x) => x.kind === "overlap" || /squeezed/.test(x.other ?? ""));
+  expect([problems, narrow.eval("return Vanguard_target.level:IsShown()")], "100 wide: the level gives way, nothing overlaps or is squeezed").toEqual([[], false]);
+  expect(boot(240).eval("return Vanguard_target.level:IsShown()"), "240 wide: the level stays").toBe(true);
+});

@@ -728,12 +728,13 @@ end
 -- The name (with the level outside it, where shown) from `side` of its home (the health bar, or the tab), reading
 -- toward the health text at the other end, or the tab's end.
 local function placeName(f, side)
-  local far, first = INNER[side], f.level or f.name
-  first:ClearAllPoints()
-  first:SetPoint(side, nameHome(f), side, inward(side, nameInset(f, side)), textLift(f))
-  if f.level then
+  local level = f.level and not f.vgLevelOff and f.level
+  local start = level or f.name
+  start:ClearAllPoints()
+  start:SetPoint(side, nameHome(f), side, inward(side, nameInset(f, side)), textLift(f))
+  if level then
     f.name:ClearAllPoints()
-    f.name:SetPoint(side, f.level, far, inward(side, UF.TEXT_INSET), 0)
+    f.name:SetPoint(side, level, INNER[side], inward(side, UF.TEXT_INSET), 0)
   end
   endName(f, side)
   f.name:SetJustifyH(side)
@@ -947,6 +948,31 @@ local function placeTexts(f, side)
   placeHealthText(f, side)
   placePowerText(f, side)
   placeName(f, side)
+  UF.FitLevel(f)
+end
+
+-- The least width a name keeps beside the level, the number and their room before the level gives way (units).
+UF.NAME_MIN = 24
+
+-- Whether the level fits beside the name's least width and the health text: the bar's width less the level and its
+-- gap, the number and its room (UF.TEXT_END_ROOM, the marks, the tag), nil while the client hides a text's width.
+local function levelFits(f)
+  local level = ns.PlainNumber(f.level:GetUnboundedStringWidth())
+  local number = ns.PlainNumber(f.healthText:GetUnboundedStringWidth())
+  if not (level and number and f.vgBarWidth and f.vgTextRoom) then return nil end
+  local used = nameInset(f, readSide(f)) + level + UF.TEXT_INSET + UF.NAME_MIN + number + f.vgTextRoom
+  return f.vgBarWidth >= used
+end
+
+-- Hides the level of a frame too narrow to hold it beside the number (the name would be squeezed to nothing and the
+-- number run over the level; a name tab has its own room, so it keeps it), and shows it again once there is room.
+function UF.FitLevel(f)
+  if not f.level or tabbed(f) then return end
+  local fits = levelFits(f)
+  if fits == nil or fits == not f.vgLevelOff then return end
+  f.vgLevelOff = not fits or nil
+  f.level:SetShown(fits)
+  placeName(f, readSide(f))
 end
 
 -- Lays out the heal and shield bars, the status row and the portrait on the frames that carry them (they follow the
@@ -960,7 +986,7 @@ end
 -- Shows a frame's texts (a small banner hid its name and number).
 local function showTexts(f)
   f.name:Show() f.healthText:Show()
-  if f.level then f.level:Show() end
+  if f.level then f.level:SetShown(not f.vgLevelOff) end
 end
 
 -- Lays a frame's parts out across it (Centered and the keep): the bars (under the name row on a bare frame), the
@@ -1113,6 +1139,7 @@ local function paintHealthText(f, down)
   f.healthText:SetText(text)
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
+  UF.FitLevel(f)
   UF.FitNameEnd(f)
 end
 
