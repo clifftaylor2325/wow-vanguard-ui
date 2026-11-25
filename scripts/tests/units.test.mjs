@@ -1235,3 +1235,29 @@ it("a shield past a full health bar lights the overshield mark on the unit frame
   addon.eval("ns.GetModule('UnitFrames').settings.absorbs = false ns.GetModule('UnitFrames').ApplyPrediction()");
   expect(mark("player")[0], "shields turned off: no mark").toBe(false);
 });
+
+// A leader and PvP-flagged player of a class, a target and 3 combo points: the left and right edges of the frame, the
+// two marks and the class row (the combo points, else the totems) on the Tabs look.
+const statusRects = (cls) => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.eval(`__wfgWorld.units.player.class = "${cls}" __wfgWorld.units.player.leader = true UnitIsPVP = function(u) return u == "player" end`);
+  addon.login();
+  addon.world.setUnit("target", { name: "Boar", hp: 50, maxhp: 100, reaction: 2 });
+  addon.world.setUnit("player", { combo: 3 });
+  for (const event of ["PLAYER_FLAGS_CHANGED", "PARTY_LEADER_CHANGED"]) addon.fire(event, "player");
+  addon.update(0.3);
+  return addon.eval(`local function r(x) return { x:GetLeft(), x:GetRight() } end
+    local CP, CB = ns.GetModule("ComboPoints"), ns.GetModule("ClassBars")
+    return { player = r(Vanguard_player), leader = r(Vanguard_player.status.leader), pvp = r(Vanguard_player.status.pvp), row = r(CP.bar or CB.totems or Vanguard_player) }`);
+};
+
+// H47-5-1: the status row stands on the player frame's inner top corner while a class row is built on the outer one.
+it("the status marks clear the combo points and the totems on your frame; a class with no row keeps them at the outer corner", () => {
+  for (const cls of ["ROGUE", "SHAMAN"]) {
+    const { player, leader, pvp, row } = statusRects(cls);
+    expect(Math.min(leader[0], pvp[0]) >= row[1], `${cls}: the crown and the PvP tag stand past the class row's end`).toBe(true);
+    expect(Math.max(leader[1], pvp[1]) <= player[1] + 0.01, `${cls}: and inside the frame's width`).toBe(true);
+  }
+  const mage = statusRects("MAGE");
+  expect(mage.leader[0] - mage.player[0], "no class row: the crown stays at the outer corner (a couple of units in)").toBeLessThan(5);
+});

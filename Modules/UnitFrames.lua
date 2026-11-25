@@ -1636,6 +1636,24 @@ local function deckReachNow()
   return reach
 end
 
+-- Whether a class row (the combo points, the totems or the class pips) is built over the player frame's top and its
+-- module runs: the status row then stands on the frame's inner corner (Modules/UnitStatus.lua).
+---@return boolean
+function UF.ClassRowBuilt()
+  for _, owner in ipairs({ "ComboPoints", "ClassBars" }) do
+    local rows = UF.DeckRows[owner]
+    if rows and rows.top and ns.ModuleLive(owner) then return true end
+  end
+  return false
+end
+
+-- The status row lays out again on the player frame, after a class row was built or its module started or stopped.
+local function moveStatusRow()
+  local player = UF.frames.player
+  if player and player.status then UF.Status.Place(player) end
+end
+ns.OnModulesChanged(moveStatusRow)
+
 -- Refits a live panel when the reach changed: a row was built, or its module stopped or started again.
 local function refitDeckReach()
   local reach = deckReachNow()
@@ -1654,6 +1672,7 @@ function UF.RaiseDeckReach(owner, side, extent)
   UF.DeckRows[owner] = rows
   if extent <= (rows[side] or 0) then return end
   rows[side] = extent
+  if side == "top" then moveStatusRow() end
   refitDeckReach()
 end
 

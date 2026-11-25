@@ -87,16 +87,23 @@ local function paintRole(mark, unit)
   T.Tint(mark, look[2])
 end
 
--- Anchors the shown marks one after another from the frame's outer top corner inward (over its name tab, where the
--- look gives it one: the corner is the tab's). Out of combat: the frame is a secure button.
+-- The corner the row stands on and what it stands on: the frame's outer top corner (over its name tab, where the look
+-- gives it one), but your player frame's inner top corner while a class row (combo points, totems, class pips) is
+-- built on the outer one, so the marks stay clear of the first points.
+local function cornerOf(f)
+  if f.key == "player" and UF.ClassRowBuilt() then return INNER[f.outer], f end
+  return f.outer, UF.StatusHome(f)
+end
+
+-- Anchors the shown marks one after another from the row's corner inward. Out of combat: the frame is a secure button.
 local function layout(f)
-  local side, prev = f.outer, nil
+  local side, home = cornerOf(f)
+  local gap, prev = side == "LEFT" and ST.GAP or -ST.GAP, nil
   for _, name in ipairs(ST.ORDER) do
     local mark = f.status[name]
     mark:ClearAllPoints()
     if mark:IsShown() then
-      if prev then mark:SetPoint("BOTTOM" .. side, prev, "BOTTOM" .. INNER[side], f.outer == "LEFT" and ST.GAP or -ST.GAP, 0)
-      else mark:SetPoint("BOTTOM" .. side, UF.StatusHome(f), "TOP" .. side, f.outer == "LEFT" and ST.GAP or -ST.GAP, ST.LIFT) end
+      mark:SetPoint("BOTTOM" .. side, prev or home, prev and "BOTTOM" .. INNER[side] or "TOP" .. side, gap, prev and 0 or ST.LIFT)
       prev = mark
     end
   end
