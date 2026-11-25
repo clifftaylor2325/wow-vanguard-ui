@@ -635,7 +635,7 @@ it("the text dialog: a window title with its X and Escape at the dialog alpha, i
   expect(addon.frame(name).visible, "so does Escape").toBe(false);
 });
 
-it("the text dialog's title wraps short of the X, two lines at most, and a second line pushes the text area down", () => {
+it("the text dialog's title wraps short of the X, three lines at most, and a second line pushes the text area down", () => {
   const addon = loggedIn("__wfgStub.methods.SetMaxLines = function(self, n) self.__maxLines = n end");
   const name = "Vanguard_TextDialog";
   addon.eval('ns.ShowText("Vanguard export (profile Default)  Ctrl+C to copy", "VG1:...")');
@@ -645,7 +645,7 @@ it("the text dialog's title wraps short of the X, two lines at most, and a secon
   const spans = () => addon.eval(`return { ${name}.title:GetTop() - ${name}:GetTop(), ${name}.title:GetBottom() - ${name}:GetTop() }`);
   expect(spans(), "a one-line title hangs from T.SPACE.pad down").toEqual([-16, -30]);
   addon.eval(`ns.ShowText(("A long title that says what to do with the box. "):rep(3), "VG1:...")`);
-  expect(addon.eval(`return ${name}.title.__maxLines`), "two lines at most").toBe(2);
+  expect(addon.eval(`return ${name}.title.__maxLines`), "three lines at most (H47-1-102)").toBe(3);
   expect(spans(), "a second line grows down, not up: the top stays put (never above the X's tile top, 14 down)").toEqual([-16, -44]);
   expect(insets(addon, `${name}.view`, name)[1], "a title of two lines keeps the area a gap (8) under its bottom: 16 + 28 + 8").toBe(52);
   addon.eval("ns.TextProgress('Importing… 40%')");
