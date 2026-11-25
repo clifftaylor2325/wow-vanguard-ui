@@ -339,6 +339,10 @@ end
 -- width it shares with the crafting cost panel (so the two stack as one column).
 CQ.PAD, CQ.ROWS, CQ.REMOVE_W = T.SPACE.gap, 5, 64
 CQ.WIDTH = CR.WIDTH
+-- The panel's height with a note of one line or none, and the room the note has above the buttons before it must
+-- grow the panel (the gap under the list and above the buttons, less the note's own gap under the list: two lines).
+CQ.BASE_HEIGHT = -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H
+CQ.NOTE_ROOM = 2 * T.SPACE.col + T.SPACE.gap - T.SPACE.tight
 
 -- Empties the queue (/vg craft clear and the panel's Clear).
 function CQ.Clear()
@@ -387,6 +391,7 @@ local function paintNote(f, queue)
   local empty = #queue == 0
   f.note:SetText(empty and L["Nothing queued. Pick a recipe, then Add to queue."] or CQ.ShortText())
   T.Color(f.note, empty and "muted" or "text2")
+  f:SetHeight(CQ.BASE_HEIGHT + math.max(0, math.ceil(f.note:GetStringHeight()) - CQ.NOTE_ROOM))
 end
 
 -- Paints the panel: the queue's rows and the note; Next and Clear work only while something is queued.
@@ -430,7 +435,7 @@ end
 -- Builds the panel (once, out of combat; hidden): a card with the heading, the list, the note and the buttons.
 function CQ.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftQueuePanel", UIParent), { shadow = true })
-  f:SetSize(CQ.WIDTH, -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H)
+  f:SetSize(CQ.WIDTH, CQ.BASE_HEIGHT)
   f:SetClampedToScreen(true)
   ns.WindowTitle(f, L["Craft queue"], { kind = "card" })
   addList(f)

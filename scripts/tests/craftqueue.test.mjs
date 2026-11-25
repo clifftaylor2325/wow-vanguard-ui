@@ -478,3 +478,30 @@ it("H46-9-50 /vg craft stock still raises the full need when it all sits in the 
   part.eval("__wfgWorld.warbandCounts[2589] = 2 C_Item.GetItemCount = function() return 0 end");
   expect(stockThenShop(part), "need 3, bank 2, bags 0: goal 1 linen; the thread is all to buy").toEqual([[1, 1], [1]]);
 });
+
+// Three recipes of six reagents, none held: the note of what the queue is short of runs three lines (H47-20-51).
+const LONG_NOTE_ENV = `
+  local names = { [3001] = "Heavy Leather", [3002] = "Thick Leather", [3003] = "Rugged Leather", [3004] = "Heavy Silken Thread", [3005] = "Iron Buckle", [3006] = "Black Dye" }
+  for id, n in pairs(names) do __wfgWorld.items[id] = { name = n } end
+  local function slot(id, qty) return { reagents = { { itemID = id } }, quantityRequired = qty, reagentType = 1 } end
+  __wfgWorld.recipes[200] = { recipeID = 200, name = "Heavy Leather Ball", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3001, 4), slot(3004, 1) } }
+  __wfgWorld.recipes[201] = { recipeID = 201, name = "Wild Leather Vest", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3002, 12), slot(3005, 2), slot(3006, 1) } }
+  __wfgWorld.recipes[202] = { recipeID = 202, name = "Rugged Armor Kit", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3003, 3) } }
+  C_Item.GetItemCount = function() return 0 end
+`;
+
+// Queues the three long-note recipes (and more of the same, to scroll the list when asked).
+function longQueue(ids = [200, 201, 202]) {
+  const addon = crafter(LONG_NOTE_ENV);
+  for (const id of ids) { addon.world.openProfession(id); addon.slash("craft add"); }
+  return addon;
+}
+
+it("H47-20-51 the panel grows to hold a long Short of note above its buttons", () => {
+  const addon = longQueue();
+  const out = addon.eval(`local f = ${CQ}.frame return { f.note:GetBottom(), f.add:GetTop(), f:GetHeight(), ${CQ}.BASE_HEIGHT }`);
+  expect(out[0], "the note ends above the buttons").toBeGreaterThanOrEqual(out[1]);
+  expect(out[2], "the panel grew").toBeGreaterThan(out[3]);
+  addon.slash("craft clear");
+  expect(addon.eval(`return ${CQ}.frame:GetHeight() == ${CQ}.BASE_HEIGHT`), "and shrinks back with the note").toBe(true);
+});
