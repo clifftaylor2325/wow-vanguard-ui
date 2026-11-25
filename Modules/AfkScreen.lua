@@ -149,7 +149,7 @@ end
 function AFK.Tick()
   local f = AFK.frame
   f.away:SetText(AFK.AwayText((ask("GetTime") or 0) - (AFK.since or 0)))
-  f.clock:SetText(ask("date", "%H:%M") or "")
+  f.clock:SetText(ns.GetModule("InfoStrip").TEXT.clock() or "")
 end
 
 -- Showing ---------------------------------------------------------------------------------------

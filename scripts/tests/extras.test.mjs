@@ -1031,6 +1031,13 @@ it("A-13 the AFK screen waits while you cast or channel, tries once more 30 s on
   addon.eval("__cast = { __secret = true }");
   expect(goAway(addon), "a hidden cast answer: shut").toBe(false);
 });
+it("H47-10-2 the AFK card's clock reads the game clock, as the info strip does", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + `GameTime_GetTime = function() return "9:04 PM" end`);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return Vanguard_AfkScreen.clock:GetText()")).toBe("9:04 PM");
+});
+
 it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_AfkScreen)");
