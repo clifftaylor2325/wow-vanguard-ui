@@ -478,6 +478,13 @@ it("click casting: See all your keys opens the Action bars page on its Your keys
   expect(addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end return v.cards[v.tab].tabName`), "on Your keys").toBe("Your keys");
 });
 
+it("H47-19-3 on Retail there is no See all your keys button, as there is no Your keys tab", () => {
+  const addon = loggedIn(CLICK_LUA, { client: RETAIL_CLIENT });
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
+  expect(addon.eval("return ns.IsForever()"), "a Retail client").toBe(false);
+  expect(addon.frames('w.text and w.text.GetText and w.text:GetText() == "See all your keys" and w:IsVisible()').length, "no button").toBe(0);
+});
+
 it("H44-9-51 a rank picked on a layout's click is the player's own: the next layout asks first", () => {
   const addon = priestly(loggedIn(CLICK_LUA));
   addon.eval(`${CP}.Apply("select") ${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061, 1)`);

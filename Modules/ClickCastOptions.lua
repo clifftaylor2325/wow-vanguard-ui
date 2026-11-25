@@ -1238,6 +1238,11 @@ local function leadRows()
   return out
 end
 
+-- Whether a row applies on this client: See all your keys leads to the Your keys tab, which only WoW Forever has.
+local function showsRow(row)
+  return row[3] ~= openYourKeys or ns.IsForever()
+end
+
 -- The page's rows (built again when its signature changes, see pageSignature), with the signature they are read with:
 -- the window keeps them, so that is what a change compares against. The game's click bindings are offered where the
 -- client has them.
@@ -1248,7 +1253,7 @@ local function rows()
     if row[1] == "bindlayout" then
       for _, lead in ipairs(leadRows()) do out[#out + 1] = lead end
     end
-    out[#out + 1] = row
+    if showsRow(row) then out[#out + 1] = row end
   end
   return out
 end
