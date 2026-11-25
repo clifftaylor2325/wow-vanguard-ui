@@ -920,6 +920,32 @@ it("quest tracker: expanded, the list stops above the menu strip (the bags and m
   expect(tracker(addon).more, "with some quests still shown and the way back").toMatch(/^Show fewer/);
   expect(addon.eval("local QT = ns.GetModule('QuestTracker') Vanguard_MenuStrip:Hide() QT.Refresh() return Vanguard_QuestTrackerFrame.moreBtn:GetBottom()"), "with the strip hidden the stack is allowed to run lower").toBeLessThan(more.bottom);
 });
+// H47-15-2 and H47-15-102: the expanded tracker's floor ignores a frame above it and keeps clear of the target-of-target frame.
+const EXPANDED_FLOOR = `for i = 1, 20 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" } } } __watches[#__watches + 1] = id end`;
+// A tracker expanded on a 1365 x 768 canvas with 20 watched quests and the target-of-target frame at its default spot.
+const expandedAt1365 = () => {
+  const addon = strips(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(1365, 768)", { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, QuestTracker = { expanded = true } } } }" });
+  // The target-of-target frame at its default spot (UnitFrames' LAYOUT: 120 x 24, BOTTOM +426, +196), hidden as with no target.
+  addon.eval(`local t = CreateFrame("Frame", "Vanguard_targettarget", UIParent) t:SetSize(120, 24) t:SetPoint("BOTTOM", UIParent, "BOTTOM", 426, 196) t:Hide()`);
+  addon.eval(EXPANDED_FLOOR);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  return addon;
+};
+it("H47-15-2 quest tracker: a menu strip moved above the tracker is no floor for it", () => {
+  const addon = expandedAt1365();
+  const before = tracker(addon).blocks.length;
+  addon.eval(`local m = Vanguard_MenuStrip m:ClearAllPoints() m:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -16, -4) ns.GetModule("QuestTracker").Refresh()`);
+  addon.update(0);
+  expect([addon.eval("return Vanguard_MenuStrip:GetBottom() > Vanguard_QuestTrackerFrame.body:GetTop()"), tracker(addon).blocks.length >= before], "the strip sits above the tracker's body").toEqual([true, true]);
+  expect(before, "more than one quest is shown").toBeGreaterThan(1);
+});
+it("H47-15-102 quest tracker: expanded, the stack stops above the target-of-target frame at 1365 wide", () => {
+  const addon = expandedAt1365();
+  const gap = addon.eval(`local f = Vanguard_QuestTrackerFrame return { f.moreBtn:GetBottom(), Vanguard_targettarget:GetTop(), f.blocks[f.blocks.used]:GetBottom(), Vanguard_targettarget:GetLeft() < f:GetRight() and Vanguard_targettarget:GetRight() > f:GetLeft() }`);
+  expect(gap[3], "the target-of-target frame is under the tracker's columns here").toBe(true);
+  expect([gap[0] >= gap[1], gap[2] >= gap[1]], "the last quest and Show fewer both end above its top, hidden or not").toEqual([true, true]);
+});
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);
   const tight = layout(addon)[4];
