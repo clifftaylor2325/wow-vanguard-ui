@@ -1,7 +1,8 @@
 // movers: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -194,6 +195,16 @@ it("H47-4-103: a narrow frame's handle keeps its frame's width (24 at least), so
   // A mover handle's width.
   const width = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w:GetWidth() end end`);
   expect([width("narrow"), width("sliver")], "24 stays 24 (30 apart leaves a gap); 10 is lifted to the 24 minimum").toEqual([24, 24]);
+});
+
+it("H47-4-103: a narrow handle whose wrapped label stands taller than it takes the wide minimum (40), so the name stays inside", () => {
+  // The text-fit client measures wrapped text with the addon's real font widths.
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.eval("__n = CreateFrame('Frame', 'TESTONLY_Short', UIParent) __n:SetSize(24, 20) ns.Mover(__n, 'short', 'TEST-ONLY a long name for a short narrow frame', { 'BOTTOM', 'BOTTOM', 0, 300 })");
+  addon.login();
+  addon.slash("unlock");
+  const handle = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "short" then return { w:GetWidth() } end end`);
+  expect(handle[0], "widened to the wide minimum").toBe(addon.eval("return ns.HANDLE_MIN.wide"));
 });
 
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {

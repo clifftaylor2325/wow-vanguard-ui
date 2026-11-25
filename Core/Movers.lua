@@ -787,15 +787,23 @@ function ns.SetMoverSuffix(text)
   for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
--- The least a mover's handle measures (units), so the smallest frame can still be grabbed.
-ns.HANDLE_MIN = { width = 24, height = 14, unknownWidth = 40 }
+-- The least a mover's handle measures (units), so the smallest frame can still be grabbed; `wide` is the width a
+-- handle takes when its frame's width is secret or its label needs more room than a narrow frame gives.
+ns.HANDLE_MIN = { width = 24, height = 14, wide = 40 }
 
 -- The width a frame's handle takes: the frame's on screen, at least the minimum; a secret width (the chat window's)
 -- takes a wider grab minimum.
 local function handleWidth(f, s)
   local width = ns.PlainNumber(f:GetWidth())
-  if not width then return ns.HANDLE_MIN.unknownWidth end
+  if not width then return ns.HANDLE_MIN.wide end
   return math.max(width * s, ns.HANDLE_MIN.width)
+end
+
+-- A narrow handle whose label, wrapped, stands taller than the handle (a long name on the menu strip stood on end,
+-- at a large Text size or in a longer language) takes the wide minimum instead, so the name stays inside it.
+local function roomForLabel(h)
+  local tall = ns.PlainNumber(h.label:GetStringHeight()) or 0
+  if tall > h:GetHeight() and h:GetWidth() < ns.HANDLE_MIN.wide then h:SetWidth(ns.HANDLE_MIN.wide) end
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame (at least 24 x 14, so a thin bar
@@ -813,6 +821,7 @@ local function handleFor(m)
   if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
   ns.ShowCoords(m)
+  roomForLabel(m.handle)
   return m.handle
 end
 
