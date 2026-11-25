@@ -133,7 +133,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, segment labels, options nav items, empty-state lines (in `muted`) and placeholders (in `disabled`). |
 | `number` | 12 (8 - 16) | Medium | - | Health and power values, counters, timers on frames. |
 | `section` | 10 (7 - 13) | Medium | - | Section headers (`W.SectionHeader`) and every heading inside a card (the options cards' titles, the Instance prep card's dungeon and quest headings): the `small` size with the `upper` flag, so `T.SetText(fs, text)` shows the capitals instead of `:upper()` on the string (`T.Upper`: ASCII by `string.upper`, then Latin-1 and Cyrillic letters by `T.UPPER_RANGES`). Always `muted`. The scale reads display 18, title 15, heading 13, body 12, section 10: a window's or page's title, a card's title, its text, its headings. |
-| `small` | 10 (7 - 13) | Medium | - | Secondary lines: notes and hints (in `muted`), counts and status lines (in `text2`), section headers (`muted` capitals), bar text, the info strip, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
+| `small` | 10 (7 - 13) | Medium | - | Secondary lines: notes and hints (in `muted`), counts and status lines (in `text2`), section headers (`muted` capitals), bar text, the info strip, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` and `auraCountSmall` go under 10 (#258). |
 | `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
 | `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |
 | `world` | 11 (8 - 14) | SemiBold | OUTLINE | Text drawn in the world: nameplate names, the floating pin's distance text. |
@@ -143,6 +143,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `barSmall` | 10 (7 - 13) | Medium | OUTLINE | Small text over a bar (raid tile status, the damage meter, the flight timer). |
 | `cooldown` | 14 (10 - 18) | SemiBold | OUTLINE | Cooldown numbers on action buttons, the Cooldown Manager and the Cooldown gaps row (that row has no fades or sounds). |
 | `auraCount` | 10 (7 - 13) | SemiBold | OUTLINE | Stack counts on aura and item icons. |
+| `auraCountSmall` | 8 (7 - 13) | SemiBold | OUTLINE | Stack counts on aura icons under 14 wide (A.SMALL_ICON). |
 | `auraTimer` | 11 (8 - 14) | SemiBold | OUTLINE | The timer on larger aura icons. |
 | `auraTimerSmall` | 10 (7 - 13) | SemiBold | OUTLINE | The timer on smaller aura icons. |
 | `chat` | 12 (8 - 16) | Medium | - | Chat windows ("Medium"). |
@@ -408,7 +409,7 @@ The game's own sounds (error messages, the micro menu, windows Vanguard restyles
 
 The work plan (P4.1) described the theme from an earlier review. The code is what ships, so this page follows it:
 
-- **Text sizes.** The plan says "title 14 … tiny 9". The code has `display` 18 (window and page titles), `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` and `tiny` 10, `badge` 9 (the only role under 10, #258), plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
+- **Text sizes.** The plan says "title 14 … tiny 9". The code has `display` 18 (window and page titles), `title` 15, `heading` 13, `name`, `label` and `number` 12, `cell` 11, `small` and `tiny` 10, `badge` 9 and `auraCountSmall` 8 (the only roles under 10, #258), plus the outlined roles (`world`, `barName`, `barSmall`, `cooldown`, `auraCount`, `auraTimer`, `auraTimerSmall`) and `chat`.
 - **Spacing grid.** The plan speaks of a 4/8 px grid. The code has `T.SPACE` (4, 8, 12, 16, 24) for new and restyled layouts; older layouts still use mostly even offsets (2 to 16) of their own until they are restyled.
 - **Bar textures.** The plan names "bar textures" generally. The code has three built-ins (Vanguard, Soft, Flat) and, since P3.5, every bar texture shared through LibSharedMedia; it also shares its own bars and fonts under the "Vanguard ..." names.
 - **Fonts.** Besides Fira Sans Condensed and the game's font, a font another addon shares through LibSharedMedia still works when a profile names it (the Font picker shows it only while it is in use; P3.5 listed every shared font), and the faction look adds Cinzel and Metamorphous for titles and headings.

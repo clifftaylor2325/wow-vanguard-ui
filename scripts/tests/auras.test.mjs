@@ -1314,3 +1314,23 @@ it("H45-5-2 raid auras: a Height change that keeps the icon size still moves the
     expect(spots.map((s) => s.slice(0, 2)), `height ${height}: every slot at the spot the zones give`).toEqual(spots.map((s) => s.slice(2, 4)));
   }
 });
+
+// H47-6-2: the weapon enchant cell follows the buffs' Timer numbers switch, its number on the bottom edge.
+it("H47-6-2 the weapon enchant cell shows its countdown only with the buffs' timers on, on the icon's bottom edge", () => {
+  // The first enchant cell's countdown state under a Timer numbers setting.
+  const cell = (timers) => loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end",
+    { savedVariables: `VanguardDB.profiles = { Default = { PlayerAuras = { timers = ${timers} } } }` })
+    .eval(`local cd = ns.GetModule("PlayerAuras").cells[1].cooldown
+      return { hidden = cd.__hideNumbers, edge = cd:GetCountdownFontString().__points.BOTTOM ~= nil }`);
+  expect(cell(false), "timers off: no number").toMatchObject({ hidden: true, edge: false });
+  expect(cell(true), "timers on: the number sits on the bottom edge").toMatchObject({ hidden: false, edge: true });
+});
+
+// H47-6-103: the smallest aura icons draw their stack count in the smaller role, so two digits stay inside the icon.
+it("H47-6-103 an aura icon under 14 wide draws its stack count in the smaller role", () => {
+  const addon = loggedIn(UNITS_ENV);
+  // The font size of a dressed icon's stack count.
+  const countSize = (size) => addon.eval(`local f = CreateFrame("Frame", nil, UIParent)
+    local _, px = ns.Auras.Dress(f, { size = ${size} }).count:GetFont() return px`);
+  expect([countSize(12), countSize(13), countSize(14), countSize(20)], "8 under 14, the role's own 10 from 14").toEqual([8, 8, 10, 10]);
+});

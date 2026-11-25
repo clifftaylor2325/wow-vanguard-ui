@@ -966,10 +966,10 @@ it("accent variants (#230): accentText and accentDim are made from any accent in
   expect(addon.eval('local fs = UIParent:CreateFontString() ns.Theme.Color(fs) return ns.Theme.Hex("accentText") == string.format("ff%02x%02x%02x", fs.__textColor[1] * 255 + 0.5, fs.__textColor[2] * 255 + 0.5, fs.__textColor[3] * 255 + 0.5)'), "T.Color with no colour uses the text variant").toBe(true);
 });
 
-it("type sizes (#258): no role under 10 but badge; the error badge uses it", () => {
+it("type sizes (#258): no role under 10 but badge and auraCountSmall; the error badge uses it", () => {
   const addon = loggedIn();
-  const small = addon.eval("local out = {} for name, r in pairs(ns.Theme.ROLES) do if r.size < 10 then out[#out + 1] = name end end return out");
-  expect(small, "only badge is under 10").toEqual(["badge"]);
+  const small = addon.eval("local out = {} for name, r in pairs(ns.Theme.ROLES) do if r.size < 10 then out[#out + 1] = name end end table.sort(out) return out");
+  expect(small, "only badge and the smallest aura icons' stack count are under 10").toEqual(["auraCountSmall", "badge"]);
   expect(addon.eval("return { ns.Theme.RoleSize('tiny'), ns.Theme.RoleSize('auraTimerSmall'), ns.Theme.RoleSize('badge') }"), "tiny and the small aura timer at 10, badge 9").toEqual([10, 10, 9]);
 });
 

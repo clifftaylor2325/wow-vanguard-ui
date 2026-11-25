@@ -114,3 +114,55 @@ it("target and focus auras: a row woken by switching the module off and on follo
   settle(addon);
   expect([followed(), addon.eval("return __refits > 0")], "shown, followed again, and refit once on waking").toEqual([true, true]);
 });
+
+// Modules/UnitExtras.lua puts your threat percent 12 in from the target frame's top right corner, 3 above it, where the
+// buff row also starts to grow: the row's line stops short of it while the readout is on.
+it("target buffs: the row's line stops short of the threat percent while that readout is on", () => {
+  // The target's buff row spec's line width and the frame's width, for a profile.
+  const spec = (saved) => loggedIn(UNITS_ENV + FRAME_AURAS, saved).eval(`local FA = ns.GetModule("FrameAuras")
+    return { line = FA.BuffSpec(Vanguard_target, FA.Look(FA.settings)).lineSize, width = Vanguard_target:GetWidth() }`);
+  const on = spec(saved("size = 30"));
+  expect(on.line).toBe(on.width - 48);
+  const off = spec({ savedVariables: "VanguardDB.profiles = { Default = { UnitExtras = { threat = false } } }" });
+  expect(off.line).toBe(off.width);
+});
+
+// H47-6-1 (decide: option 1 built): the target's cast bar rises with the buff row's extra height, so a second line of
+// buffs, or larger icons, are never covered by it while the target casts. TEST-ONLY: sixteen buffs, a casting target.
+const CASTING_TARGET = `
+  __buffs = {} for i = 1, 16 do __buffs[i] = { icon = "BUFF-" .. i } end
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) if filter == "HELPFUL" then return __buffs[i] end end }
+  UnitCastingInfo = function(unit) if unit == "target" then return "TEST-ONLY Spell", "", "ICON", 999000, 1003000, false, nil, false end end
+  UnitChannelInfo = function() return nil end
+`;
+// The top of the target's highest buff icon and the bottom of its cast bar, with a profile's FrameAuras settings.
+const buffsAndBar = (lua) => {
+  const addon = loggedIn(UNITS_ENV + CASTING_TARGET, saved(lua));
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.update(0.01);
+  return addon.eval(`local top = -1
+    for _, grp in ipairs(Vanguard_target.buffs.frame.__groups) do for _, b in ipairs(grp.buttons) do
+      if b.__shown ~= false and b:IsShown() and b:GetTop() > top then top = b:GetTop() end end end
+    return { top = top, bar = Vanguard_CastBar_target:GetBottom(), shown = Vanguard_CastBar_target:IsShown() }`);
+};
+
+it("H47-6-1 the target's cast bar stands over every buff icon, with a second line of buffs or larger icons", () => {
+  const plain = buffsAndBar("");
+  expect(plain.shown, "it casts").toBe(true);
+  expect(plain.bar - plain.top, "defaults: clear as before").toBeGreaterThanOrEqual(0);
+  for (const lua of ["buffs = 16", "size = 40", "size = 40, buffs = 16"]) {
+    const row = buffsAndBar(lua);
+    expect(row.bar - row.top, `${lua}: the bar's bottom is over the highest icon`).toBeGreaterThanOrEqual(0);
+  }
+});
+
+it("H47-6-1 the cast bar's default spot comes back down when the buffs shrink, and a dragged spot still wins", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + CASTING_TARGET, saved("buffs = 16"));
+  // How much the target's buff row lifts its cast bar now.
+  const spot = () => addon.eval("return ns.GetModule('FrameAuras').BuffLift()");
+  expect(spot(), "16 buffs at the default size: a second line").toBeGreaterThan(0);
+  addon.eval("ns.Settings('FrameAuras').buffs = 8 ns.GetModule('FrameAuras').Apply()");
+  settle(addon);
+  expect(spot(), "eight buffs again: one line, no lift").toBe(0);
+});

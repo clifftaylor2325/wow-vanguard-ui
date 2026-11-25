@@ -162,13 +162,19 @@ local function hideTooltip()
   if GameTooltip then GameTooltip:Hide() end
 end
 
+-- The client's countdown numbers on a cell, on its bottom edge like the buffs' timers.
+local function countdownAtEdge(cooldown, size)
+  A.Countdown(cooldown, size)
+  A.CountdownAtEdge(cooldown)
+end
+
 -- One enchant cell, dressed like the buffs (noted under the holder, so a scale change refits it), with the
--- client's countdown numbers.
-local function enchantCell(holder, i, size)
+-- client's countdown numbers on its bottom edge when the buffs' timers are on, none when they are off.
+local function enchantCell(holder, i, size, timers)
   local c = CreateFrame("Frame", nil, holder)
   local parts = A.Dress(c, { size = size, masque = PA.MASQUE, holder = holder })
   c.icon, c.cooldown = parts.icon, parts.cooldown
-  A.Countdown(c.cooldown, size)
+  if timers then countdownAtEdge(c.cooldown, size) end
   c:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -(i - 1) * (size + PA.GAP), 0)
   c:SetScript("OnEnter", showTooltip)
   c:SetScript("OnLeave", hideTooltip)
@@ -251,9 +257,9 @@ local function container(s)
 end
 
 -- The enchant cells, one per weapon, on the holder: followed, so a scale change puts their icons back on whole pixels.
-local function enchantCells(holder, size)
+local function enchantCells(holder, size, timers)
   local cells = {}
-  for i = 1, #PA.WEAPONS do cells[i] = enchantCell(holder, i, size) end
+  for i = 1, #PA.WEAPONS do cells[i] = enchantCell(holder, i, size, timers) end
   A.Follow(holder)
   return cells
 end
@@ -264,7 +270,7 @@ local function build(s)
   PA.holder:SetSize(PA.PerRow(s) * (s.size + PA.GAP), s.size)
   ns.Mover(PA.holder, "playerauras", L["Your buffs and debuffs"], PA.SPOT)
   PA.auras = container(s)
-  PA.cells = enchantCells(PA.holder, s.size)
+  PA.cells = enchantCells(PA.holder, s.size, s.timers)
   hoverPad(PA.holder, s)
   PA.UpdateEnchants()
   ns.Visibility.Calm(PA.holder, "auras")

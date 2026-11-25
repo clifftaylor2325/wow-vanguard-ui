@@ -3382,14 +3382,16 @@ T.ROLES = {
   display = { size = 18, bold = true },
   title = { size = 15, bold = true }, heading = { size = 13, bold = true }, name = { size = 12, bold = true },
   cell = { size = 11, bold = true },
-  -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
+  -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge, and auraCountSmall, a stack count on the smallest aura icons.
   label = { size = 12 }, number = { size = 12 }, small = { size = 10 }, tiny = { size = 10 }, badge = { size = 9 },
   world = { size = 11, bold = true, outline = "OUTLINE" },
   -- The unit frames' name and number under a HUD look that draws them on the world or on a fill (Core/HudLook.lua).
   hudName = { size = 12, bold = true, outline = "OUTLINE" }, hudNumber = { size = 12, outline = "OUTLINE" },
   barName = { size = 11, bold = true, outline = "OUTLINE" }, barSmall = { size = 10, bold = false, outline = "OUTLINE" },
-  -- Aura icons: stack counts, and the timer on larger and smaller icons.
+  -- Aura icons: stack counts (smaller on the smallest icons, so "99" stays inside one and off its type badge), and the
+  -- timer on larger and smaller icons.
   cooldown = { size = 14, bold = true, outline = "OUTLINE" }, auraCount = { size = 10, bold = true, outline = "OUTLINE" },
+  auraCountSmall = { size = 8, bold = true, outline = "OUTLINE" },
   auraTimer = { size = 11, bold = true, outline = "OUTLINE" }, auraTimerSmall = { size = 10, bold = true, outline = "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
   chat = { size = 12 },

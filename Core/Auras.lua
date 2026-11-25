@@ -158,6 +158,8 @@ end
 A.DISPEL_GLYPHS = { Magic = "DispelMagic", Curse = "DispelCurse", Disease = "DispelDisease", Poison = "DispelPoison" }
 -- The badge's side: a share of the icon's, and the least it may be (UI units); its backing's alpha.
 A.BADGE, A.BADGE_MIN, A.BADGE_SHADE = 0.45, 8, 0.8
+-- Icons narrower than this (UI units) draw their stack count in the smaller role, so two digits stay inside the icon.
+A.SMALL_ICON = 14
 
 -- One badge letter on the badge's backing, in its type's color, hidden until shown.
 local function letter(f, back, kind)
@@ -206,7 +208,7 @@ local function texts(f, cd, size, timer)
   local carrier = CreateFrame("Frame", nil, f)
   carrier:SetAllPoints()
   carrier:SetFrameLevel(cd:GetFrameLevel() + 2)
-  local count = T.Text(carrier:CreateFontString(nil, "OVERLAY"), "auraCount", "white")
+  local count = T.Text(carrier:CreateFontString(nil, "OVERLAY"), size < A.SMALL_ICON and "auraCountSmall" or "auraCount", "white")
   count:SetPoint("TOPRIGHT", -1, -1)
   local clock = timer and T.Text(carrier:CreateFontString(nil, "OVERLAY"), size >= 20 and "auraTimer" or "auraTimerSmall", "white") or nil
   if clock then clock:SetPoint("BOTTOM", 0, 1) end
