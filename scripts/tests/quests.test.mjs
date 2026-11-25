@@ -143,6 +143,7 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   key(addon, "9");
   key(addon, "2");
   expect(addon.eval("local c = Vanguard_QuestDialog.cards return { c[1].picked:IsShown(), c[2].picked:IsShown(), Vanguard_QuestDialog.primary:IsEnabled() }"), "2 picks the gloves (9 has no reward)").toEqual([false, true, true]);
+  expect(addon.eval("return Vanguard_QuestDialog.cards[2].picked:GetTexture() == ns.Theme.WHITE"), "H47-15-101: the picked wash has a texture to tint, as every other wash does").toBe(true);
   addon.eval("local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c) c = Vanguard_QuestDialog.cards[3] c.__scripts.OnClick(c)");
   key(addon, "SPACE");
   expect(calls(addon), "a click picks too (bread is no choice); Space takes it").toEqual(["reward 1"]);
