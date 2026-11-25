@@ -312,6 +312,15 @@ it("H48-6-R1 Import stat weights asks before it replaces weights you set by hand
   expect([asked(), chatHas(addon, /Import failed: the string is for another class/)], "another class's string just fails: no question").toEqual([false, true]);
 });
 
+it("H48-10-6 a Vanguard weights string with no weights fails in the open box, with no replace question", () => {
+  const addon = loggedIn(GEAR);
+  const UP = "ns.GetModule('Upgrades')";
+  addon.slash("weights set str 7");
+  const bad = addon.eval("return ns.Serialize.Encode('weights', { kind = 'strength' })");
+  addon.eval(`${UP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(bad)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Import failed: not a weights string/)], "no question, the box stays, the reason is said").toEqual([false, true, true]);
+});
+
 it("H48-6-R1 a role change while the replace question is open imports nothing", () => {
   const addon = loggedIn(GEAR);
   const UP = "ns.GetModule('Upgrades')";

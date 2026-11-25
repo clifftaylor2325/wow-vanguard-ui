@@ -680,12 +680,13 @@ local function applyImport(text)
 end
 
 -- The kind a pasted string would replace the weights of (a guide string sets the kind in use, a Vanguard string its own),
--- or nil when it is not a string UP.Import would take (another class's guide string, no stat Vanguard weighs, garbage).
+-- or nil when it is not a string UP.Import would take (another class's guide string, no stat Vanguard weighs, a Vanguard string with no weights, garbage).
 local function importedKind(text)
   local guide = ns.UpgradeStrings.Parse(text)
   if guide then return (not guide.class or guide.class == UP.Class()) and next(guide.weights) and select(2, UP.Current()) or nil end
   local scope, data = ns.Serialize.Decode(text)
-  return scope == "weights" and type(data) == "table" and W.KINDS[data.kind] and data.kind or nil
+  local made = scope == "weights" and type(data) == "table" and type(data.weights) == "table"
+  return made and W.KINDS[data.kind] and data.kind or nil
 end
 
 -- Asks before an import replaces the weights you set by hand for its kind (a "danger" question: the old ones are not
