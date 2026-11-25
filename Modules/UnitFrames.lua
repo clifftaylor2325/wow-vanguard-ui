@@ -923,14 +923,21 @@ local function tabWidth(f)
   return 2 * UF.TEXT_INSET + name + level
 end
 
--- Sizes a frame's tab to its name, no narrower than UF.TAB.min nor wider than half the frame (a longer name is cut
--- off at the tab's end), while the frame wears one; a width the client hides leaves the tab as it was.
+-- The widest a frame's tab grows (units): the frame's width less the room the raid target icon and the marks at the
+-- inner top corner take (UF.RAID_ICON_BESIDE past the corner), never under half the frame.
+local function tabLimit(f)
+  local reach = UF.RAID_ICON_BESIDE + UF.RAID_ICON / 2
+  return math.max(f.vgWidth / 2, f.vgWidth - reach)
+end
+
+-- Sizes a frame's tab to its name, no narrower than UF.TAB.min nor wider than tabLimit (a longer name is cut off at the
+-- tab's end), while the frame wears one; a width the client hides leaves the tab as it was.
 ---@param f table a unit frame
 function UF.FitTab(f)
   if not tabbed(f) then return end
   local width = tabWidth(f)
   if not width then return end
-  T.PixelSize(f.tab, math.min(f.vgWidth / 2, math.max(UF.TAB.min, width)), UF.TAB.height)
+  T.PixelSize(f.tab, math.min(tabLimit(f), math.max(UF.TAB.min, width)), UF.TAB.height)
 end
 
 -- Shows a frame's tab at its outer top corner, a pixel down over the body's top border so the two read as one shape,

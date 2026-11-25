@@ -1290,3 +1290,15 @@ it("Like the game's layout: no name tab on the pet and focus frames under the Ta
   addon.eval("ns.Setup.ApplyLayout('damage')");
   expect(tabs(), "a Centered layout gives them back").toEqual([true, true, true, true]);
 });
+
+// H47-5-103: under the Tabs look a name tab grows past half its frame, up to where the marks at the inner corner begin.
+it("a long name on a party frame's tab is shown whole, the tab clear of the inner corner's marks", () => {
+  const addon = createAddon({ textFit: true, savedVariables: SETUP_DONE + `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "tabs" } }` });
+  addon.login();
+  addon.world.setUnit("party1", { name: "Thunderhoofx", hp: 4567, maxhp: 9876, isPlayer: true, connected: true, level: 60, class: "DRUID" });
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.3);
+  const cut = addon.textFit("Vanguard_party1").filter((x) => x.kind === "cut" && x.text === "Thunderhoofx");
+  const tab = addon.eval("local f = Vanguard_party1 return { f.tab:GetWidth(), f:GetWidth() }");
+  expect([cut, tab[0] > tab[1] / 2, tab[0] <= tab[1] - 42], "the name whole on a tab wider than half the frame, short of the inner corner").toEqual([[], true, true]);
+});
