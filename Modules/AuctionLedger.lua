@@ -417,6 +417,12 @@ function AH.ToggleHistory()
   AH.PaintSell()
 end
 
+-- The toggle's width: as wide as the longer of its two labels (Up now, Your history) needs, so a translation is never
+-- cut and the button does not change size when it is clicked.
+local function widenToggle(b)
+  for _, text in ipairs({ L["Up now"], L["Your history"] }) do b.text:SetText(text) ns.WidenToLabel(b) end
+end
+
 -- The history's table in the listings' place (hidden until Your history), its line beside the
 -- heading, and the toggle on the card's heading line.
 function AH.BuildHistory(c)
@@ -428,6 +434,7 @@ function AH.BuildHistory(c)
   c.historyToggle = W.Button(c, L["Your history"], function() AH.ToggleHistory() end, 90)
   c.historyToggle:SetHeight(18)
   c.historyToggle:SetPoint("TOPRIGHT", 0, 2)
+  widenToggle(c.historyToggle)
 end
 
 -- The ledger's events, through the helper's on: your auctions list, the notices,

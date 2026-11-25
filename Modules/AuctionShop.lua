@@ -759,11 +759,22 @@ function AH.Source()
   return AH.Sources.list
 end
 
+-- Bounds the heading on the room before the first list button shown (Restock), or before the card's right edge when
+-- they are hidden: a long list name ends in "..." on one line, so it and the count after it never run under them.
+-- A room not laid out yet (no width) leaves the heading unbounded until the next paint.
+local function boundTitle(c, buttons)
+  local edge = buttons and c.restock or c.body
+  c.titleRoom:SetPoint("RIGHT", edge, buttons and "LEFT" or "RIGHT", -T.SPACE.gap, 0)
+  local most = c.titleRoom:GetWidth() - c.progress:GetStringWidth() - T.SPACE.gap
+  c.title:SetWidth((most > 0 and T.FullWidth(c.title) > most) and most or 0)
+end
+
 -- The card's toolbar: the heading names the list (or the source), the count beside it, and the list buttons when they apply.
 local function paintToolbar(c, s, items)
   c.title:SetText(AH.CurrentList() or s.name or L["Shopping"])
   c.progress:SetText(s.count(items))
   for _, b in ipairs({ c.add, c.search, c.restock }) do b:SetShown(s.buttons == true) end
+  boundTitle(c, s.buttons == true)
 end
 
 -- The source's list on the card: its columns when they change, its rows from the scroll offset,
@@ -1165,13 +1176,17 @@ function AH.ToolButton(c, text, onClick, width, after)
 end
 
 -- The card's toolbar: the count or progress beside the heading, and the list buttons on the right:
--- + Add, Search list and Restock (Modules/AuctionRestock.lua).
+-- + Add, Search list and Restock (Modules/AuctionRestock.lua); the heading's room runs from its left (boundTitle).
 local function toolbar(c)
   c.progress = T.Text(c.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.progress:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
   c.add = AH.ToolButton(c, L["+ Add"], function() ns.AskText(L["Add to list"], function(text) AH.AddEntry(text) end, L["Add"]) end, 70)
   c.search = AH.ToolButton(c, L["Search list"], function() AH.SearchList() end, 100, c.add)
   AH.BuildRestock(c)
+  c.titleRoom = CreateFrame("Frame", nil, c.body)
+  c.titleRoom:SetHeight(1)
+  c.titleRoom:SetPoint("LEFT", c.title, "LEFT")
+  ns.SingleLine(c.title)
 end
 
 -- A click on a row: whatever the card shows (its source) answers it.

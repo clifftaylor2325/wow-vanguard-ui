@@ -690,11 +690,12 @@ local function statusText(s)
   return AH.PostedText(s)
 end
 
--- The form for the sale s (or nil): its boxes, the toggle, the length, the count line, and Skip
--- and Stop while there is a sale.
+-- The form for the sale s (or nil): its boxes, the toggle, the undercut rule and the length (both
+-- may change in the options window), the count line, and Skip and Stop while there is a sale.
 local function paintForm(c, s)
   paintBoxes(c, s)
   c.perStack.text:SetText(AH.perStack and L["per stack"] or L["per unit"])
+  c.undercut:Refresh()
   c.length:Refresh()
   c.status:SetText(statusText(s))
   enable(c.skip, s ~= nil)
@@ -813,9 +814,11 @@ end
 -- The sell card: the item, the form, the posting guide (what to do next, or why Post is off), its
 -- history line, and Post, which works only when the next stack can go up (AH.PostCheck) or the game
 -- asks to confirm one (then it reads Confirm); the Up now card beside it (the listings, or Your history).
+-- Only while the house is open: bag updates out in the world never repaint the hidden card, and AH.OnShow
+-- paints it on the next visit.
 function AH.PaintSell()
   local c, s = AH.sellCard, AH.sell
-  if not c then return end
+  if not (c and AH.open) then return end
   local why = AH.PostCheck(s)
   paintItem(c, s)
   paintForm(c, s)
@@ -923,6 +926,16 @@ local function wideLine(c, y)
   return ns.SingleLine(fs)
 end
 
+-- A small line at y across the whole card, on one line, its text shrinking (T.FitText) before it ends in "...": the
+-- history line's longest sentence (German) fits whole at 100%. Its box is one line of small text tall.
+local function fittedLine(c, y)
+  local box = CreateFrame("Frame", nil, c)
+  box:SetPoint("TOPLEFT", 0, y)
+  box:SetPoint("TOPRIGHT", 0, y)
+  box:SetHeight(T.RoleSize("small"))
+  return T.FitText(smallLine(c, y), box, 0)
+end
+
 -- The posting line: Skip, Stop and Post on the right, and the count and the item's history line under them.
 local function postRow(c)
   local y = AH.FORM_Y - 4 * AH.FORM_ROW - 32
@@ -933,7 +946,7 @@ local function postRow(c)
   c.skip = W.Button(c, L["Skip"], function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
   widenAll(c.post, c.stop, c.skip)
-  c.status, c.historyLine = wideLine(c, y - 32), wideLine(c, y - 56)
+  c.status, c.historyLine = wideLine(c, y - 32), fittedLine(c, y - 56)
 end
 
 -- The guide's steps along the card, each after the one before it (a column gap on): one that would end past the

@@ -27,8 +27,8 @@ local function auctionRows()
     { "header", L["Auction house"] },
     O.ReloadRow(check(L["Lists and Posting tabs"], reloadSetting("AuctionHelper", "panel"))),
     check(L["Auction prices in tooltips"], setting("AuctionHelper", "tooltip")),
-    { "cycle", L["Undercut by"], { { "copper", L["1 copper"] }, { "silver", L["1 silver"] }, { "percent", "1 %" }, { "match", L["Match"] } }, setting("AuctionHelper", "undercut") },
-    { "cycle", L["Auction length"], ns.GetModule("AuctionHelper").DurationSettingChoices(), setting("AuctionHelper", "duration") },
+    { "cycle", L["Undercut by"], { { "copper", L["1 copper"] }, { "silver", L["1 silver"] }, { "percent", "1 %" }, { "match", L["Match"] } }, liveMethod("AuctionHelper", "undercut", "PaintSell") },
+    { "cycle", L["Auction length"], ns.GetModule("AuctionHelper").DurationSettingChoices(), liveMethod("AuctionHelper", "duration", "PaintSell") },
     check(L["Never post under vendor price"], setting("AuctionHelper", "vendorFloor")),
   }, auctionScanRows())
 end
