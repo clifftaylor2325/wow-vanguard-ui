@@ -115,6 +115,19 @@ it("target and focus auras: a row woken by switching the module off and on follo
   expect([followed(), addon.eval("return __refits > 0")], "shown, followed again, and refit once on waking").toEqual([true, true]);
 });
 
+// H48-10-1: Park (hide only) keeps the row in the theme's repaint; Retire (a row replaced for good) forgets it.
+it("target and focus auras: a row woken by switching the module off and on is still in the theme's repaint", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + FRAME_AURAS);
+  // How many frames the theme repaints.
+  const painted = () => addon.eval("return ns.Theme.PaintedCount()");
+  const before = painted();
+  addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
+  expect(painted(), "parked rows stay in the registry").toBe(before);
+  addon.eval('ns.SetModuleEnabled("FrameAuras", true)');
+  settle(addon);
+  expect(painted(), "and still are once shown again").toBe(before);
+});
+
 // Modules/UnitExtras.lua puts your threat percent 12 in from the target frame's top right corner, 3 above it, where the
 // buff row also starts to grow: the row's line stops short of it while the readout is on.
 it("target buffs: the row's line stops short of the threat percent while that readout is on", () => {
