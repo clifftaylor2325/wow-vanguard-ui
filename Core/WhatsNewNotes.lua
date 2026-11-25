@@ -10,6 +10,19 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.8", groups = {
+    { module = "Nameplates", label = "New for groups", items = {
+      { text = "Your group's plates can show names only in dungeons.", page = "nameplates", row = "Friendly players as names only (the game's setting)" },
+      { text = "On WoW Forever your HoTs show on the party and raid frames." },
+    } },
+    { module = "Other", label = "Graphics", items = {
+      { text = "Check, Apply and Undo graphics buttons on General, under the Layout tab.", page = "general", row = "Check graphics" },
+    } },
+    { module = "Other", label = "Everything else", items = {
+      { text = "An overshield mark on your frames, and fixes for names, cast bars, auras and raid tiles." },
+      { text = "Fixes for options, setup, popups, game windows, the auction house, bags, bars, click casting, the map and chat." },
+    } },
+  } },
   { version = "0.9.7", groups = {
     { module = "UnitFrames", label = "Frames and HUD", items = {
       { text = "The keep and Standards fit your screen better: frames stand inside the wall and give way to bigger buttons and the bars beside them." },

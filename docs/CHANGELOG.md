@@ -4,6 +4,67 @@ What changed for players in each release, newest first. In game, the What's new 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.8
+
+<!-- SMOKE steps 33.837 to 33.922 -->
+
+Two new things for groups: friendly players' plates as names only in dungeons, and your HoTs on WoW Forever's party and raid frames. Also fixes across frames, options and setup, game windows, bars, the map, quests and chat.
+
+### New (0.9.8)
+
+- Nameplates: Friendly players as names only (the game's setting) keeps your group's plates to their names in dungeons and raids, where the game keeps friendly players' plates. Enemy plates keep Vanguard's look.
+- Raid auras: on WoW Forever your HoTs show on the party and raid frames, at the bottom right of each tile with a sweep, the one ending soonest rightmost. A long buff you cast shows only in a slot they leave free.
+- General: Check graphics, Apply graphics and Undo graphics buttons under the Layout tab's fold do what `/vg graphics` does.
+- Unit frames: an overshield mark on the player, target and party frames.
+- Raid healing: the buffs you type to watch get their own Buffs to watch tab.
+
+### Unit frames, HUD and auras (0.9.8)
+
+- Names stop short of the power text, a name tab can grow past half its frame up to the inner corner's marks, and the pet and focus frames carry no name tab at Like the game's spots.
+- A frame too narrow for its level beside the number hides the level, and shows it again under Tabs.
+- The status marks start in the inner corner past the raid target icon, and the status chip clears the crown, role and PvP marks and the name tab.
+- Cast bars: the spell name ends where the seconds begin, the seconds' box holds 00.0 and follows Text size, the target's cast bar lifts with its buff rows, and on Standards it stands further out.
+- Auras: the target's buff row stops short of the threat percent, the smallest icons draw a smaller stack count, the weapon enchant cell follows Timer numbers, and the fallback HoT row shows the HoTs ending soonest.
+- Nameplates: a name-only plate's raid icon stands over the name, and the cast bar's texts fit inside the bar.
+- Raid frames: names keep room for seven letters, the big raid sits lower on short screens, and the raid preview slides the options window clear of its sample tiles.
+
+### Options and setup (0.9.8)
+
+- The search list closes when another page opens or on Escape, a blank search lists nothing, and Tab onto Reset this page no longer jumps to the top.
+- Reset profile clears the changed dots, the reset arrow stays inside its card, choice labels start with a capital, and the header's profile picker shows the bare name with the full name in a tooltip.
+- A row whose value can't be read no longer stops the window opening, and a colour the accent box can't read goes back to the accent in use.
+- Show a grid while moving applies at once while unlocked, and Exit without saving puts back the HUD layout chosen before unlock.
+- Movers: a narrow frame's handle keeps its frame's width and widens when its name wraps taller, and a closed window's handle stays on the normal layer.
+- Setup can be dragged by its title on every step, the Move things page says Next locks the frames, a switch flipped in setup shows on the page behind it, and the Combat step finds its bar rows on translated clients.
+- Theme: each variant has its own hover fill, bevel and well edge, High contrast's thick ring is only on accent-bordered frames, a stepped slider's thumb stays faded when disabled, and the keypad's Enter presses the focused button.
+- Dialogs: a question asked over an open one answers the old one No, the Yes button grows to its label, and a text dialog's title may take three lines.
+
+### Game windows and town (0.9.8)
+
+- Stacked popups share one joined panel and refit when a popup shows, and skinned game windows paint opaque.
+- Quest dialog: the reward page has Goodbye, the picked reward card has a texture, and a second Accept or Complete while its question is open declines nothing.
+- A finished Learn spell objective is muted, the friends of friends dropdown keeps its arrow, and on Retail category card names keep the theme.
+- Auction house: Relist, Cancel and the Your history toggle widen to their labels, the Your auctions count sits on the table's heading line, long list names end before the toolbar, and the sell card repaints when Undercut by or Auction length changes.
+- Bags: the search boxes keep their magnifier and fit with the gamepad interface on, the Groups name box closes after Create, and the combined bag falls back to the game's grid when its sections won't fit the screen.
+- Merchant, mail and trainer: the bulk-buy cost line stays under Stack and Max, mail presets size to their names, and Train all keeps its count and stops short of the money line.
+- Craft queue: Clear asks first, the panel grows for a long Short of note, and its buttons and scroll thumb fit.
+
+### Bars, keys and click casting (0.9.8)
+
+- Flyouts open away from their bar, close on a page change, and show their spells' cooldown sweep and dim when they can't be cast.
+- Keybind mode shows hidden bars while it is on, and a long cooldown key is cut at the icon's edge.
+- Click casting: grid names stop at two lines, a hover key's text stops before its note, a ranked spell's name ends short of Ranks, the Ranks button fits its label, and See all your keys shows only where there is a Your keys tab.
+- Talents: Spend planned and Plan are greyed while another config shows, and Move up on the first row leaves the plan's order alone.
+
+### Map, quests, chat and tools (0.9.8)
+
+- A waypoint's edge arrow from the game is tinted in the accent, the quest arrow's distance shrinks to fit, far north and south quest marks stay clear of the minimap's bands, and the minimap drawer draws above the aura icons.
+- The expanded quest tracker keeps clear of the target of target frame, one quest is counted in the singular, and List latest turn-ins follows its switch at once.
+- Chat: the hidden tab bar stays hidden under the Combat Log's filter strip, Chat filter status has no blank line, and `/vg history` says 1 day.
+- AFK screen: the clock follows the game clock, the XP bar hides wherever the XP data bar hides, and the card rises when it would leave the screen.
+- Data bars: the reputation bar follows the XP handle's height, and its handle stands above the XP one while unlocked.
+- Meter, raid tools, cooldown gaps, instance prep, group board and stat weights: buttons and labels fit their words, raid tools' buttons have tooltips, and the roll tracker puts the [SR] mark before the player's name.
+
 ## 0.9.7
 
 <!-- SMOKE steps 33.666 to 33.836 -->
