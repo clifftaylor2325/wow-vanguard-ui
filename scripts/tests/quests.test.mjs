@@ -2117,6 +2117,16 @@ const PVP_ENV = `
   QuestFlagsPVP = function() return __pvp end
   CONFIRM_ACCEPT_PVP_QUEST = "TEST-ONLY This quest will flag you for PvP. Accept it?"
 `;
+it("H47-22-1: a second Accept on a quest that flags you for PvP, while its question is open, declines nothing", () => {
+  const addon = loggedIn(QUEST_ENV + PVP_ENV);
+  addon.fire("QUEST_DETAIL");
+  addon.click("Vanguard_QuestDialog.primary");
+  addon.click("Vanguard_QuestDialog.primary");
+  expect(calls(addon), "nothing declined by the second click").toEqual([]);
+  addon.click("Vanguard_Question.confirm");
+  expect(calls(addon), "Yes still takes it").toEqual(["accept nil"]);
+});
+
 it("quest automation: a quest that flags you for PvP is left to you, with the dialog shown", () => {
   const addon = loggedIn(QUEST_ENV + PVP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, acceptShared = true } } }" });
   addon.fire("QUEST_DETAIL");
@@ -2321,6 +2331,14 @@ it("quest cost: No declines the hand-in, as the game's does", () => {
   const addon = costAsked();
   addon.click("Vanguard_Question.no");
   expect(calls(addon)).toEqual(["decline nil"]);
+});
+
+it("H47-22-1: a second Complete while the cost question is open asks again and declines nothing", () => {
+  const addon = costAsked();
+  key(addon, "SPACE");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)], "the hand-in still waits on the answer").toEqual([true, []]);
+  addon.click("Vanguard_Question.no");
+  expect(calls(addon), "and a No still declines it, once").toEqual(["decline nil"]);
 });
 
 it("H41-18-1: the cost question goes when the quest closes first, and pays or declines nothing", () => {

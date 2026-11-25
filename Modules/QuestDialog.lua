@@ -231,6 +231,12 @@ QD.PAGES = {
   complete = function() return QD.CompletePage() end,
 }
 
+-- A question's No: declines the quest, as the game's own does. A question asked over it (ns.Ask tells its No
+-- "replaced": a second click on Accept or Complete asks again) leaves the quest as it is.
+local function declineUnlessReplaced(how)
+  if how ~= "replaced" then ns.CallIf(_G, "DeclineQuest") end
+end
+
 -- Accepts the offered quest. One that flags you for PvP asks first, in the game's own words, as its own
 -- Accept does (asked here, never with the game's popup, which would taint); No declines it, as the game's does.
 local function acceptOffer()
@@ -238,7 +244,7 @@ local function acceptOffer()
   local function accept() ns.CallIf(_G, "AcceptQuest") end
   if not QP.FlagsPVP() or type(CONFIRM_ACCEPT_PVP_QUEST) ~= "string" then return accept() end
   -- No: declines the quest. Kept on QD.asked so QD.Quiet can put the question away if the offer closes first.
-  QD.asked = function() ns.CallIf(_G, "DeclineQuest") end
+  QD.asked = declineUnlessReplaced
   ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, QD.asked)
 end
 
@@ -321,7 +327,7 @@ function QD.Complete()
   if cost <= 0 then return take() end
   local text = ns.Format(L["Completing {quest} costs {money}. Complete it?"], { quest = QP.Plain(ns.CallIf(_G, "GetTitleText")), money = ns.GetModule("InfoStrip").Money(cost) })
   -- No: declines the hand-in and keeps the gold. Kept on QD.asked so QD.Quiet can put the question away.
-  QD.asked = function() ns.CallIf(_G, "DeclineQuest") end
+  QD.asked = declineUnlessReplaced
   ns.Ask(text, L["Complete"], take, QD.asked)
 end
 
