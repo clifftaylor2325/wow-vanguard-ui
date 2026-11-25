@@ -33,7 +33,7 @@ const parse = (addon, text) => addon.eval(`local e = ns.GetModule("GroupBoard").
 
 // The board's visible rows: [kind, dungeon, roles, sender, age] each.
 const rows = (addon) => addon.eval(`local f, out = Vanguard_GroupBoard, {}
-  for i = 1, f.rows.used do local b = f.rows[i] out[i] = { b.kind:GetText(), b.dungeon:GetText(), b.roles:GetText(), b.sender:GetText(), b.age:GetText() } end
+  for i = 1, f.rows.used do local b = f.rows[i] out[i] = { b.kind:GetText(), b.dungeon:GetText() .. (b.range:GetText() ~= "" and " " .. b.range:GetText() or ""), b.roles:GetText(), b.sender:GetText(), b.age:GetText() } end
   return out`);
 
 // The board's count and the line under its rows.
@@ -492,4 +492,43 @@ it("H46-G2-5 the probe's channel words are the options' check captions, in the o
     return { captions, names }`);
   expect(pair[0], "four channel switches, Numbered channels first").toEqual(["Numbered channels", "Yell", "Say", "Guild"]);
   expect(pair[1], "GB.CHANNEL_NAMES in GB.CHANNEL_ORDER").toEqual(pair[0]);
+});
+
+// A board at Text size 130% in a shipped language, with three long-named senders posting (H47-20-104).
+function wideBoard(locale) {
+  const saved = "VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = 1.3 } } }, setupDone = true }\nVanguardCharDB = {}\n";
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `__wfgWorld.locale = "${locale}"` });
+  addon.login();
+  addon.eval("__wfgWorld.units.player.level = 58 ns.GetModule('GroupBoard').settings.mine = false");
+  for (const name of ["Thrallmarine", "Tyrandewhisp", "Bloodhoofer"]) post(addon, "LFM LBRS need tank healer dps", name);
+  addon.slash("lfg");
+  return addon;
+}
+
+it("H47-20-104 at Text size 130% the board's sender names and its level switch are whole, on one line", () => {
+  for (const locale of ["deDE", "frFR", "ruRU", "esES"]) {
+    const addon = wideBoard(locale);
+    const mine = addon.eval("return ns.L['Only dungeons for my level']");
+    const findings = addon.textFit("Vanguard_GroupBoard").filter((f) => f.text === mine || ["Thrallmarine", "Tyrandewhisp", "Bloodhoofer"].includes(f.text));
+    expect(findings.map((f) => `${f.kind} | ${f.text}`), `${locale}: cut or crowded text`).toEqual([]);
+    const height = addon.eval("return Vanguard_GroupBoard.mine.label:GetStringHeight()");
+    expect(height, `${locale}: the switch's label is one line`).toBeLessThanOrEqual(20);
+  }
+});
+
+it("H47-20-53 a long dungeon name shrinks before its level range, and the three roles keep their words", () => {
+  for (const locale of ["enUS", "deDE", "frFR"]) {
+    const addon = wideBoard(locale);
+    post(addon, "LFM UBRS need tank healer dps", "Stormbringer");
+    post(addon, "LFM LBRS need tank healer dps", "Abcdefghijkl");
+    addon.slash("lfg");
+    const cut = addon.textFit("Vanguard_GroupBoard").filter((f) => f.kind === "cut" && !/^[A-Z]\w+$/.test(f.text));
+    expect(cut.map((f) => f.text), `${locale}: nothing cut but a name's tail`).toEqual([]);
+    const bad = addon.eval(`local f, out = Vanguard_GroupBoard, 0
+      for i = 1, f.rows.used do local b = f.rows[i]
+        if b.range:GetText() ~= "" and ns.Theme.FullWidth(b.range) > b.range:GetWidth() then out = out + 1 end
+        if b.dungeon:GetRight() > b.range:GetLeft() + 1 and b.range:GetText() ~= "" then out = out + 1 end
+      end return out`);
+    expect(bad, `${locale}: the range is whole and the name ends before it`).toBe(0);
+  }
 });

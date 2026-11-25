@@ -78,7 +78,7 @@ it("a roll on a reserved item is flagged [SR], by the item the loot history says
   roll(addon, "Realmguy", 20);
   roll(addon, "Jaina", 10);
   expect(names(addon), "rolls flagged, then the item with its reserves and players").toEqual([
-    "Rolls 1-100", "Thrall [SR]", "Realmguy [SR]", "Jaina", "|cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r", "Reserved: Thrall, Realmguy-Stormrage", "Thrall [SR]", "Jaina",
+    "Rolls 1-100", "[SR] Thrall", "[SR] Realmguy", "Jaina", "|cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r", "Reserved: Thrall, Realmguy-Stormrage", "[SR] Thrall", "Jaina",
   ]);
   expect(say(addon, "loot focus Cloak")).toMatch(/flagged for Cloak/);
   expect(names(addon).slice(1, 4), "focus changes the item the round is for").toEqual(["Thrall", "Realmguy", "Jaina"]);

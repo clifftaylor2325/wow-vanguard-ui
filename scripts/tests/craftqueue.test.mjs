@@ -373,7 +373,12 @@ it("shows a panel beside the profession window: rows, what is short, remove, add
   expect(queue(addon), "the first entry is removed").toEqual([[102, 1]]);
   expect(Object.values(panel(addon)[1]), "the row went").toEqual(["1 x TEST-ONLY Bandage"]);
   addon.eval(`${CQ}.frame.clear:Click()`);
+  expect(Object.values(queue(addon)), "Clear asks first (H47-20-54): nothing is cleared yet").toEqual([[102, 1]]);
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the question").toBe("Clear the craft queue?");
+  addon.eval("Vanguard_Question.sure:Click()");
   expect(Object.values(queue(addon)), "cleared").toEqual([]);
+  addon.eval(`${CQ}.AskClear()`);
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "an empty queue asks nothing").toBe(false);
   addon.slash("craft add");
   expect(Object.values(panel(addon)[1]), "a command repaints it too").toEqual(["1 x TEST-ONLY Bandage"]);
   addon.world.closeProfession();
@@ -477,4 +482,54 @@ it("H46-9-50 /vg craft stock still raises the full need when it all sits in the 
   const part = crafter(THREAD_MERCHANT, ON, RETAIL_CLIENT);
   part.eval("__wfgWorld.warbandCounts[2589] = 2 C_Item.GetItemCount = function() return 0 end");
   expect(stockThenShop(part), "need 3, bank 2, bags 0: goal 1 linen; the thread is all to buy").toEqual([[1, 1], [1]]);
+});
+
+// Three recipes of six reagents, none held: the note of what the queue is short of runs three lines (H47-20-51).
+const LONG_NOTE_ENV = `
+  local names = { [3001] = "Heavy Leather", [3002] = "Thick Leather", [3003] = "Rugged Leather", [3004] = "Heavy Silken Thread", [3005] = "Iron Buckle", [3006] = "Black Dye" }
+  for id, n in pairs(names) do __wfgWorld.items[id] = { name = n } end
+  local function slot(id, qty) return { reagents = { { itemID = id } }, quantityRequired = qty, reagentType = 1 } end
+  __wfgWorld.recipes[200] = { recipeID = 200, name = "Heavy Leather Ball", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3001, 4), slot(3004, 1) } }
+  __wfgWorld.recipes[201] = { recipeID = 201, name = "Wild Leather Vest", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3002, 12), slot(3005, 2), slot(3006, 1) } }
+  __wfgWorld.recipes[202] = { recipeID = 202, name = "Rugged Armor Kit", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(3003, 3) } }
+  C_Item.GetItemCount = function() return 0 end
+`;
+
+// Queues the three long-note recipes (and more of the same, to scroll the list when asked).
+function longQueue(ids = [200, 201, 202]) {
+  const addon = crafter(LONG_NOTE_ENV);
+  for (const id of ids) { addon.world.openProfession(id); addon.slash("craft add"); }
+  return addon;
+}
+
+it("H47-20-51 the panel grows to hold a long Short of note above its buttons", () => {
+  const addon = longQueue();
+  const out = addon.eval(`local f = ${CQ}.frame return { f.note:GetBottom(), f.add:GetTop(), f:GetHeight(), ${CQ}.BASE_HEIGHT }`);
+  expect(out[0], "the note ends above the buttons").toBeGreaterThanOrEqual(out[1]);
+  expect(out[2], "the panel grew").toBeGreaterThan(out[3]);
+  addon.slash("craft clear");
+  expect(addon.eval(`return ${CQ}.frame:GetHeight() == ${CQ}.BASE_HEIGHT`), "and shrinks back with the note").toBe(true);
+});
+
+it("H47-20-101 a scrolling queue keeps its scroll thumb inside the panel", () => {
+  const addon = crafter();
+  for (const id of [100, 102]) { addon.world.openProfession(id); addon.slash("craft add"); }
+  addon.eval(`for i = 1, 6 do ${CQ}.Mine().queue[i] = { id = 100 + i, n = 1, name = "R" .. i } end ${CQ}.Repaint()`);
+  const out = addon.eval(`local f = ${CQ}.frame return { f.list.thumb:IsShown(), math.max(f.list.thumb:GetRight(), f.list.grip:GetRight()), f:GetRight() }`);
+  expect(out[0], "the thumb shows with more than five rows").toBe(true);
+  expect(out[1], "the thumb and its grip end inside the panel").toBeLessThanOrEqual(out[2]);
+});
+
+it("H47-20-102 the panel's buttons are as wide as their labels in German, Spanish and Russian at Text size 130%", () => {
+  for (const locale of ["deDE", "esES", "ruRU"]) {
+    const saved = `${ON}\nVanguardDB.profiles.Default.theme = { textScale = 1.3 }`;
+    const addon = loggedIn(ENV, { savedVariables: saved, client: `GetLocale = function() return "${locale}" end`, textFit: true });
+    addon.world.setUnit("player", { class: "WARRIOR", level: 60 });
+    addon.world.openProfession(100);
+    addon.slash("craft add");
+    const cut = addon.textFit("Vanguard_CraftQueuePanel").filter((finding) => finding.kind !== "spill");
+    expect(cut.map((f) => `${f.kind} | ${f.text}`), `${locale}: no button label cut or over another`).toEqual([]);
+    const inside = `local f = ${CQ}.frame for _, b in ipairs({ f.add, f.next, f.clear }) do if b:GetRight() > f:GetRight() or b:GetBottom() < f:GetBottom() then return false end end return true`;
+    expect(addon.eval(inside), `${locale}: the buttons stay in the panel (two rows when one is too wide)`).toBe(true);
+  }
 });

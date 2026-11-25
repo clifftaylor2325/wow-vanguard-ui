@@ -516,14 +516,21 @@ function TP.Summary(tree, result)
   return table.concat(parts, "; ")
 end
 
--- Puts the summary on the bar and makes Spend planned usable when there is something to spend (out of combat).
-local function paintBar(tree, result)
+-- Lights a bar button (enabled, full alpha) or greys it (disabled, half alpha).
+local function setUsable(button, usable)
+  if usable then button:Enable() else button:Disable() end
+  button:SetAlpha(usable and 1 or 0.5)
+end
+
+-- Puts the summary on the bar and makes Spend planned usable when there is something to spend (out of combat). While
+-- the window shows another config than the plan's (`other`: the other spec's tab, an inspected player) the plan is
+-- not for what is on screen, so Spend planned and the Plan switch are greyed there; the bar keeps its place.
+local function paintBar(tree, result, other)
   local bar = TP.bar
   if not bar then return end
   bar.summary:SetText(TP.Summary(tree, result))
-  local can = tree.points > 0 and #result.order > 0 and not ns.InCombat()
-  if can then bar.spend:Enable() else bar.spend:Disable() end
-  bar.spend:SetAlpha(can and 1 or 0.5)
+  setUsable(bar.spend, not other and tree.points > 0 and #result.order > 0 and not ns.InCombat())
+  setUsable(bar.plan, not other)
 end
 
 -- Plan mode on or off: the marks take the mouse, the switch re-reads, the window repaints.
@@ -604,7 +611,7 @@ function TP.Refresh()
   local plan = TP.Reconcile(TP.tree, TP.Plan())
   TP.result = TP.Resolve(TP.tree, plan)
   paintAll(frame, TP.tree, plan, TP.result)
-  paintBar(TP.tree, TP.result)
+  paintBar(TP.tree, TP.result, showsOther(frame, TP.tree))
   TP.RefreshOrder()
 end
 
@@ -813,14 +820,22 @@ local function orderTree()
   return TP.ReadTree()
 end
 
--- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
+-- Swaps a talent with its neighbour a step away in a list of node ids; false when it has none (the first row up,
+-- the last down) or is not in the list.
+local function swapNeighbour(ids, nodeID, step)
+  for i, id in ipairs(ids) do
+    if id == nodeID and ids[i + step] then ids[i], ids[i + step] = ids[i + step], id return true end
+  end
+  return false
+end
+
+-- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on. At
+-- an end of the list nothing moves and the plan keeps the order it had.
 function TP.MoveInOrder(nodeID, step)
   local tree, plan = orderTree(), TP.Plan()
   if not tree then return end
   local ids = TP.OrderedIDs(tree, plan)
-  for i, id in ipairs(ids) do
-    if id == nodeID and ids[i + step] then ids[i], ids[i + step] = ids[i + step], id break end
-  end
+  if not swapNeighbour(ids, nodeID, step) then return end
   plan.order = ids
   TP.Refresh()
   TP.RefreshOrder()

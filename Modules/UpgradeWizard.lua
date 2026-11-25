@@ -127,6 +127,7 @@ end
 local function sliderRow(list, i)
   local r = W.Slider(list, "", { min = 0, max = 3, step = 0.1 }, function() return state.draft[state.stats[i]] or 0 end, function(v) state.draft[state.stats[i]] = round(v) end, SLIDER_WIDTH)
   r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
+  W.ShrinkCaption(r)
   -- Takes a typed weight as it is: the slider's own setter rounds to two places for its float noise, not for the player's number.
   r.exact = function(v) state.draft[state.stats[i]] = v end
   addBox(r, list)
