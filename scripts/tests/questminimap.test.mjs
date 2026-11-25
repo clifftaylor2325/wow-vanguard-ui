@@ -41,8 +41,39 @@ it("quest minimap: a dot for each quest in the log with objectives left, a ? onc
   addon.advance(0.5);
   const half = addon.eval("return Minimap:GetWidth() / 2");
   const room = half - addon.eval("return ns.QuestMinimap.SIZE") / 2;
-  expect(marks(addon), "east, north on the edge (drawn just inside it), and west past it").toEqual([
-    ["Knob", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(room), 1], ["Knob", -Math.round(room), 0, 0.5]]);
+  const top = addon.eval("return (ns.GetModule('Minimap').EdgeInsets())");
+  expect(marks(addon), "east, north on the edge (drawn just inside it, under no band), and west past it").toEqual([
+    ["Knob", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(room - top), 1], ["Knob", -Math.round(room), 0, 0.5]]);
+});
+
+// TEST-ONLY: one quest 400 yards north and one 400 yards south (ready), both past the minimap's edge.
+const NORTH_SOUTH = `C_QuestLog.GetQuestsOnMap = function() return { { questID = 90061, x = 0.5, y = 0.1 }, { questID = 90062, x = 0.5, y = 0.9 } } end`;
+
+// The band rects and the shown marks' rects on a square minimap, for the overlap check (H47-17-101).
+const bandsAndMarks = (addon) => addon.eval(`local MM, QM, out = ns.GetModule("Minimap"), ns.QuestMinimap, { marks = {} }
+  local function box(x) return { x:GetLeft(), x:GetRight(), x:GetBottom(), x:GetTop() } end
+  out.top, out.bottom = box(MM.top), box(MM.bottom)
+  for i, m in ipairs(QM.marks) do if m:IsShown() then out.marks[#out.marks + 1] = box(m) end end
+  return out`);
+
+it("quest minimap: far north and south marks sit clear of the zone and coordinates bands on the square map (H47-17-101)", () => {
+  // The bands draw over the marks' layer (Modules/Minimap.lua overlay, a level above it), so a mark inside one is not seen.
+  const addon = loggedIn(MINIMAP_ENV + NORTH_SOUTH);
+  addon.advance(0.5);
+  const { top, bottom, marks: boxes } = bandsAndMarks(addon);
+  expect(boxes.length, "both marks show").toBe(2);
+  for (const m of boxes) {
+    expect(m[3] <= top[2], "no mark inside the top band").toBe(true);
+    expect(m[2] >= bottom[3], "no mark inside the bottom band").toBe(true);
+  }
+});
+
+it("quest minimap: with the coordinates off the south mark may reach the edge, and Vanguard's minimap off the insets are 0", () => {
+  const noCoords = loggedIn(MINIMAP_ENV + NORTH_SOUTH, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
+  noCoords.advance(0.5);
+  expect(noCoords.eval("return select(2, ns.GetModule('Minimap').EdgeInsets())"), "no coordinates, no bottom band").toBe(0);
+  const off = loggedIn(MINIMAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
+  expect(off.eval("return select('#', ns.GetModule('Minimap').EdgeInsets()) .. ':' .. ns.GetModule('Minimap').EdgeInsets()"), "no module, no insets").toBe("2:0");
 });
 
 // TEST-ONLY: one quest 400 yards north-east, past the minimap's corner.
@@ -61,8 +92,8 @@ it("quest minimap: with Vanguard's minimap off the game's round one gets rim mar
   expect(off.eval("return ns.QuestMinimap.Round()"), "the game's own minimap is round").toBe(true);
   const square = loggedIn(MINIMAP_ENV + NORTH_EAST);
   square.advance(0.5);
-  const room = Math.round(square.eval("return Minimap:GetWidth() / 2 - ns.QuestMinimap.SIZE / 2"));
-  expect(marks(square)[0].slice(1, 3), "the square map's corner, inside it").toEqual([room, room]);
+  const room = Math.round(square.eval("return Minimap:GetWidth() / 2 - ns.QuestMinimap.SIZE / 2 - (ns.GetModule('Minimap').EdgeInsets())"));
+  expect(marks(square)[0].slice(1, 3), "the square map's corner, inside it and under no band").toEqual([room, room]);
 });
 
 it("quest minimap: the marks turn with a rotating minimap", () => {
