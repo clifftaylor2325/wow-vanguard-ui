@@ -109,13 +109,21 @@ local function captionOf(row)
   return O.AppliesLive(set) and O.WithoutReload(row[2]) or row[2]
 end
 
+-- A row's setter that also redraws the options page behind the wizard, so the page shows the change at once.
+local function settingThenRefresh(set)
+  return function(value)
+    set(value)
+    O.Refresh()
+  end
+end
+
 -- Builds one row's widget on the window (a switch or a slider), hidden until its step shows.
 local function widget(f, row)
   local w
   if row[1] == "slider" then
-    w = W.Slider(f, captionOf(row), row[3], row[4], row[5], WZ.WIDTH - 2 * WZ.PAD)
+    w = W.Slider(f, captionOf(row), row[3], row[4], settingThenRefresh(row[5]), WZ.WIDTH - 2 * WZ.PAD)
   else
-    w = W.Check(f, captionOf(row), row[3], row[4], WZ.WIDTH - 2 * WZ.PAD)
+    w = W.Check(f, captionOf(row), row[3], settingThenRefresh(row[4]), WZ.WIDTH - 2 * WZ.PAD)
   end
   w:Hide()
   return w

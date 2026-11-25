@@ -104,3 +104,15 @@ it("cooldowns wizard: in German at 130% its rows stack by their heights, so a wr
   expect(rows.map((r) => r[2]), "the second row starts where the first ends").toEqual([true, true]);
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
 });
+
+it("cooldowns page: a switch flipped in the setup wizard shows on the page open behind it", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("cooldowns")');
+  // Whether the page's own "Show the game's manager" switch draws as on.
+  const pageOn = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.label and w.label.__text == "Show the game's manager" and w:GetParent() ~= ${WZ}.frame and w.fill then return w.fill:IsShown() end end`);
+  expect(pageOn(), "off to begin with").toBe(false);
+  addon.eval('__click("Set up cooldowns")');
+  addon.eval(`local w = ${WZ}.frame.steps[1][1] w:GetScript("OnClick")(w)`);
+  expect(pageOn(), "the wizard's switch is on the page too").toBe(true);
+});
