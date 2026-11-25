@@ -594,7 +594,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   addon.eval(`local r = ${sliderRow("Its opacity")} r.set(0.5) r:Refresh()`);
   expect(addon.eval("return { ns.MoverLook('minimap') }"), "the opacity slider sets the picked frame's opacity").toEqual([1, 0.5]);
   expect(addon.eval(`return { ${sliderRow("Its opacity")}.reset:IsShown(), ${sliderRow("Its opacity")}.value:GetText() }`), "a changed one shows the reset dot, as a percent").toEqual([true, "50%"]);
-  addon.eval('__click("Reset all positions")');
+  addon.eval('__click("Reset all positions") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval(`return { ns.MoverLook("${first}") }`).concat(addon.eval(`return ${sliderRow("Its opacity")}.get()`)), "Reset all positions puts every scale and opacity back").toEqual([1, 1, 1]);
 });
 
@@ -1936,14 +1936,14 @@ const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsSho
 it("Reset theme: a reset that only changes the accent needs no reload", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("accent arcane");
-  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(reloadNotice(addon), "no notice").toBe(false);
   addon.slash("theme reset");
   expect(chatHas(addon, /Theme back to defaults\.$/), "chat says it plainly").toBe(true);
 });
 it("Reset theme with Safer colours on shows the reload notice, and /vg theme reset says to reload", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
   addon.eval("ns.Theme.Settings().hudShadow = true");
   addon.slash("theme reset");
@@ -1952,7 +1952,7 @@ it("Reset theme with Safer colours on shows the reload notice, and /vg theme res
 it("Reset theme from High contrast shows the reload notice, since its Safer colours go off with it", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("variant contrast");
-  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.ColorAssist()"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
   addon.slash("variant midnight");
   addon.slash("theme reset");
@@ -1979,7 +1979,7 @@ it("/vg variant offers a reload only when the variant turns Safer colours on or 
 });
 it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
+  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
 });
 it("a page rebuilt while it shows (a module filter picked on the Modules page) keeps its tab and its scroll", () => {
@@ -2887,4 +2887,18 @@ it("H48-6-1 Reset profile asked about one profile resets nothing when another is
   addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat ~= nil, VanguardDB.profiles.Raid.Chat ~= nil, VanguardDB.profiles['Raid backup'] == nil, VanguardDB.profiles['Default backup'] == nil }"), "neither profile is reset or backed up").toEqual([true, true, true, true]);
   expect(chatHas(addon, /Nothing was reset: the profile in use changed\. Ask again\./), "and chat says so").toBe(true);
+});
+
+it("H48-6-3 Reset all positions and Reset theme ask first (a danger question); No leaves everything as it was", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("accent arcane");
+  addon.eval('ns.SetMoverPoint("infostrip", "TOPLEFT", "TOPLEFT", 40, -60) ns.Options.Show("general")');
+  for (const label of ["Reset all positions", "Reset theme"]) {
+    addon.eval(`__click("${label}")`);
+    expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Question.confirm.kind }"), `${label} asks, and Enter never answers it`).toEqual([true, "danger"]);
+    addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  }
+  expect(addon.eval("return { VanguardDB.profiles.Default.positions.infostrip.x, select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.arcane[1] }"), "No resets neither").toEqual([40, true]);
+  addon.eval('__click("Reset all positions") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.infostrip == nil"), "Yes forgets the saved spots").toBe(true);
 });
