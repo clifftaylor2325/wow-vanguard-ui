@@ -2822,10 +2822,21 @@ local function thumbOf(slider)
   return type(thumb) == "table" and thumb or nil
 end
 
+local steppedHooked = setmetatable({}, { __mode = "k" })
+
+-- The game's MinimalSliderWithSteppersMixin:SetEnabled sets the thumb's alpha back to 1 or .7
+-- (MinimalSlider.lua ConfigureSlider), so the faded thumb is faded again after each call. Hooked once.
+local function fadeAfterSetEnabled(frame)
+  if steppedHooked[frame] or type(frame.SetEnabled) ~= "function" then return end
+  steppedHooked[frame] = true
+  hooksecurefunc(frame, "SetEnabled", ns.Guard("slider thumb", function(f) T.FadeRegions(f.Slider) end))
+end
+
 -- A MinimalSliderWithSteppers frame in the theme: its slider (T.Slider) and its Back and Forward
 -- steppers as flat left and right arrows (T.ArrowButton). Safe to run again.
 local function skinSteppers(frame)
   T.Slider(frame.Slider)
+  fadeAfterSetEnabled(frame)
   if type(frame.Back) == "table" then T.ArrowButton(frame.Back, "left", { flat = true }) end
   if type(frame.Forward) == "table" then T.ArrowButton(frame.Forward, "right", { flat = true }) end
   return frame

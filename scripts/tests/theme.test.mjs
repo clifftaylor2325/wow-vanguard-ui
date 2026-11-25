@@ -1718,6 +1718,19 @@ it("T.Slider: a game slider gets the pill look on its own geometry, a fill to th
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __sl = S.Slider(CreateFrame("Slider", nil, UIParent)) end)');
   expect(addon.eval("return __sl ~= nil"), "other addons get it as S.Slider").toBe(true);
 });
+it("T.Slider: the game's SetEnabled on a stepped slider (it sets the thumb's alpha back) leaves the thumb faded", () => {
+  // MinimalSlider.lua ConfigureSlider (Blizzard_SharedXML/Shared/Slider, both clients): Slider.Thumb:SetAlpha(1.0 or .7).
+  const addon = loggedIn(`
+    local m = CreateFrame("Frame", "TEST_SlSet", UIParent)
+    local s = CreateFrame("Slider", nil, m)
+    s:SetSize(120, 16) s:SetOrientation("HORIZONTAL") s:SetThumbTexture("TEST-ONLY-THUMB")
+    s.Thumb = s:GetThumbTexture()
+    m.Slider = s
+    function m:SetEnabled(on) self.Slider.Thumb:SetAlpha(on and 1.0 or 0.7) end
+    ns.Theme.Slider(m) ns.Theme.Slider(m)`);
+  const alphas = [true, false].map((on) => addon.eval(`TEST_SlSet:SetEnabled(${on}) return TEST_SlSet.Slider.Thumb.__alpha`));
+  expect(alphas, "faded after SetEnabled(true) and (false)").toEqual([0, 0]);
+});
 it("switch commands: on and off in any case set the switch, a mistyped word changes nothing and shows the usage", () => {
   const addon = loggedIn();
   const toggles = { ornaments: "ornaments", gradient: "panelGradient", slug: "slugText", framebuffer: "frameBuffer", texelsnap: "texelSnap", nineslice: "sliceRings", icons: "sizedIcons" };
