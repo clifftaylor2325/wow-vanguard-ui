@@ -1256,8 +1256,10 @@ local function setEnemies(on)
 end
 
 -- The offer below was answered (No, or closed): it is not made again on this character. An offer another
--- question replaced before an answer counts as unanswered, and comes back at a later login.
-function NP.EnemyPlatesAnswered()
+-- question replaced before an answer (ns.Ask tells its No "replaced") counts as unanswered, and comes back at a later login.
+---@param how string|nil
+function NP.EnemyPlatesAnswered(how)
+  if how == "replaced" then return end
   VanguardCharDB.enemyPlatesSet = true
 end
 
