@@ -438,10 +438,19 @@ local function fillQuestion(f, text, yes, kind)
   ns.FocusClear(f)
 end
 
+-- A question replaced before it was answered is answered No, once, now: what waits on the answer (the reload offered
+-- after a profile import, say) must not be lost. Run before the new question is set so anything it opens sits under it.
+local function answerReplaced(f)
+  local onNo = f.waiting
+  f.waiting = nil
+  if onNo then onNo() end
+end
+
 -- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
 -- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
 function ns.Ask(text, yes, onYes, onNo, kind)
   local f = questionDialog()
+  answerReplaced(f)
   fillQuestion(f, text, yes, kind)
   f.waiting = onNo
   f.confirm:SetScript("OnClick", ns.Guard("click question yes", function() f.waiting = nil f:Hide() onYes() end))
