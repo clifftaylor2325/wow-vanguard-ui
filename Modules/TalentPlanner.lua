@@ -757,9 +757,10 @@ function TP.SpendPlanned(n)
   if bought > 0 then TP.Commit(tree.configID) end
 end
 
--- The level-up line: how many points wait and what the plan buys next; the level-up switch buys them instead.
+-- The level-up line: how many points wait and what the plan buys next; the level-up switch buys them instead. It waits
+-- for the end of a fight, and a module switched off in that fight is stopped only by the settle after it, so the switch is read.
 function TP.Prompt()
-  if not TP.settings then return end
+  if not TP.settings or not ns.ModuleEnabled("TalentPlanner") then return end
   local tree = TP.ReadTree()
   if not tree or tree.points <= 0 then return end
   local result = TP.Resolve(tree, TP.Plan())
