@@ -185,6 +185,7 @@ end
 local function remember(avg, quality, recommended, lowPower, tip)
   local q = quality and G.Suggest(avg, quality, recommended, lowPower)
   G.last = { quality = q ~= quality and q or nil, render = tip and G.RENDER, screen = ns.Setup.DetectScreen() }
+  ns.Options.Refresh()
 end
 
 -- Prints the result: the frame rate, the computer, the suggestion, the screen and, on a slow 4K screen, the render scale tip.
@@ -393,4 +394,31 @@ function G.Check()
   run = { fps = {}, ticks = 0 }
   run.ticker = C_Timer.NewTicker(1, ns.Guard("timer graphics check", tick))
   ns.Chat(ns.Format(L["Checking this computer and your frame rate for {seconds} s: stand where you usually play (a city is slower than the open world). /vg graphics again ends it early."], { seconds = G.TICKS }))
+end
+
+-- Whether an earlier apply left settings for undo to put back (the record an older version kept in a profile counts).
+---@return boolean
+function G.CanUndo()
+  return type(clientNotes().graphicsUndo) == "table" or legacyUndo() ~= nil
+end
+
+-- Runs one of the commands from its button, then lets the options window follow what it changed (Apply and Undo
+-- are enabled by a finished check and by a record to put back).
+local function press(action)
+  return function()
+    action()
+    ns.Options.Refresh()
+  end
+end
+
+-- The General page's rows for /vg graphics: Check graphics, Apply and Undo, which do what the commands do (the result
+-- stays in chat; a fight refuses the change as the commands do). Apply waits for a finished check, Undo for a record.
+---@return table[]
+function G.Rows()
+  return {
+    ns.Options.Essential({ "button", L["Check graphics"], press(G.Check) }),
+    ns.Options.Essential({ "button", L["Apply graphics"], press(G.Apply), function() return G.last ~= nil end }),
+    ns.Options.Essential({ "button", L["Undo graphics"], press(G.Undo), G.CanUndo }),
+    { "text", L["Check measures your frame rate for 5 s (out of combat) and suggests settings; Apply sets them, Undo puts them back (/vg graphics)."], "note" },
+  }
 end

@@ -674,6 +674,8 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
   const grown = addon.eval(`local f = ${name} return { f:GetHeight(), 16 + f.title:GetStringHeight() + 24 + 26 + 16, f.title:GetStringHeight() }`);
   expect(grown[0], "a pad, the wrapped title, a section gap, the buttons and a pad").toBe(grown[1]);
   expect(grown[2], "four lines of title").toBe(56);
+  expect(addon.eval("return __answers"), "the question it replaced was answered No (H47-1-53)").toEqual(["no"]);
+  addon.eval("__answers = {}");
   addon.click(`${name}.chrome.close`);
   expect([addon.frame(name).visible, addon.eval("return __answers")], "the X closes it and answers No").toEqual([false, ["no"]]);
   addon.eval("__ask('Again?')");
@@ -718,6 +720,48 @@ it("the question dialog: Enter presses a Yes that is not a danger button, out of
   addon.click(`${name}.no`);
 });
 
+it("the question dialog: the keypad's Enter presses the focused button like Enter (H47-1-51)", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  // The client's own scripts name only ENTER (Blizzard_SharedXML), so the keypad name is a guard; Vanguard already reads it at askKey.
+  addon.eval(`__answers = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() __answers[#__answers + 1] = "no" end)`);
+  addon.key(name, "TAB");
+  addon.key(name, "NUMPADENTER");
+  expect(addon.eval("return __answers"), "No had the focus: the keypad's Enter answers No").toEqual(["no"]);
+});
+it("the question dialog: a question asked over an open one starts with no focus ring, so Enter never presses the old ring's button (H47-1-52)", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  // Asks a question that logs "<tag> yes" or "<tag> no".
+  const ask = (tag, kind) => addon.eval(`ns.Ask("${tag}?", "Go", function() __log[#__log + 1] = "${tag} yes" end, function() __log[#__log + 1] = "${tag} no" end, ${kind})`);
+  const logged = () => addon.eval(`return table.concat(__log, ",")`);
+  addon.eval("__log = {}");
+  ask("A");
+  addon.key(name, "TAB");
+  ask("B", '"danger"');
+  addon.key(name, "ENTER");
+  expect([logged().includes("B"), addon.eval(`return ${name}:IsShown()`)], "Enter on a fresh danger question presses nothing").toEqual([false, true]);
+  addon.eval(`__log = {}`);
+  ask("C");
+  addon.key(name, "TAB");
+  ask("D");
+  addon.key(name, "ENTER");
+  expect(logged().split(",").filter((x) => x.startsWith("D")), "Enter on the replaced plain question presses the new primary Yes, not No").toEqual(["D yes"]);
+});
+it("the question dialog: a question replaced before it was answered is answered No, once; a Yes never runs its No (H47-1-53)", () => {
+  const addon = loggedIn();
+  addon.eval(`__log = {}
+    ns.Ask("first?", "Go", function() __log[#__log + 1] = "first yes" end, function() __log[#__log + 1] = "first no" end)
+    ns.Ask("second?", "Go", function() __log[#__log + 1] = "second yes" end, function() __log[#__log + 1] = "second no" end)`);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return __log"), "the first No runs when the second replaces it").toEqual(["first no", "second no"]);
+  addon.eval(`__log = {}
+    ns.Ask("third?", "Go", function() __log[#__log + 1] = "third yes" end, function() __log[#__log + 1] = "third no" end)`);
+  addon.click("Vanguard_Question.yes");
+  addon.eval(`ns.Ask("fourth?", "Go", function() end, function() __log[#__log + 1] = "fourth no" end)`);
+  expect(addon.eval("return __log"), "a Yes answered it: nothing replaced").toEqual(["third yes"]);
+  addon.click("Vanguard_Question.no");
+});
 it("the question dialog does not keep swallowing keys: the pass-on flag is reset when it hides, and a question shown in a fight reads no keys until it ends", () => {
   const addon = loggedIn();
   const name = "Vanguard_Question";

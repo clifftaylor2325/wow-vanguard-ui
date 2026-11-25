@@ -498,9 +498,9 @@ function O.MoveFramesRow()
   return { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end }
 end
 
--- General, part three: moving frames.
+-- General, part three: moving frames, and the graphics check beside the screen sizes.
 local function layoutRows()
-  return append(setupRows(), {
+  return append(append(setupRows(), ns.Graphics.Rows()), {
     O.Essential(O.MoveFramesRow()),
     O.Essential(check(L["Show a grid while moving"], gridSwitch())),
     { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },

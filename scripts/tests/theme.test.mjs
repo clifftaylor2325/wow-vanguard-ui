@@ -1686,6 +1686,20 @@ it("T.SetText: a section header's capitals reach the Latin-1 and Cyrillic letter
   expect(upper("ÀÉ Ж"), "capitals stay capitals").toBe("ÀÉ Ж");
 });
 
+it("variants keep one hue: a variant with its own raised also has its own raisedHover, borderHi and darkBar, and text clears 4.5:1 on the hover fill (H47-1-103)", () => {
+  const addon = loggedIn();
+  const shared = ["raisedHover", "borderHi", "darkBar"].map((n) => tok(addon, n).join(","));
+  const failures = [];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    if (name === "default" || name === "contrast") continue;
+    ["raisedHover", "borderHi", "darkBar"].forEach((n, i) => { if (tok(addon, n).join(",") === shared[i]) failures.push(`${name} ${n} is the default's`); });
+    for (const tier of ["text", "text2", "muted"]) {
+      if (contrastOf(tok(addon, tier), tok(addon, "raisedHover")) < 4.5) failures.push(`${name} ${tier} on raisedHover`);
+    }
+  }
+  expect(failures, "every named variant tints its hover fill, bevel line and well edge, and keeps its text readable on the hover fill").toEqual([]);
+});
 it("T.Slider: a game slider gets the pill look on its own geometry, a fill to the thumb, a knob on the thumb, a grey knob while disabled; vertical runs down; steppers become arrows", () => {
   const addon = loggedIn(`
     local function make(name, orientation)
@@ -1717,6 +1731,42 @@ it("T.Slider: a game slider gets the pill look on its own geometry, a fill to th
   expect(isTok(addon, knob(), "white"), "and white again when enabled").toBe(true);
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __sl = S.Slider(CreateFrame("Slider", nil, UIParent)) end)');
   expect(addon.eval("return __sl ~= nil"), "other addons get it as S.Slider").toBe(true);
+});
+it("T.Slider: the game's SetEnabled on a stepped slider (it sets the thumb's alpha back) leaves the thumb faded", () => {
+  // MinimalSlider.lua ConfigureSlider (Blizzard_SharedXML/Shared/Slider, both clients): Slider.Thumb:SetAlpha(1.0 or .7).
+  const addon = loggedIn(`
+    local m = CreateFrame("Frame", "TEST_SlSet", UIParent)
+    local s = CreateFrame("Slider", nil, m)
+    s:SetSize(120, 16) s:SetOrientation("HORIZONTAL") s:SetThumbTexture("TEST-ONLY-THUMB")
+    s.Thumb = s:GetThumbTexture()
+    m.Slider = s
+    function m:SetEnabled(on) self.Slider.Thumb:SetAlpha(on and 1.0 or 0.7) end
+    ns.Theme.Slider(m) ns.Theme.Slider(m)`);
+  const alphas = [true, false].map((on) => addon.eval(`TEST_SlSet:SetEnabled(${on}) return TEST_SlSet.Slider.Thumb.__alpha`));
+  expect(alphas, "faded after SetEnabled(true) and (false)").toEqual([0, 0]);
+});
+it("High contrast: only an accent-bordered frame wears the thick ring; a check box keeps its edge width across hover and a slot well stays thin", () => {
+  const addon = loggedIn(`
+    local b = CreateFrame("CheckButton", "TEST_RingCheck", UIParent) b:SetSize(32, 32)
+    b:SetCheckedTexture(b:CreateTexture()) ns.Theme.CheckBox(b)
+    function TEST_RingEdge(f)
+      local px = ns.Theme.Pixel(f)
+      for _, r in ipairs({ f:GetRegions() }) do
+        local _, sub = r:GetDrawLayer()
+        if r:GetObjectType() == "Texture" and r:GetDrawLayer() == "BORDER" and sub == 0 and r:GetPoint(2) then
+          if select(1, r:GetPoint(1)) == "TOPLEFT" and select(1, r:GetPoint(2)) == "TOPRIGHT" then return r:GetHeight() / px end
+        end
+      end
+    end`);
+  addon.slash("variant contrast");
+  // The top edge of the check box, in screen pixels.
+  const edge = () => addon.eval("return TEST_RingEdge(ns.Theme.CheckParts(TEST_RingCheck).box)");
+  const rest = edge();
+  addon.hover("TEST_RingCheck");
+  const hovered = edge();
+  addon.hover(null);
+  const well = addon.eval('return TEST_RingEdge(ns.Theme.Slot(CreateFrame("Button", nil, UIParent), { well = true }))');
+  expect([rest, hovered, well], "1 px at rest, hovered and in a well").toEqual([1, 1, 1]);
 });
 it("switch commands: on and off in any case set the switch, a mistyped word changes nothing and shows the usage", () => {
   const addon = loggedIn();

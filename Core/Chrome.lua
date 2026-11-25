@@ -407,7 +407,7 @@ function ns.FocusKey(frame, key)
   if ns.InCombat() or not focusOf[frame] then return false end
   if key == "ESCAPE" then frame:Hide() return true end
   if key == "TAB" then stepFocus(frame, IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
-  if key == "ENTER" or key == "SPACE" then return pressFocused(focusOf[frame].at) end
+  if key == "ENTER" or key == "NUMPADENTER" or key == "SPACE" then return pressFocused(focusOf[frame].at) end
   return false
 end
 
