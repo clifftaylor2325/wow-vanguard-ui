@@ -2875,3 +2875,16 @@ it("options: the choice words of Numbers, Tooltips, Debuff icons and Weigh stats
   expect(labels.length, "the rows were found").toBeGreaterThan(8);
   expect(labels.filter((label) => /^[a-z]/.test(label)), "no lower-case choice").toEqual([]);
 });
+
+it("H48-6-1 Reset profile asked about one profile resets nothing when another is in use by the time Yes is pressed", () => {
+  // Every reload-only module off, so a profile switch lands at once while the question is open.
+  const liveOff = `for _, name in ipairs(ns.ModuleNames()) do
+    if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules = p.modules or {} p.modules[name] = false end end
+  end`;
+  const addon = loggedIn(CLICK_LUA + liveOff, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } }, Raid = { Chat = { background = false } } }\n" });
+  addon.eval('ns.Options.Show("profiles") __click("Reset profile")');
+  expect(addon.eval('return ns.SwitchProfileNow("Raid")'), "the switch lands at once").toBe(true);
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat ~= nil, VanguardDB.profiles.Raid.Chat ~= nil, VanguardDB.profiles['Raid backup'] == nil, VanguardDB.profiles['Default backup'] == nil }"), "neither profile is reset or backed up").toEqual([true, true, true, true]);
+  expect(chatHas(addon, /Nothing was reset: the profile in use changed\. Ask again\./), "and chat says so").toBe(true);
+});

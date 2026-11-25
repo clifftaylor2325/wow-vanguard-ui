@@ -832,16 +832,23 @@ local function currentProfileText()
   return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
 end
 
+-- Yes to a reset: backs up and resets the profile that was asked about, then runs after(backup name). A profile
+-- switch that landed while the question was open (a spec change, the header picker) means nothing is reset.
+local function resetAnswered(name, after)
+  if ns.ProfileName() ~= name then return ns.Chat(L["Nothing was reset: the profile in use changed. Ask again."]) end
+  local backup = ns.BackupProfile()
+  ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
+  ns.ResetProfile()
+  after(backup)
+end
+
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
 -- using it) and where its copy goes; yes backs it up, resets it and runs after(backup name).
 local function confirmReset(what, yes, after)
   local name = ns.ProfileName()
   local q = L["{question} Every setting in profile {profile} goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile {backup}."]
   ns.Ask(ns.Format(q, { question = what, profile = name, backup = ns.BackupName(name) }), yes, function()
-    local backup = ns.BackupProfile()
-    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
-    ns.ResetProfile()
-    after(backup)
+    resetAnswered(name, after)
   end, function() end, "danger")
 end
 

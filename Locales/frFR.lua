@@ -1376,6 +1376,7 @@ L["Nothing to learn here right now."] = "Rien à apprendre ici pour l’instant.
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "Rien à classer : ouvrez un métier, et les recettes ont besoin de prix (passez à l’hôtel des ventes)."
 L["Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags."] = "Rien à réapprovisionner : les composants de votre classe et vos objets gardés en stock (/vg stock) sont tous dans vos sacs."
 L["Nothing to undo: /vg graphics apply hasn't changed anything."] = "Rien à annuler : /vg graphics apply n’a rien changé."
+L["Nothing was reset: the profile in use changed. Ask again."] = "Rien n’a été réinitialisé : le profil utilisé a changé. Redemandez."
 L["Nothing was swapped: your bindings or the game's click bindings changed since this notice."] = "Rien n’a été échangé : vos raccourcis ou les raccourcis de clic du jeu ont changé depuis cet avis."
 L["Nothing yet"] = "Rien pour l’instant"
 L["Notice older ranks on bars"] = "Signaler les rangs plus anciens sur les barres"

@@ -1376,6 +1376,7 @@ L["Nothing to learn here right now."] = "Сейчас здесь нечему у
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "Нечего оценивать: откройте профессию, а рецептам нужны цены (посетите аукцион)."
 L["Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags."] = "Пополнять нечего: реагенты вашего класса и предметы «Держать в запасе» (/vg stock) уже в сумках."
 L["Nothing to undo: /vg graphics apply hasn't changed anything."] = "Нечего отменять: /vg graphics apply ничего не менял."
+L["Nothing was reset: the profile in use changed. Ask again."] = "Ничего не сброшено: используемый профиль изменился. Спросите снова."
 L["Nothing was swapped: your bindings or the game's click bindings changed since this notice."] = "Ничего не поменялось местами: ваши привязки или привязки щелчков игры изменились после этого уведомления."
 L["Nothing yet"] = "Пока ничего"
 L["Notice older ranks on bars"] = "Отмечать старые ранги на панелях"

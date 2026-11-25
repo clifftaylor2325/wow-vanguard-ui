@@ -1376,6 +1376,7 @@ L["Nothing to learn here right now."] = "지금 여기서 배울 것이 없습�
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "순위를 매길 것이 없습니다: 전문 기술을 열고, 제조법에 가격이 필요합니다 (경매장 방문)."
 L["Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags."] = "보충할 것이 없습니다: 직업 재료와 비축 아이템(/vg stock)이 모두 가방에 있습니다."
 L["Nothing to undo: /vg graphics apply hasn't changed anything."] = "되돌릴 것이 없음: /vg graphics apply가 아무것도 바꾸지 않았습니다."
+L["Nothing was reset: the profile in use changed. Ask again."] = "초기화된 항목 없음: 사용 중인 프로필이 바뀌었습니다. 다시 요청하세요."
 L["Nothing was swapped: your bindings or the game's click bindings changed since this notice."] = "아무것도 바꾸지 않음: 이 알림 이후 내 지정이나 게임의 클릭 지정이 바뀌었습니다."
 L["Nothing yet"] = "아직 없음"
 L["Notice older ranks on bars"] = "바에 이전 등급 알림"
