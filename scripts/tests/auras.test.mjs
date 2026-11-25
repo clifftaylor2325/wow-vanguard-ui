@@ -1153,6 +1153,26 @@ it("a retired container's icons no longer follow the scale", () => {
   expect(out).toEqual([true, true, true]);
 });
 
+it("a retired container's frames leave the theme's repaint walks, and a forget that fails does not stop Retire", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local A = ns.Auras
+    local plate = CreateFrame("Frame", nil, UIParent)
+    local c = ns.AuraLegacy.Create(plate, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 2, size = 20 } } }, "target")
+    local before = ns.Theme.PaintedCount()
+    local put = A.Retire(c)
+    return { before - ns.Theme.PaintedCount() > 0, put }`);
+  expect(out, "dressed frames drop out of the painted registry").toEqual([true, true]);
+  const held = addon.eval(`local plate = CreateFrame("Frame", nil, UIParent)
+    local c = ns.AuraLegacy.Create(plate, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 1, size = 20 } } }, "target")
+    local real = ns.Theme.Forget
+    ns.Theme.Forget = function() error("refused") end
+    local ok, put = pcall(ns.Auras.Retire, c)
+    ns.Theme.Forget = real
+    return { ok, put, #ns.errors > 0 }`);
+  expectErrors("aura retire forget: eval:5: refused");
+  expect(held, "Retire still returns true; the failure is reported, not raised").toEqual([true, true, true]);
+});
+
 it("a container under a frame the client has closed is kept by Retire and never asked its scale by Refit, though it answers no itself", () => {
   const addon = loggedIn(CLOSED_ABOVE);
   expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire keeps it (false), touching nothing").toEqual([true, false]);
