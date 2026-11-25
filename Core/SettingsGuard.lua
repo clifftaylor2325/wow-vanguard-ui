@@ -352,9 +352,15 @@ function G.Save()
 end
 
 -- Logout's stamp and backup run after every module's own logout work (a situation's recording saved, say), so the backup
--- holds the profile as it is written. Module files register their handlers after this file, so this waits for login.
-local function saveLast() ns.On("PLAYER_LOGOUT", G.Save) end
+-- holds the profile as it is written. Module files register their handlers after this file, so this waits for login; a
+-- module started again in the session (switched on, restarted, a live profile switch) registers its handler anew, so the
+-- guard goes back to the end of the list after each settle. Off first: the list keeps a handler where it already is.
+local function saveLast()
+  ns.Off("PLAYER_LOGOUT", G.Save)
+  ns.On("PLAYER_LOGOUT", G.Save)
+end
 ns.On("PLAYER_LOGIN", saveLast)
+ns.OnModulesChanged(saveLast)
 
 -- Options --------------------------------------------------------------------------------------
 

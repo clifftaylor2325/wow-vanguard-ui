@@ -567,3 +567,41 @@ it("H46-40-R2 a blank character file's profile, staged again, takes its reload o
   lost.slash("profile Default");
   expect(stagedOffer(lost), "nothing staged, no offer").toEqual([false, false]);
 });
+
+// H48-4-1: the guard's backup is taken after the logout work of every module, also of one started again in the session.
+const LOGOUT_ENV = `__inside, __kind, __resting = false, "none", false IsInInstance = function() return __inside, __kind end IsResting = function() return __resting end ${CLICK_LUA}`;
+// The scale of the recorded raid situation in the backup string the logout left, else nil.
+const backedUpScale = (addon) => addon.eval(`
+  local _, payload = ns.ReadPayload(ns.Serialize.Decode(VanguardCharDB.guard.backup))
+  local s = ns.StripPayload(payload).Situations
+  return s and s.overrides and s.overrides.raid and s.overrides.raid.positions.fighthistory.scale
+`);
+// Lua run before login: every reload-only module off in profiles Default and Alt, so a switch between them applies at once.
+const RELOAD_ONLY_OFF = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then
+    for _, profile in ipairs({ "Default", "Alt" }) do VanguardDB.profiles[profile].modules = VanguardDB.profiles[profile].modules or {} VanguardDB.profiles[profile].modules[name] = false end
+  end
+end`;
+// A login, `restart` (Lua that starts Situations again), a recorded situation change and a logout: the scale the backup holds.
+const scaleAfterRestart = (restart) => {
+  const addon = loggedIn(LOGOUT_ENV + RELOAD_ONLY_OFF, { savedVariables: "VanguardDB.profiles.Alt = {}\n" });
+  addon.advance(0.5);
+  addon.eval(restart);
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  addon.eval("ns.SetMoverScale('fighthistory', 1.25)");
+  addon.fire("PLAYER_LOGOUT");
+  return backedUpScale(addon);
+};
+it("H48-4-1 a module switched off and on keeps its logout work in the backup", () => {
+  expect(scaleAfterRestart('ns.SetModuleEnabled("Situations", false) ns.SetModuleEnabled("Situations", true)')).toBe(1.25);
+});
+it("H48-4-1 control: nothing restarted", () => {
+  expect(scaleAfterRestart('')).toBe(1.25);
+});
+it("H48-4-1 a module restarted by a setting keeps its logout work in the backup", () => {
+  expect(scaleAfterRestart('ns.RestartModule("Situations")')).toBe(1.25);
+});
+it("H48-4-1 a live profile switch and back keeps the modules' logout work in the backup", () => {
+  expect(scaleAfterRestart('assert(ns.SwitchProfileNow("Alt") and ns.SwitchProfileNow("Default"), "the switches applied")')).toBe(1.25);
+});
