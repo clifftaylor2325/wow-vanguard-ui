@@ -1211,6 +1211,23 @@ it("popups: the backdrop follows the popup's strata and level on each show, and 
   expect(place(), "the game moved it: followed on the next show, never below level 0").toEqual(["FULLSCREEN_DIALOG", 0, true]);
 });
 
+// H47-11-101: the game stacks a later popup's TOP on the previous popup's BOTTOM with no gap
+// (Blizzard_StaticPopup/StaticPopup.lua StaticPopup_SetUpPosition); both panels reach GW.PAD past their frames and
+// overlapped. The lower popup's backdrop now starts 2 * GW.PAD down while the upper one is shown.
+it("popups: a popup stacked under a shown one has its panel start where the upper panel ends, and gets it whole back when that closes", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV + `
+    __popup("StaticPopup2")
+    function StaticPopup_SetUpPosition() StaticPopup2:ClearAllPoints() StaticPopup2:SetPoint("TOP", StaticPopup1, "BOTTOM", 0, 0) end`);
+  addon.eval("StaticPopup1:Show() StaticPopup2:Show()");
+  // The top-left point of a popup's backdrop: its offset, and what it hangs on.
+  const top = (n) => addon.eval(`local pt = __panelHost(StaticPopup${n}).__points.TOPLEFT return { pt.y or 0, pt.rel == StaticPopup${n} }`);
+  expect(top(2), "alone, the lower popup's panel fills it").toEqual([0, true]);
+  addon.eval("StaticPopup_SetUpPosition()");
+  expect([top(1), top(2)], "stacked: the upper is whole, the lower starts 24 down so the panels meet").toEqual([[0, true], [-24, true]]);
+  addon.eval("StaticPopup1:Hide()");
+  expect(top(2), "the upper closed: the lower popup's panel is whole again").toEqual([0, true]);
+});
+
 it("popups: shown and hidden in a fight, the backdrop is nothing protected and nothing is blocked", () => {
   const addon = loggedIn(LAYOUT_POPUP_ENV);
   setCombat(addon, true);
