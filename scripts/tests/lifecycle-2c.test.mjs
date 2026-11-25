@@ -5,7 +5,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
-import { QUEST_ENV, SETUP_DONE, calls, chatHas } from "./helpers.mjs";
+import { QUEST_ENV, SETUP_DONE, calls, chatHas, setCombat } from "./helpers.mjs";
 import { lifecycleCases } from "./lifecycle-helpers.mjs";
 
 // A login with the heavy modules off (except those in `keep`) and `settings` Lua run on the saved variables, then
@@ -44,6 +44,28 @@ it("lifecycle: auto-accept switched off does nothing at all, and on again answer
   addon.eval('ns.SetModuleEnabled("AutoAccept", true)');
   addon.fire("RESURRECT_REQUEST", "<name>");
   expect(addon.eval("return __answers[1]")).toBe("resurrect");
+});
+
+// A summon offered in a fight and (with `off`) Auto-accept switched off in that fight, a resurrection offered after that: the
+// game's answers once the fight ends (the settle that stops the module waits behind the summon's answer in the same queue).
+const answersAfterFight = (off) => {
+  const addon = AUTO_ACCEPT();
+  addon.eval(PROMPTS);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.fire("CONFIRM_SUMMON");
+  if (off) addon.eval('ns.SetModuleEnabled("AutoAccept", false)');
+  addon.fire("RESURRECT_REQUEST", "<name>");
+  setCombat(addon, false);
+  return addon.eval('return table.concat(__answers, ", ")');
+};
+
+it("H48-4-51 auto-accept: control, a summon from a fight is answered when it ends", () => {
+  expect(answersAfterFight(false), "the resurrection at once, the summon after the fight").toMatch(/summon/);
+});
+
+it("H48-4-51 auto-accept: switched off in the fight, nothing is answered, a summon already waiting included", () => {
+  expect(answersAfterFight(true), "no summon, no resurrection, no closed prompt").toBe("");
 });
 
 // QuestAuto -----------------------------------------------------------------------------------------------------
