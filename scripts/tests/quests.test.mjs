@@ -1774,6 +1774,9 @@ it("game windows: the quest's rewards heading, reward lines, objective lines, ti
   const tok = (expr, name) => isTok(addon, addon.eval(`return ${expr}.__textColor`), name);
   const named = ["QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel"];
   expect(named.map((n) => tok(n, "text")), "the type, group size, timer, money and learn lines are the text colour").toEqual([true, true, true, true, true]);
+  // client rule: QuestInfo_ShowSpecialObjectives adds " (Complete)" to the learn line when finished (Blizzard_UIPanels_Game/Mainline/QuestInfo.lua:301-303).
+  addon.eval("QuestInfoSpellObjectiveLearnLabel:SetFont('TEST-ONLY-GAME', 12, '') QuestInfoSpellObjectiveLearnLabel:SetText('Learn Spell: Fire (Complete)') QuestInfo_Display()");
+  expect(tok("QuestInfoSpellObjectiveLearnLabel", "muted"), "a finished learn line is muted like a finished objective").toBe(true);
   const keys = ["Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText"];
   expect(keys.map((k) => tok(`QuestInfoRewardsFrame.${k}`, "text")), "the rewards frame's heading and lines are the text colour").toEqual([true, true, true, true, true, true]);
   expect([tok("QuestInfoObjective1", "text"), tok("QuestInfoObjective2", "muted")], "an open objective is the text colour, a done one (its text says Complete) the muted one").toEqual([true, true]);

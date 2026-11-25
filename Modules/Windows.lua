@@ -82,7 +82,7 @@ GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = {
   "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText",
-  "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel",
+  "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText",
 }
 -- The strings of the quest rewards frame (keys of QuestInfoRewardsFrame) the game colors for its parchment too.
 GW.QUEST_REWARD_TEXTS = { "Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText" }
@@ -2080,6 +2080,12 @@ local function lightObjectives()
   end
 end
 
+-- The "Learn spell" objective line: muted once the game marks it done, the text colour otherwise.
+local function lightLearnLabel()
+  local fs = _G.QuestInfoSpellObjectiveLearnLabel
+  if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, objectiveDone(fs) and "muted" or "text") end
+end
+
 -- The quest window's texts in light body text and light headings (the quest's name included), its rewards and
 -- objective lines too, and its reward tiles (GW.SkinQuestRewards, in Modules/WindowsMap.lua: the map's details share
 -- them, so whichever group dresses its window dresses them).
@@ -2088,6 +2094,7 @@ function GW.LightQuestText()
   lightDressed(GW.QUEST_HEADS)
   lightRewardTexts()
   lightObjectives()
+  lightLearnLabel()
   GW.SkinQuestRewards()
 end
 
