@@ -38,6 +38,15 @@ it("options window", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
 });
 
+it("options: right-clicking the addons button in a fight says why the frames did not unlock", () => {
+  const addon = loggedIn();
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  addon.eval('Vanguard_OnAddonCompartmentClick("Vanguard", "RightButton")');
+  expect(addon.eval("return ns.Unlocked()"), "nothing unlocks in a fight").toBe(false);
+  expect(chatHas(addon, /In combat\. Try again once combat ends\./), "and the click says it is the fight").toBe(true);
+});
+
 it("options: pointing at the addons button says the version, what each click does and the errors caught", () => {
   const addon = loggedIn();
   // Hovers the addons button: the tooltip's lines and whether it shows; then leaves it.

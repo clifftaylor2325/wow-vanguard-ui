@@ -1027,7 +1027,7 @@ do
   -- The addons button by the minimap: left-click options, right-click move frames.
   local function click(_, button)
     if button == "RightButton" then
-      if ns.Unlocked() then ns.Lock() else ns.Unlock() end
+      if ns.Unlocked() then ns.Lock() elseif not ns.Unlock() then ns.Chat(L["In combat. Try again once combat ends."]) end
     else
       O.Toggle()
     end
