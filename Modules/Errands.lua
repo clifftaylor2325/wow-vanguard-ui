@@ -146,12 +146,13 @@ end
 ER.MONEY_END = 148
 
 -- The most width Train all can have: from the money line's end to the game's Train button, 4 units off it (nil when
--- there is no Train button to sit beside).
+-- there is no Train button to sit beside, or the window has no width yet to measure).
 local function trainRoom()
   local frame, train = _G.ClassTrainerFrame, _G.ClassTrainerTrainButton
   if type(frame) ~= "table" or type(train) ~= "table" then return nil end
   local width, trainWidth = ns.PlainNumber(frame:GetWidth()), ns.PlainNumber(train:GetWidth())
-  return width and trainWidth and width - trainWidth - 4 - ER.MONEY_END
+  if not (width and trainWidth) or width <= 0 then return nil end
+  return width - trainWidth - 4 - ER.MONEY_END
 end
 
 -- Gives the button a label at its own width, widened to hold it but no wider than the room it has (a label still
