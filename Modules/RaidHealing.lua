@@ -613,13 +613,6 @@ local function bookBuffs()
   return names
 end
 
--- A class's readable name ("Priest"), from the client or the token.
-local function className(token)
-  local names = LOCALIZED_CLASS_NAMES_MALE
-  if type(names) == "table" and names[token] then return names[token] end
-  return token:sub(1, 1) .. token:sub(2):lower()
-end
-
 -- The class buff lists in order, yours first.
 local function classOrder()
   local _, mine = UnitClass("player")
@@ -633,7 +626,7 @@ end
 -- Appends a class's name and a row per buff it gives (named by the client; one row per name, as a newer
 -- client may give two ids one name), marking each name seen.
 local function addClass(rows, seen, c)
-  rows[#rows + 1] = { "header", className(c[1]) }
+  rows[#rows + 1] = { "header", ns.ClassName(c[1]) }
   for _, b in ipairs(c[2]) do
     local name = ns.SpellName(b[2]) or b[1]
     if not seen[name] then rows[#rows + 1] = { "buffpick", name, b[2] } end

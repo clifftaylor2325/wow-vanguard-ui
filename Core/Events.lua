@@ -128,6 +128,17 @@ function ns.Grouped(n)
   return text
 end
 
+-- A class token as the client's own name for it (LOCALIZED_CLASS_NAMES_MALE: "Magier" on a German client), else the
+-- token in title case ("MAGE" -> "Mage"). The token must be a string.
+---@param token string
+---@return string
+function ns.ClassName(token)
+  local names = _G.LOCALIZED_CLASS_NAMES_MALE
+  local own = type(names) == "table" and names[token]
+  if type(own) == "string" then return own end
+  return token:sub(1, 1) .. token:sub(2):lower()
+end
+
 -- The capitals ns.Lower folds beyond A-Z, as byte ranges: a lead byte, the second byte's range, the small letter's
 -- lead byte and the step to its second byte, and a second byte to leave alone (× in Latin-1). The reverse of
 -- the theme's T.UPPER_RANGES.

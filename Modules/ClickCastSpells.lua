@@ -343,8 +343,7 @@ end
 function CS.ClassName()
   local name = type(UnitClass) == "function" and (UnitClass("player"))
   if type(name) == "string" then return name end
-  local token = CS.PlayerClass() or "Class"
-  return token:sub(1, 1) .. token:sub(2):lower()
+  return ns.ClassName(CS.PlayerClass() or "Class")
 end
 
 -- The spellbook changed, or a spell's text (its rank) loaded late: rebuild the catalog next time it's read.
