@@ -328,11 +328,11 @@ end
 
 -- Gives a frame back the mouse it had (clicks, motion) where the client changed it. A protected frame is left in a
 -- fight, where the client refuses the change; a secure button takes the mouse already, so nothing changes on it.
-local function keepMouse(f, click, motion)
-  if f:IsMouseClickEnabled() == click and f:IsMouseMotionEnabled() == motion then return end
+local function keepMouse(f, click, hover)
+  if f:IsMouseClickEnabled() == click and f:IsMouseMotionEnabled() == hover then return end
   if ns.InCombat() and ns.IsTrue(f:IsProtected()) then return end
   f:SetMouseClickEnabled(click)
-  f:SetMouseMotionEnabled(motion)
+  f:SetMouseMotionEnabled(hover)
 end
 
 -- Hooks one of a frame's mouse scripts; false when the client refuses. It refuses on a frame it keeps from
@@ -341,9 +341,9 @@ end
 -- for the frame (motion and clicks), so the frame gets back what it had: a plain part inside a unit frame (the
 -- health bar's text layer) would otherwise catch the clicks meant for the secure button under it.
 local function hookMouse(f, script, fn)
-  local click, motion = f:IsMouseClickEnabled(), f:IsMouseMotionEnabled()
+  local click, hover = f:IsMouseClickEnabled(), f:IsMouseMotionEnabled()
   local ok = pcall(f.HookScript, f, script, ns.Guard("visibility hover", fn))
-  if ok then keepMouse(f, click, motion) end
+  if ok then keepMouse(f, click, hover) end
   return ok
 end
 
