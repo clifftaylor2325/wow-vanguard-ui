@@ -140,6 +140,49 @@ it("target buffs: the row's line stops short of the threat percent while that re
   expect(off.line).toBe(off.width);
 });
 
+// H54-31: Unit extras starting or stopping while you play re-makes the buff row for the threat percent's room, and the
+// room counts only while Unit extras runs (a switch made in a fight waits for the fight to end).
+// The target's buff row as built next to the row the settings now ask for, and the room counted.
+const threatState = (addon) => addon.eval(`local FA = ns.GetModule("FrameAuras")
+  return { room = FA.ThreatRoom(), made = Vanguard_target.buffs.sig == ns.Auras.Signature(FA.BuffSpec(Vanguard_target, FA.Look(FA.settings))) }`);
+// A session with Unit extras switched off and settled.
+const withoutUnitExtras = () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  return addon;
+};
+
+it("target buffs: switched off and on again out of combat, the row's line stops short of the threat percent", () => {
+  const addon = withoutUnitExtras();
+  addon.eval('ns.SetModuleEnabled("UnitExtras", true)');
+  addon.advance(3, 0.1);
+  expect(threatState(addon)).toEqual({ room: 48, made: true });
+});
+
+it("target buffs: with Unit extras switched off, the row takes the frame's full width", () => {
+  expect(threatState(withoutUnitExtras())).toEqual({ room: 0, made: true });
+});
+
+it("target buffs: Unit extras switched on in a fight counts no room until the fight ends, then the row is made for it", () => {
+  const addon = withoutUnitExtras();
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", true)');
+  expect(threatState(addon).room, "Unit extras is not running yet").toBe(0);
+  setCombat(addon, false);
+  addon.advance(3, 0.1);
+  expect(threatState(addon)).toEqual({ room: 48, made: true });
+});
+
+it("target buffs: a module switch while Frame auras is off makes no rows and no error", () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
+  settle(addon);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  expect([addon.eval("return ns.GetModule('FrameAuras').settings == nil"), addon.eval("return #ns.errors")]).toEqual([true, 0]);
+});
+
 // H47-6-1 (decide: option 1 built): the target's cast bar rises with the buff row's extra height, so a second line of
 // buffs, or larger icons, are never covered by it while the target casts. TEST-ONLY: sixteen buffs, a casting target.
 const CASTING_TARGET = `

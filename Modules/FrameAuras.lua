@@ -92,10 +92,11 @@ end
 -- 12 in from the frame's corner, 3 above it: the text's room ("100%") and that 12.
 FA.THREAT_ROOM = 48
 
--- The room the buff row leaves for the threat percent: FA.THREAT_ROOM while that readout is on (a reload changes it), else none.
+-- The room the buff row leaves for the threat percent: FA.THREAT_ROOM while that readout is on (Unit extras running, its
+-- threat switch on), else none.
 function FA.ThreatRoom()
   local UX = ns.GetModule("UnitExtras")
-  if not (UX and ns.ModuleEnabled("UnitExtras")) then return 0 end
+  if not (UX and ns.ModuleLive("UnitExtras")) then return 0 end
   return ns.Settings("UnitExtras", UX.defaults).threat and FA.THREAT_ROOM or 0
 end
 
@@ -234,6 +235,12 @@ end
 function FA.Apply()
   ns.AfterStill("frame auras settle", FA.SETTLE, function() ns.OutOfCombat(rebuild, "frame auras") end)
 end
+
+-- Unit extras started or stopped (its threat percent came or went): the aura rows are made again for its room.
+local function refitForThreat()
+  if FA.settings then FA.Apply() end
+end
+ns.OnModulesChanged(refitForThreat)
 
 -- The target's refresh, as a function the scope can tell from another module's.
 local function updateTarget()
