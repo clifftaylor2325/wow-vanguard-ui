@@ -767,6 +767,13 @@ it("the Edit Mode layout: one this account lacks, combat, and a client without E
   const unhooked = editModeLogin('VanguardCharDB = { profile = "Raid", editModeProfile = "Default" }', "hooksecurefunc = nil __loaded = true");
   expect(layouts(unhooked), "without hooks nothing is followed").toEqual(["Modern", "TEST-ONLY Raid", "Default"]);
 });
+it("H61-1 an imported profile's Edit Mode layout name prints literally when this account lacks it", () => {
+  const addon = createAddon({ savedVariables: `VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Raid = { editMode = { layout = "|cffff0000FAKE|r |Hurl:evil|h[click]|h" } } } }\nVanguardCharDB = { profile = "Raid", editModeProfile = "Default" }` });
+  addon.eval(EDIT_MODE_ENV);
+  addon.login();
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(chatHas(addon, /uses Edit Mode layout \|\|cffff0000FAKE\|\|r \|\|Hurl:evil\|\|h\[click\]\|\|h, which/), "the codes in the name are doubled, so they show as text").toBe(true);
+});
 // TEST-ONLY Retail Edit Mode that keeps one active layout per spec, as the game's manager does on a spec change.
 const SPEC_EDIT_MODE_ENV = `
   __layouts = { { layoutName = "Modern" }, { layoutName = "Classic" }, { layoutName = "Heal" } }

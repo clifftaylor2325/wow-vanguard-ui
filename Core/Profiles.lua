@@ -752,7 +752,7 @@ local function loadProfileLayout()
   local name = layoutToLoad()
   local index = name and layoutIndex(editModeManager(), name)
   if index then return switchLayout(index, name) end
-  if name then return ns.Chat(ns.Format(L["Profile {profile} uses Edit Mode layout {layout}, which this account doesn't have."], { profile = ns.ProfileName(), layout = name })) end
+  if name then return ns.Chat(ns.Format(L["Profile {profile} uses Edit Mode layout {layout}, which this account doesn't have."], { profile = ns.ProfileName(), layout = ns.Literal(name) })) end
   rememberLayout()
 end
 
