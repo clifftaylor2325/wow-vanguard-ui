@@ -148,12 +148,6 @@ local function pageSignature()
   return table.concat({ tostring(CC.CurrentKey()), noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
 end
 
--- Whether the options window is up; a closed one re-reads every row as it opens (O.Show), so it needs no re-read.
-local function windowShown()
-  local window = O.Frame()
-  return window ~= nil and window:IsShown() == true
-end
-
 -- Re-reads every row on the page after a binding changed; a page whose rows were read with another signature than the
 -- one that applies now (a talent group switch, a notice begun or ended, the columns, the starter layout's rows) is built
 -- again first, the rows the window keeps for it too; a page whose rows were never read has nothing to rebuild (and the
@@ -161,7 +155,7 @@ end
 -- re-read too, while the window is up: a fight's end or a talent group or spec switch with it closed costs no walk.
 local function changed()
   if state.built ~= nil and state.built ~= pageSignature() then O.RebuildPage(PAGE) end
-  if windowShown() then O.Refresh() end
+  O.RefreshShown()
 end
 
 -- The player changed a binding on the page: an offer that appears from it (a spell freed by a clear) is shown on the
@@ -1266,7 +1260,7 @@ end
 -- A fight's start re-reads the open options window for the combat notice (only Vanguard's own widgets, so
 -- nothing protected runs); a closed window re-reads as it opens, so a pull costs it nothing.
 local function fightStarts()
-  if windowShown() then O.Refresh() end
+  O.RefreshShown()
 end
 
 -- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too. So does
