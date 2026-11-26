@@ -635,9 +635,12 @@ local function hookWindow(frame)
   scope:Gate("window config", TP.Schedule, function(gate) hooksecurefunc(frame, "SetConfigID", ns.Guard("talent window config", gate)) end)
 end
 
--- Puts the game tooltip away.
+-- Puts the game tooltip away when one of the planner's own frames (a mark or the summary) owns it.
 function TP.HideTip()
-  GameTooltip:Hide()
+  local owner = GameTooltip:GetOwner()
+  local ours = owner ~= nil and (owner == TP.hovered or (TP.bar ~= nil and owner == TP.bar.tip))
+  TP.hovered = nil
+  if ours then GameTooltip:Hide() end
 end
 
 -- Hooks the game's talents window once it exists: the bar built and the window hooked (both once a session), the

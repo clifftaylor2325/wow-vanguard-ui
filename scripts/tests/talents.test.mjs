@@ -685,3 +685,18 @@ it("H48-4-52 talent planner: control, a level-up spend queued in a fight buys wh
 it("H48-4-52 talent planner: switched off in that fight, the queued level-up spend buys nothing", () => {
   expect(levelUpInFight(true)).toEqual([0, 0]);
 });
+
+it("talent planner: closing the talents window puts away the planner's own tooltip, and no other", () => {
+  const addon = open();
+  addon.eval("local m = __mark(101) m.__scripts.OnEnter(m)");
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return GameTooltip:IsShown()"), "a mark's tooltip goes with the window").toBe(false);
+  addon.eval("__open()");
+  addon.eval(`local area = ${TP}.bar.tip area.__scripts.OnEnter(area)`);
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return GameTooltip:IsShown()"), "the summary's tooltip goes too").toBe(false);
+  addon.eval("__open()");
+  addon.eval("GameTooltip:SetOwner(UIParent, 'ANCHOR_CURSOR') GameTooltip:SetText('TEST-ONLY other tooltip') GameTooltip:Show()");
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return { GameTooltip:IsShown(), #ns.errors }"), "another frame's tooltip stays up").toEqual([true, 0]);
+});
