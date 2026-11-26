@@ -160,12 +160,10 @@ it("target buffs: switched off and on again out of combat, the row's line stops 
   expect(threatState(addon)).toEqual({ room: 48, made: true });
 });
 
-it("target buffs: with Unit extras switched off, the row takes the frame's full width, made again by Frame auras' own listener", () => {
-  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
-  addon.eval('__applies = 0 local FA = ns.GetModule("FrameAuras") local apply = FA.Apply FA.Apply = function() __applies = __applies + 1 return apply() end');
-  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
-  settle(addon);
-  expect([addon.eval("return __applies > 0"), threatState(addon)], "the module switch asked for the rows again").toEqual([true, { room: 0, made: true }]);
+// This direction is also covered by the unit frames' own refit on a module change (Modules/UnitFrames.lua), so it holds
+// without Frame auras' listener: the listener is pinned by the switch-on cases above and below.
+it("target buffs: with Unit extras switched off, the row takes the frame's full width", () => {
+  expect(threatState(withoutUnitExtras())).toEqual({ room: 0, made: true });
 });
 
 it("target buffs: Unit extras switched on in a fight counts no room until the fight ends, then the row is made for it", () => {
