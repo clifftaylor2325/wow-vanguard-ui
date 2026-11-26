@@ -3491,9 +3491,10 @@ T.UPPER_RANGES = {
   { "\209", 128, 143, "\208", 32 }, { "\209", 144, 159, "\208", -16 },
 }
 
--- A text in capitals, the Latin-1 and Cyrillic letters too (T.UPPER_RANGES).
+-- A text in capitals, the Latin-1 and Cyrillic letters too (T.UPPER_RANGES), and the German ß as SS
+-- (the fonts carry no capital sharp s). The text grows by a byte, which display callers never mind.
 function T.Upper(text)
-  return ns.FoldLetters(text:upper(), T.UPPER_RANGES)
+  return (ns.FoldLetters(text:upper(), T.UPPER_RANGES):gsub("\195\159", "SS"))
 end
 
 -- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).

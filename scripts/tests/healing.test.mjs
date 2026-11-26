@@ -179,6 +179,14 @@ it("healing fallbacks and options", () => {
   expect(addon.eval("return #ns.GetModule('RaidHealing').BuffNames() > 0"), "only blanks: the class's own buffs, not none").toBe(true);
 });
 
+it("H51-62 Enter in the Buffs to watch box saves the list, as Save does", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  addon.eval('ns.Options.Show("healing")');
+  addon.eval(`local editor for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then editor = w end end
+    editor.input:SetText("TEST-ONLY Aura") editor.input:GetScript("OnEnterPressed")(editor.input)`);
+  expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "the typed list is kept").toBe("TEST-ONLY Aura");
+});
+
 it("every healing buff has a static icon, so none shows a question mark", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
   expect(addon.eval(`local RH = ns.GetModule("RaidHealing") for _, c in ipairs(RH.ALL_BUFFS) do for _, b in ipairs(c[2]) do

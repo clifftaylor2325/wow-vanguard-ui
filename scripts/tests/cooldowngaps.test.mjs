@@ -169,6 +169,25 @@ it("/vg gaps chooses items by ID, link or name", () => {
   expect(chatHas(addon, /Chosen items: none/), "cleared").toBe(true);
 });
 
+it("H51-31 /vg gaps takes only whole IDs: a sign, decimal, hex or exponent is not one, and remove never takes another ID off", () => {
+  const addon = on("", "5");
+  // The chosen items and spells, as saved.
+  const chosen = () => addon.eval("local s = ns.GetModule('CooldownGaps').settings return { s.items, s.spells }");
+  for (const typed of ["-5", "2.5", "0x10", "1e15"]) addon.slash(`gaps add ${typed}`);
+  expect(chosen(), "none of them is added").toEqual(["5", ""]);
+  expect(chatHas(addon, /Say an item/), "each is asked for again").toBe(true);
+  addon.slash("gaps spell add -5");
+  expect(chosen(), "a spell takes the same rule").toEqual(["5", ""]);
+  addon.slash("gaps remove -5");
+  expect(chosen(), "-5 does not take item 5 off").toEqual(["5", ""]);
+  addon.slash("gaps add  5512 ");
+  expect(chosen(), "spaces around whole digits still add").toEqual(["5 5512", ""]);
+  for (const typed of ["123456789012345", "99999999999999999999", "|Hitem:123456789012345|h[Big]|h"]) addon.slash(`gaps add ${typed}`);
+  expect(chosen(), "an ID too long to stay in digits (15 or more, or a link carrying one) is not added").toEqual(["5 5512", ""]);
+  addon.slash("gaps add 999999999");
+  expect(chosen(), "nine digits still add").toEqual(["5 5512 999999999", ""]);
+});
+
 // TEST-ONLY: spells the player knows, spell cooldown tables, and the Cooldown Manager's essential and utility rows.
 const SPELLS_ENV = `
   Enum.CooldownViewerCategory = { Essential = 0, Utility = 1 }

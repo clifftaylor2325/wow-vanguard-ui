@@ -7729,6 +7729,48 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The button icons stay where the skin puts them at every scale, the same as before the change.
 - If it fails, paste: a screenshot of bar 1 and /vg errors
 
+### 33.951 Max, a clicked listing and the per unit toggle end the typing in the box they change (H51-32; WoW Forever and Retail)
+
+- Do: at the auction house drop a stack of 45 on the Sell card, click in Quantity, type 5, then click Max. [Client: Forever and Retail.]
+- Expect: the Quantity box reads 45.
+- If it fails, paste: the box text and the 'Click Post to list' line and /vg errors
+
+### 33.952 The Add a reserve box closes once a reserve is kept, and takes text with spaces around it (H51-61; WoW Forever and Retail)
+
+- Do: Officer loot, Add a reserve, type ' Cliff Thunderfury' (leading space), click Add. [Client: Forever and Retail.]
+- Expect: the reserve is listed and the box closes.
+- If it fails, paste: the chat line and /vg errors
+
+### 33.953 Enter in the Buffs to watch box saves the list, as Save does (H51-62; WoW Forever and Retail)
+
+- Do: Options, Healing, type a buff name in Buffs to watch, press Enter, reopen the page. [Client: Forever and Retail.]
+- Expect: the name is kept in the box.
+- If it fails, paste: the box text and /vg errors
+
+### 33.954 The capitals headings write the German ß as SS [DECIDE] (H52-2; WoW Forever and Retail; German client)
+
+- Do: switch the game to German, open /vg > General and Game windows. [Client: Forever and Retail.]
+- Expect: the card headings read GRÖSSE and FENSTERGRÖSSEN in capitals, no lowercase letter.
+- If it fails, paste: a screenshot of both cards and /vg errors
+
+### 33.955 A slot that gets an action by a page change in combat takes the mouse at once, from the secure page snippet (H53-31; WoW Forever and Retail)
+
+- Do: on a druid with action bar 1 slot 5 empty in caster form and a spell on slot 5 of cat form, enter combat, shift into cat form, then left-click slot 5 with the mouse. [Client: Forever and Retail.]
+- Expect: slot 5 shows its icon and the click casts it, with its tooltip on hover, before the fight ends.
+- If it fails, paste: /vg errors
+
+### 33.956 A character that picks a side after starting neutral takes its own record from the neutral home (H53-1; WoW Retail)
+
+- Do: on Retail, make a new Pandaren (neutral), open your bags so Vanguard notes the character, pick Alliance or Horde at level 10, then type /reload and run /vg inventory. [Client: Retail.]
+- Expect: the character is listed once, under the new side.
+- If it fails, paste: /vg errors
+
+### 33.957 Bar 1 shows in a vehicle, a possess or an override bar on every visibility choice but Hidden [DECIDE] (H53-2; WoW Forever and Retail)
+
+- Do: set action bar 1 to In combat (Action bars page, Bar 1 Visibility), then out of combat take a quest that gives a vehicle or an override bar. [Client: Forever and Retail.]
+- Expect: bar 1 is shown with the vehicle's or override bar's abilities, and hides again when you leave. Then set bar 1 to Hidden and repeat. It stays hidden.
+- If it fails, paste: /vg errors
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

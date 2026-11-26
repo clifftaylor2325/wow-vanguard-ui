@@ -167,6 +167,18 @@ function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateStrin
 
 -- Calm HUD -------------------------------------------------------------------------------------
 
+-- The clause that shows the action bar 1 in a vehicle, a possess or an override bar, where it holds the only buttons
+-- for it (the game pages bar 1 to them). The Calm HUD's wake for the bars (V.CALM_PARTS) and a bar 1 on any visibility
+-- choice but Always or Hidden (V.Wake) put it first.
+V.BAR1_WAKE = "[vehicleui][possessbar][overridebar] show; "
+
+-- The state with the wake clause first for a frame marked vgWake (action bar 1) on a choice that would hide or fade
+-- it there; Always (the Calm HUD wakes it itself) and Hidden (a keybind-only bar stays hidden) are left as they are.
+function V.Wake(frame, mode, state)
+  if not (frame and frame.vgWake) or state == "show" or V.Mode(mode) == "hidden" then return state end
+  return V.BAR1_WAKE .. state
+end
+
 -- The Calm HUD quiets the HUD out of combat: each part dims, or fades away, until a fight, a living
 -- hostile target or the mouse brings it back. The client runs the state (in combat too) and only
 -- alpha changes, so a calm frame stays clickable. Its switch and each part's choice are unit frame
@@ -177,7 +189,7 @@ V.CALM = { dim = "[combat] show; [harm,nodead] show; dim", hide = "[combat] show
 -- states: the action bars in a vehicle, a possess or an override bar, where bar 1 holds the only buttons for it.
 V.CALM_PARTS = {
   frames = { key = "calmFrames", allows = { dim = true } },
-  bars = { key = "calmBars", allows = { dim = true, hide = true }, wake = "[vehicleui][possessbar][overridebar] show; " },
+  bars = { key = "calmBars", allows = { dim = true, hide = true }, wake = V.BAR1_WAKE },
   auras = { key = "calmAuras", allows = { dim = true, hide = true } },
   strips = { key = "calmStrips", allows = { dim = true, hide = true } },
   xp = { key = "calmXP", allows = { dim = true, hide = true } },
@@ -197,7 +209,7 @@ end
 -- shows it always, else the setting's own (any other choice of yours wins over the Calm HUD).
 function V.Calmed(frame, mode, when)
   local state = V.State(mode, when)
-  if state ~= "show" or next(V.Checked(mode, when)) then return state end
+  if state ~= "show" or next(V.Checked(mode, when)) then return V.Wake(frame, mode, state) end
   return V.CalmState(frame.vgCalm) or state
 end
 

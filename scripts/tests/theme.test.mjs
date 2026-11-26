@@ -29,6 +29,12 @@ it("theme", () => {
   expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1]") === true, "/vg theme reset restores the default accent (brass)").toBeTruthy();
 });
 
+it("T.Upper writes the German sharp s as SS, since no font Vanguard ships has the capital sharp s", () => {
+  const addon = loggedIn();
+  expect(addon.eval(`return ns.Theme.Upper("Gr\u{f6}\u{df}e")`)).toBe("GR\u00d6SSE");
+  expect(addon.eval(`return ns.Theme.Upper("Fenstergr\u{f6}\u{df}en")`)).toBe("FENSTERGR\u00d6SSEN");
+});
+
 it("widgets", () => {
   const addon = loggedIn();
   const out = addon.eval(`
@@ -1670,14 +1676,14 @@ it("T.SetText: a role with the upper flag (section) shows capitals, any other ro
   expect(out, "capitals only for the section role, which is the small size").toEqual(["QUEST ITEMS", "Quest items", true]);
 });
 
-it("T.SetText: a section header's capitals reach the Latin-1 and Cyrillic letters too, and leave ß, ÷ and other scripts alone (P10-12)", () => {
+it("T.SetText: a section header's capitals reach the Latin-1 and Cyrillic letters too, and leave ÷ and other scripts alone (P10-12)", () => {
   const addon = loggedIn();
   // A section header's text after T.SetText, for this text.
   const upper = (text) => addon.eval(`local T = ns.Theme
     local head = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "section", "muted")
     T.SetText(head, ${JSON.stringify(text)}) return head.__text`);
   expect(upper("Questgegenstände"), "German: ä").toBe("QUESTGEGENSTÄNDE");
-  expect(upper("Verbrauchsgüter und Maß"), "German: ü, and ß stays").toBe("VERBRAUCHSGÜTER UND MAß");
+  expect(upper("Verbrauchsgüter und Maß"), "German: ü, and ß becomes SS (H52-2)").toBe("VERBRAUCHSGÜTER UND MASS");
   expect(upper("Équipement à vendre"), "French: É and à").toBe("ÉQUIPEMENT À VENDRE");
   expect(upper("Baño y niño"), "Spanish: ñ").toBe("BAÑO Y NIÑO");
   expect(upper("Предметы для заданий"), "Russian: а-п and р-я").toBe("ПРЕДМЕТЫ ДЛЯ ЗАДАНИЙ");

@@ -165,6 +165,15 @@ it("H50-R1 prep: a class reagent shown by its English name takes the client's na
   expect(addon.eval("return #ns.errors"), "a load while the card is hidden is no work and no error").toBe(0);
 });
 
+it("H50-N1 prep: an item that loads before the card exists is no error, and one the client still has no name for keeps the row's stand-in", () => {
+  const addon = character("SHAMAN", 30, { extra: "__wfgWorld.items[17030] = nil" });
+  addon.eval("local P = ns.GetModule('InstancePrep') local built = P.card P.card = nil P.NameLoaded(17030) P.card = built");
+  expect(addon.eval("return #ns.errors"), "no card yet: no work, no error").toBe(0);
+  addon.slash("prep");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 17030, true);
+  expect(rows(addon).map((r) => r[0]), "no client name: the English one stays, not 'item 17030'").toContain("Ankh");
+});
+
 it("prep: a hidden count skips its row without an error", () => {
   const addon = character("HUNTER", 60, { extra: "__ammo = __wfgWorld.secret(120)" });
   addon.slash("prep");

@@ -63,11 +63,23 @@ function H.Side()
   return ns.FactionArt.Faction()
 end
 
--- This home's key: "Realm-Faction", or "Realm-ruleset-Faction" when the client names a ruleset.
-function H.Key()
+-- The key a home on side "Alliance", "Horde" or "none" has: "Realm-Faction", or "Realm-ruleset-Faction" when the
+-- client names a ruleset.
+local function keyFor(side)
   local ruleset = H.Ruleset()
-  H.last = H.Realm() .. "-" .. (ruleset and (ruleset .. "-") or "") .. H.Side()
+  return H.Realm() .. "-" .. (ruleset and (ruleset .. "-") or "") .. side
+end
+
+-- This home's key (see keyFor), kept as the last one given.
+function H.Key()
+  H.last = keyFor(H.Side())
   return H.last
+end
+
+-- The key this realm and ruleset's neutral home has: where a character that has not picked a side (a Pandaren
+-- before level 10) is kept, and what it leaves behind when it picks.
+function H.NeutralKey()
+  return keyFor("none")
 end
 
 -- The game's rules changed (GAME_RULES_CHANGED): says so once when that moves the data key.

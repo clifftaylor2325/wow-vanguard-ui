@@ -138,6 +138,7 @@ export const ACTIONS_ENV = `
   IsAutoRepeatAction = function() return false end
   GetActionCooldown = function(slot) local cd = a(slot).cd or { 0, 0 } return cd[1], cd[2] end
   C_ActionBar.IsEquippedAction = function(slot) return a(slot).equipped == true end
+  C_ActionBar.HasAction = function(slot) return __actions[slot] ~= nil end
   PickupAction = function(slot) __picked = slot end
   PlaceAction = function(slot) __placed = slot end
   __binds = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "SHIFT-2" }, MULTIACTIONBAR1BUTTON1 = { "CTRL-BUTTON4" } }
@@ -151,11 +152,12 @@ export const ACTIONS_ENV = `
 `;
 
 // Runs bar 1's secure page snippet for page n as the client's state driver does, a frame
-// after the stance, form or Shift+number event that asked for it.
+// after the stance, form or Shift+number event that asked for it. The restricted environment's HasAction is
+// C_ActionBar.HasAction (Blizzard_RestrictedAddOnEnvironment/RestrictedEnvironment.lua:148, both clients).
 export const pageBar1 = (addon, n) => addon.eval(`
   local bar, kids = Vanguard_Bar1, {}
   for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
-  local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function(_, label) return bar.__frameRefs and bar.__frameRefs[label] end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end }
+  local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function(_, label) return bar.__frameRefs and bar.__frameRefs[label] end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end, HasAction = C_ActionBar.HasAction }
   local page = ns.GetModule("ActionBars").ON_PAGE
   ;(setfenv and setfenv(loadstring(page, "page"), env) or load(page, "page", "t", env))()`);
 

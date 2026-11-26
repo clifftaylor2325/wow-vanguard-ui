@@ -35,6 +35,15 @@ function CQ.Active()
   return CQ.scope ~= nil and CQ.scope:Running() and CQ.settings ~= nil and CQ.settings.on == true
 end
 
+-- The seconds a craft takes, as the Craft queue slider allows (Core/OptionsTown.lua).
+CQ.PACE = { min = 1, max = 60, default = 6 }
+
+-- The seconds per craft in use: the setting kept inside CQ.PACE, since a crafted or hand-edited profile can hold any number (0 would divide by zero).
+function CQ.Pace()
+  local secs = tonumber(CQ.settings.secs) or CQ.PACE.default
+  return math.max(CQ.PACE.min, math.min(CQ.PACE.max, secs))
+end
+
 -- The most recipes read for a ranking or a cooldown scan, and how many lines the ranking prints.
 CQ.SCAN, CQ.TOP = 300, 5
 
@@ -328,7 +337,8 @@ function CQ.Top()
   if #ranked == 0 then return ns.Chat(L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."]) end
   for i = 1, math.min(CQ.TOP, #ranked) do
     local r = ranked[i]
-    local values = { rank = i, recipe = r.name, profit = AP.Money(r.profit), hourly = AP.Money(math.floor(r.profit * 3600 / CQ.settings.secs)), secs = CQ.settings.secs }
+    local secs = CQ.Pace()
+    local values = { rank = i, recipe = r.name, profit = AP.Money(r.profit), hourly = AP.Money(math.floor(r.profit * 3600 / secs)), secs = secs }
     ns.Chat(ns.Format(L["{rank}. {recipe}: {profit} a craft, {hourly} an hour at {secs}s a craft"], values))
   end
 end

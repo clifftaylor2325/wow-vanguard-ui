@@ -253,16 +253,27 @@ end
 
 -- Commands ---------------------------------------------------------------------------------------
 
+-- The most digits an ID may have: a longer number is saved in exponent form, which reads back as
+-- other IDs.
+CG.MAX_ID_DIGITS = 9
+
+-- The ID in text: whole digits only (not a sign, decimal, hex or exponent, which CG.Chosen would
+-- read back as other IDs) or a link of that kind ("item" or "spell"); nil if neither.
+local function typedID(text, link)
+  local digits = text:match("^%s*(%d+)%s*$") or text:match(link .. ":(%d+)")
+  return digits and #digits <= CG.MAX_ID_DIGITS and tonumber(digits) or nil
+end
+
 -- The item ID in text: a number, an item link, or an item's name the client knows; nil if none.
 local function itemID(text)
-  local id = tonumber(text) or tonumber(text:match("item:(%d+)"))
+  local id = typedID(text, "item")
   if id then return id end
   return text ~= "" and C_Item and C_Item.GetItemInfoInstant and (C_Item.GetItemInfoInstant(text)) or nil
 end
 
 -- The spell ID in text: a number, a spell link, or a spell's name the client knows; nil if none.
 local function spellID(text)
-  local id = tonumber(text) or tonumber(text:match("spell:(%d+)"))
+  local id = typedID(text, "spell")
   if id then return id end
   local info = text ~= "" and C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(text)
   return type(info) == "table" and info.spellID or nil

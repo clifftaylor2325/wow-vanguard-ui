@@ -1025,3 +1025,36 @@ it("H47-18-101 the Up now card's Your history toggle keeps its whole label, a th
     expect(after[1], `${locale}: the same width either way`).toBe(before[1]);
   }
 });
+
+// H51-32: a click that changes the sale ends the typing in the box it changes, so the box shows the sale. Typing in a
+// box is still its own (the box a player is typing in keeps its text). Whether a click on a button takes the typing
+// from a box in the game is not in Blizzard's source, so the addon clears it itself.
+it("H51-32 Max, a listing click and the per unit toggle replace the text of the box that has the typing", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.eval(`${CARD}.qty:SetFocus()`);
+  addon.type(`${CARD}.qty`, "5");
+  expect(form(addon)[0], "while typing the box keeps what was typed").toBe("5");
+  addon.click(`${CARD}.qtyMax`);
+  expect([form(addon)[0], addon.eval(`return ${CARD}.qty:HasFocus()`)], "Max: the box reads the sale, the typing ended").toEqual(["45", false]);
+  addon.eval(`${CARD}.stack:SetFocus()`);
+  addon.type(`${CARD}.stack`, "7");
+  addon.click(`${CARD}.stackMax`);
+  expect(form(addon)[1], "the stack box too").toBe("45");
+  addon.eval(`${CARD}.price:SetFocus()`);
+  addon.type(`${CARD}.price`, "9g");
+  addon.click(`${UP}.table.rows[1]`);
+  expect([form(addon)[3], addon.eval(`return ${CARD}.price:HasFocus()`)], "a listing: the price box takes its price").toEqual(["1s 0c", false]);
+  addon.eval(`${CARD}.price:SetFocus()`);
+  addon.click(`${CARD}.perStack`);
+  expect([form(addon)[3], form(addon)[6]], "the toggle: the box shows a stack's price").toEqual(["45s 0c", "per stack"]);
+});
+
+it("H51-G3 Max ends the typing in whichever form box has it, the Stacks box included", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.eval(`${CARD}.stacks:SetFocus()`);
+  addon.type(`${CARD}.stacks`, "2");
+  addon.click(`${CARD}.qtyMax`);
+  expect([form(addon)[2], addon.eval(`return ${CARD}.stacks:HasFocus()`)], "Max on Quantity: the Stacks box reads the sale, the typing ended").toEqual(["3", false]);
+});

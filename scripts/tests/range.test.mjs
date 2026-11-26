@@ -19,7 +19,7 @@ it("range tint", () => {
 
 it("range tint: a page change turns the old slot's watch off and does not keep its red", () => {
   const addon = loggedIn(ACTIONS_ENV + `__watching = {}
-    C_ActionBar = { EnableActionRangeCheck = function(slot, on) __watching[slot] = (__watching[slot] or 0) + (on and 1 or -1) end }
+    C_ActionBar = { HasAction = HasAction, EnableActionRangeCheck = function(slot, on) __watching[slot] = (__watching[slot] or 0) + (on and 1 or -1) end }
     IsActionInRange = function(slot) return slot ~= 73 end`);
   // How many watches the client holds on bar 1 button 1's slots, page 1's and page 7's.
   const watching = () => addon.eval("return { __watching[1] or 0, __watching[73] or 0 }");

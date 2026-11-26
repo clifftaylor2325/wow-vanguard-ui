@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, pageBar1, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -129,7 +129,7 @@ it("action bar paging and events", () => {
     local snippet = assert(loadstring and loadstring(ns.GetModule("ActionBars").ON_PAGE) or load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", setmetatable({}, { __index = _G })))
     local kids = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
-    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function() end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end }
+    local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end, GetFrameRef = function() end }, newstate = 7, ipairs = ipairs, newtable = function(...) return { ... } end, HasAction = C_ActionBar.HasAction }
     if setfenv then setfenv(snippet, env) else snippet = load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env) end
     snippet()`);
   const paged = button(addon, 1, 1);
@@ -218,6 +218,26 @@ const getBarOption = (addon, n, label) => addon.eval(`
 const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   local raw = bar.__states.visibility
   return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse, click = bar:IsMouseClickEnabled() }`);
+
+// Bar 1 pages to a vehicle, possess or override bar and holds the only buttons for it (Modules/ActionBars.lua
+// AB.BuildPageDriver), so every visibility choice but Always and Hidden shows it there. The macro conditions are
+// the client's (game-only: no "[vehicleui]" string exists in Blizzard's source), so this checks the compiled text.
+it("H53-2 action bar 1 wakes in a vehicle, a possess or an override bar on any visibility but Hidden; other bars keep their choice", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const wake = "[vehicleui][possessbar][overridebar] show; ";
+  // Bar n's secure visibility driver and its alpha state, without the pet battle clause.
+  const states = (n) => addon.eval(`local s = Vanguard_Bar${n}.__states return { (s.visibility:gsub("^%[petbattle%] hide; ", "")), s.vgvis }`);
+  const modes = { always: ["show", "show"], combat: [wake + "[combat] show; hide", wake + "[combat] show; hide"], hidden: ["hide", "hide"], mouseover: ["show", wake + "fade"] };
+  for (const [mode, expected] of Object.entries(modes)) {
+    setBarOption(addon, 1, "Visibility", JSON.stringify(mode));
+    expect(states(1), `bar 1 on ${mode}`).toEqual(expected);
+  }
+  setBarOption(addon, 1, "Visibility", '"combat"');
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  expect(states(2), "bar 2 on In combat has no wake clause").toEqual(["[combat] show; hide", "[combat] show; hide"]);
+  addon.eval('VanguardDB.profiles.Default.ActionBars.bars[1].visibility = "custom" VanguardDB.profiles.Default.ActionBars.bars[1].showWhen = { group = true } ns.GetModule("ActionBars").ApplyVisibility(1)');
+  expect(states(1), "a checklist without Vehicle wakes too").toEqual([wake + "[group] show; hide", wake + "[group] show; hide"]);
+});
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -710,6 +730,27 @@ it("in combat an empty slot's mouse waits for the fight to end, one entry per bu
   expect([alphaOf(addon, 4), takesMouse(addon, 4)], "a slot emptied in combat hides at once and keeps its mouse until the fight ends").toEqual([0, true]);
   setCombat(addon, false);
   expect(takesMouse(addon, 4), "then it lets clicks through").toBe(false);
+});
+
+// The page change runs in the secure snippet, which may call EnableMouse in a fight: the restricted frame handle
+// has it (HANDLE:EnableMouse, Blizzard_RestrictedAddOnEnvironment/RestrictedFrames.lua:631) and the environment has
+// HasAction (RestrictedEnvironment.lua:148); both trees, forever and live.
+it("a slot that gets an action by a page change in combat takes the mouse at once, not when the fight ends", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval('__actions[76] = { tex = "TEST-ONLY-FORM", count = 0, usable = true }');
+  expect(takesMouse(addon, 4), "slot 4 is empty on page 1: no mouse").toBe(false);
+  setCombat(addon, true);
+  pageBar1(addon, 7);
+  expect([alphaOf(addon, 4), takesMouse(addon, 4), takesMouse(addon, 5)], "the form's slot shows and can be clicked in the fight; a slot empty on both pages stays pass-through").toEqual([1, true, false]);
+  setCombat(addon, false);
+  expect([takesMouse(addon, 4), takesMouse(addon, 5)], "the end of the fight leaves the same state").toEqual([true, false]);
+});
+
+it("a page change out of combat keeps the mouse on the empty slots while a drag shows them", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.fire("ACTIONBAR_SHOWGRID");
+  pageBar1(addon, 7);
+  expect([takesMouse(addon, 4), takesMouse(addon, 5)], "the snippet never takes the mouse off, so a drop lands on any slot").toEqual([true, true]);
 });
 
 // TEST-ONLY key bindings the game keeps (in the world's table): SetBinding moves a key to a

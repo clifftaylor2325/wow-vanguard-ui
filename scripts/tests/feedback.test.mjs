@@ -125,6 +125,12 @@ it("Make report says what the site would, in its words, and keeps the form open"
   addon.type(`${BOX}.summary`, "x".repeat(101));
   addon.click(`${BOX}.make`);
   expect(problem(addon), "too long").toBe("The short summary can be at most 100 characters (it has 101).");
+  addon.type(`${BOX}.summary`, "a".repeat(99) + "\u{1F600}");
+  addon.click(`${BOX}.make`);
+  expect(problem(addon), "a character past U+FFFF counts twice, as the site's length does").toBe("The short summary can be at most 100 characters (it has 101).");
+  addon.type(`${BOX}.summary`, "a".repeat(100));
+  addon.click(`${BOX}.make`);
+  expect(problem(addon), "100 letters fit").toBe("What you did is required.");
   addon.type(`${BOX}.summary`, "Raid frames go blank after a reload");
   addon.click(`${BOX}.make`);
   expect(problem(addon), "then the bug's texts, in order").toBe("What you did is required.");
