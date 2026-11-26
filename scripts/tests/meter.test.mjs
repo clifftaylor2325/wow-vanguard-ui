@@ -192,7 +192,7 @@ it("with the Meter module switched off, /vg meter says so instead of failing", (
   addon.clearChat();
   addon.eval("ns.SetModuleEnabled('Meter', true)");
   addon.slash("meter on");
-  expect([chatHas(addon, /meter starts (after a \/reload|when the fight ends)\./), chatHas(addon, /switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([false, false, 0]);
+  expect([addon.eval("return ns.GetModule('Meter').Running()"), chatHas(addon, /meter (starts|couldn't start)|switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([true, false, 0]);
 });
 
 // H54-61: a live module switched on in a fight starts when the fight ends (no reload), and one whose start failed

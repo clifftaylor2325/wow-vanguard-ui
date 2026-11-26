@@ -217,7 +217,7 @@ it("upgrades: the wizard names every stat, and says when Gear upgrades is off", 
   off.clearChat();
   off.eval("ns.SetModuleEnabled('Upgrades', true)");
   off.slash("weights wizard");
-  expect([chatHas(off, /Gear upgrades starts (after a \/reload|when the fight ends)\./), chatHas(off, /switched off/)], "switched on under Modules it starts at once (a live module), so the wizard opens").toEqual([false, false]);
+  expect([off.eval("return ns.GetModule('Upgrades').settings ~= nil"), chatHas(off, /Gear upgrades (starts|couldn't start)|switched off/)], "switched on under Modules it starts at once (a live module), so the wizard opens").toEqual([true, false]);
 });
 
 // H54-61: Gear upgrades is live: switched on in a fight it starts when the fight ends, and a failed start is tried
