@@ -273,12 +273,13 @@ local function paintRow(r, row)
   r.value:SetText(row.value)
 end
 
--- An item's data came in (ns.OnItemLoaded): its row on the shown card takes the client's name. The rows with
--- another item keep what they show (a reagent still on its English name stays on it).
+-- An item's data came in (ns.OnItemLoaded): its row on the shown card takes the client's name, if it gave one
+-- (else the row keeps its stand-in, such as a reagent's English name). The rows with another item keep what they show.
 function PR.NameLoaded(id)
-  if not PR.card:IsShown() then return end
-  for _, r in ipairs(PR.card.rows) do
-    if r.id == id then r.label:SetText(ns.ItemName(id)) end
+  local card, name = PR.card, clientName(id)
+  if not (card and card:IsShown() and card.rows and name) then return end
+  for _, r in ipairs(card.rows) do
+    if r.id == id then r.label:SetText(name) end
   end
 end
 
