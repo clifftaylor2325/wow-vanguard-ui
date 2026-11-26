@@ -193,6 +193,7 @@ FA.CLIENT_PARTS = {}
 -- The rows on the target and focus frames as the settings ask now: a row that needs no change stays.
 local function buildRows()
   if not FA.settings then return end
+  FA.roomBuilt = FA.ThreatRoom()
   local look = FA.Look(FA.settings)
   for _, key in ipairs(FA.FRAMES) do
     if UF.frames[key] then addContainers(UF.frames[key], look, key) end
@@ -236,9 +237,19 @@ function FA.Apply()
   ns.AfterStill("frame auras settle", FA.SETTLE, function() ns.OutOfCombat(rebuild, "frame auras") end)
 end
 
--- Unit extras started or stopped (its threat percent came or went): the aura rows are made again for its room.
+-- The rows are made again for the threat percent's room when it no longer is the room they were built for.
+local function refitRoom()
+  FA.roomPending = nil
+  if FA.settings and FA.ThreatRoom() ~= FA.roomBuilt then ns.OutOfCombat(rebuild, "frame auras") end
+end
+
+-- Unit extras started or stopped (its threat percent came or went): the aura rows are made again for its room, on the next
+-- frame, once. Any other module switch leaves the room as the rows were built for and schedules nothing. A one-shot timer,
+-- not a ticker: nothing is left running, and a switch settles before the rows are looked at (the fresh-login footprint).
 local function refitForThreat()
-  if FA.settings then FA.Apply() end
+  if FA.roomPending or not FA.settings or FA.ThreatRoom() == FA.roomBuilt then return end
+  FA.roomPending = true
+  C_Timer.After(0, ns.Guard("timer frame auras threat room", refitRoom))
 end
 ns.OnModulesChanged(refitForThreat)
 
