@@ -348,3 +348,16 @@ it("H49-R2 the stagger bar stays one pixel inside its holder after a UI scale ch
   const r = insetAfterScale(addon, 'ns.GetModule("ClassBars").resourceFrames.stagger');
   expect(r.x).toBeCloseTo(r.px, 5);
 });
+
+// H49-34: a stage mark is two screen pixels wide at the scale of the cast that shows it, not of the cast that made it.
+it("an empowered cast's stage marks are two pixels wide after a UI scale change", () => {
+  const addon = retail("EVOKER", 1);
+  const start = addon.eval("return GetTime() * 1000");
+  addon.eval(`__wfgWorld.units.player.cast = { name = "TEST-ONLY Fire Breath", channel = true, startMs = ${start}, endMs = ${start + 2000},
+    stages = 3, stageMs = { 500, 750, 750 }, holdMs = 1000 }`);
+  addon.fire("UNIT_SPELLCAST_EMPOWER_START", "player", "TEST-ONLY-GUID", 357208);
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UNIT_SPELLCAST_EMPOWER_UPDATE", "player", "TEST-ONLY-GUID", 357208);
+  const r = addon.eval('local b = ns.GetModule("CastBars").bars.player return { b.stageMarks[1]:GetWidth(), 2 * ns.Theme.Pixel(b) }');
+  expect(r[0]).toBeCloseTo(r[1], 5);
+});
