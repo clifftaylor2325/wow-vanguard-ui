@@ -131,9 +131,17 @@ function CG.Items()
   return out
 end
 
+-- The share (per cent) the glow looks for: the setting kept within CG.PERCENT (an imported or edited profile may
+-- hold any number), the default when it is not a number.
+function CG.Percent()
+  local percent = tonumber(CG.settings.percent) or CG.defaults.percent
+  return math.min(CG.PERCENT.max, math.max(CG.PERCENT.min, percent))
+end
+
 -- Looks at every item again.
 function CG.Tick()
-  for _, item in ipairs(CG.Items()) do CG.Light(item, CG.Strength(item, CG.settings.percent)) end
+  local percent = CG.Percent()
+  for _, item in ipairs(CG.Items()) do CG.Light(item, CG.Strength(item, percent)) end
 end
 
 -- Puts every glow out.
