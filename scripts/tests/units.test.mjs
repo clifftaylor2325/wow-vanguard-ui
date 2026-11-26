@@ -1305,3 +1305,13 @@ it("a long name on a party frame's tab is shown whole, the tab clear of the inne
   const tab = addon.eval("local f = Vanguard_party1 return { f.tab:GetWidth(), f:GetWidth() }");
   expect([cut, tab[0] > tab[1] / 2, tab[0] <= tab[1] - 42], "the name whole on a tab wider than half the frame, short of the inner corner").toEqual([[], true, true]);
 });
+
+// H49-32: a combo point pip's fill sits one screen pixel inside the pip, also after the UI scale changes.
+it("a combo point pip's fill stays one pixel inside after a UI scale change", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 3
+    GetComboPoints = function(unit, target) return __cp end`, NO_RAID);
+  addon.eval("UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  addon.advance(1);
+  const r = addon.eval('local p = ns.GetModule("ComboPoints").pips[1] return { x = p.fill.__points.TOPLEFT.x, px = ns.Theme.Pixel(p) }');
+  expect(r.x).toBeCloseTo(r.px, 5);
+});
