@@ -672,7 +672,7 @@ it("quest tracker: recipes you track sit under a Recipes heading with their reag
   const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[3].lines[1].text.__textColor }");
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "text2")], "the heading in gold, the recipe's name in the text color, a short reagent in gray").toEqual([true, true, true]);
   addon.eval("__wfgWorld.items[90102] = { name = 'TEST-ONLY Thread', icon = 'TEST-ONLY-ICON', quality = 1 } __wfgWorld.bags[1][2] = { itemID = 2589, count = 1 }");
-  addon.fire("GET_ITEM_INFO_RECEIVED", 90102);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90102, true);
   addon.update(0);
   expect(tracker(addon).blocks[2][1], "the thread's name arrives: its line joins; the bags are read again").toEqual(["Linen Cloth 2/2", "TEST-ONLY Thread 0/1"]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[3].lines[1].text.__textColor"), "muted"), "a reagent you have enough of is done: faded, as a done objective").toBe(true);
@@ -691,6 +691,23 @@ it("quest tracker: recipes you track sit under a Recipes heading with their reag
   bare.fire("TRACKED_RECIPE_UPDATE", 90100, true);
   bare.update(0);
   expect(blockTitles(bare), "a client without recipe tracking: no heading, no error").toEqual(["[12] TEST-ONLY Letter"]);
+});
+// GET_ITEM_INFO_RECEIVED(itemID, success): forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:1815-1820.
+it("H50-64 quest tracker: a reagent whose data fails to load is not asked for again on every failure", () => {
+  const addon = loggedIn(RECIPE_ENV);
+  addon.world.addQuest({ questID: 90052, title: "TEST-ONLY Letter", level: 12, watched: true });
+  addon.eval("__asked = 0 C_Item.RequestLoadItemDataByID = function(id) if id == 90102 then __asked = __asked + 1 end end __wfgWorld.trackRecipe(90100)");
+  addon.update(0.5);
+  addon.update(0.5);
+  const settled = addon.eval("return __asked");
+  for (let i = 0; i < 5; i++) addon.fire("GET_ITEM_INFO_RECEIVED", 90102, false);
+  addon.update(0.5);
+  expect(addon.eval("return __asked"), "five failed loads redraw nothing and ask nothing").toBe(settled);
+  addon.eval("__wfgWorld.items[90102] = { name = 'TEST-ONLY Thread', icon = 'TEST-ONLY-ICON', quality = 1 }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90102, true);
+  addon.update(0.5);
+  expect(tracker(addon).blocks[2][1], "a later successful load still draws the line").toEqual(["Linen Cloth 1/2", "TEST-ONLY Thread 0/1"]);
 });
 it("quest tracker: switched off, a timed quest and a tracked recipe draw nothing", () => {
   const off = loggedIn(RECIPE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });

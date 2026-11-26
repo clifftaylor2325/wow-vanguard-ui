@@ -234,13 +234,6 @@ function UP.AwaitItem(link)
   ns.CallIf(C_Item, "RequestLoadItemDataByID", id)
 end
 
--- The client sent an item's data: if an arrow waited for it, the open bag is marked again (only then).
-function UP.OnItemInfo(_, itemID)
-  if not UP.awaiting[itemID] then return end
-  UP.awaiting[itemID] = nil
-  UP.OnGearChanged()
-end
-
 -- What an item is worth with weights: weight x amount, summed over its stats (0 for none), plus its item level
 -- where the weights count it (Retail's ILVL; no item stat key holds it). nil while the client has no stats for
 -- the item yet (it isn't loaded), so nothing is judged, or remembered, on a guess.
@@ -767,7 +760,8 @@ end
 -- awaited item's data changes.
 local function watchChanges(scope)
   scope:On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
-  scope:On("GET_ITEM_INFO_RECEIVED", UP.OnItemInfo)
+  -- An awaited item's data came: the open bag is marked again (a failed load only drops the note, so the next look asks once more).
+  ns.OnItemLoaded(function(event, fn) scope:On(event, fn) end, UP.awaiting, UP.OnGearChanged)
   scope:On("PLAYER_ROLES_ASSIGNED", UP.Changed)
   if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.Changed) end -- a new spec, new main stat
   scope:On("GROUP_LEFT", UP.Changed) -- out of a group the role is none again, which no role event may say
