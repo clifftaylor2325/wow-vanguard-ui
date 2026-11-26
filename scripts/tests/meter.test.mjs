@@ -656,3 +656,14 @@ it("H55-R2 a Meter rows value outside 3 to 10 sizes the panel as the slider's en
   const tall = (n) => head + n * (row + gap) + gap;
   expect([height(5), height(40), height(0), height(-3), height('"x"')], "kept within 3 to 10; 'x' is the default 8").toEqual([tall(5), tall(10), tall(3), tall(3), tall(8)]);
 });
+
+it("H55-G2 a Meter rows value outside 3 to 10 draws as many lines as the panel is sized for", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  setLines(addon, "(function() local t = {} for i = 1, 12 do t[i] = { name = 'P' .. i, classFilename = 'WARRIOR', amountPerSecond = 100 - i } end return t end)()");
+  // How many line rows show after the setting is set to a Lua value.
+  const shown = (rowsValue) => {
+    addon.eval(`ns.GetModule("Meter").settings.rows = ${rowsValue} ns.GetModule("Meter").Paint()`);
+    return rows(addon).filter((r) => r[0]).length;
+  };
+  expect([shown(0), shown(-3), shown(40), shown(5), shown('"x"')], "3, 3, 10, 5 and the default 8 lines").toEqual([3, 3, 10, 5, 8]);
+});
