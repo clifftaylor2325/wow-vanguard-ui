@@ -365,6 +365,8 @@
       "the Nameplates and Unit frames pages switch the tag marks and the grey bar"
     ],
     "scripts/tests/prep.test.mjs": [
+      "H50-R1 prep: a Keep-stocked item the client has not loaded takes its name on the open card when it arrives",
+      "H50-R1 prep: a class reagent shown by its English name takes the client's name when the item loads, and a hidden card is left alone",
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: /vg prep buffs prints its count line and 'no check' in the client's language (H44-25-R3)",
       "prep buffs: /vg prep buffs says in the client's language when a check's spells have no names (H45-33-202)",
