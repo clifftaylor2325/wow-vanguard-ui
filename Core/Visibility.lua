@@ -343,7 +343,7 @@ end
 local function hookMouse(f, script, fn)
   local click, motion = f:IsMouseClickEnabled(), f:IsMouseMotionEnabled()
   local ok = pcall(f.HookScript, f, script, ns.Guard("visibility hover", fn))
-  keepMouse(f, click, motion)
+  if ok then keepMouse(f, click, motion) end
   return ok
 end
 
