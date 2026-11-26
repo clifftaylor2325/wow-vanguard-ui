@@ -95,12 +95,20 @@ end
 
 -- Reading a line --------------------------------------------------------------------------------
 
+-- The text with the punctuation of other languages turned into spaces: Latin-1's marks (guillemets, no-break space,
+-- inverted ? and !; not the letters ª µ º) and general punctuation (dashes, curly quotes, an ellipsis), which would
+-- otherwise stay glued to a word as bytes of 128 and up. Most lines have none and skip both strips.
+local function spaceMarks(text)
+  if not text:find("[\194\226]") then return text end
+  return (text:gsub("\194[\128-\169\171-\180\182-\185\187-\191]", " "):gsub("\226\128[\128-\191]", " "))
+end
+
 -- A line as " word word ": lower-case (accented and Cyrillic letters too), colour and link codes and punctuation gone,
 -- so a short name only matches a whole word.
 -- A line with no escape codes (most of them) skips the three code strips.
 function GB.Words(text)
   local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return " " .. (ns.Lower(s):gsub("[^%w\128-\255]+", " ")) .. " "
+  return " " .. (spaceMarks(ns.Lower(s)):gsub("[^%w\128-\255]+", " ")) .. " "
 end
 
 GB.LoadWords()

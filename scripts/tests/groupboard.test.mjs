@@ -439,6 +439,15 @@ it("group board words: Russian lines are read, Cyrillic capitals and all", () =>
   expect(parse(addon, "ищу группу в ЛФМ")?.[0], "looking for group").toBe("LFG");
 });
 
+it("H58-R1 punctuation of other languages (guillemets, an ellipsis, a dash) does not glue to the words of a post", () => {
+  const ru = boardIn("ruRU");
+  expect(parse(ru, "SFK ищем танка…"), "an ellipsis typed without a space").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(ru, "«ищем танка» SFK"), "guillemets").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(ru, "SFK — ищем танка"), "a spaced dash").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(boardIn("enUS"), "LFM BRD—tank"), "an unspaced em dash").toEqual(["LFM", "Blackrock Depths", "tank"]);
+  expect(parse(boardIn("frFR"), "«besoin de tank» SFK"), "French guillemets").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+});
+
 it("group board words: a locale's own dungeon name is read from the name the board shows", () => {
   const addon = boardIn("deDE");
   addon.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[5][1] = 'Burg Schattenfang' GB.LoadWords()");
