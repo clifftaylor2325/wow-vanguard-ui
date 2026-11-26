@@ -160,8 +160,12 @@ it("target buffs: switched off and on again out of combat, the row's line stops 
   expect(threatState(addon)).toEqual({ room: 48, made: true });
 });
 
-it("target buffs: with Unit extras switched off, the row takes the frame's full width", () => {
-  expect(threatState(withoutUnitExtras())).toEqual({ room: 0, made: true });
+it("target buffs: with Unit extras switched off, the row takes the frame's full width, made again by Frame auras' own listener", () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  addon.eval('__applies = 0 local FA = ns.GetModule("FrameAuras") local apply = FA.Apply FA.Apply = function() __applies = __applies + 1 return apply() end');
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  expect([addon.eval("return __applies > 0"), threatState(addon)], "the module switch asked for the rows again").toEqual([true, { room: 0, made: true }]);
 });
 
 it("target buffs: Unit extras switched on in a fight counts no room until the fight ends, then the row is made for it", () => {
@@ -174,13 +178,14 @@ it("target buffs: Unit extras switched on in a fight counts no room until the fi
   expect(threatState(addon)).toEqual({ room: 48, made: true });
 });
 
-it("target buffs: a module switch while Frame auras is off makes no rows and no error", () => {
+it("target buffs: a module switch while Frame auras is off asks for no rows and raises no error", () => {
   const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
   addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
   settle(addon);
+  addon.eval('__applies = 0 local FA = ns.GetModule("FrameAuras") local apply = FA.Apply FA.Apply = function() __applies = __applies + 1 return apply() end');
   addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
   settle(addon);
-  expect([addon.eval("return ns.GetModule('FrameAuras').settings == nil"), addon.eval("return #ns.errors")]).toEqual([true, 0]);
+  expect([addon.eval("return __applies"), addon.eval("return #ns.errors")]).toEqual([0, 0]);
 });
 
 // H47-6-1 (decide: option 1 built): the target's cast bar rises with the buff row's extra height, so a second line of
