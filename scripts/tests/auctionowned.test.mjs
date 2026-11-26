@@ -984,3 +984,23 @@ it("the Filters dialog closes with the auction house", () => {
   addon.fire("AUCTION_HOUSE_CLOSED");
   expect(addon.eval("return Vanguard_AuctionFilters:IsShown()"), "gone when the auction house closes").toBe(false);
 });
+
+// GetItemInfo MayReturnNothing (forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:626), answered by
+// GET_ITEM_INFO_RECEIVED(itemID, success) (:1815-1820). A scan's price for an item the client has not loaded has no vendor price to judge by.
+it("H50-33 deals: a scanned price for an item not loaded yet is judged against its vendor price when the item loads", () => {
+  const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000) });
+  scan(addon, "{ { itemID = 99001, count = 1, buyoutPrice = 10 } }");
+  expect(addon.eval(`return ${HELPER}.DealCount()`), "no vendor price known yet: no deal").toBe(0);
+  addon.eval('__wfgWorld.items[99001] = { name = "TEST-ONLY Late Cloth", icon = "TEST-ONLY-LATE", sellPrice = 50 }');
+  addon.fire("GET_ITEM_INFO_RECEIVED", 99001, true);
+  addon.update(0.5);
+  expect(addon.eval(`local d = ${HELPER}.deals[99001] return d and { d.price, d.vendor }`), "judged again at the price seen").toEqual([10, 50]);
+});
+it("H50-33 deals: an item that fails to load is not judged, and a closed house forgets the waiting prices", () => {
+  const addon = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000) });
+  scan(addon, "{ { itemID = 99001, count = 1, buyoutPrice = 10 }, { itemID = 99002, count = 1, buyoutPrice = 10 } }");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 99001, false);
+  expect(addon.eval(`return { ${HELPER}.dealPending[99001] == nil, ${HELPER}.dealPending[99002] ~= nil }`), "a failed load takes the note off, no second ask").toEqual([true, true]);
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  expect(addon.eval(`return next(${HELPER}.dealPending)`), "forgotten at close").toBe(null);
+});

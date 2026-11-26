@@ -40,6 +40,8 @@ AH.DEAL_COLUMNS = { { key = "price", title = L["Unit price"], width = 90, side =
 AH.defaults.deals = true
 -- The deals found here lately: itemID -> { id, key, price, ref, basis, vendor, off, found (when) }.
 AH.deals = {}
+-- Prices seen for items the client had not loaded yet, to be judged when they load: itemID -> { price, time }.
+AH.dealPending = {}
 -- How long found deals and upgrades are kept after the house closes (seconds).
 AH.KEEP = 1800
 -- When and where the house last closed ({ at, house }), while what was found then is kept.
@@ -93,6 +95,7 @@ end
 -- dropped when it is no longer one (bought, or dearer now); the list repaints on the next frame.
 function AH.CheckDeal(itemID, price, t)
   if not (AH.open and AH.settings.deals) then return end
+  if C_Item.GetItemInfo(itemID) == nil then AH.dealPending[itemID] = { price, t } end
   AH.deals[itemID] = AH.Deal(itemID, price, t)
   ns.Soon("auction deals", AH.PaintDeals)
 end
@@ -116,6 +119,11 @@ function AH.FoundExpired()
   return c ~= nil and (AP.Now() - c.at >= AH.KEEP or c.house ~= AP.House())
 end
 
+-- Prices waiting on an item's data are forgotten (emptied in place: ns.OnItemLoaded holds the table).
+function AH.ForgetPending()
+  for id in pairs(AH.dealPending) do AH.dealPending[id] = nil end
+end
+
 -- What was found before the house closed, forgotten once past keeping: deals, upgrades and gear seen.
 function AH.DropExpired()
   if not AH.FoundExpired() then return end
@@ -127,6 +135,7 @@ end
 -- (so a scan's gear isn't held for the rest of the session).
 local function onClosed()
   AH.closed = { at = AP.Now(), house = AP.House() }
+  AH.ForgetPending()
   C_Timer.After(AH.KEEP, ns.Guard("timer forget found", function() if not AH.open then AH.DropExpired() end end))
 end
 
@@ -152,9 +161,11 @@ function AH.FoundLine(row)
 end
 
 -- The Deals entry's events: each price recorded is judged, and closing the house starts keeping what was
--- found (state only, so also in combat; AH.OnShow drops it when the house opens past keeping).
-function AH.ListenDeals()
+-- found (state only, so also in combat; AH.OnShow drops it when the house opens past keeping). A price seen
+-- for an item the client had not loaded is judged again when its data arrives (a vendor price needs it).
+function AH.ListenDeals(on)
   AP.OnSeen(AH.CheckDeal)
+  ns.OnItemLoaded(on, AH.dealPending, function(id, seen) AH.CheckDeal(id, seen[1], seen[2]) end)
   ns.On("AUCTION_HOUSE_CLOSED", onClosed)
 end
 
