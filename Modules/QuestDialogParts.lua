@@ -57,9 +57,7 @@ end
 
 -- "1,250 XP" for a quest's XP reward (a whole number, thousands set apart).
 function QP.XPText(xp)
-  local s, n = tostring(math.floor(xp)), 1
-  while n > 0 do s, n = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") end
-  return ns.Format(L["{xp} XP"], { xp = s })
+  return ns.Format(L["{xp} XP"], { xp = ns.Grouped(xp) })
 end
 
 -- The money and XP a quest gives as text ("+1g 20s 0c  ·  1,250 XP"), then any extra parts; "" for none.

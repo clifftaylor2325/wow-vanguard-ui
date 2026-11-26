@@ -2247,6 +2247,15 @@ it("quest dialog: Accept goes straight through without the flag, or without the 
   key(bare, "SPACE");
   expect(calls(bare), "no warning text to ask with: accepted").toEqual(["accept nil"]);
 });
+it("H58-62 a quest's XP is grouped with the client's thousands mark, a lone % in it kept as typed", () => {
+  const addon = loggedIn(TRACK_ENV);
+  // The XP text of two rewards on a client grouping with this mark.
+  const xp = (mark) => addon.eval(`LARGE_NUMBER_SEPERATOR = ${JSON.stringify(mark)} return { ns.QuestParts.XPText(1250), ns.QuestParts.XPText(1234567) }`);
+  expect(xp("."), "a point").toEqual(["1.250 XP", "1.234.567 XP"]);
+  expect(xp(" "), "a space").toEqual(["1 250 XP", "1 234 567 XP"]);
+  expect(xp("%"), "a percent sign is no gsub escape").toEqual(["1%250 XP", "1%234%567 XP"]);
+  expect(xp(""), "a client with no mark falls back to a comma").toEqual(["1,250 XP", "1,234,567 XP"]);
+});
 it("quest log: each line shows its quest's XP at the right, with thousands set apart, and the switch turns it off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");

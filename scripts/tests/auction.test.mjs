@@ -118,6 +118,14 @@ it("a scan answered in time is not given up on, and closing the house forgets on
   addon.update(0.01);
   expect(addon.eval(`return { ${HELPER}.scan == nil, ${HELPER}.lateScan == nil }`), "closed: nothing waits for a list").toEqual([true, true]);
 });
+it("H58-31 the last scan's line groups the count with the client's thousands mark", () => {
+  const addon = atAuctionHouse();
+  scan(addon, LINEN);
+  addon.eval(`LARGE_NUMBER_SEPERATOR = "." ns.AuctionPrices.House().count = 8412 __now = __now + 7200 ${HELPER}.PaintScan()`);
+  expect(lastLine(addon), "a client that groups with a point").toBe("Scanned 2 h ago · 8.412 items");
+  addon.eval(`LARGE_NUMBER_SEPERATOR = " " ${HELPER}.PaintScan()`);
+  expect(lastLine(addon), "or a space").toBe("Scanned 2 h ago · 8 412 items");
+});
 it("the last scan's line counts in hours and days, the thousands apart, and turns the warning colour after a day", () => {
   const addon = atAuctionHouse();
   scan(addon, LINEN);

@@ -117,6 +117,17 @@ function ns.TypedNumber(text)
   return tonumber(text)
 end
 
+-- A whole number with its thousands set apart by the client's own mark (LARGE_NUMBER_SEPERATOR, spelled so by
+-- Blizzard; FormatLargeNumber does the same), "," when the client has none: 8412 as "8,412" or "8.412".
+---@param n number
+---@return string
+function ns.Grouped(n)
+  local mark = type(_G.LARGE_NUMBER_SEPERATOR) == "string" and _G.LARGE_NUMBER_SEPERATOR ~= "" and _G.LARGE_NUMBER_SEPERATOR or ","
+  local text, count = tostring(math.floor(n)), 1
+  while count > 0 do text, count = text:gsub("^(-?%d+)(%d%d%d)", "%1" .. mark:gsub("%%", "%%%%") .. "%2") end
+  return text
+end
+
 -- The capitals ns.Lower folds beyond A-Z, as byte ranges: a lead byte, the second byte's range, the small letter's
 -- lead byte and the step to its second byte, and a second byte to leave alone (× in Latin-1). The reverse of
 -- the theme's T.UPPER_RANGES.
