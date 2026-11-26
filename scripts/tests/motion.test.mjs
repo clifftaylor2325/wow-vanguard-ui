@@ -261,3 +261,19 @@ it("motion: a fade on a mover's frame runs to and from its opacity, not full (H6
   addon.eval("__finishFades()");
   expect(addon.eval("return { __box:GetAlpha(), __box:IsShown() }"), "hidden, ready to come back at the opacity").toEqual([0.5, false]);
 });
+
+it("motion: a fade playing when a fight starts finishes within 0.15 s (H62-R2)", () => {
+  const addon = fadeFrame();
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.35, function() __ended = true end) TEST_F:SetAlpha(0.8)");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(lastFade(addon), "the long fade goes on from its alpha over the combat length").toEqual([0.8, 0, 0.15]);
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "still a fade-out").toBe(true);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __ended, TEST_F:IsShown() }"), "with the same done").toEqual([true, false]);
+  addon.eval("__fades = {} TEST_F:Show() ns.Theme.FadeIn(TEST_F, 0.1) TEST_F:Show() __fades = {}");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return #__fades"), "a short fade is left alone").toBe(0);
+  addon.eval("ns.Theme.FadeIn(TEST_F, 0.3) __fades = {} __fades[0] = nil ns.Theme.StopFade(TEST_F)");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return #__fades"), "and a stopped fade is not replayed").toBe(0);
+});
