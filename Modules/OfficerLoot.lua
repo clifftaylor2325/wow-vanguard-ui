@@ -205,9 +205,14 @@ end
 
 -- Commands --------------------------------------------------------------------------------------
 
+-- The player and the item in "<player> <item>", with spaces around either fine; nil when there is no item.
+local function playerAndItem(arg)
+  return arg:match("^%s*(%S+)%s+(%S.-)%s*$")
+end
+
 -- /vg loot add <player> <item> (spaces around it are fine); true once a reserve is kept.
 function OL.CmdAdd(arg)
-  local player, item = arg:match("^%s*(%S+)%s+(%S.-)%s*$")
+  local player, item = playerAndItem(arg)
   local entry, had = OL.Add(player, item)
   if not entry then return ns.Chat(L["Use /vg loot add <player> <item or item link>."]) end
   local said = had and L["{player} already reserves {item}."] or L["Reserved: {item} for {player}."]
@@ -215,9 +220,9 @@ function OL.CmdAdd(arg)
   return true
 end
 
--- /vg loot remove <player> <item>.
+-- /vg loot remove <player> <item> (spaces around it are fine).
 function OL.CmdRemove(arg)
-  local player, item = arg:match("^(%S+)%s+(.+)$")
+  local player, item = playerAndItem(arg)
   local gone = player and OL.Remove(player, item) or 0
   ns.Chat(gone > 0 and ns.Format(L["Removed the reserve for {player}."], { player = player }) or L["No such reserve. /vg loot list shows them."])
 end

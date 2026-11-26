@@ -79,6 +79,9 @@ it("H51-61 the Add a reserve box closes once a reserve is kept, takes text with 
   expect([add("  Thrall Boots  "), addon.eval("return #VanguardCharDB.lootReserves")], "spaces around: kept, the box closes").toEqual([false, 1]);
   expect(say(addon, "loot add   Jaina   Cloak "), "the command takes the same text").toMatch(/Reserved: Cloak for Jaina/);
   expect(say(addon, "loot add Thrall   "), "a player with no item is a usage error").toMatch(/Use \/vg loot add/);
+  expect(say(addon, "loot add Bob Onyxia Hide Backpack"), "an item name of several words is kept whole").toMatch(/Reserved: Onyxia Hide Backpack for Bob/);
+  addon.eval('ns.GetModule("OfficerLoot").CmdRemove("  Bob   Onyxia Hide Backpack  ")');
+  expect([chatHas(addon, /Removed the reserve for Bob/), addon.eval("return #VanguardCharDB.lootReserves")], "remove takes the same spaces and several words").toEqual([true, 2]);
 });
 
 it("a roll on a reserved item is flagged [SR], by the item the loot history says is rolling, and the item lists who reserved it", () => {
