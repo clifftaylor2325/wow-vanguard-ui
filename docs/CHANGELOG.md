@@ -4,6 +4,51 @@ What changed for players in each release, newest first. In game, the What's new 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.9
+
+<!-- SMOKE steps 33.923 to 33.984 -->
+
+Questions before the things you can't take back, the Calm HUD's right-click menu back on your frames, and fixes across UI scale changes, raid frames, the bank, the auction house, other-language clients, quests and chat.
+
+### Questions first (0.9.9)
+
+- Reset all positions, Reset theme, and Delete and Copy here on the Profiles page ask a danger question first, so a double click does nothing; Import stat weights asks before it replaces weights you set by hand.
+- Keep these settings, Start fresh or a pasted string put the login Restore question away, Restore into the profile in use says to reload before you change more, and Reset profile does nothing if the profile in use changed while its question was open.
+- A second paste box or Cancel ends an import in progress, and undercut marks are forgotten when the auction house closes.
+
+### Unit frames, bars and HUD (0.9.9)
+
+- With the Calm HUD on, right-click anywhere on your frame or your target's opens its menu again.
+- Icon insets, one-pixel rules, combo point pips, the druid mana strip and your buffs' row count are placed again after every UI scale change.
+- Bar 1 shows in a vehicle, a possess or an override bar on every visibility choice but Hidden, a slot that gets an action by a page change in a fight takes clicks at once, and the action button icons keep a skinning library's placement.
+- A player's class colour and icon follow once the game delivers the class, and on Retail an empower stage mark keeps its width.
+- Fades: a fade that turns back starts from where it is, a fade playing when a fight starts ends within the combat length, a cast bar set below full opacity keeps it while it fades, and closing the options window twice plays one close.
+
+### Raid frames and nameplates (0.9.9)
+
+- Raid tiles settle once as members join, your heals stay on your own tile after the roster shifts, and a member's class colour follows when the game delivers it.
+- A names-only plate has no click area, as the game's own, and a plate's click area follows its name-only state when the fight ends.
+- Raid healing: Enter in the Buffs to watch box saves the list, a buff switch clicked while the box has the cursor edits the box's list, and a refresh leaves a half-typed list alone.
+
+### Bags, auctions and town (0.9.9)
+
+- The bank you leave in a hurry is still remembered, a bank that reports no slots keeps the remembered bank, a burst of bank events reads the bank once, and a character that picks a side after starting neutral takes its own record.
+- Auction house: a big scan ends smoothly and survives a reload, the Filters dialog closes with the house, the undercut choices show your client's coin letters, a typed price that rounds to 0 copper is no price, and on Retail Gear upgrades judges two item levels of one item apart.
+- Max, a clicked listing and the per unit toggle end the typing in the box they change, and an item typed by its ID takes its name when the game loads it, on lists, the Gaps card and the instance prep card.
+
+### Other languages (0.9.9)
+
+- Profile names keep the letters of every language, a typed decimal comma counts on a comma client, large numbers use the client's thousands mark, and class names in messages are the client's own.
+- The group board reads posts with Russian punctuation and Chinese posts without spaces, an item the game has not loaded yet is named in your language, and capitals headings write the German ß as SS.
+
+### Quests, chat and tools (0.9.9)
+
+- Quest reward cards link on Shift-click and try on with Ctrl-click, in the dialog and the quest log, and never pick a choice; Shift-click on a quest, a tracked achievement or a recipe links it while a chat box is open.
+- Switched off in a fight, auto-accept answers no summon afterwards, the talent planner spends nothing, and the quest log gives its key back to the game's.
+- A chat window's bar rules and edit box rails follow its Scale, closing the talents window leaves other tooltips alone, and an imported layout name prints as plain text.
+- `/vg filter`, `/vg craft`, `/vg prep` and `/vg ah prices` read their words in any case, `/vg loot remove` reads its text as add does, and the Add a reserve box closes once a reserve is kept.
+- A frame or module that comes up inside a situation takes its override at once, the open options window shows a change made by a typed command, and the addons button says so when a fight stops unlock.
+
 ## 0.9.8
 
 <!-- SMOKE steps 33.837 to 33.922 -->
