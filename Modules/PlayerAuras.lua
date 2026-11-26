@@ -279,9 +279,10 @@ end
 
 -- Fits the block to the canvas now (a screen or UI scale change, T.OnScale, out of combat): the number of buffs to a
 -- row is worked out again, and when it changed the container's row width, the holder and the hover pad (as high as
--- the rows now need, as wide as the row and the enchant cells' room) follow. Nothing to do before the block is built.
+-- the rows now need, as wide as the row and the enchant cells' room) follow. Nothing to do before the block is built
+-- (the holder exists a moment before its hover pad does).
 function PA.Refit()
-  if not PA.holder then return end
+  if not (PA.holder and PA.holder.vgHoverArea) then return end
   local look = PA.look
   local line = PA.PerRow(look) * (look.size + PA.GAP)
   if line == PA.lineSize then return end

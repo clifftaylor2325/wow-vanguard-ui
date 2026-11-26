@@ -7651,6 +7651,84 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: Chat filter on., then Chat filter has no words now., then the buff report, and no usage line.
 - If it fails, paste: the three chat lines
 
+### 33.938 The icon inset is placed again after every scale change (H49-31; WoW Forever and Retail)
+
+- Do: set action bar 1's Scale to 1.25 in /vg unlock, lock, then change the UI scale slider, and zoom a screenshot on a button's edge. [Client: Forever and Retail.]
+- Expect: the icon sits exactly one pixel inside the button's border at both scales, no soft rim.
+- If it fails, paste: the zoomed screenshot and /vg errors
+
+### 33.939 An inset taken while modules build is placed again once the pixel-perfect scale applies at login (H49-R1; WoW Forever and Retail)
+
+- Do: turn on Pixel-perfect scale under General, /reload, and zoom a screenshot on an action button's edge. [Client: Forever and Retail.]
+- Expect: the icon sits exactly one pixel inside the border, no soft rim.
+- If it fails, paste: the zoomed screenshot and /vg errors
+
+### 33.940 An empower stage mark's width is set where it is placed (H49-34; WoW Retail)
+
+- Do: on Retail as an Evoker, change the UI scale slider, then cast an empowered spell (Fire Breath). [Client: Retail.]
+- Expect: the stage marks on the cast bar are two pixels wide, as thick as the bar's border.
+- If it fails, paste: a zoomed screenshot and /vg errors
+
+### 33.941 The bar rules and edit box rails follow a chat window's Scale (H49-35; WoW Forever and Retail)
+
+- Do: set the Chat window's Scale to 1.5 in /vg unlock, lock, and zoom a screenshot on the line under the tab bar and the bar down the edit box's left edge. [Client: Forever and Retail.]
+- Expect: the line is one pixel thick and the rail two pixels wide, crisp.
+- If it fails, paste: the zoomed screenshot and /vg errors
+
+### 33.942 The Filters dialog closes with the auction house (H49-36; WoW Forever and Retail)
+
+- Do: open the auction house, open a shopping list, right-click an item and pick Filters..., then close the auction house with Escape. [Client: Forever and Retail.]
+- Expect: the Filters dialog closes with it.
+- If it fails, paste: a screenshot if it stays and /vg errors
+
+### 33.943 Your buffs' row count follows a screen or UI scale change (H49-61; WoW Forever and Retail)
+
+- Do: set the UI scale slider so the screen is narrow (under about 1254 units wide), /reload, then raise the UI scale slider back up without reloading. [Client: Forever and Retail.]
+- Expect: your buffs wrap at 12 to a row again, with no reload.
+- If it fails, paste: a screenshot or the row count and /vg errors
+
+### 33.944 A list entry typed as an item ID takes its name when the game loads the item (H50-31; WoW Forever and Retail)
+
+- Do: on the Lists tab of the auction house, add an item you have never seen by its ID (+ Add), then right-click its row and open Filters. [Client: Forever and Retail.]
+- Expect: within a second or two the row shows the item's name and icon and the Filters title names it, without a search.
+- If it fails, paste: /vg errors and the item ID
+
+### 33.945 The Gaps card names a chosen item when the game loads it (H50-32; WoW Forever and Retail)
+
+- Do: with the Gaps row on, add an item you have never seen to the Cooldowns page's Gaps card by pasting its link or ID, and leave the page open. [Client: Forever and Retail.]
+- Expect: the entry's 'Item 12345' becomes its name within a second or two, without reopening the page.
+- If it fails, paste: /vg errors and the item ID
+
+### 33.946 A member's class colour follows when the game delivers it (H50-61; WoW Forever and Retail)
+
+- Do: join a group with someone you have not met this session and open the roster (/vg loot roster). [Client: Forever and Retail.]
+- Expect: every name is in its class colour within a second or two without pressing anything.
+- If it fails, paste: the roster's lines and /vg errors
+
+### 33.947 A frame or module that comes up inside a situation takes its override at once (H50-62; WoW Forever and Retail)
+
+- Do: record Raid with the meter moved (/vg meter on, drag it, /vg situation record raid, then /vg situation stop), then /vg meter off and /reload. Join a raid group (or force the situation) and type /vg meter on. [Client: Forever and Retail.]
+- Expect: the meter is at the Raid spot at once, and back at its own spot when you leave the raid group.
+- If it fails, paste: /vg situation and /vg errors
+
+### 33.948 A player's class colour and icon follow when the game delivers the class (H50-63; WoW Forever and Retail)
+
+- Do: target a player you have not met this session (a battleground or a city crowd), at full health. [Client: Forever and Retail.]
+- Expect: the target bar is in the player's class colour within a second, not the reaction colour until it takes damage; with the class icon portrait on, the class icon appears too, and a nameplate's bar takes the class colour.
+- If it fails, paste: /vg errors and what the bar shows
+
+### 33.949 An item the game has not loaded takes its name on the open card when it arrives (H50-R1; WoW Forever and Retail)
+
+- Do: put an item you carry none of on Keep stocked (/vg stock <id> 2, an item you have not seen this session) and type /vg prep, leave the card open. [Client: Forever and Retail.]
+- Expect: the row reads 'item <id>' at first and takes the item's name within a second or two.
+- If it fails, paste: the card's rows and /vg errors
+
+### 33.950 With the button-skinning addon loaded, the action button icons keep the skin's placement (H49-G1; WoW Forever and Retail)
+
+- Do: With the button-skinning addon installed and on, pick a skin for Vanguard's Action bars group, /reload, then change the UI scale slider and drag the Scale of bar 1 in /vg unlock. [Client: Forever and Retail.]
+- Expect: The button icons stay where the skin puts them at every scale, the same as before the change.
+- If it fails, paste: a screenshot of bar 1 and /vg errors
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
