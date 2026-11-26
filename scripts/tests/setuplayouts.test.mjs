@@ -580,6 +580,23 @@ it("setup screen: which preset fits which screen, and the UI scale setting", () 
   addon.eval("C_CVar = nil SetCVar = nil ns.SetUIScale(1)");
   expect(addon.eval("return GetCVar('uiScale')"), "a client without the setting is left alone").toBe("0.9");
 });
+it("setup screen: a UI scale the game refuses out of combat leaves Pixel-perfect on", () => {
+  const addon = loggedIn();
+  // The client answers SetCVar with a success flag (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_APIDocumentationGenerated/CVarDocumentation.lua, SetCVar Returns).
+  addon.eval("__setCVar = SetCVar SetCVar = function(name, value) if name == 'uiScale' then return false end return __setCVar(name, value) end");
+  addon.eval("ns.Theme.Settings().pixelScale = true");
+  // What setting the game's UI scale answers, and whether Pixel-perfect is still on.
+  const result = () => addon.eval("return { ns.SetGameUIScale(0.8), ns.Theme.Settings().pixelScale }");
+  expect(result(), "refused: it says so").toEqual([false, true]);
+  addon.eval("ns.SetUIScale(0.8)");
+  expect(addon.eval("return ns.Theme.Settings().pixelScale"), "and Pixel-perfect stays on").toBe(true);
+  addon.eval("SetCVar = __setCVar ns.SetUIScale(0.8)");
+  expect(addon.eval("return ns.Theme.Settings().pixelScale"), "taken: Pixel-perfect goes off as before").toBe(false);
+  addon.eval("SetCVar = function() return false end");
+  setCombat(addon, true);
+  expect(addon.eval("return ns.SetGameUIScale(0.8)"), "in combat it queues and still says it can").toBe(true);
+  setCombat(addon, false);
+});
 it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its groups as rows at the left; a saved spot wins", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
   const RF = "ns.GetModule('RaidFrames')";
