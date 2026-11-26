@@ -230,9 +230,11 @@ it("H55-32 cooldown glow: a share outside 10 to 60 from an edited profile is kep
   expect(lit(big), "500 acts as 60: 75 percent left is dark").toBe(false);
   big.advance(5);
   expect(lit(big), "and 50 percent left is lit").toBe(true);
-  const small = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved(-20));
+  const small = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved(5));
   buff(small, 5);
-  expect(lit(small), "-20 acts as 10: 25 percent left is dark").toBe(false);
+  expect(lit(small), "5 acts as 10: 25 percent left is dark").toBe(false);
+  small.advance(3.4);
+  expect(lit(small), "and 8 percent left (1.6 of 20 seconds) is lit, which a raw 5 would leave dark").toBe(true);
   const text = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved('"x"'));
   buff(text, 5);
   expect(lit(text), "a word acts as the default 30: 25 percent left is lit").toBe(true);
