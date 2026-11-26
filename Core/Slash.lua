@@ -195,7 +195,7 @@ end
 
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
-  local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
+  local o, word, size = ns.MoverOptions(), rest:lower(), ns.TypedNumber(rest)
   if size and size >= ns.GRID_SIZE.min and size <= ns.GRID_SIZE.max then
     o.grid, o.gridSize = true, math.floor(size)
   elseif word == "on" or word == "off" or word == "" then
@@ -257,7 +257,7 @@ local nineSliceCommand = switchCommand({
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
   if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown Manager glow is off: turn the module on in the options first."]) end
-  local percent = tonumber(rest)
+  local percent = ns.TypedNumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
   if on == nil then return chat(ns.Literal(L["Usage: /vg cdmglow [on|off|<percent>]"])) end

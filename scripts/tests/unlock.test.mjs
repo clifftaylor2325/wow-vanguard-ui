@@ -474,3 +474,20 @@ it("H46-21-1 Exit without saving after a profile reset made while unlocked leave
   addon.eval("ns.Unlock() ns.ResetProfile() ns.ExitWithoutSaving()");
   expect(addon.eval("return ((VanguardDB.profiles.Default.positions or {}).box) == nil"), "the reset profile has no spot").toBe(true);
 });
+
+it("H58-2 typed numbers read a decimal comma only where the client's decimal mark is a comma", () => {
+  const addon = loggedIn(UI_ENV);
+  // What ns.TypedNumber makes of a typed text.
+  const typed = (text) => addon.eval(`return ns.TypedNumber(${JSON.stringify(text)})`);
+  expect([typed("1,200"), typed("87,5"), typed(" 5 "), typed(12), typed("x")], "an English client: a comma is no decimal mark").toEqual([null, null, 5, 12, null]);
+  addon.eval('DECIMAL_SEPERATOR = ","');
+  expect([typed("87,5"), typed("-12,5"), typed(",5"), typed("1,2,3"), typed("87.5"), addon.eval("return ns.TypedNumber(nil)")], "a comma client reads one decimal comma").toEqual([87.5, -12.5, 0.5, null, 87.5, null]);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "minimap" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")');
+  typeInto(addon, "scale", "87,5");
+  expect(addon.eval("return ns.MoverFrame('minimap'):GetScale()"), "the scale box takes 87,5").toBe(0.88);
+  typeInto(addon, "x", "-12,5");
+  expect(addon.eval("return Vanguard_MoverPopover.x:GetText()"), "the X box takes -12,5 (shown rounded)").toBe("-12");
+  addon.slash("grid 32,0");
+  expect(addon.eval("return ns.MoverOptions().gridSize"), "/vg grid takes a comma number").toBe(32);
+});

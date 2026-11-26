@@ -104,6 +104,19 @@ function ns.TextPrefix(s, n)
   return s
 end
 
+-- A number typed by the player: tonumber of the trimmed text. On a client whose decimal mark is a comma
+-- (DECIMAL_SEPERATOR, spelled so by Blizzard) one decimal comma ("87,5", "-12,5") reads as a point; on any other
+-- client "1,200" stays no number. A number passes as it is; anything else is nil.
+---@param text any
+---@return number|nil
+function ns.TypedNumber(text)
+  if type(text) == "number" then return text end
+  if type(text) ~= "string" then return nil end
+  text = text:match("^%s*(.-)%s*$")
+  if _G.DECIMAL_SEPERATOR == "," then text = text:gsub("^(%-?%d*),(%d+)$", "%1.%2") end
+  return tonumber(text)
+end
+
 -- The capitals ns.Lower folds beyond A-Z, as byte ranges: a lead byte, the second byte's range, the small letter's
 -- lead byte and the step to its second byte, and a second byte to leave alone (× in Latin-1). The reverse of
 -- the theme's T.UPPER_RANGES.
