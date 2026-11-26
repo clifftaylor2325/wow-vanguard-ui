@@ -3083,6 +3083,7 @@ L["{screen} ({width} x {height})  ·  your screen"] = "{screen} ({width} x {heig
 L["{seconds} s"] = "{seconds}초"
 L["{seconds}s"] = "{seconds}초"
 L["{setting}: {value}"] = "{setting}: {value}"
+L["{silver}s"] = "{silver}실"
 L["{silver}s {copper}c"] = "{silver}실 {copper}코"
 L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."] = "{site}이(가) {count}회 실패해 UI 재시작 전까지 일시 중지됨. 의견 보내기 페이지에서 다시 시작할 수 있습니다."
 L["{situation} (now)"] = "{situation} (현재)"

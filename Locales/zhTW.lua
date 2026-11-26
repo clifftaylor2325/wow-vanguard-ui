@@ -3083,6 +3083,7 @@ L["{screen} ({width} x {height})  ·  your screen"] = "{screen}（{width} x {hei
 L["{seconds} s"] = "{seconds}秒"
 L["{seconds}s"] = "{seconds}秒"
 L["{setting}: {value}"] = "{setting}：{value}"
+L["{silver}s"] = "{silver}銀"
 L["{silver}s {copper}c"] = "{silver}銀 {copper}銅"
 L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."] = "{site}失敗{count}次，已暫停直到你重新載入，或在“意見回饋”頁面恢復它。"
 L["{situation} (now)"] = "{situation}（目前）"

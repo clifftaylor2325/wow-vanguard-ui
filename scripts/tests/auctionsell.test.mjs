@@ -1058,3 +1058,13 @@ it("H51-G3 Max ends the typing in whichever form box has it, the Stacks box incl
   addon.click(`${CARD}.qtyMax`);
   expect([form(addon)[2], addon.eval(`return ${CARD}.stacks:HasFocus()`)], "Max on Quantity: the Stacks box reads the sale, the typing ended").toEqual(["3", false]);
 });
+
+it("H58-32 the undercut choices show the client's coin letters, as the prices beside them", () => {
+  // The two coin choices' labels on a client of this locale.
+  const labels = (locale) => {
+    const addon = createAddon({ client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.login();
+    return addon.eval(`local c = ${HELPER}.UNDERCUT_CHOICES return { c[1][2], c[2][2] }`);
+  };
+  expect([labels("enUS"), labels("ruRU"), labels("frFR")], "English keeps 1c and 1s; Russian and French use their own").toEqual([["1c", "1s"], ["1м", "1с"], ["1pc", "1pa"]]);
+});
