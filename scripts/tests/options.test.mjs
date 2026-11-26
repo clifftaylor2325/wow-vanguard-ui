@@ -2912,3 +2912,36 @@ it("H48-6-3 Reset all positions and Reset theme ask first (a danger question); N
   addon.eval('__click("Reset all positions") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return VanguardDB.profiles.Default.positions.infostrip == nil"), "Yes forgets the saved spots").toBe(true);
 });
+
+// TEST-ONLY: what a built row of the options window shows now: its getter's value, and the switch's fill or the slider's text.
+const rowShows = (addon, label) => addon.eval(`local w = __find(${JSON.stringify(label)})
+  if not w then for _, f in ipairs(__wfgStub.frames) do if f.track and f.label and f.label.__text == ${JSON.stringify(label)} then w = f end end end
+  if not w then return "nofind" end
+  return { w.get and w.get(), w.fill and w.fill:IsShown() or false, w.value and w.value.__text or false }`);
+
+it("H55-1 a /vg command that sets what a row shows is read back by the open window (snap, grid, filter)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('ns.Options.Show("general")');
+  expect(rowShows(addon, "Snap to other frames")[1], "snap starts on").toBe(true);
+  addon.slash("snap off");
+  expect(rowShows(addon, "Snap to other frames").slice(0, 2), "the switch follows /vg snap off").toEqual([false, false]);
+  addon.slash("grid 64");
+  expect(rowShows(addon, "Grid spacing")[2], "the slider text follows /vg grid").toBe("64");
+  addon.eval('ns.Options.Show("chat")');
+  addon.slash("filter on");
+  expect(rowShows(addon, "Filter chat").slice(0, 2), "H55-31: and Filter chat follows /vg filter on").toEqual([true, true]);
+});
+
+it("H55-1 a /vg command with the options window built but closed re-reads no row", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  addon.eval('ns.Options.Show("general") ns.Options.Hide()');
+  // Counts the Refresh calls of every built row from here on.
+  addon.eval("__refreshes = 0 for _, w in ipairs(__wfgStub.frames) do local r = w.Refresh if r then w.Refresh = function(...) __refreshes = __refreshes + 1 return r(...) end end end");
+  addon.slash("snap off");
+  expect([addon.eval("return Vanguard_Options:IsShown()"), addon.eval("return __refreshes")], "closed stays closed and no row was read").toEqual([false, 0]);
+  addon.eval("ns.Options.Show()");
+  addon.slash("snap on");
+  expect(addon.eval("return __refreshes > 0"), "the same count sees the refresh once it is shown").toBe(true);
+});

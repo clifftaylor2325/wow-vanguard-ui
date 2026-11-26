@@ -655,3 +655,39 @@ it("a hidden figure beside a plain share is joined by the client's own string ca
   const bare = addon.eval("C_StringUtil = nil return ns.GetModule('Meter').WithShare(__wfgWorld.secret(900), 100, 400) ~= nil");
   expect([bare, addon.eval("return #ns.errors")], "a client without the call: the figure alone, no error").toEqual([true, 0]);
 });
+
+// The words the "Meter shows" row of the options window shows now (its dropdown's text).
+const kindRow = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.dropdown and w.caption == "Meter shows" then return w.dropdown.text:GetText() end end return "nofind"`);
+
+it("H55-61 a click on the meter's title shows in the open options window's Meter shows row, left and right", () => {
+  const addon = loggedIn(METER_ENV + CLICK_LUA, METER_ON);
+  addon.slash("");
+  addon.eval('ns.Options.Show("tools")');
+  expect(kindRow(addon), "starts on damage per second").toBe("Damage per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "LeftButton")');
+  expect(kindRow(addon), "the title click stepped the kind and the row follows").toBe("Healing per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "RightButton")');
+  expect(addon.eval("return ns.GetModule('Meter').settings.session"), "a right click steps the segment").toBe("Overall");
+});
+
+it("H55-R2 a Meter rows value outside 3 to 10 sizes the panel as the slider's end, and a non-number as the default", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // The panel height after the setting is set to a Lua value.
+  const height = (rowsValue) => addon.eval(`local MT = ns.GetModule("Meter") MT.settings.rows = ${rowsValue} MT.Paint() return Vanguard_Meter:GetHeight()`);
+  const [head, row, gap] = addon.eval('local MT = ns.GetModule("Meter") return { MT.HEAD, MT.ROW, MT.GAP }');
+  // The panel height for n rows.
+  const tall = (n) => head + n * (row + gap) + gap;
+  expect([height(5), height(40), height(0), height(-3), height('"x"')], "kept within 3 to 10; 'x' is the default 8").toEqual([tall(5), tall(10), tall(3), tall(3), tall(8)]);
+});
+
+it("H55-G2 a Meter rows value outside 3 to 10 draws as many lines as the panel is sized for", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  setLines(addon, "(function() local t = {} for i = 1, 12 do t[i] = { name = 'P' .. i, classFilename = 'WARRIOR', amountPerSecond = 100 - i } end return t end)()");
+  // How many line rows show after the setting is set to a Lua value.
+  const shown = (rowsValue) => {
+    addon.eval(`ns.GetModule("Meter").settings.rows = ${rowsValue} ns.GetModule("Meter").Paint()`);
+    return rows(addon).filter((r) => r[0]).length;
+  };
+  expect([shown(0), shown(-3), shown(40), shown(5), shown('"x"')], "3, 3, 10, 5 and the default 8 lines").toEqual([3, 3, 10, 5, 8]);
+});

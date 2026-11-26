@@ -187,6 +187,16 @@ it("H51-62 Enter in the Buffs to watch box saves the list, as Save does", () => 
   expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "the typed list is kept").toBe("TEST-ONLY Aura");
 });
 
+it("H55-R1 a refresh of the options window leaves a half-typed buff list in the box that has the typing", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  addon.eval('ns.Options.Show("healing")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then __editor = w end end
+    __editor.input:SetFocus() __editor.input:SetText("Half-ty") ns.Options.Refresh()`);
+  expect(addon.eval("return __editor.input:GetText()"), "the typing stays while the box has focus").toBe("Half-ty");
+  addon.eval("__editor.input:ClearFocus() ns.Options.Refresh()");
+  expect(addon.eval("return __editor.input:GetText()"), "and the saved list comes back once it has not").not.toBe("Half-ty");
+});
+
 it("every healing buff has a static icon, so none shows a question mark", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
   expect(addon.eval(`local RH = ns.GetModule("RaidHealing") for _, c in ipairs(RH.ALL_BUFFS) do for _, b in ipairs(c[2]) do

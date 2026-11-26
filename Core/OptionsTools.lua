@@ -92,7 +92,7 @@ local function meterRows()
     check(L["Vanguard's own meter"], liveSetting("Meter", "on", paint)),
     meterCycle(L["Meter shows"], "kind", MT.KIND_ORDER, MT.KINDS, paint),
     meterCycle(L["Meter segment"], "session", MT.SESSION_ORDER, MT.SESSIONS, paint),
-    { "slider", L["Lines in the meter"], { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
+    { "slider", L["Lines in the meter"], { min = MT.MINROWS, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
     meterVisibility, meterWhen,
   }
 end
