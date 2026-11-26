@@ -7783,15 +7783,15 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: chat says Vanguard's meter starts when the fight ends, and the meter panel appears when the fight is over with no reload; the same for /vg weights wizard with Gear upgrades.
 - If it fails, paste: the chat line and /vg errors
 
-### 33.960 The open window re-reads its rows after a /vg command (H55-1; WoW Forever and Retail)
+### 33.960 The open options window re-reads its rows after a typed command (H55-1; WoW Forever and Retail)
 
-- Do: open /vg on General and leave it there. Click the chat box, type /vg snap off and press Enter. [Client: Forever and Retail.]
+- Do: open the options window (/vg) on General and leave it there. Click the chat box, type /vg snap off and press Enter. [Client: Forever and Retail.]
 - Expect: the Snap to other frames switch on the open page turns off at once, without changing page.
 - If it fails, paste: /vg errors and whether the switch still shows on
 
 ### 33.961 A refresh from outside leaves a half-typed buff list alone (H55-1, H55-R1; WoW Forever and Retail)
 
-- Do: turn the Vanguard meter on (Combat tools), start /vg preview 10, then open /vg on Healing. Click into the Buffs to watch box and type a few letters without pressing Enter. With the cursor still in the box, click the meter's title (this refreshes the window without touching the box). [Client: Forever and Retail.]
+- Do: turn the Vanguard meter on (Combat tools), start /vg preview 10, then open the options window on Healing. Click into the Buffs to watch box and type a few letters without pressing Enter. With the cursor still in the box, click the meter's title (this refreshes the window without touching the box). [Client: Forever and Retail.]
 - Expect: the letters you typed are still in the box. Press Esc to leave the box: the saved list is back the next time the window refreshes (click the meter's title again).
 - If it fails, paste: the box text before and after, and /vg errors
 
