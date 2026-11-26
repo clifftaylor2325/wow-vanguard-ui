@@ -451,7 +451,7 @@ end
 local function findProfile(name)
   if VanguardDB.profiles[name] then return name end
   for _, existing in ipairs(ns.ProfileNames()) do
-    if existing:lower() == name:lower() then return existing end
+    if ns.Lower(existing) == ns.Lower(name) then return existing end
   end
 end
 

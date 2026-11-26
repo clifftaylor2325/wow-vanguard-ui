@@ -1602,3 +1602,22 @@ it("H46-40-904 a partial import's reload offer stays after a profile is staged a
   const [staged, offer] = staging(steps);
   expect([staged, /^Imported .*settings into profile Default\. Reload the UI now to apply it\?$/.test(offer)], "the partial import still needs its reload").toEqual([false, true]);
 });
+it("H58-1 profile names hold the letters of every language, never | or control bytes", () => {
+  const addon = loggedIn();
+  // Whether ns.ValidProfileName takes the name.
+  const valid = (name) => addon.eval(`return ns.ValidProfileName(${JSON.stringify(name)})`);
+  expect([valid("Größe"), valid("Рейд"), valid("Я".repeat(32)), valid("Я".repeat(33)), valid("a|cffff0000b"), addon.eval(`return ns.ValidProfileName("a\\1b")`)], "letters of any language, counted as characters; | and control bytes refused").toEqual([true, true, true, false, false, false]);
+  const refused = ["a\\194\\160", "a\\194\\133b", "a\\226\\128\\174b", "a\\tb", "\\128\\128\\128", "a\\239\\187\\191", "a\\226\\128", "Default\\194\\160"];
+  expect(refused.map((lua) => addon.eval(`return ns.ValidProfileName("${lua}")`)), "no-break space, NEL, RLO, a tab, a lone continuation byte, a BOM, a cut character").toEqual(refused.map(() => false));
+  expect(addon.eval("return ns.ValidProfileName(string.rep('\\240\\159\\152\\128', 33))"), "past 128 bytes").toBe(false);
+  // The rolling backup name for a profile in use.
+  const backupOf = (name) => addon.eval(`VanguardDB.profiles[${JSON.stringify(name)}] = {} VanguardCharDB.profile = ${JSON.stringify(name)} return ns.BackupProfile()`);
+  expect(backupOf("Я".repeat(32)), "a backup name is cut between letters, not inside one").toBe(`${"Я".repeat(25)} backup`);
+  expect(addon.eval(`local text = ns.Serialize.Encode("profile", { name = "Рейд" }) local kind, data = ns.Serialize.Decode(text) return data and data.name`), "the name survives export and import").toBe("Рейд");
+});
+it("H58-1 a Cyrillic profile is found by /vg profile in either case", () => {
+  const addon = loggedIn();
+  addon.eval("ns.NewProfile('Рейд')");
+  addon.slash("profile рейд");
+  expect(addon.eval("return VanguardCharDB.profile ~= nil and ns.SelectedProfileName()"), "the typed lower-case name finds the profile").toBe("Рейд");
+});

@@ -11,10 +11,30 @@ local L = ns.L
 
 local S = ns.Serialize
 
--- Whether a profile name is usable: 1-32 letters, digits, spaces, - or _, not starting or ending with a
--- space (so "   " or "Default " never makes a row that reads blank or as another profile).
+-- What a profile name may not hold: anything but ASCII letters, digits, spaces, - and _, and the bytes of
+-- other languages' letters (UTF-8, 128-255). "|" and control bytes stay out, so a name never draws an escape code.
+local NAME_REFUSED = "[^%w %-_\128-\255]"
+
+-- UTF-8 marks a name may not hold though they are bytes of 128 and up: C1 controls and the no-break space, zero-width and
+-- direction marks, and the byte order mark (a name ending in one would read as "Default ").
+local NAME_MARKS = { "\194[\128-\160]", "\226\128[\128-\143\168-\175]", "\226\129[\160-\175]", "\239\187\191" }
+
+-- Whether a name's bytes of 128 and up are all whole UTF-8 characters, none of them one of NAME_MARKS.
+local function cleanName(name)
+  for _, mark in ipairs(NAME_MARKS) do
+    if name:find(mark) then return false end
+  end
+  for _, whole in ipairs({ "[\240-\244][\128-\191][\128-\191][\128-\191]", "[\224-\239][\128-\191][\128-\191]", "[\194-\223][\128-\191]" }) do
+    name = name:gsub(whole, "")
+  end
+  return not name:find("[\128-\255]")
+end
+
+-- Whether a profile name is usable: 1-32 letters (of any language), digits, spaces, - or _, not starting or ending
+-- with a space (so "   " or "Default " never makes a row that reads blank or as another profile).
 function ns.ValidProfileName(name)
-  if type(name) ~= "string" or #name < 1 or #name > 32 or name:find("[^%w%s%-_]") then return false end
+  if type(name) ~= "string" or name == "" or #name > 128 or ns.TextLength(name) > 32 then return false end
+  if name:find(NAME_REFUSED) or not cleanName(name) then return false end
   return name:match("^%s*(.-)%s*$") == name
 end
 
@@ -137,8 +157,8 @@ end
 -- (short enough for freeName's " 2"), else "Character". The client may hide the name (a secret string,
 -- which string functions refuse), so only a plain one is read.
 local function nameBase(name)
-  local base = (ns.PlainText(name) or ""):gsub("[^%w%s%-_]", "")
-  return base ~= "" and base:sub(1, 29) or "Character"
+  local base = (ns.PlainText(name) or ""):gsub(NAME_REFUSED, "")
+  return base ~= "" and ns.TextPrefix(base, 29) or "Character"
 end
 
 -- The name ns.ForkProfile would give a profile for this character name.
@@ -200,7 +220,7 @@ end
 -- "<name> backup" (n 1) or "<name> backup <n>", the name cut to fit 32 characters.
 local function backupName(name, n)
   local suffix = n == 1 and " backup" or (" backup " .. n)
-  return name:sub(1, 32 - #suffix) .. suffix
+  return ns.TextPrefix(name, 32 - #suffix) .. suffix
 end
 
 -- True when a backup of the profile `name` may be written to the profile called candidate: nothing is
