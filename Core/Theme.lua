@@ -3935,22 +3935,33 @@ end
 
 -- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
 -- unless motion is off. Only for frames that aren't protected: animations
--- never move secure frames.
+-- never move secure frames. It goes on from where the frame is when it turns back from a fade-out.
 function T.FadeIn(frame, seconds)
   local f = activeFader(frame)
+  -- Goes on from the frame's alpha while one of its fades plays (as the game's own fades do), else from 0.
+  local from = f and (f.group:IsPlaying() and ns.PlainNumber(frame:GetAlpha()) or 0)
   frame:Show()
   if not f then return frame:SetAlpha(1) end
-  playFade(f, 0, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
+  f.out = false
+  playFade(f, from, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
 end
 
--- Fades a frame out (as long as T.FadeIn), then hides it (and runs done); at
+-- True while a fade-out of the frame plays.
+function T.FadingOut(frame)
+  local f = vgFader[frame]
+  return f and f.out and f.group:IsPlaying() or false
+end
+
+-- Fades a frame out (as long as T.FadeIn), from where it is, then hides it (and runs done); at
 -- once when motion is off.
 function T.FadeOut(frame, seconds, done)
   local f = activeFader(frame)
   -- Hides the frame, restores its alpha for next time, and tells the caller.
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
-  playFade(f, 1, 0, T.FadeTime(seconds), finish)
+  local from = f.group:IsPlaying() and ns.PlainNumber(frame:GetAlpha()) or 1
+  playFade(f, from, 0, T.FadeTime(seconds), finish)
+  f.out = true
 end
 
 -- How a window opens and closes (#257): seconds to open and to close, and how many screen
@@ -4091,7 +4102,7 @@ end
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
   local f = vgFader[frame]
-  if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
+  if f then f.group:SetScript("OnFinished", nil) f.group:Stop() f.out = false end
   unbuffer(frame)
   frame:SetAlpha(1)
 end

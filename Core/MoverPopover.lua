@@ -245,7 +245,7 @@ function ns.MoverPopover(m)
   popover:ClearAllPoints()
   popover:SetPoint(point, to, relPoint, x, 0)
   answer(true)
-  T.FadeIn(popover)
+  if not popover:IsShown() or T.FadingOut(popover) then T.FadeIn(popover) end
 end
 
 -- Closes the popover (and any open dropdown).

@@ -218,3 +218,19 @@ it("a game push button's label takes the theme's text tiers from T.Button; a pri
   setCombat(addon, false);
   expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
 });
+
+// A frame with a fake fader, shown; the fade tests below set its alpha by hand to stand in for the
+// client's animated alpha (Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua reads GetAlpha mid-fade the same way).
+const fadeFrame = () => loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_F", UIParent) __fakeFader(f) f:Show()');
+// The last fade started, as { from, to, duration }.
+const lastFade = (addon) => addon.eval("local g = __fades[#__fades] return { g.from, g.to, g.duration }");
+
+it("motion: a fade that turns back starts from where the frame is (H62-2)", () => {
+  const addon = fadeFrame();
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.6) TEST_F:SetAlpha(0.4) ns.Theme.FadeIn(TEST_F, 0.1)");
+  expect(lastFade(addon), "a fade-in during a fade-out goes on from the alpha it has").toEqual([0.4, 1, 0.1]);
+  addon.eval("TEST_F:SetAlpha(0.7) ns.Theme.FadeOut(TEST_F, 0.1)");
+  expect(lastFade(addon), "and a fade-out during a fade-in too").toEqual([0.7, 0, 0.1]);
+  addon.eval("__finishFades() TEST_F:Show() ns.Theme.FadeIn(TEST_F)");
+  expect(lastFade(addon)[0], "a frame that is not fading starts from 0").toBe(0);
+});
