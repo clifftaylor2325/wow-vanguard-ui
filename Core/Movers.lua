@@ -78,6 +78,8 @@ function ns.MoverLook(key)
 end
 
 -- The opacity a frame rests at when it is a mover's (1 for any other frame): where a fade in ends.
+---@param frame Frame
+---@return number
 function ns.MoverOpacity(frame)
   for key, m in pairs(movers) do
     if m.frame == frame then return select(2, ns.MoverLook(key)) end
