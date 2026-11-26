@@ -113,12 +113,17 @@ local function spaceIdeographs(text)
   return (text:gsub("\239\189[\155-\165]", " "):gsub("[\228-\233][\128-\191][\128-\191]", " %0 "))
 end
 
+-- A line without its colour and link codes (a link keeps its [name]). A line with no escape codes (most of them)
+-- skips the three strips.
+function GB.Plain(text)
+  if not text:find("|", 1, true) then return text end
+  return (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", ""))
+end
+
 -- A line as " word word ": lower-case (accented and Cyrillic letters too), colour and link codes and punctuation gone,
 -- so a short name only matches a whole word.
--- A line with no escape codes (most of them) skips the three code strips.
 function GB.Words(text)
-  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return ((" " .. spaceIdeographs(spaceMarks(ns.Lower(s))) .. " "):gsub("[^%w\128-\255]+", " "))
+  return ((" " .. spaceIdeographs(spaceMarks(ns.Lower(GB.Plain(text)))) .. " "):gsub("[^%w\128-\255]+", " "))
 end
 
 GB.LoadWords()
@@ -219,7 +224,7 @@ function GB.OnChat(event, text, sender)
   st.events[event] = (st.events[event] or 0) + 1
   if why then st[why] = st[why] + 1 return end
   local e = GB.Parse(text)
-  if not e then st.plain, st.lastPlain = st.plain + 1, ns.TextPrefix(text, 80) return end
+  if not e then st.plain, st.lastPlain = st.plain + 1, ns.TextPrefix(GB.Plain(text), 80) return end
   st.posts = st.posts + 1
   e.sender, e.time = sender, GetTime()
   GB.Add(e)

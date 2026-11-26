@@ -350,6 +350,13 @@ it("group board: the probe's last line keeps its first 80 characters whole, neve
   expect(chatHas(addon, new RegExp("Last line that was not a post: aé{79}$")), "79 whole é after the a, no stray byte").toBe(true);
 });
 
+it("H61-R2 group board: the probe's last line has its colour and link codes taken out before it is cut, so no link is cut in half", () => {
+  const addon = board();
+  post(addon, "selling cheap stuff right now, whisper me for details please ok |cff1eff00|Hitem:1::::::::|h[TEST-ONLY Key]|h|r", "Crafty-Ruleset");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /Last line that was not a post: selling cheap stuff right now, whisper me for details please ok \[TEST-ONLY Key\]$/), "the words and the link's name, no codes").toBe(true);
+});
+
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
 // button's inset, and the display (a window title's) and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
