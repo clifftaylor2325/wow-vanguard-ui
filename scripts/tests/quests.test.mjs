@@ -3119,3 +3119,17 @@ it("quest history: unticking Remember who finished each quest greys the open win
   addon.eval('__click("Remember who finished each quest")');
   expect(enabled(), "ticked again").toBe(true);
 });
+
+// H49-R2: the tracker's brass rules (the game's tracker headers' and Vanguard's own) are one screen pixel tall after a UI scale change.
+it("H49-R2 the quest tracker's rules stay one pixel tall after a UI scale change", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV, { savedVariables: "VanguardDB.profiles.Default = { QuestTracker = { own = false } }" });
+  addon.eval("UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  addon.advance(1);
+  const r = addon.eval(`local h = ObjectiveTrackerFrame.Header local rule = ns.GetModule("MenuStrip").rules[1]
+    return rule:GetHeight() - ns.Theme.Pixel(h)`);
+  expect(r).toBeCloseTo(0, 5);
+  const own = loggedIn(TRACK_ENV);
+  own.eval("UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  own.advance(1);
+  expect(own.eval("local f = Vanguard_QuestTrackerFrame return f.rule:GetHeight() - ns.Theme.Pixel(f)")).toBeCloseTo(0, 5);
+});

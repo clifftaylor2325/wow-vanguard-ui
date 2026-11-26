@@ -329,3 +329,22 @@ it("alternate bars follow the spec, and other specs and classes have none", () =
   expect(retail("DEMONHUNTER", 1).eval('return ns.GetModule("ClassBars").altFrame'), "a Havoc Demon Hunter builds none").toBe(null);
   expect(retail("WARRIOR", 1).eval('return ns.GetModule("ClassBars").altFrame'), "nor a Warrior").toBe(null);
 });
+
+// H49-R2: the pips' and the stagger bar's fills sit one screen pixel inside their holders after a UI scale change.
+const insetAfterScale = (addon, holder) => {
+  addon.eval("UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  addon.advance(1);
+  return addon.eval(`local h = ${holder} return { x = h.bar.__points.TOPLEFT.x, px = ns.Theme.Pixel(h) }`);
+};
+
+it("H49-R2 a resource pip's bar stays one pixel inside its pip after a UI scale change", () => {
+  const addon = retail("PALADIN", 1, "__p.powers[9], __p.maxpowers[9] = 3, 5");
+  const r = insetAfterScale(addon, 'ns.GetModule("ClassBars").resourceFrames.holyPower.pips[1]');
+  expect(r.x).toBeCloseTo(r.px, 5);
+});
+
+it("H49-R2 the stagger bar stays one pixel inside its holder after a UI scale change", () => {
+  const addon = retail("MONK", 1, "__p.maxhp = 1000 __p.stagger = 0");
+  const r = insetAfterScale(addon, 'ns.GetModule("ClassBars").resourceFrames.stagger');
+  expect(r.x).toBeCloseTo(r.px, 5);
+});

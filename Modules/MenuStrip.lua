@@ -336,7 +336,7 @@ end
 -- Paints the line between the rows: the accent, one screen pixel thick.
 function MS.PaintDivider()
   T.Tint(MS.divider, "accent")
-  MS.divider:SetHeight(T.Pixel(MS.strip))
+  T.PixelHeight(MS.divider, MS.strip)
 end
 
 -- The thin accent line between the bags row and the menu row, under the
@@ -874,7 +874,7 @@ local function addRule(header)
   rule:SetTexture(T.WHITE)
   rule:SetPoint("BOTTOMLEFT", header, "BOTTOMLEFT")
   rule:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT")
-  rule:SetHeight(T.Pixel(header))
+  T.PixelHeight(rule, header)
   MS.rules[#MS.rules + 1] = rule
   T.Tint(rule, "accent")
 end

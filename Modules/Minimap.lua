@@ -548,7 +548,7 @@ local function rule(overlay, bandTexture, side)
   local t = T.Snap(overlay:CreateTexture(nil, "BORDER"))
   t:SetPoint(side .. "LEFT", bandTexture, side .. "LEFT")
   t:SetPoint(side .. "RIGHT", bandTexture, side .. "RIGHT")
-  t:SetHeight(T.Pixel(overlay))
+  T.PixelHeight(t, overlay)
   if MM.mask then t:AddMaskTexture(MM.mask) end
   return t
 end

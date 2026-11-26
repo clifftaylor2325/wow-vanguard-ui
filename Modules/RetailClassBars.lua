@@ -74,9 +74,8 @@ local function pip(row, i, token)
   local p = T.HudPanel(CreateFrame("Frame", nil, row), { inset = true })
   p:SetSize(CB.PIP.size, math.floor(CB.PIP.size / 2))
   p:SetPoint("LEFT", row, "LEFT", (i - 1) * (CB.PIP.size + CB.PIP.gap), 0)
-  local px = T.Pixel(p)
   p.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, p)), token)
-  p.bar:SetPoint("TOPLEFT", px, -px); p.bar:SetPoint("BOTTOMRIGHT", -px, px)
+  T.PixelInset(p.bar, p)
   p.bar:SetMinMaxValues(i - 1, i)
   return p
 end
@@ -199,9 +198,8 @@ local function thinBar(player, token)
   holder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -CB.PIP.barOffset)
   holder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -CB.PIP.barOffset)
   holder:SetHeight(CB.PIP.staggerHeight)
-  local px = T.Pixel(holder)
   holder.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, holder)), token)
-  holder.bar:SetPoint("TOPLEFT", px, -px); holder.bar:SetPoint("BOTTOMRIGHT", -px, px)
+  T.PixelInset(holder.bar, holder)
   UF.RaiseDeckReach("ClassBars", "bottom", CB.PIP.barOffset + CB.PIP.staggerHeight)
   return holder
 end

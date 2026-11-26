@@ -1402,3 +1402,14 @@ it("the info strip's clock is a reload switch: the game's clock stays put away a
   expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "the reload button lights").toBe(true);
   expect(addon.eval("local keys = ns.GetModule('Situations').LIVE.InfoStrip.keys for _, k in ipairs(keys) do if k == 'clock' then return true end end return false"), "a Situations override can't hold it").toBe(false);
 });
+
+// H49-R2: the menu strip's divider and the minimap's band rules are one screen pixel tall after a UI scale change.
+it("H49-R2 the menu strip divider and the minimap rules stay one pixel tall after a UI scale change", () => {
+  const addon = strips();
+  addon.eval("UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  addon.advance(1);
+  const r = addon.eval(`local MM = ns.GetModule("Minimap") local T = ns.Theme
+    return { ns.GetModule("MenuStrip").divider:GetHeight() - T.Pixel(Vanguard_MenuStrip), MM.rules[1]:GetHeight() - T.Pixel(MM.overlay) }`);
+  expect(r[0]).toBeCloseTo(0, 5);
+  expect(r[1]).toBeCloseTo(0, 5);
+});
