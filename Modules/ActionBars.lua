@@ -93,7 +93,10 @@ AB.PAGE_DRIVER = AB.BuildPageDriver()
 
 -- Runs in the secure environment when the page changes: re-points each button, and closes a flyout's list
 -- (the bar holds a frame reference to it from the flyout's wrap), as the game's does on ACTIONBAR_PAGE_CHANGED
--- (SpellFlyoutMixin:OnEvent in Blizzard_ActionBar/Shared/SpellFlyout.lua).
+-- (SpellFlyoutMixin:OnEvent in Blizzard_ActionBar/Shared/SpellFlyout.lua). A slot that now holds an action
+-- takes the mouse here, since only secure code may do that in a fight (EnableMouse is a handle method in
+-- Blizzard_RestrictedAddOnEnvironment/RestrictedFrames.lua and HasAction is in its environment, both clients).
+-- It never takes the mouse off: AB.UpdateEmpty does that after the fight, so a drag's grid keeps its slots.
 AB.ON_PAGE = [[
   local flyout = self:GetFrameRef("flyout")
   if flyout and flyout:IsShown() then flyout:Hide() end
@@ -101,7 +104,9 @@ AB.ON_PAGE = [[
   for _, button in ipairs(newtable(self:GetChildren())) do
     local index = button:GetAttribute("index")
     if index then
-      button:SetAttribute("action", (newstate - 1) * 12 + index)
+      local action = (newstate - 1) * 12 + index
+      button:SetAttribute("action", action)
+      if HasAction(action) then button:EnableMouse(true) end
     end
   end
 ]]
