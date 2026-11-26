@@ -130,9 +130,8 @@ local function buildMana(player, height)
   CB.manaHolder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -CB.ROW_OFFSET)
   CB.manaHolder:SetHeight(height)
   UF.RaiseDeckReach("ClassBars", "bottom", CB.ROW_OFFSET + height)
-  local px = T.Pixel(CB.manaHolder)
   CB.mana = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, CB.manaHolder)), "mana")
-  CB.mana:SetPoint("TOPLEFT", px, -px); CB.mana:SetPoint("BOTTOMRIGHT", -px, px)
+  T.PixelInset(CB.mana, CB.manaHolder)
   CB.UpdateMana()
 end
 

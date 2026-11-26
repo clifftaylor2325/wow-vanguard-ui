@@ -512,6 +512,7 @@
       "separate party frames hide in a raid with the raid frames module off too",
       "separate party frames hide in a raid: one visibility driver, no unit watch",
       "target of target: health and power on every look, its name only when it's someone else",
+      "the druid mana strip stays one pixel inside its holder after a UI scale change",
       "the pet frame's tooltip adds your hunter pet's mood",
       "the pet's health text stays clear of its mood glyph after the frames are laid out again",
       "threat and happiness only where the client and settings allow",
