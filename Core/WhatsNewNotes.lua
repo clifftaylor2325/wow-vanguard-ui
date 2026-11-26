@@ -10,6 +10,18 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.9", groups = {
+    { module = "Other", label = "Questions first", items = {
+      { text = "Reset all positions, Reset theme, Delete and Copy here ask first; a double click does nothing." },
+      { text = "Import stat weights asks before it replaces weights you set by hand." },
+    } },
+    { module = "UnitFrames", label = "Frames", items = {
+      { text = "Under the Calm HUD, right-click anywhere on your frame or your target's opens its menu again." },
+    } },
+    { module = "Other", label = "Everything else", items = {
+      { text = "Fixes for UI scale changes, raid tiles, the bank, auction scans, other-language clients, quest links and fades." },
+    } },
+  } },
   { version = "0.9.8", groups = {
     { module = "Nameplates", label = "New for groups", items = {
       { text = "Your group's plates can show names only in dungeons.", page = "nameplates", row = "Friendly players as names only (the game's setting)" },
