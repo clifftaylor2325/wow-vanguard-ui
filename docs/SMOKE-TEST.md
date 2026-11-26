@@ -7801,11 +7801,11 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the letters you typed are still in the box. Press Esc to leave the box: the saved list is back the next time the window refreshes (click the meter's title again).
 - If it fails, paste: the box text before and after, and /vg errors
 
-### 33.963 Clicking a buff switch while the Buffs to watch box has the cursor (H55-G6, held; WoW Forever and Retail)
+### 33.963 A buff switch clicked while the Buffs to watch box has the cursor edits the box's list (H55-G6; WoW Forever and Retail)
 
-- Do: on Healing, click into the Buffs to watch box, type a few letters, click one buff switch above it, then press Enter. [Client: Forever and Retail.]
-- Expect: note whether the click took the cursor out of the box. If the cursor stays, the switch you clicked is gone from the list after Enter. No fix is built: this tells us whether setWatched should clear the focus first.
-- If it fails, paste: the box text and the switch state before the click and after Enter
+- Do: open the options window on Healing. Click into the Buffs to watch box and type "A, B" without pressing Enter. With the cursor still in the box, click one buff switch above it that is currently off, then press Enter. [Client: Forever and Retail.]
+- Expect: the box reads "A, B, <that buff's name>" and the cursor stays in it. After Enter the page rebuilds with that switch on, and the list still holds A, B and the buff. Repeat with a switch that is on: the buff leaves the box text and the typed names stay. A switch clicked with the cursor out of the box shows the saved list as before.
+- If it fails, paste: the box text before the click, after the click and after Enter, the switch state, and /vg errors
 
 ### 33.964 Quest dialog, quest log, mail tools, meter detail, crafting cost, craft queue and group board take the mouse (H57-65; WoW Forever and Retail)
 
