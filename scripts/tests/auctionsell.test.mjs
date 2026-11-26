@@ -1049,3 +1049,12 @@ it("H51-32 Max, a listing click and the per unit toggle replace the text of the 
   addon.click(`${CARD}.perStack`);
   expect([form(addon)[3], form(addon)[6]], "the toggle: the box shows a stack's price").toEqual(["45s 0c", "per stack"]);
 });
+
+it("H51-G3 Max ends the typing in whichever form box has it, the Stacks box included", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + LINEN_UP);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.eval(`${CARD}.stacks:SetFocus()`);
+  addon.type(`${CARD}.stacks`, "2");
+  addon.click(`${CARD}.qtyMax`);
+  expect([form(addon)[2], addon.eval(`return ${CARD}.stacks:HasFocus()`)], "Max on Quantity: the Stacks box reads the sale, the typing ended").toEqual(["3", false]);
+});

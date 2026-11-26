@@ -400,24 +400,28 @@ AH.MAX = {
   stack = function(s) s.stack = s.qty end,
 }
 
--- Ends the typing in the form's box `name` (when the card is built), so the repaint that follows
--- can replace its text: a box that has the typing keeps it, whatever the sale now holds.
-local function endTyping(name)
-  local box = AH.sellCard and AH.sellCard[name]
-  if box then box:ClearFocus() end
+-- Ends the typing in whichever of the form's boxes has it (when the card is built), so the repaint
+-- that follows can replace its text: a box that has the typing keeps it, whatever the sale now holds.
+-- Max on the quantity changes the Stacks box too, so every box is looked at, not only the one clicked.
+local function endTyping()
+  local card = AH.sellCard
+  for name in pairs(AH.FORM) do
+    local box = card and card[name]
+    if box then box:ClearFocus() end
+  end
 end
 
 -- Something typed into the form's box `name` (or its Max clicked, with `max`): the sale takes it.
 function AH.TypeForm(name, text, max)
   if not AH.sell then return end
-  if max then endTyping(name) AH.MAX[name](AH.sell) else AH.FORM[name](AH.sell, text) end
+  if max then endTyping() AH.MAX[name](AH.sell) else AH.FORM[name](AH.sell, text) end
   AH.PaintSell()
 end
 
 -- The price box's toggle: a price typed there is per unit or per stack (the one that goes up next).
 function AH.TogglePerStack()
   AH.perStack = not AH.perStack
-  endTyping("price")
+  endTyping()
   AH.PaintSell()
 end
 
@@ -426,7 +430,7 @@ function AH.ClickListing(r)
   local s, l = AH.sell, r.item
   if not (s and l) then return end
   s.unit = l.own and l.unit or (AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(l.unit)
-  endTyping("price")
+  endTyping()
   AH.PaintSell()
 end
 
