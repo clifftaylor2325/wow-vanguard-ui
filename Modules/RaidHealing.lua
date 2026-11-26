@@ -191,14 +191,20 @@ end
 
 -- Buff watch -------------------------------------------------------------------------------
 
--- The watched buff names from the settings: your own list if you set one, else your class's defaults.
--- Read through ns.Settings, so the options page works while this module is off.
-local function readNames()
+-- The names in a comma-separated buff list, trimmed, blank pieces dropped.
+local function parseNames(text)
   local names = {}
-  for name in (ns.Settings("RaidHealing", RH.defaults).buffs or ""):gmatch("[^,]+") do
+  for name in text:gmatch("[^,]+") do
     local trimmed = name:match("^%s*(.-)%s*$")
     if trimmed ~= "" then names[#names + 1] = trimmed end
   end
+  return names
+end
+
+-- The watched buff names from the settings: your own list if you set one, else your class's defaults.
+-- Read through ns.Settings, so the options page works while this module is off.
+local function readNames()
+  local names = parseNames(ns.Settings("RaidHealing", RH.defaults).buffs or "")
   if #names > 0 then return names end
   local _, class = UnitClass("player")
   return ns.SpellNames(RH.CLASS_BUFFS[class] or {})
@@ -659,14 +665,31 @@ local function watching(name)
   return false
 end
 
--- Watches or stops watching one buff, saves the list and refreshes the page.
-local function setWatched(name, on)
-  local names = {}
-  for _, n in ipairs(RH.BuffNames()) do
-    if n ~= name then names[#names + 1] = n end
+-- The names a buff switch edits: those in the Buffs to watch box while it has the cursor (and the box), else the
+-- saved list.
+local function listedNames()
+  local box = RH.buffBox
+  if box and box.input:HasFocus() then return parseNames(box.input:GetText()), box.input end
+  return RH.BuffNames()
+end
+
+-- The names without one buff, with it added at the end when on.
+local function withBuff(names, name, on)
+  local kept = {}
+  for _, n in ipairs(names) do
+    if n ~= name then kept[#kept + 1] = n end
   end
-  if on then names[#names + 1] = name end
-  storeBuffs(table.concat(names, ", "))
+  if on then kept[#kept + 1] = name end
+  return kept
+end
+
+-- Watches or stops watching one buff, saves the list and refreshes the page. With the cursor in the Buffs to watch
+-- box the switch edits the typed list and the box shows the result, so Enter or Save keeps both.
+local function setWatched(name, on)
+  local names, input = listedNames()
+  local text = table.concat(withBuff(names, name, on), ", ")
+  storeBuffs(text)
+  if input then input:SetText(text) end
   ns.Options.Refresh()
 end
 
@@ -719,6 +742,7 @@ local function buffEditor(content)
   row.save:SetPoint("LEFT", row.input, "RIGHT", 8, 0)
   row.Refresh = refreshBuffBox
   row:Refresh()
+  RH.buffBox = row
   return row
 end
 
