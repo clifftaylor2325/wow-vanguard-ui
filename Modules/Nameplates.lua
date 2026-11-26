@@ -28,7 +28,10 @@
 -- The mouse hits a plate only inside its hit-test points, which the client's
 -- own frame sets around its own name and bar (and clears for name-only friendly
 -- players). That frame is hidden here, so Vanguard sets them around its own
--- name and bar instead, and has the client stack plates by that same box.
+-- name and bar instead, and has the client stack plates by that same box. A
+-- name-only plate has them cleared, as the game does (the unit is still clicked
+-- in the world); it follows when the unit turns hostile or friendly, but in a
+-- fight only on the tick the plate is given its unit, as the client allows.
 --
 -- Written for WoW Forever. Health goes to the bar as the client gives it,
 -- hidden or not. Threat and names are only read when they are plain.
@@ -542,11 +545,14 @@ end
 -- lets it change now: for addon code in combat, only on the tick a unit is
 -- first given to the plate. The client clamps it to the plate's own bounds
 -- (some 230 wide, 152 in the classic style), so at the widest bar on classic
--- plates the outer few pixels can't be clicked. Nothing on a client without it.
+-- plates the outer few pixels can't be clicked. A name-only plate has its click
+-- area cleared instead, as the client's own name-only plates do (Blizzard_NamePlates/
+-- Blizzard_NamePlateUnitFrame.lua, UpdateHitTestArea). Nothing on a client without it.
 function NP.ApplyHitArea(plate)
   local f = plate and vgPlate[plate]
   if not f or not f.unit or type(plate.CanChangeHitTestPoints) ~= "function" or not plate:CanChangeHitTestPoints() then return end
-  ns.Try("nameplate click area", plate.SetAllHitTestPoints, plate, f.hit)
+  if f.vgNameOnly and type(plate.ClearAllHitTestPoints) == "function" then ns.Try("nameplate click area", plate.ClearAllHitTestPoints, plate)
+  elseif not f.vgNameOnly then ns.Try("nameplate click area", plate.SetAllHitTestPoints, plate, f.hit) end
 end
 
 -- Has the client stack a plate by our name and bar rather than its own taller
@@ -851,10 +857,12 @@ local function setNameOnly(f, unit, only)
 end
 
 -- Paints a plate name-only or whole for its unit now (when it is drawn, its unit's faction or flags change,
--- or the switch does). A plate that is whole and stays whole is not touched. True when it changed.
+-- or the switch does). A plate that is whole and stays whole is not touched. True when it changed, and
+-- then its click area follows (cleared for a name, ours for a bar).
 function NP.PaintNameOnly(f, unit)
   local only, was = nameOnly(unit), f.vgNameOnly == true
   if only or was then setNameOnly(f, unit, only) end
+  if only ~= was then NP.ApplyHitArea(f:GetParent()) end
   return only ~= was
 end
 
