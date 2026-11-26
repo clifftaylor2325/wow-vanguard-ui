@@ -1336,3 +1336,13 @@ it("a button icon stays one pixel inside after a bar Scale or UI scale change", 
   const r = addon.eval(ICON_INSET);
   expect(r.x).toBeCloseTo(r.px, 5);
 });
+
+// H49-R1: with Pixel-perfect scale on, the pixel scale is applied after the modules build at login, so an inset
+// taken while building must be placed again for it.
+it("a button icon is one pixel inside once Pixel-perfect scale is applied at login", () => {
+  const addon = loggedIn(ACTIONS_ENV + "\n__wfgStub.setScreen(1920, 1080)", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  addon.advance(1);
+  const r = addon.eval(ICON_INSET);
+  expect(addon.eval("return UIParent:GetScale()")).toBeCloseTo(768 / 1080, 5);
+  expect(r.x).toBeCloseTo(r.px, 5);
+});
