@@ -225,6 +225,16 @@ function QP.ModifiedClick(c)
   return HandleModifiedItemClick(link) == true
 end
 
+-- A quest's link in the open chat box on a Shift-click (the game's CHATLINK click), as the game's trackers and quest
+-- log do first (Blizzard_QuestObjectiveTracker.lua OnBlockHeaderClick, Vanilla/QuestLogFrame.lua QuestLogTitleButton_OnClick,
+-- ChatFrameUtil.TryInsertQuestLinkForQuestID in Shared/ChatFrameUtil.lua); true when it linked, false with no chat box
+-- open (or the client lacks the call), so the click keeps its other meaning. Not protected, so it works in combat.
+function QP.TryQuestLink(id)
+  local util = ChatFrameUtil
+  if type(util) ~= "table" or type(util.TryInsertQuestLinkForQuestID) ~= "function" then return false end
+  return util.TryInsertQuestLinkForQuestID(id) == true
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))

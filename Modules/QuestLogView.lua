@@ -214,9 +214,10 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- A quest line was clicked: Ctrl-click marks or unmarks it for Abandon (not one the game won't let you abandon); else show the quest, and
--- Shift-click also tracks or untracks it.
+-- A quest line was clicked: with a chat box open, Shift-click puts its link there and nothing else; else Ctrl-click marks or
+-- unmarks it for Abandon (not one the game won't let you abandon); else show the quest, and Shift-click also tracks or untracks it.
 local function pickQuest(id)
+  if QP.TryQuestLink(id) then return end
   if IsControlKeyDown() then
     QL.marked[id] = QL.CanAbandon(id) and not QL.marked[id] or nil
     return QL.Select(QL.selected)

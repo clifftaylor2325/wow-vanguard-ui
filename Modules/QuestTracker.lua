@@ -468,10 +468,11 @@ local function completeAuto(id)
 end
 
 -- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
--- the arrow at it (Quest guidance, when it's on); right stops watching it. A finished auto-complete quest is
--- completed instead of opened.
+-- the arrow at it (Quest guidance, when it's on) or, with a chat box open, puts the quest's link in it; right stops
+-- watching it. A finished auto-complete quest is completed instead of opened.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return ns.CallIf(C_QuestLog, "RemoveQuestWatch", id) end
+  if ns.QuestParts.TryQuestLink(id) then return end
   local guide = ns.QuestGuide
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   if completeAuto(id) then return end
