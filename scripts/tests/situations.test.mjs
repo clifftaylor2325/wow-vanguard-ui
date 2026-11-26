@@ -725,3 +725,37 @@ it("H48-7-R1: a profile change builds the open Situations page again even in the
   addon.update(0.02);
   expect(rebuilds(), "a profile change: rebuilt").toBe(1);
 });
+
+// H50-62: a frame or module that comes up after the override was applied takes it, and leaving puts it back.
+const METER_RAID = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { Situations = { overrides = { raid = {
+  positions = { meter = { point = 'TOP', relPoint = 'TOP', x = 0, y = -40 } } } } } } } }\n`;
+// The meter mover's [point, relPoint, x, y].
+const meterSpot = (addon) => addon.eval("return { ns.MoverPoint('meter') }");
+
+it("H50-62 situations: the meter switched on inside a raid takes the raid's spot at once, and leaving puts its own back", () => {
+  const addon = situated(METER_RAID);
+  raid(addon);
+  addon.slash("meter on");
+  addon.advance(0.5);
+  expect(meterSpot(addon), "the frame came up after the override: the raid's spot").toEqual(["TOP", "TOP", 0, -40]);
+  addon.eval("ns.SetMoverScale('meter', 1.5)");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
+  expect(addon.eval("return ns.Settings('positions').meter.scale"), "a change made during the stay is left alone by the next event").toBe(1.5);
+  raid(addon, false);
+  expect(addon.eval("return ns.Settings('positions').meter == nil or ns.Settings('positions').meter.point == nil"), "out of the raid the profile holds none of the override's spot").toBe(true);
+  expect(meterSpot(addon), "and the meter is back at its own spot").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14]);
+});
+
+it("H50-62 situations: a module switched on inside a raid takes the raid's settings at once, and leaving puts its own back", () => {
+  const sv = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = { DataBars = false },
+    Situations = { overrides = { raid = { settings = { DataBars = { visibility = "hidden" } } } } } } } }\n`;
+  const addon = situated(sv);
+  raid(addon);
+  expect(addon.eval("return ns.Settings('DataBars').visibility"), "the module is off: nothing to write").toBe(null);
+  addon.eval("ns.SetModuleEnabled('DataBars', true)");
+  addon.advance(0.5);
+  expect(addon.eval("return ns.Settings('DataBars').visibility"), "switched on in the raid: the raid's value").toBe("hidden");
+  raid(addon, false);
+  expect(addon.eval("return ns.Settings('DataBars').visibility"), "out of the raid: its own value again").not.toBe("hidden");
+});
