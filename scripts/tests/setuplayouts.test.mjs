@@ -590,6 +590,8 @@ it("setup screen: a UI scale the game refuses out of combat leaves Pixel-perfect
   expect(result(), "refused: it says so").toEqual([false, true]);
   addon.eval("ns.SetUIScale(0.8)");
   expect(addon.eval("return ns.Theme.Settings().pixelScale"), "and Pixel-perfect stays on").toBe(true);
+  addon.eval("SetCVar = function(name, value) if name == 'useUiScale' then return false end return __setCVar(name, value) end");
+  expect(result(), "refused for useUiScale alone: it says so too").toEqual([false, true]);
   addon.eval("SetCVar = __setCVar ns.SetUIScale(0.8)");
   expect(addon.eval("return ns.Theme.Settings().pixelScale"), "taken: Pixel-perfect goes off as before").toBe(false);
   addon.eval("SetCVar = function() return false end");
