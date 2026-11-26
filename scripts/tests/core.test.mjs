@@ -963,3 +963,15 @@ it("H50-1 ns.ItemName names an uncached item in the client's language", () => {
   expect(got[0], "the stand-in goes through the string table").toBe(got[1]);
   expect(got[2], "Errands uses the same name").toBe(got[1]);
 });
+
+// GET_ITEM_INFO_RECEIVED(itemID, success): forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:1815-1820.
+it("H50-31 ns.OnItemLoaded: a noted item is taken off and handed back on a successful load only", () => {
+  const addon = loggedIn();
+  addon.eval(`__pending, __got = { [1] = "one", [2] = "two" }, {}
+    ns.OnItemLoaded(ns.On, __pending, function(id, value) __got[#__got + 1] = id .. ":" .. value end)`);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 3, true);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 1, true);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 2, false);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 1, true);
+  expect(addon.eval("return { __got, __pending[1] == nil, __pending[2] == nil }"), "one repaint for the success, the failure dropped, a stranger ignored").toEqual([["1:one"], true, true]);
+});
