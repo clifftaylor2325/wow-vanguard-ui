@@ -616,6 +616,17 @@ local function requireScript(w, name)
   end
 end
 
+-- The mouse scripts whose handler, set or hooked, takes the mouse for the frame: the client implies EnableMouse(true),
+-- motion and clicks both, so a plain frame given one starts catching the clicks meant for what is under it
+-- (warcraft.wiki.gg API ScriptRegion EnableMouse; seen in game on a unit frame's text layer, 0.9.8 /fstack).
+local MOUSE_SCRIPTS = { OnEnter = true, OnLeave = true, OnMouseDown = true, OnMouseUp = true }
+
+-- Takes the mouse as the client does when a mouse script is set or hooked (a nil handler leaves it as it is).
+local function impliedMouse(w, name, fn)
+  if fn == nil or not MOUSE_SCRIPTS[name] then return end
+  w.__mouse, w.__mouseClick, w.__mouseMotion = true, nil, nil
+end
+
 -- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
 -- addons (one whose IsForbidden says so), or a script whose handler it keeps (one in __forbiddenScripts),
 -- refuses the hook with an error.
@@ -629,6 +640,7 @@ function methods:HookScript(name, fn)
     return fn(...)
   end
   if name == "OnUpdate" then stub.updaters[self] = true end
+  impliedMouse(self, name, fn)
 end
 
 -- Fonts on font strings, edit boxes and chat frames: recorded and read back.
@@ -846,6 +858,7 @@ function methods:SetScript(name, fn)
   requireScript(self, name)
   self.__scripts[name] = fn
   if name == "OnUpdate" then stub.updaters[self] = fn and true or nil end
+  impliedMouse(self, name, fn)
 end
 
 -- Scripts, events, text, rotation, attributes and identity: recorded and read back.

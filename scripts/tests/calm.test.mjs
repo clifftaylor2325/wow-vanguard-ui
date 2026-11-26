@@ -131,6 +131,64 @@ it("Calm HUD: the client's aura buttons, whose tooltip handlers it keeps, are le
   expect(hooked, "the aura buttons are there, none is hooked, and nothing was caught").toEqual([true, 0, 0]);
 });
 
+// Which parts of a frame take the mouse, by name (TEST-ONLY): the frame itself and every frame inside it, each as
+// "click" (clicks land on it), "motion" (the mouse over it only) or "none".
+const MOUSE_LUA = `local out = {}
+  local top = %FRAME%
+  local named = { [top.health] = "health", [top.power] = "power", [top.layer] = "layer" }
+  local function walk(f, name)
+    local click, motion = f:IsMouseClickEnabled(), f:IsMouseMotionEnabled()
+    out[name] = click and "click" or (motion and "motion" or "none")
+    for i, child in ipairs({ f:GetChildren() }) do walk(child, name .. "." .. (named[child] or i)) end
+  end
+  walk(top, "frame")
+  return out`;
+
+it("harness: setting or hooking a mouse script takes the mouse for a plain frame, clicks too, as the client does", () => {
+  const addon = loggedIn(ENV);
+  const got = addon.eval(`local a, b, c = CreateFrame("Frame"), CreateFrame("Frame"), CreateFrame("Frame")
+    a:HookScript("OnEnter", function() end) b:SetScript("OnLeave", function() end) c:SetScript("OnEnter", nil)
+    return { a:IsMouseClickEnabled(), a:IsMouseMotionEnabled(), b:IsMouseClickEnabled(), c:IsMouseClickEnabled() }`);
+  expect(got, "a hook and a handler each take the mouse; clearing a handler takes none").toEqual([true, true, true, false]);
+});
+
+it("Calm HUD: watching the mouse over your frames leaves their bars and text layer click-through, so a click anywhere on a frame reaches it", () => {
+  const addon = loggedIn(ENV);
+  const frames = ["Vanguard_player", "Vanguard_target"];
+  // Which parts of each frame take the mouse now.
+  const mouse = () => frames.map((name) => addon.eval(MOUSE_LUA.replace("%FRAME%", name)));
+  const before = mouse();
+  calmOn(addon);
+  const after = mouse();
+  expect(after, "no part of either frame takes the mouse it didn't before (the target's aura buttons keep theirs)").toEqual(before);
+  for (const parts of after) {
+    expect([parts.frame, parts["frame.health"], parts["frame.power"], parts["frame.health.layer"]], "the frame takes the clicks; its bars and the layer over its health bar take none").toEqual(["click", "none", "none", "none"]);
+  }
+  expect(calm(addon, "Vanguard_PlayerAuras"), "a part's own holder feels the mouse without taking clicks").toMatchObject({ state: DIM, feels: true });
+});
+
+it("Calm HUD: a protected frame watched in a fight is hooked once it ends, its mouse as it was", () => {
+  const addon = loggedIn(ENV);
+  const band = "Vanguard_Keystone.inner";
+  addon.eval(`${band}.IsProtected = function() return true end`);
+  setCombat(addon, true);
+  addon.eval(`ns.Visibility.WatchHover(${band})`);
+  // Whether the band is hooked, and whether it takes clicks.
+  const hooked = () => addon.eval(`return { ns.FrameState("vgHoverOf")[${band}] ~= nil, ${band}:IsMouseClickEnabled() }`);
+  expect(hooked(), "in the fight: not hooked yet, and it takes no clicks").toEqual([false, false]);
+  setCombat(addon, false);
+  expect(hooked(), "after it: hooked, and still no clicks").toEqual([true, false]);
+});
+
+it("Calm HUD: a protected part inside a watched frame, hooked in a fight, is left as the client made it, where a change would be refused", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("Vanguard_Keystone.inner.IsProtected = function() return true end");
+  setCombat(addon, true);
+  addon.eval("ns.Visibility.WatchHover(Vanguard_Keystone)");
+  expect(addon.eval("return { Vanguard_Keystone:IsMouseClickEnabled(), Vanguard_Keystone.inner:IsMouseClickEnabled() }"), "the frame gets its mouse back; the protected part keeps what the hook gave it").toEqual([false, true]);
+  setCombat(addon, false);
+});
+
 it("H46-21-54 the keystone band dims with the Calm HUD without ever feeling the mouse", () => {
   const addon = loggedIn(ENV);
   calmOn(addon);
