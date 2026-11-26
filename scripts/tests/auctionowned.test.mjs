@@ -973,3 +973,14 @@ it("H48-6-51 an undercut mark does not outlive the visit: reopening the house sh
   addon.fire("OWNED_AUCTIONS_UPDATED");
   expect(addon.eval(`return { ${card}.count:GetText(), ${card}.cancelNext:IsEnabled() }`), "the row stays, the mark and the button's go").toEqual(["1", false]);
 });
+
+// H49-36: the Filters dialog is a standalone frame on UIParent, so closing the auction house must close it too.
+it("the Filters dialog closes with the auction house", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  openFilters(addon, 1);
+  expect(addon.eval("return Vanguard_AuctionFilters:IsShown()"), "open after Edit").toBe(true);
+  addon.eval("AuctionHouseFrame:Hide()");
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  expect(addon.eval("return Vanguard_AuctionFilters:IsShown()"), "gone when the auction house closes").toBe(false);
+});

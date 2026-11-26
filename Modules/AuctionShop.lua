@@ -518,11 +518,13 @@ function AH.OnBrowse()
   AH.Done()
 end
 
--- The auction house closed: its view, the browse list waiting on item info and the entries waiting on item names
--- go, the list priced first when info came in for it since its last pricing (priceLate's wait would find it gone).
+-- The auction house closed: its view, its Filters dialog (Vanguard's own frame on UIParent, so safe in combat),
+-- the browse list waiting on item info and the entries waiting on item names go, the list priced first when info
+-- came in for it since its last pricing (priceLate's wait would find it gone).
 local function shopClosed()
   local late = AH.lateBrowse
   AH.view, AH.lateBrowse, AH.unnamed = nil, nil, {}
+  if AH.filterDialog then AH.filterDialog:Hide() end
   if late and late.due then AP.RecordBrowse(late.results) end
 end
 
