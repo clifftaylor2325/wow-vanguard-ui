@@ -234,3 +234,17 @@ it("motion: a fade that turns back starts from where the frame is (H62-2)", () =
   addon.eval("__finishFades() TEST_F:Show() ns.Theme.FadeIn(TEST_F)");
   expect(lastFade(addon)[0], "a frame that is not fading starts from 0").toBe(0);
 });
+
+it("motion: a second fade-out leaves the first to finish, and the first one's done runs once (H62-1)", () => {
+  const addon = fadeFrame();
+  addon.eval("__done = 0 ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 1 end) ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 10 end)");
+  expect(addon.eval("return { #__fades, ns.Theme.FadingOut(TEST_F) }"), "one fade, and the frame is fading out").toEqual([1, true]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __done, TEST_F:IsShown() }"), "the first one's done ran, once").toEqual([1, false]);
+  addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) ns.Theme.FadeIn(TEST_F)");
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "a fade-in turns it back").toBe(false);
+  addon.eval("__fades = {} ns.Theme.FadeOut(TEST_F) ns.Theme.StopFade(TEST_F)");
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "so does StopFade").toBe(false);
+  addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) __finishFades()");
+  expect(addon.eval("return { ns.Theme.FadingOut(TEST_F), TEST_F:IsShown() }"), "when it ends the frame is hidden and no longer fading out").toEqual([false, false]);
+});

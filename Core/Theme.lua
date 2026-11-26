@@ -3953,12 +3953,13 @@ function T.FadingOut(frame)
 end
 
 -- Fades a frame out (as long as T.FadeIn), from where it is, then hides it (and runs done); at
--- once when motion is off.
+-- once when motion is off. While one fade-out plays, another call leaves it be.
 function T.FadeOut(frame, seconds, done)
   local f = activeFader(frame)
   -- Hides the frame, restores its alpha for next time, and tells the caller.
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
+  if T.FadingOut(frame) then return end
   local from = f.group:IsPlaying() and ns.PlainNumber(frame:GetAlpha()) or 1
   playFade(f, from, 0, T.FadeTime(seconds), finish)
   f.out = true
