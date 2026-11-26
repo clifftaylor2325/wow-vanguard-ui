@@ -70,14 +70,23 @@ it("H57-63 a names-only plate has no click area, and takes it back when its unit
   addon.eval("UnitCanAttack = function() return true end");
   addon.fire("UNIT_FLAGS", "nameplate2");
   expect(area("nameplate2"), "the friend turns hostile: the bar's box is back").toBe(true);
+  setCombat(addon, true);
   addon.eval("__canHit = false UnitCanAttack = function() return false end");
   addon.fire("UNIT_FLAGS", "nameplate2");
-  expect(area("nameplate2"), "turned friendly in a fight: the client allows no change, so the area is kept until the plate's next unit").toBe(true);
-  addon.eval("__canHit = true __plates.nameplate1.ClearAllHitTestPoints = nil UnitCanAttack = function() return true end");
-  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
-  addon.eval("UnitCanAttack = function() return false end");
-  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
-  expect([area("nameplate1"), addon.eval("return #ns.errors")], "a client without ClearAllHitTestPoints: left as it was, no error").toEqual([true, 0]);
+  expect(area("nameplate2"), "turned friendly in a fight: the client allows no change yet, so the old area stays").toBe(true);
+  addon.eval("__canHit = true");
+  setCombat(addon, false);
+  expect(area("nameplate2"), "the fight ends: the name-only plate's area is cleared").toBe(false);
+  setCombat(addon, true);
+  addon.eval("__canHit = false UnitCanAttack = function() return true end");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(area("nameplate2"), "turned hostile in a fight: still none").toBe(false);
+  addon.eval("__canHit = true");
+  setCombat(addon, false);
+  expect(area("nameplate2"), "the fight ends: the bar's box is back").toBe(true);
+  addon.eval("__plates.nameplate1.ClearAllHitTestPoints = nil __plates.nameplate1.__hit = 'TEST-ONLY kept' UnitCanAttack = function() return false end");
+  addon.fire("UNIT_FLAGS", "nameplate1");
+  expect([area("nameplate1"), addon.eval("return #ns.errors")], "a client without ClearAllHitTestPoints: the area is left as it was, not set to ours, no error").toEqual(["TEST-ONLY kept", 0]);
 });
 // TEST-ONLY buffs: a big defensive and one of yours on any player, through the buff row's filters.
 const BUFF_ENV = `

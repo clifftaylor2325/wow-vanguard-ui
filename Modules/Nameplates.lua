@@ -31,7 +31,7 @@
 -- name and bar instead, and has the client stack plates by that same box. A
 -- name-only plate has them cleared, as the game does (the unit is still clicked
 -- in the world); it follows when the unit turns hostile or friendly, but in a
--- fight only on the tick the plate is given its unit, as the client allows.
+-- fight only when the fight ends or the plate next gets its unit, as the client allows.
 --
 -- Written for WoW Forever. Health goes to the bar as the client gives it,
 -- hidden or not. Threat and names are only read when they are plain.
@@ -1195,6 +1195,11 @@ local function watchSoftTargets()
   hooksecurefunc(driver, "UpdateSoftTargetIconInternal", ns.Guard("hook soft target", onSoftTargetIcon))
 end
 
+-- A plate's click area again, as its unit's name-only state now has it: a change made in a fight was refused.
+local function reapplyArea(f)
+  NP.ApplyHitArea(f:GetParent())
+end
+
 -- Event -> handler.
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
@@ -1202,8 +1207,9 @@ local EVENTS = {
   PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
   -- Your new level changes how hard every unit is for you (after it applies: PLAYER_LEVEL_UP comes before).
   PLAYER_LEVEL_CHANGED = function() each(NP.UpdateName) end,
-  -- After a fight: the client's containers for plates first drawn in it, then any plate still behind the layout.
-  PLAYER_REGEN_ENABLED = function() upgradeRows() NP.CatchUp() end, UPDATE_MOUSEOVER_UNIT = onMouseover,
+  -- After a fight: the client's containers for plates first drawn in it, any plate still behind the layout, and
+  -- the click area of a plate that turned name-only or whole in it.
+  PLAYER_REGEN_ENABLED = function() upgradeRows() NP.CatchUp() each(reapplyArea) end, UPDATE_MOUSEOVER_UNIT = onMouseover,
   -- Joining or leaving the tagger's group changes who tagged each mob.
   GROUP_ROSTER_UPDATE = function() each(NP.PaintTag) end,
   -- Your quests changed: which units they need may have too.
