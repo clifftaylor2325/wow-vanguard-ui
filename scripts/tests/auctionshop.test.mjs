@@ -423,7 +423,7 @@ it("search filters: exact name, levels and quality go in the browse query; a max
   expect(filterDialog(addon), "a plain entry: nothing set").toEqual([true, "Filters: Strange Dust", false, "", "", "Any", ""]);
   addon.click("Vanguard_AuctionFilters.exact");
   addon.type("Vanguard_AuctionFilters.minLevel", "10");
-  addon.type("Vanguard_AuctionFilters.maxLevel", "20.5");
+  addon.type("Vanguard_AuctionFilters.maxLevel", "20");
   addon.eval("Vanguard_AuctionFilters.quality.dropdown.set(2)");
   addon.type("Vanguard_AuctionFilters.price", "1g 50s");
   addon.click("Vanguard_AuctionFilters.save");
@@ -514,6 +514,25 @@ it("Save in the filter dialog changes the entry it opened on, even after a row a
   addon.eval(`${HELPER}.filterDialog.price:SetText("5s") ${HELPER}.SaveFilters()`);
   const list = addon.eval(`local out = {} for i, e in ipairs(VanguardDB.ah.lists['TEST-ONLY Mats']) do out[i] = type(e) == "table" and (e.term .. "@" .. tostring(e.maxPrice)) or e end return out`);
   expect(list, "Bravo takes the max price where it now sits; Charlie is untouched").toEqual(["Bravo@500", "Charlie"]);
+});
+it("H51-34 the Filters level boxes take whole digits from 1 to 999, never a sign, decimal, hex, exponent or inf", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  // The levels saved on the list's entry (exact name only, so it stays a table) after typing `min` and `max` and Save.
+  const savedLevels = (min, max) => {
+    openFilters(addon, 1);
+    addon.type("Vanguard_AuctionFilters.minLevel", min);
+    addon.type("Vanguard_AuctionFilters.maxLevel", max);
+    addon.click("Vanguard_AuctionFilters.save");
+    return addon.eval("local e = VanguardDB.ah.lists['TEST-ONLY Mats'][1] return { e.minLevel or false, e.maxLevel or false }");
+  };
+  openFilters(addon, 1);
+  addon.click("Vanguard_AuctionFilters.exact");
+  addon.click("Vanguard_AuctionFilters.save");
+  expect(savedLevels("1e9", "0x10"), "an exponent and hex save no level").toEqual([false, false]);
+  expect(savedLevels("inf", "-3"), "inf and a negative save none").toEqual([false, false]);
+  expect(savedLevels("1000", "0"), "over three digits, and zero, save none").toEqual([false, false]);
+  expect(savedLevels(" 60 ", "999"), "whole digits (spaces around allowed) up to 999 save").toEqual([60, 999]);
 });
 it("filters travel: exact names export in quotes, import as exact, and copies have their own", () => {
   const addon = atAuctionHouse(DUSTS);

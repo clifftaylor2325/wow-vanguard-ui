@@ -998,10 +998,14 @@ function AH.ParseMoney(text)
   if copper > 0 and copper <= AH.MAX_PRICE then return math.floor(copper + 0.5) end
 end
 
--- A level typed into a box: a whole number from 1, else nil.
+-- The highest level a Level box takes: three digits, as the game's own level boxes allow.
+AH.MAX_LEVEL = 999
+
+-- A level typed into a box: whole digits from 1 to AH.MAX_LEVEL, else nil (not a sign, decimal, hex,
+-- exponent or inf, which tonumber would read).
 local function typedLevel(box)
-  local n = tonumber(box:GetText() or "")
-  if n and n >= 1 then return math.floor(n) end
+  local n = tonumber((box:GetText() or ""):match("^%s*(%d+)%s*$"))
+  if n and n >= 1 and n <= AH.MAX_LEVEL then return n end
 end
 
 -- The dialog's entry: its term with what the dialog says (the price alert only with a max price),
