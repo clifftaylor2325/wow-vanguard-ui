@@ -277,6 +277,21 @@ local function build(s)
   addClientParts(s)
 end
 
+-- Fits the block to the canvas now (a screen or UI scale change, T.OnScale, out of combat): the number of buffs to a
+-- row is worked out again, and when it changed the container's row width, the holder and the hover pad (as high as
+-- the rows now need, as wide as the row and the enchant cells' room) follow. Nothing to do before the block is built.
+function PA.Refit()
+  if not PA.holder then return end
+  local look = PA.look
+  local line = PA.PerRow(look) * (look.size + PA.GAP)
+  if line == PA.lineSize then return end
+  PA.lineSize = line
+  PA.holder:SetWidth(line)
+  PA.holder.vgHoverArea:SetSize(line + (PA.placed or 0), PA.Rows(look) * (look.size + PA.GAP))
+  PA.auras:SetLineSize(line)
+end
+ns.Theme.OnScale(PA.Refit)
+
 -- A weapon or inventory event: only yours matters.
 local function onWeapons(_, unit)
   if unit == nil or unit == "player" then PA.UpdateEnchants() end

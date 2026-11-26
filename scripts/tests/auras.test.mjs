@@ -1373,3 +1373,40 @@ it("H47-6-103 an aura icon under 14 wide draws its stack count in the smaller ro
     local _, px = ns.Auras.Dress(f, { size = ${size} }).count:GetFont() return px`);
   expect([countSize(12), countSize(13), countSize(14), countSize(20)], "8 under 14, the role's own 10 from 14").toEqual([8, 8, 10, 10]);
 });
+
+// H49-61: the buffs' row count follows the canvas, not the one at login. 1024 wide fits 5 of 34 to a row; 1920 wide,
+// the setting's 12.
+// The buffs block as it stands: the container's row width, the holder and hover pad sizes, and the module's remembered width.
+const rowState = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras")
+  return { line = PA.auras.frame.__flowLine or PA.auras.flow.line, holder = PA.holder:GetWidth(), pad = PA.holder.vgHoverArea:GetWidth(), padHigh = PA.holder.vgHoverArea:GetHeight(), lineSize = PA.lineSize }`);
+// The window grows to 1920 x 1080 and the client says so.
+const widenScreen = (addon) => {
+  addon.eval("__wfgStub.setScreen(1920, 1080)");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.advance(1);
+};
+
+it("H49-61 your buffs: a wider screen than at login gives the setting's row count, the container, holder and hover pad together", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "__wfgStub.setScreen(1024, 768)");
+  expect(rowState(addon), "5 to a row on the narrow screen").toMatchObject({ line: 5 * 34, holder: 5 * 34, pad: 6 * 34, lineSize: 5 * 34 });
+  widenScreen(addon);
+  const state = rowState(addon);
+  expect(state, "12 to a row once it is wide").toMatchObject({ line: 12 * 34, holder: 12 * 34, pad: 13 * 34, lineSize: 12 * 34 });
+  expect(state.padHigh, "the pad is as high as the 3 buff rows and 2 debuff rows now need").toBe(5 * 34);
+});
+
+it("H49-61 your buffs: the same on the client without aura containers, whose own icons wrap at the new width", () => {
+  expectErrors(AURA_FALLBACK);
+  const addon = loggedIn(UNITS_ENV + WEAPONS_ENV + "__wfgStub.noAuraContainer = true __wfgStub.setScreen(1024, 768)");
+  expect(rowState(addon).line, "5 to a row on the narrow screen").toBe(5 * 34);
+  widenScreen(addon);
+  expect(rowState(addon), "12 to a row once it is wide").toMatchObject({ line: 12 * 34, holder: 12 * 34 });
+});
+
+it("H49-61 your buffs: a count that did not change leaves the container alone", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  addon.eval("__lines = 0 local f = ns.GetModule('PlayerAuras').auras.frame local set = f.SetFlowLayoutMaximumLineSize f.SetFlowLayoutMaximumLineSize = function(...) __lines = __lines + 1 return set(...) end");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.advance(1);
+  expect(addon.eval("return __lines"), "no new line size").toBe(0);
+});
