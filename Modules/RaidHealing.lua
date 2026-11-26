@@ -703,6 +703,13 @@ local function buffInput(row)
   return input
 end
 
+-- Shows the saved list, or your class's defaults when you haven't set one; not while the box has the typing, or a
+-- refresh from elsewhere would wipe a half-typed list.
+local function refreshBuffBox(self)
+  if self.input:HasFocus() then return end
+  self.input:SetText(table.concat(RH.BuffNames(), ", "))
+end
+
 -- The buff-list editor: names separated by commas, and Save.
 local function buffEditor(content)
   local row = CreateFrame("Frame", nil, content)
@@ -710,8 +717,7 @@ local function buffEditor(content)
   row.input = buffInput(row)
   row.save = W.Button(row, L["Save"], function() saveBuffs(row.input) end, 80)
   row.save:SetPoint("LEFT", row.input, "RIGHT", 8, 0)
-  -- Shows the saved list, or your class's defaults when you haven't set one.
-  row.Refresh = function(self) self.input:SetText(table.concat(RH.BuffNames(), ", ")) end
+  row.Refresh = refreshBuffBox
   row:Refresh()
   return row
 end

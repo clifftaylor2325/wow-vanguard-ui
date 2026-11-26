@@ -751,3 +751,12 @@ it("H48-3-53 mail presets: a string with wrong-shaped presets is saved clean", (
   addon.eval(`ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ MailTools = { presets = ${DAMAGED_PRESETS} } })))`);
   expect(addon.eval(`local out = {} for _, p in ipairs(VanguardDB.profiles.Imported.MailTools.presets) do out[#out + 1] = p.name .. "/" .. p.words end return out`)).toEqual(["Smith/", "Ore/ore"]);
 });
+
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the mail tools panel takes the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = mailer();
+  addon.world.openMailWindow();
+  expect(addon.eval("return Vanguard_MailTools:IsMouseClickEnabled()")).toBe(true);
+});

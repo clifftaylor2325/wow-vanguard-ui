@@ -1,7 +1,7 @@
 // meter: Vanguard's own damage and healing meter (Modules/Meter.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: the client's damage meter enums (the world has the meter but not these), a warrior's class color.
 const METER_ENV = `Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1, Hps = 3 }
@@ -192,7 +192,31 @@ it("with the Meter module switched off, /vg meter says so instead of failing", (
   addon.clearChat();
   addon.eval("ns.SetModuleEnabled('Meter', true)");
   addon.slash("meter on");
-  expect([chatHas(addon, /Vanguard's meter starts after a \/reload\./), chatHas(addon, /switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([false, false, 0]);
+  expect([addon.eval("return ns.GetModule('Meter').Running()"), chatHas(addon, /meter (starts|couldn't start)|switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([true, false, 0]);
+});
+
+// H54-61: a live module switched on in a fight starts when the fight ends (no reload), and one whose start failed
+// is tried again by switching it off and on; /vg meter says which.
+it("/vg meter says it starts when the fight ends after Meter is switched on in a fight, and it does", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  addon.eval("ns.SetModuleEnabled('Meter', false)");
+  addon.advance(1);
+  setCombat(addon, true);
+  addon.eval("ns.SetModuleEnabled('Meter', true)");
+  addon.slash("meter");
+  expect([chatHas(addon, /meter starts when the fight ends\./), chatHas(addon, /reload|couldn't start/)], "the wait is for the fight, not a reload").toEqual([true, false]);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.GetModule('Meter').Running()"), "running once the fight is over").toBe(true);
+});
+
+it("/vg meter says the start failed, and to switch it off and on, when Meter raised on its way up", () => {
+  expectErrors("module Meter: eval:2: TEST-ONLY boom");
+  const addon = loggedIn(METER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
+  addon.eval("local MT = ns.GetModule('Meter') local enable = MT.Enable MT.Enable = function() MT.Enable = enable error('TEST-ONLY boom') end ns.SetModuleEnabled('Meter', true)");
+  addon.slash("meter");
+  expect([chatHas(addon, /meter couldn't start: switch it off and on under Modules/), chatHas(addon, /reload|starts when the fight ends/)], "a failed start is not a reload or a fight").toEqual([true, false]);
+  addon.eval("ns.SetModuleEnabled('Meter', false) ns.SetModuleEnabled('Meter', true)");
+  expect(addon.eval("return ns.GetModule('Meter').Running()"), "switched off and on it starts").toBe(true);
 });
 
 it("the title is a card's heading on the click-to-switch button, the room above the bars fits it, and the empty line is label text2", () => {
@@ -630,4 +654,53 @@ it("a hidden figure beside a plain share is joined by the client's own string ca
   expect([text, addon.eval("return #ns.errors")], "a hidden text that holds the figure and the share").toEqual([[true, "900  25%"], 0]);
   const bare = addon.eval("C_StringUtil = nil return ns.GetModule('Meter').WithShare(__wfgWorld.secret(900), 100, 400) ~= nil");
   expect([bare, addon.eval("return #ns.errors")], "a client without the call: the figure alone, no error").toEqual([true, 0]);
+});
+
+// The words the "Meter shows" row of the options window shows now (its dropdown's text).
+const kindRow = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.dropdown and w.caption == "Meter shows" then return w.dropdown.text:GetText() end end return "nofind"`);
+
+it("H55-61 a click on the meter's title shows in the open options window's Meter shows row, left and right", () => {
+  const addon = loggedIn(METER_ENV + CLICK_LUA, METER_ON);
+  addon.slash("");
+  addon.eval('ns.Options.Show("tools")');
+  expect(kindRow(addon), "starts on damage per second").toBe("Damage per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "LeftButton")');
+  expect(kindRow(addon), "the title click stepped the kind and the row follows").toBe("Healing per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "RightButton")');
+  expect(addon.eval("return ns.GetModule('Meter').settings.session"), "a right click steps the segment").toBe("Overall");
+});
+
+it("H55-R2 a Meter rows value outside 3 to 10 sizes the panel as the slider's end, and a non-number as the default", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // The panel height after the setting is set to a Lua value.
+  const height = (rowsValue) => addon.eval(`local MT = ns.GetModule("Meter") MT.settings.rows = ${rowsValue} MT.Paint() return Vanguard_Meter:GetHeight()`);
+  const [head, row, gap] = addon.eval('local MT = ns.GetModule("Meter") return { MT.HEAD, MT.ROW, MT.GAP }');
+  // The panel height for n rows.
+  const tall = (n) => head + n * (row + gap) + gap;
+  expect([height(5), height(40), height(0), height(-3), height('"x"')], "kept within 3 to 10; 'x' is the default 8").toEqual([tall(5), tall(10), tall(3), tall(3), tall(8)]);
+});
+
+it("H55-G2 a Meter rows value outside 3 to 10 draws as many lines as the panel is sized for", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  setLines(addon, "(function() local t = {} for i = 1, 12 do t[i] = { name = 'P' .. i, classFilename = 'WARRIOR', amountPerSecond = 100 - i } end return t end)()");
+  // How many line rows show after the setting is set to a Lua value.
+  const shown = (rowsValue) => {
+    addon.eval(`ns.GetModule("Meter").settings.rows = ${rowsValue} ns.GetModule("Meter").Paint()`);
+    return rows(addon).filter((r) => r[0]).length;
+  };
+  expect([shown(0), shown(-3), shown(40), shown(5), shown('"x"')], "3, 3, 10, 5 and the default 8 lines").toEqual([3, 3, 10, 5, 8]);
+});
+
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the meter's spell panel takes the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Pet', amountPerSecond = 300, sourceCreatureID = 7 } }");
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 1, totalAmount = 900 } } } end`);
+  addon.advance(1);
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  expect(addon.eval("return Vanguard_MeterDetail:IsMouseClickEnabled()")).toBe(true);
 });

@@ -152,12 +152,6 @@ local function rememberKeys(s, entries)
   end
 end
 
--- Re-reads the options widgets while the window is open, so the Place new spells switch shows what the code now does.
-local function repaintOptions()
-  local window = ns.Options and ns.Options.Frame()
-  if window and window:IsShown() then ns.Options.Refresh() end
-end
-
 -- Leaves the changes the player unticked in the wizard to them: the button of a spell entry, the key of a stance or
 -- pet entry (keys 1 to 6 share one chord on every bar page, so a spell entry's key is not marked), and each key the
 -- wizard names as kept (one an unticked change would have rebound from what it did, so a bar page learned later
@@ -184,7 +178,7 @@ function KN.Applied(preset, placeNew, declined, keptKeys)
   rememberSlots(s)
   rememberKeys(s, ns.KeybindsLayouts.Resolve(s.preset, {}))
   leaveDeclined(s, declined, keptKeys)
-  repaintOptions()
+  ns.Options.RefreshShown()
 end
 
 -- Marks as the player's every slot that holds something else than when Vanguard last looked.
@@ -311,7 +305,7 @@ end
 local function stop(s)
   s.on, s.pending = false, false
   ns.Chat(L["Vanguard stopped putting new spells on keys. Set up keys again to start over."])
-  repaintOptions()
+  ns.Options.RefreshShown()
 end
 
 -- An update the game refused went back: the buttons are remembered as they are now (out of combat the rollback is

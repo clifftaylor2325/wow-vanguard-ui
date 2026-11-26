@@ -185,6 +185,27 @@ it("H47-7-103: the preview slides the options window clear of the sample tiles, 
   expect(left(), "a window the player already moved clear is left alone").toBe(placed);
 });
 
+// The words the Raid frames page's "Preview with sample players" row shows now (its dropdown's text).
+const previewRow = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.caption == "Preview with sample players" and w.dropdown then return w.dropdown.text:GetText() end
+end return "nofind"`);
+
+it("H55-62 the Preview row follows the preview when joining a group or combat ends it, and when a command sets it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "__grouped = false IsInGroup = function() return __grouped end");
+  addon.slash("");
+  addon.eval('ns.Options.Show("raid")');
+  addon.slash("preview 10");
+  expect(previewRow(addon), "a command sets it: the row follows").toBe("Raid (10)");
+  addon.eval("__grouped = true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect([previewRow(addon), addon.eval("return ns.RaidPreview.size")], "joining a group ends it and the row says Off").toEqual(["Off", 0]);
+  addon.eval("__grouped = false");
+  addon.eval("ns.RaidPreview.Set(25)");
+  expect(previewRow(addon), "RP.Set itself refreshes the row").toBe("Raid (25)");
+  addon.world.combat(true);
+  expect([previewRow(addon), addon.eval("return ns.RaidPreview.size")], "combat starting ends it and the row says Off").toEqual(["Off", 0]);
+});
+
 it("raid preview: stepping from 25 to 40 sample players works the tiles' borders out again for the new scale, once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
   addon.slash("preview 25");

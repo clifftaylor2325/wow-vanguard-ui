@@ -140,6 +140,68 @@ it("target buffs: the row's line stops short of the threat percent while that re
   expect(off.line).toBe(off.width);
 });
 
+// H54-31: Unit extras starting or stopping while you play re-makes the buff row for the threat percent's room, and the
+// room counts only while Unit extras runs (a switch made in a fight waits for the fight to end).
+// The target's buff row as built next to the row the settings now ask for, and the room counted.
+const threatState = (addon) => addon.eval(`local FA = ns.GetModule("FrameAuras")
+  return { room = FA.ThreatRoom(), made = Vanguard_target.buffs.sig == ns.Auras.Signature(FA.BuffSpec(Vanguard_target, FA.Look(FA.settings))) }`);
+// A session with Unit extras switched off and settled.
+const withoutUnitExtras = () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  return addon;
+};
+
+it("target buffs: switched off and on again out of combat, the row's line stops short of the threat percent", () => {
+  const addon = withoutUnitExtras();
+  addon.eval('ns.SetModuleEnabled("UnitExtras", true)');
+  addon.advance(3, 0.1);
+  expect(threatState(addon)).toEqual({ room: 48, made: true });
+});
+
+// This direction is also covered by the unit frames' own refit on a module change (Modules/UnitFrames.lua), so it holds
+// without Frame auras' listener: the listener is pinned by the switch-on cases above and below.
+it("target buffs: with Unit extras switched off, the row takes the frame's full width", () => {
+  expect(threatState(withoutUnitExtras())).toEqual({ room: 0, made: true });
+});
+
+it("target buffs: Unit extras switched on in a fight counts no room until the fight ends, then the row is made for it", () => {
+  const addon = withoutUnitExtras();
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", true)');
+  expect(threatState(addon).room, "Unit extras is not running yet").toBe(0);
+  setCombat(addon, false);
+  addon.advance(3, 0.1);
+  expect(threatState(addon)).toEqual({ room: 48, made: true });
+});
+
+// Counts how many times the threat room's refit is scheduled (its one-shot timer), from now on.
+const countRoomRefits = (addon) => addon.eval(`__refits = 0 local guard = ns.Guard
+  ns.Guard = function(name, fn) if name == "timer frame auras threat room" then __refits = __refits + 1 end return guard(name, fn) end`);
+
+it("target buffs: a module switch while Frame auras is off schedules no refit and raises no error", () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
+  settle(addon);
+  countRoomRefits(addon);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  expect([addon.eval("return __refits"), addon.eval("return #ns.errors")]).toEqual([0, 0]);
+});
+
+// H54-G4: a switch of any other module leaves the room as the rows were built for, so it schedules nothing (a module
+// toggled in the lifecycle tests leaves what a fresh login leaves), and Unit extras' own switch schedules one refit only.
+it("target buffs: another module's switch schedules no refit, Unit extras' own switch schedules one", () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  countRoomRefits(addon);
+  addon.eval('ns.SetModuleEnabled("MainTanks", false) ns.SetModuleEnabled("MainTanks", true)');
+  expect(addon.eval("return __refits"), "MainTanks").toBe(0);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  expect(addon.eval("return __refits"), "Unit extras").toBe(1);
+});
+
 // H47-6-1 (decide: option 1 built): the target's cast bar rises with the buff row's extra height, so a second line of
 // buffs, or larger icons, are never covered by it while the target casts. TEST-ONLY: sixteen buffs, a casting target.
 const CASTING_TARGET = `

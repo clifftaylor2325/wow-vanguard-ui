@@ -18,6 +18,7 @@ const HIT_ENV = `
     local p = __plates[unit]
     p.CanChangeHitTestPoints = function() return __canHit end
     p.SetAllHitTestPoints = function(self, region) self.__hit = region end
+    p.ClearAllHitTestPoints = function(self) self.__hit = nil end
     p.SetStackingBoundsFrame = function(self, frame) self.__stack = frame end
     p.UnitFrame.GetNamePlateFrame = function() return p end
     p.UnitFrame.UpdateHitTestArea = function() p.__hit = "TEST-ONLY default" end
@@ -54,6 +55,38 @@ it("a plate's click area and stacking box are our name and bar, padded, whatever
   addon.eval(morePlates(4, 4));
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate4");
   expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate4]:IsShown(), #ns.errors }"), "a client without hit testing: the plate is drawn, no error").toEqual([true, 0]);
+});
+// H57-63: the game clears a name-only plate's click area (Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua,
+// UpdateHitTestArea: ClearAllHitTestPoints when IsShowOnlyName, in /home/user/blizz/{forever,live}/Interface/AddOns).
+it("H57-63 a names-only plate has no click area, and takes it back when its unit turns hostile", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + HIT_ENV + " __units.party1.player = nil __units.party1.reaction = 5 UnitCanAttack = function(_, unit) return unit == 'nameplate1' end",
+    { savedVariables: "VanguardDB.profiles = { Default = { Nameplates = { friendlyNames = true } } }" });
+  // Whether a plate's click area is ours (true), cleared (false) or still the client's own (a string).
+  const area = (unit) => addon.eval(`local p = __plates.${unit} local hit = ns.FrameState('vgPlate')[p].hit
+    if p.__hit == nil then return false end return p.__hit == hit or p.__hit`);
+  expect([area("nameplate1"), area("nameplate2")], "the boar's is ours, the friend's names-only plate has none").toEqual([true, false]);
+  addon.eval("__plates.nameplate2.UnitFrame:UpdateHitTestArea()");
+  expect(area("nameplate2"), "the client's own frame setting it again: cleared again").toBe(false);
+  addon.eval("UnitCanAttack = function() return true end");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(area("nameplate2"), "the friend turns hostile: the bar's box is back").toBe(true);
+  setCombat(addon, true);
+  addon.eval("__canHit = false UnitCanAttack = function() return false end");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(area("nameplate2"), "turned friendly in a fight: the client allows no change yet, so the old area stays").toBe(true);
+  addon.eval("__canHit = true");
+  setCombat(addon, false);
+  expect(area("nameplate2"), "the fight ends: the name-only plate's area is cleared").toBe(false);
+  setCombat(addon, true);
+  addon.eval("__canHit = false UnitCanAttack = function() return true end");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(area("nameplate2"), "turned hostile in a fight: still none").toBe(false);
+  addon.eval("__canHit = true");
+  setCombat(addon, false);
+  expect(area("nameplate2"), "the fight ends: the bar's box is back").toBe(true);
+  addon.eval("__plates.nameplate1.ClearAllHitTestPoints = nil __plates.nameplate1.__hit = 'TEST-ONLY kept' UnitCanAttack = function() return false end");
+  addon.fire("UNIT_FLAGS", "nameplate1");
+  expect([area("nameplate1"), addon.eval("return #ns.errors")], "a client without ClearAllHitTestPoints: the area is left as it was, not set to ours, no error").toEqual(["TEST-ONLY kept", 0]);
 });
 // TEST-ONLY buffs: a big defensive and one of yours on any player, through the buff row's filters.
 const BUFF_ENV = `

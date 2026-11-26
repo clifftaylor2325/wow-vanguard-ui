@@ -92,6 +92,7 @@ end
 -- Built the first time a line is clicked: a panel beside the meter, its rows the meter's own look; Escape closes it.
 local function buildDetail()
   local d = T.HudPanel(CreateFrame("Frame", "Vanguard_MeterDetail", UIParent))
+  d:EnableMouse(true)
   ns.CloseOnEscape(d)
   d:SetSize(MT.WIDTH, MT.HEAD + MT.DETAIL_ROWS * (MT.ROW + MT.GAP) + MT.GAP)
   addDetailTitle(d)

@@ -186,6 +186,7 @@ end
 -- through its scope.
 function QL.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
+  f:EnableMouse(true)
   f:SetSize(QL.W, QL.H)
   f:SetFrameStrata("HIGH")
   f:SetClampedToScreen(true)

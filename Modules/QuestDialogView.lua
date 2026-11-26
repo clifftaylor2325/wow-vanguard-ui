@@ -116,6 +116,7 @@ end
 -- module's Enable makes it movable through its scope.
 function QD.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
+  f:EnableMouse(true)
   f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
   addHeader(f)

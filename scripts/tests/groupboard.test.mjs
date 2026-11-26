@@ -532,3 +532,12 @@ it("H47-20-53 a long dungeon name shrinks before its level range, and the three 
     expect(bad, `${locale}: the range is whole and the name ends before it`).toBe(0);
   }
 });
+
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the group board takes the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = board();
+  addon.slash("lfg");
+  expect(addon.eval("return Vanguard_GroupBoard:IsMouseClickEnabled()")).toBe(true);
+});

@@ -162,6 +162,18 @@ it("MultiSearch searches each term through the shop's queue, only at the open au
   expect(call(addon, "MultiSearch", "'TEST-ONLY Addon', { '', 7 }"), "no usable term").toBe(false);
 });
 
+it("a search that fails to send still frees the queue after the wait, so the next one goes out", () => {
+  const addon = withApi();
+  addon.eval(`local api = C_AuctionHouse local real = api.SearchForItemKeys
+    api.SearchForItemKeys = function() api.SearchForItemKeys = real error("refused") end
+    local AH = ${HELPER}
+    __failed = not pcall(AH.Queue, { open = { itemID = 2589 } })`);
+  expect([addon.eval("return __failed"), addon.eval(`return ${HELPER}.pending ~= nil`), sent(addon)], "the first send raised: it waits").toEqual([true, true, []]);
+  addon.eval(`${HELPER}.Queue({ open = { itemID = 2592 } })`);
+  addon.advance(2.5);
+  expect([sent(addon), addon.eval(`return ${HELPER}.pending ~= nil`)], "the wait gives up on it and the next search is sent").toEqual([["SearchForItemKeys:2592"], true]);
+});
+
 it("a callerID or list name padded with spaces still finds its list", () => {
   const addon = withApi();
   expect(call(addon, "MultiSearch", "' TEST-ONLY Addon', { 'Linen Cloth' }"), "queued").toBe(true);

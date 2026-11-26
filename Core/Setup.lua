@@ -496,8 +496,16 @@ function S.PixelPreset()
   return { key = S.PIXEL.key, ui = ui, pixel = n, button = button, tile = base.tile, textScale = text }
 end
 
--- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's
--- uiScale and useUiScale settings, as its Graphics options set them. Returns true when it can.
+-- Sets the client's useUiScale and uiScale settings, as its Graphics options set them. Returns false when the
+-- game answered either one with false (SetCVar's success flag: it refused the setting).
+local function setClientScale(set, scale)
+  local usedScale = set("useUiScale", "1")
+  local scaled = set("uiScale", tostring(scale))
+  return usedScale ~= false and scaled ~= false
+end
+
+-- Sets the game's UI scale (clamped to its own slider's range), out of combat. Returns true when it can: out of
+-- combat, when the game took both settings; in combat the change waits for the fight's end and this answers true.
 -- The caller turns Vanguard's pixel-perfect scale off where this scale is meant to run.
 ---@param scale number
 ---@return boolean
@@ -505,11 +513,9 @@ function ns.SetGameUIScale(scale)
   local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
   if type(set) ~= "function" or type(scale) ~= "number" then return false end
   scale = math.max(S.UI_SCALE.min, math.min(S.UI_SCALE.max, scale))
-  ns.OutOfCombat(function()
-    set("useUiScale", "1")
-    set("uiScale", tostring(scale))
-  end)
-  return true
+  local taken = true
+  ns.OutOfCombat(function() taken = setClientScale(set, scale) end)
+  return taken
 end
 
 -- Sets the game's UI scale (ns.SetGameUIScale) and switches the profile in use's pixel-perfect

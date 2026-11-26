@@ -221,3 +221,21 @@ it("H44-8-50 glow: one icon's refused aura read leaves the other icons' glow on 
   const second = addon.eval("local g = ns.FrameState('vgGlow')[BuffIconCooldownViewer.items[2]] return g and g[1]:IsShown() or false");
   expect([second, addon.eval("return #ns.errors")], "item 2 lit, no error").toEqual([true, 0]);
 });
+
+it("H55-32 cooldown glow: a share outside 10 to 60 from an edited profile is kept in range, and a non-number is the default", () => {
+  // Saved variables with the glow on at a share.
+  const saved = (percent) => ({ savedVariables: `VanguardDB.profiles = { Default = { CooldownGlow = { glow = true, percent = ${percent} } } }` });
+  const big = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved(500));
+  buff(big, 15);
+  expect(lit(big), "500 acts as 60: 75 percent left is dark").toBe(false);
+  big.advance(5);
+  expect(lit(big), "and 50 percent left is lit").toBe(true);
+  const small = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved(5));
+  buff(small, 5);
+  expect(lit(small), "5 acts as 10: 25 percent left is dark").toBe(false);
+  small.advance(3.4);
+  expect(lit(small), "and 8 percent left (1.6 of 20 seconds) is lit, which a raw 5 would leave dark").toBe(true);
+  const text = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM, saved('"x"'));
+  buff(text, 5);
+  expect(lit(text), "a word acts as the default 30: 25 percent left is lit").toBe(true);
+});

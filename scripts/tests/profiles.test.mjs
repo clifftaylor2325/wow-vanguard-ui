@@ -678,6 +678,16 @@ it("Use it after an import turns Pixel-perfect off in the imported profile, not 
   addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
   expect(addon.eval("return { ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "with no switch staged it goes off in the profile in use").toEqual([false, "0.8"]);
 });
+it("Use it after an import keeps Pixel-perfect on where the game refused the UI scale", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  // The client answers SetCVar with a success flag (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_APIDocumentationGenerated/CVarDocumentation.lua, SetCVar Returns).
+  addon.eval("__setCVar = SetCVar SetCVar = function(name, value) if name == 'uiScale' then return false end return __setCVar(name, value) end");
+  // TEST-ONLY whole profile made with Pixel-perfect on, at UI scale 90%.
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade", pixelScale = true }, display = { uiScale = 0.9 } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale }"), "the game refused the scale: Pixel-perfect stays on in the imported profile and in the one in use").toEqual([true, true]);
+});
 it("No to 'Use its UI scale?' keeps this player's scale: a Pixel-perfect profile from a 4K screen brings neither its switch nor its multiple", () => {
   const other = loggedIn(CLICK_LUA + "__wfgStub.setScreen(3840, 2160)");
   other.eval('ns.Setup.ApplyScreen("pixel")');

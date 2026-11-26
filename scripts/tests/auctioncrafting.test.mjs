@@ -237,3 +237,12 @@ it("H46-31-203 a reagent the client names after the panel was painted gets its n
   addon.update(0.5);
   expect([paints(), look()], "the reagent and the product: one paint, the reagent named").toEqual([1, ["TEST-ONLY Late Reagent", "TEST-ONLY-LATE"]]);
 });
+
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the crafting cost panel takes the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  expect(addon.eval("return Vanguard_CraftingPanel:IsMouseClickEnabled()")).toBe(true);
+});

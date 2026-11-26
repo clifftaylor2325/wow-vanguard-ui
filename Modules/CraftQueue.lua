@@ -477,7 +477,7 @@ end
 -- Builds the panel (once, out of combat; hidden): a card with the heading, the list, the note and the buttons.
 function CQ.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftQueuePanel", UIParent), { shadow = true })
-  f:SetSize(CQ.WIDTH, CQ.BASE_HEIGHT)
+  f:EnableMouse(true) f:SetSize(CQ.WIDTH, CQ.BASE_HEIGHT)
   f:SetClampedToScreen(true)
   ns.WindowTitle(f, L["Craft queue"], { kind = "card" })
   addList(f)

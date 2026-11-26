@@ -7777,6 +7777,54 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: every right-click opens the unit's menu and every left-click targets the unit. With `/fstack` on, the arrow points at Vanguard_player (or Vanguard_target), never at a part inside it. Hovering a dimmed frame still brings it back.
 - If it fails, paste: /vg errors, and a screenshot of `/fstack` over the spot that doesn't answer
 
+### 33.959 The buff row is made again when Unit extras starts or stops (H54-31; WoW Forever (Unit extras is Forever only))
+
+- Do: under /vg > Unit frames > Target and focus auras set Target's buffs shown to 16, switch Unit extras off under /vg > Modules (no reload), and target a mob with 12 or more buffs. [Client: Forever (Unit extras is Forever only).]
+- Expect: the buff row wraps at the frame's full width, so the first line's last icon reaches the frame's right edge. Then switch Unit extras on under /vg > Modules (out of combat, no reload): the row wraps 48 units short of the right edge, so no icon runs under your threat percent at the frame's top right (10 icons already take 198, more than the 192 left). Switch it off again and the row goes back to the full width.
+- If it fails, paste: a screenshot of the target frame after the switch on, and /vg errors
+
+### 33.960 Say a fight-queued start waits for the fight, a failed start needs an off and on (H54-61; WoW Forever and Retail)
+
+- Do: switch Meter on under /vg > Modules while in a fight (a training dummy), type /vg meter in the fight, then leave combat. [Client: Forever and Retail.]
+- Expect: chat says Vanguard's meter starts when the fight ends, and the meter panel appears when the fight is over with no reload; the same for /vg weights wizard with Gear upgrades.
+- If it fails, paste: the chat line and /vg errors
+
+### 33.961 The open options window re-reads its rows after a typed command (H55-1; WoW Forever and Retail)
+
+- Do: open the options window (/vg) on General and leave it there. Click the chat box, type /vg snap off and press Enter. [Client: Forever and Retail.]
+- Expect: the Snap to other frames switch on the open page turns off at once, without changing page.
+- If it fails, paste: /vg errors and whether the switch still shows on
+
+### 33.962 A refresh from outside leaves a half-typed buff list alone (H55-1, H55-R1; WoW Forever and Retail)
+
+- Do: turn the Vanguard meter on (Combat tools), start /vg preview 10, then open the options window on Healing. Click into the Buffs to watch box and type a few letters without pressing Enter. With the cursor still in the box, click the meter's title (this refreshes the window without touching the box). [Client: Forever and Retail.]
+- Expect: the letters you typed are still in the box. Press Esc to leave the box: the saved list is back the next time the window refreshes (click the meter's title again).
+- If it fails, paste: the box text before and after, and /vg errors
+
+### 33.963 Clicking a buff switch while the Buffs to watch box has the cursor (H55-G6, held; WoW Forever and Retail)
+
+- Do: on Healing, click into the Buffs to watch box, type a few letters, click one buff switch above it, then press Enter. [Client: Forever and Retail.]
+- Expect: note whether the click took the cursor out of the box. If the cursor stays, the switch you clicked is gone from the list after Enter. No fix is built: this tells us whether setWatched should clear the focus first.
+- If it fails, paste: the box text and the switch state before the click and after Enter
+
+### 33.964 Quest dialog, quest log, mail tools, meter detail, crafting cost, craft queue and group board take the mouse (H57-65; WoW Forever and Retail)
+
+- Do: open the group board (and the quest dialog, quest log, mail tools, meter spell panel, crafting cost panel or craft queue) with an NPC or player behind an empty part of it, and click that empty part. [Client: Forever and Retail.]
+- Expect: nothing behind is targeted.
+- If it fails, paste: the window and what, if anything, got targeted and /vg errors
+
+### 33.965 A names-only plate has no click area, as the game's own [DECIDE] (H57-63; WoW Forever)
+
+- Do: turn on Names only on friendly plates (Nameplates, Display), stand by a friendly player's name and click on the empty space where its bar would be. [Client: Forever.]
+- Expect: it does not target the player's plate area (click the name or the player instead); turn them hostile (duel) and the bar area clicks again.
+- If it fails, paste: what the click on the bar area did and /vg errors
+
+### 33.966 A plate's click area follows its name-only state when the fight ends (H57-G1; WoW Forever)
+
+- Do: with Names only on friendly plates on, have a friendly NPC turn hostile mid-fight (or switch Names only off in a fight), end the fight, click the enemy's bar. [Client: Forever.]
+- Expect: it targets it.
+- If it fails, paste: whether the click targeted and /vg errors
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
