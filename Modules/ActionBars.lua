@@ -974,7 +974,7 @@ end
 -- `point` (its place in the bottom stack, or its fixed default).
 local function createBar(n, def, point)
   local bar = CreateFrame("Frame", "Vanguard_Bar" .. n, UIParent, "SecureHandlerStateTemplate")
-  bar.vgIndex, bar.vgButtons, bar.vgCalm = n, {}, "bars"
+  bar.vgIndex, bar.vgButtons, bar.vgCalm, bar.vgWake = n, {}, "bars", n == 1
   for i = 1, AB.MAX_BUTTONS do bar.vgButtons[i] = createButton(bar, n, i, def) end
   AB.bars[n] = bar
   AB.LayoutBar(n)

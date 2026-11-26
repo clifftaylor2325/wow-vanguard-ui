@@ -219,6 +219,26 @@ const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   local raw = bar.__states.visibility
   return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse, click = bar:IsMouseClickEnabled() }`);
 
+// Bar 1 pages to a vehicle, possess or override bar and holds the only buttons for it (Modules/ActionBars.lua
+// AB.BuildPageDriver), so every visibility choice but Always and Hidden shows it there. The macro conditions are
+// the client's (game-only: no "[vehicleui]" string exists in Blizzard's source), so this checks the compiled text.
+it("H53-2 action bar 1 wakes in a vehicle, a possess or an override bar on any visibility but Hidden; other bars keep their choice", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const wake = "[vehicleui][possessbar][overridebar] show; ";
+  // Bar n's secure visibility driver and its alpha state, without the pet battle clause.
+  const states = (n) => addon.eval(`local s = Vanguard_Bar${n}.__states return { (s.visibility:gsub("^%[petbattle%] hide; ", "")), s.vgvis }`);
+  const modes = { always: ["show", "show"], combat: [wake + "[combat] show; hide", wake + "[combat] show; hide"], hidden: ["hide", "hide"], mouseover: ["show", wake + "fade"] };
+  for (const [mode, expected] of Object.entries(modes)) {
+    setBarOption(addon, 1, "Visibility", JSON.stringify(mode));
+    expect(states(1), `bar 1 on ${mode}`).toEqual(expected);
+  }
+  setBarOption(addon, 1, "Visibility", '"combat"');
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  expect(states(2), "bar 2 on In combat has no wake clause").toEqual(["[combat] show; hide", "[combat] show; hide"]);
+  addon.eval('VanguardDB.profiles.Default.ActionBars.bars[1].visibility = "custom" VanguardDB.profiles.Default.ActionBars.bars[1].showWhen = { group = true } ns.GetModule("ActionBars").ApplyVisibility(1)');
+  expect(states(1), "a checklist without Vehicle wakes too").toEqual([wake + "[group] show; hide", wake + "[group] show; hide"]);
+});
+
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const start = barVis(addon);
