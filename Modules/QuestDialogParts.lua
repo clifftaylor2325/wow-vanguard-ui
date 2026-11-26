@@ -204,6 +204,27 @@ local function cardName(c)
   c.name:SetMaxLines(2)
 end
 
+-- A link in the open chat box on a Shift-click (the game's CHATLINK click); true when it linked, false with no chat
+-- box open, no link or no ChatFrameUtil.TryInsertChatLink. Not protected (no combat check in ChatFrameUtil.InsertLink),
+-- so it works in combat.
+function QP.TryLink(link)
+  local util = ChatFrameUtil
+  if type(link) ~= "string" or type(util) ~= "table" or type(util.TryInsertChatLink) ~= "function" then return false end
+  return util.TryInsertChatLink(link) == true
+end
+
+-- A modified click on a reward card (Shift links the item to the open chat box, Ctrl shows it in the dressing room),
+-- as the game's reward buttons send it (QuestInfo.lua, QuestInfoRewardItemMixin:OnClick); true when it did one.
+-- The dressing room is a UI panel, which the game won't let addon code show in a fight (UIParentPanelManager.lua
+-- CheckProtectedFunctionsAllowed), so in a fight only the chat link is tried; a currency card has no link.
+function QP.ModifiedClick(c)
+  local link = c.item and c.item.link
+  if not (IsModifiedClick() and type(link) == "string") then return false end
+  if ns.InCombat() then return QP.TryLink(link) end
+  if type(HandleModifiedItemClick) ~= "function" then return false end
+  return HandleModifiedItemClick(link) == true
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
@@ -213,6 +234,7 @@ function QP.Card(parent)
   c.count = T.Text(c:CreateFontString(nil, "OVERLAY"), "auraCount", "text")
   c.count:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", -1, 1)
   cardName(c)
+  c:SetScript("OnClick", ns.Guard("click quest reward", QP.ModifiedClick))
   return QP.WireTooltip(addCrown(c))
 end
 

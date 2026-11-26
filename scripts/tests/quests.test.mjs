@@ -126,6 +126,38 @@ it("H45-27-R1: the session hand-back switched on and off inside a talk keeps the
   addon.eval("GossipFrame:Show() ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
   expect(addon.eval("return ns.GetModule('QuestDialog').gameTalk"), "an open game gossip window counts too").toBe(true);
 });
+// Reward buttons send a modified click to HandleModifiedItemClick: forever Blizzard_UIPanels_Game/Vanilla/QuestInfo.lua
+// QuestInfoRewardItemCodeTemplate_OnClick and live Mainline/QuestInfo.lua QuestInfoRewardItemMixin:OnClick.
+it("H61-62 quest dialog: Shift-click on a reward card links its item and picks nothing, and a plain click still picks", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect([addon.eval("return __wfgWorld.chatInserts[1]"), addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()")], "the item's link is in the chat box, the gloves are not picked").toEqual(["item:90022", false]);
+  addon.eval("__wfgWorld.chatBox = nil local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()"), "with no chat box open Shift-click picks as before").toBe(true);
+  addon.eval("__wfgWorld.setKeys({ shift = false, ctrl = true }) local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect([addon.eval("return __wfgWorld.dressedUp[1]"), addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()")], "Ctrl-click shows the boots in the dressing room, no pick").toEqual(["item:90021", false]);
+});
+// Forever and live Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua CheckProtectedFunctionsAllowed: addon code may not
+// show a UI panel (the dressing room) in a fight.
+it("H61-G1 quest dialog: in a fight Ctrl-click on a reward card opens no dressing room (it picks), and Shift-click still links", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  setCombat(addon, true);
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ ctrl = true }) local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect([addon.eval("return #__wfgWorld.dressedUp"), addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()")], "nothing opens, the click picks").toEqual([0, true]);
+  addon.eval("__wfgWorld.setKeys({ ctrl = false, shift = true }) local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return __wfgWorld.chatInserts[1]"), "Shift-click still links the item").toBe("item:90022");
+});
+it("H61-62 quest dialog: a reward card with no item link, or on a client without the call, just picks", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  addon.eval("__wfgWorld.setKeys({ shift = true }) __wfgWorld.chatBox = 'ChatFrame1EditBox' Vanguard_QuestDialog.cards[1].item.link = nil local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect(addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()"), "no link: picked").toBe(true);
+  addon.eval("local h = HandleModifiedItemClick HandleModifiedItemClick = nil local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c) HandleModifiedItemClick = h");
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()")], "no call: picked, nothing linked").toEqual([0, true]);
+});
 it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.eval("__completable = false");
@@ -1225,6 +1257,14 @@ it("H30-14-1 quest log: pointing at a long objective shows it in full, leaving h
   expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
   addon.eval("__wfgStub.inCombat = false local r = Vanguard_QuestLog.objectiveRows[1] r.full = nil r.__scripts.OnEnter(r) local g = GameTooltip GameTooltip = nil r.__scripts.OnEnter(r) r.__scripts.OnLeave(r) GameTooltip = g");
   expect(addon.eval("return GameTooltip:IsShown()"), "no text or no tooltip: nothing").toBe(false);
+});
+it("H61-62 quest log: Shift-click on a reward card links its item to the open chat box; a click with none open does nothing", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("GetQuestLogItemLink = function(kind, i) return 'item:9005' .. i end Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true }) local c = Vanguard_QuestLog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return __wfgWorld.chatInserts[1]"), "the card's link goes to the chat box").toBe("item:90051");
+  addon.eval("__wfgWorld.chatBox = nil local c = Vanguard_QuestLog.cards[2] c.__scripts.OnClick(c)");
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return #ns.errors")], "no chat box open: nothing more is linked, no error").toEqual([1, 0]);
 });
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
