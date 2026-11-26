@@ -235,12 +235,12 @@ it("motion: a fade that turns back starts from where the frame is (H62-2)", () =
   expect(lastFade(addon)[0], "a frame that is not fading starts from 0").toBe(0);
 });
 
-it("motion: a second fade-out leaves the first to finish, and the first one's done runs once (H62-1)", () => {
+it("motion: a second fade-out leaves the first to finish, and each call's done runs once (H62-1)", () => {
   const addon = fadeFrame();
   addon.eval("__done = 0 ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 1 end) ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 10 end)");
   expect(addon.eval("return { #__fades, ns.Theme.FadingOut(TEST_F) }"), "one fade, and the frame is fading out").toEqual([1, true]);
   addon.eval("__finishFades()");
-  expect(addon.eval("return { __done, TEST_F:IsShown() }"), "the first one's done ran, once").toEqual([1, false]);
+  expect(addon.eval("return { __done, TEST_F:IsShown() }"), "each call's done ran, once").toEqual([11, false]);
   addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) ns.Theme.FadeIn(TEST_F)");
   expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "a fade-in turns it back").toBe(false);
   addon.eval("__fades = {} ns.Theme.FadeOut(TEST_F) ns.Theme.StopFade(TEST_F)");
@@ -276,4 +276,13 @@ it("motion: a fade playing when a fight starts finishes within 0.15 s (H62-R2)",
   addon.eval("ns.Theme.FadeIn(TEST_F, 0.3) __fades = {} __fades[0] = nil ns.Theme.StopFade(TEST_F)");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(addon.eval("return #__fades"), "and a stopped fade is not replayed").toBe(0);
+});
+
+it("motion: a second fade-out's done still runs when the first fade ends, after the first one's", () => {
+  const addon = fadeFrame();
+  addon.eval("__order = {} ns.Theme.FadeOut(TEST_F, 0.1, function() __order[#__order + 1] = 'a' end)");
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.1, function() __order[#__order + 1] = 'b' end) ns.Theme.FadeOut(TEST_F)");
+  expect(addon.eval("return #__order"), "nothing runs before the fade ends").toBe(0);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __order[1], __order[2], #__order, TEST_F:IsShown() }"), "both callbacks, in order, once each").toEqual(["a", "b", 2, false]);
 });
