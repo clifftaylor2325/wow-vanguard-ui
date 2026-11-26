@@ -646,3 +646,13 @@ it("H55-61 a click on the meter's title shows in the open options window's Meter
   addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "RightButton")');
   expect(addon.eval("return ns.GetModule('Meter').settings.session"), "a right click steps the segment").toBe("Overall");
 });
+
+it("H55-R2 a Meter rows value outside 3 to 10 sizes the panel as the slider's end, and a non-number as the default", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // The panel height after the setting is set to a Lua value.
+  const height = (rowsValue) => addon.eval(`local MT = ns.GetModule("Meter") MT.settings.rows = ${rowsValue} MT.Paint() return Vanguard_Meter:GetHeight()`);
+  const [head, row, gap] = addon.eval('local MT = ns.GetModule("Meter") return { MT.HEAD, MT.ROW, MT.GAP }');
+  // The panel height for n rows.
+  const tall = (n) => head + n * (row + gap) + gap;
+  expect([height(5), height(40), height(0), height(-3), height('"x"')], "kept within 3 to 10; 'x' is the default 8").toEqual([tall(5), tall(10), tall(3), tall(3), tall(8)]);
+});

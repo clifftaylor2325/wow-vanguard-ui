@@ -30,7 +30,8 @@ MT.SESSION_ORDER = { "Current", "Overall", "Expired" }
 MT.SESSIONS = { Current = L["This fight"], Overall = L["Overall"], Expired = L["Previous fight"] }
 -- The empty-state line by kind: what would fill the panel.
 MT.EMPTY = { Dps = L["No damage yet this fight"], Hps = L["No healing yet this fight"] }
--- The most rows the setting allows.
+-- The fewest and most rows the setting allows.
+MT.MINROWS = 3
 MT.MAXROWS = 10
 -- The widths the panel may be set to (General → Layout → Its width, or the unlock popover).
 MT.WIDTHS = { 200, 600 }
@@ -189,11 +190,18 @@ end
 
 MT.LineAt, MT.Short, MT.Give, MT.Figure = lineAt, short, give, figure
 
+-- The rows to show: the setting kept within MT.MINROWS to MT.MAXROWS (an imported or edited profile may hold any
+-- number, and the panel is sized by it), the default when it is not a number.
+function MT.Rows()
+  local rows = tonumber(MT.settings.rows) or MT.defaults.rows
+  return math.min(MT.MAXROWS, math.max(MT.MINROWS, rows))
+end
+
 -- Paints one row from the list's line i on the bars' full scale `full` (worked out once a paint),
 -- hidden when it has none or the row is past the setting.
 local function paintRow(i, list, full)
   local row = MT.frame.rows[i]
-  local src = i <= MT.settings.rows and lineAt(list, i) or nil
+  local src = i <= MT.Rows() and lineAt(list, i) or nil
   row:SetShown(src ~= nil)
   row.src = nil
   if src then fill(row, src, full) end
@@ -228,7 +236,7 @@ function MT.Paint()
   local f = MT.frame
   if not (f and MT.Running()) then return end
   f:SetShown(MT.settings.on == true and V.Shows(f))
-  f:SetHeight(MT.HEAD + MT.settings.rows * (MT.ROW + MT.GAP) + MT.GAP)
+  f:SetHeight(MT.HEAD + MT.Rows() * (MT.ROW + MT.GAP) + MT.GAP)
   if not f:IsShown() then return end
   local list = MT.Sources()
   f.title:SetText(MT.TitleText())
@@ -391,6 +399,7 @@ MT.AddRow = addRow
 -- A click on the title: left steps through the kinds, right through the segments.
 function MT.TitleClick(_, button)
   if button == "RightButton" then MT.ToggleSession() else MT.ToggleKind() end
+  ns.Options.RefreshShown()
 end
 
 -- The title: a button across the panel's top, up to the header buttons, that switches damage and healing. Its
@@ -399,7 +408,6 @@ end
 local function addTitle(f)
   local title = CreateFrame("Button", nil, f)
   title:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
-  ns.Options.RefreshShown()
   title:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(2 * (MT.BUTTON_W + MT.GAP) + T.SPACE.gap), 0)
   f.titleBar = title
   title:SetHeight(MT.HEAD)
