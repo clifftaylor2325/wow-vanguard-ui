@@ -148,6 +148,17 @@ it("upgrades: the same item and suffix at another unique ID is one row at the ch
   expect(addon.eval(`return ${HELPER}.GearKey("not a link")`), "text that is no item link is its own key").toBe("not a link");
 });
 
+// Item string field order: live Blizzard_PTRFeedback/Blizzard_Reports.lua GetBonusListFromID
+// (item:itemID:enchant:gem1..4:suffix:unique:linkLevel:spec:upgradeType:difficulty:numBonusIDs[:bonusIDs]).
+it("H61-31 upgrades: bonus IDs keep two item levels of one item apart; unique ID and link level do not", () => {
+  const addon = warrior();
+  // The key of a Retail link of item 102 with one bonus ID.
+  const key = (unique, level, bonus) => addon.eval(`return ${HELPER}.GearKey("|cffa335ee|Hitem:102:0:0:0:0:0:0:${unique}:${level}:0:0:0:1:${bonus}|h[x]|h|r")`);
+  expect(key(111, 60, 4000), "another bonus ID is another key").not.toBe(key(111, 60, 4100));
+  expect(key(111, 60, 4000), "the same bonus IDs at another unique ID and link level are one key").toBe(key(222, 70, 4000));
+  expect(addon.eval(`return ${HELPER}.GearKey("item:102:0:0:0:0:0:0:5:60")`), "a link with no bonus block keys on its first seven fields").toBe("102:0:0:0:0:0:0");
+});
+
 it("upgrades: what you wear and the weights change the judgement; kept after closing until what you wear changes", () => {
   const addon = warrior();
   scan(addon, SCAN);

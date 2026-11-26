@@ -71,10 +71,14 @@ function AH.Upgrade(link, price, found)
     slot = slotName(loc), fill = slots and slots[1] or 0, score = empty and (UP.Score(link, (UP.Current())) or 0) or nil, found = found }
 end
 
--- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
--- and level, so two listings of the same item and suffix share a key.
+-- Which item a gear link is: its ID, enchant, gems and suffix, then its bonus IDs and modifiers (on Retail
+-- they set the item level and upgrade track), without the per-listing unique ID, link level, spec, upgrade
+-- type and difficulty, so two listings of the same item at the same level share a key. A link too short
+-- to carry bonus IDs (Forever's) keys on its first seven fields; text that is no item link is its own key.
 function AH.GearKey(link)
-  return link:match("item:(%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*)") or link
+  local item, rest = link:match("item:(%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*)([^|]*)")
+  if not item then return link end
+  return item .. (rest:match("^:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*(:.*)$") or "")
 end
 
 -- A gear listing claims its item's place: false when a listing of the same item at the same price
