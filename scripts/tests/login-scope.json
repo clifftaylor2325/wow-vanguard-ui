@@ -60,6 +60,8 @@
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
       "Y2-4 bars: a usable event repaints only the buttons whose state changed",
+      "a button icon is one pixel inside at a bar Scale saved in the profile",
+      "a button icon stays one pixel inside after a bar Scale or UI scale change",
       "a button prints the client's own count text, such as spell charges, and keeps the use count where it has none",
       "a client with cooldown duration objects never hands the numbers to SetCooldown",
       "a moved action bar keeps its spot until reset",
