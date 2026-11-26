@@ -248,3 +248,16 @@ it("motion: a second fade-out leaves the first to finish, and the first one's do
   addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) __finishFades()");
   expect(addon.eval("return { ns.Theme.FadingOut(TEST_F), TEST_F:IsShown() }"), "when it ends the frame is hidden and no longer fading out").toEqual([false, false]);
 });
+
+it("motion: a fade on a mover's frame runs to and from its opacity, not full (H62-R1)", () => {
+  const addon = loggedIn(FAKE_FADES);
+  addon.eval('__box = CreateFrame("Frame", "TESTONLY_Box", UIParent) __box:SetSize(200, 40) ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })');
+  addon.eval('ns.SetMoverAlpha("box", 0.5) __fakeFader(__box) __box:Hide() ns.Theme.FadeIn(__box)');
+  expect(lastFade(addon).slice(0, 2), "fades in up to the opacity").toEqual([0, 0.5]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return __box:GetAlpha()"), "and rests there").toBe(0.5);
+  addon.eval("ns.Theme.FadeOut(__box)");
+  expect(lastFade(addon).slice(0, 2), "fades out from the opacity").toEqual([0.5, 0]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __box:GetAlpha(), __box:IsShown() }"), "hidden, ready to come back at the opacity").toEqual([0.5, false]);
+});

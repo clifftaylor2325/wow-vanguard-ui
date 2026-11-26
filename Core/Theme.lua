@@ -3935,7 +3935,8 @@ end
 
 -- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
 -- unless motion is off. Only for frames that aren't protected: animations
--- never move secure frames. It goes on from where the frame is when it turns back from a fade-out.
+-- never move secure frames. It fades up to the frame's mover opacity, and goes on from
+-- where the frame is when it turns back from a fade-out.
 function T.FadeIn(frame, seconds)
   local f = activeFader(frame)
   -- Goes on from the frame's alpha while one of its fades plays (as the game's own fades do), else from 0.
@@ -3943,7 +3944,7 @@ function T.FadeIn(frame, seconds)
   frame:Show()
   if not f then return frame:SetAlpha(1) end
   f.out = false
-  playFade(f, from, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
+  playFade(f, from, ns.MoverOpacity(frame), T.FadeTime(seconds), function() frame:SetAlpha(1) end)
 end
 
 -- True while a fade-out of the frame plays.
@@ -3960,8 +3961,7 @@ function T.FadeOut(frame, seconds, done)
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
   if T.FadingOut(frame) then return end
-  local from = f.group:IsPlaying() and ns.PlainNumber(frame:GetAlpha()) or 1
-  playFade(f, from, 0, T.FadeTime(seconds), finish)
+  playFade(f, ns.PlainNumber(frame:GetAlpha()) or 1, 0, T.FadeTime(seconds), finish)
   f.out = true
 end
 
