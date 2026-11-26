@@ -1014,6 +1014,7 @@ local function handleSlash(msg)
   local word = cmd:lower()
   local handler = wordHere(word) and COMMANDS[word] or function() chat(L["Unknown command. /vg help"]) end
   ns.Try("slash " .. word, handler, rest)
+  ns.Options.RefreshShown()
 end
 
 SLASH_VANGUARD1 = "/vg"

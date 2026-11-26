@@ -631,3 +631,18 @@ it("a hidden figure beside a plain share is joined by the client's own string ca
   const bare = addon.eval("C_StringUtil = nil return ns.GetModule('Meter').WithShare(__wfgWorld.secret(900), 100, 400) ~= nil");
   expect([bare, addon.eval("return #ns.errors")], "a client without the call: the figure alone, no error").toEqual([true, 0]);
 });
+
+// The words the "Meter shows" row of the options window shows now (its dropdown's text).
+const kindRow = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.dropdown and w.caption == "Meter shows" then return w.dropdown.text:GetText() end end return "nofind"`);
+
+it("H55-61 a click on the meter's title shows in the open options window's Meter shows row, left and right", () => {
+  const addon = loggedIn(METER_ENV + CLICK_LUA, METER_ON);
+  addon.slash("");
+  addon.eval('ns.Options.Show("tools")');
+  expect(kindRow(addon), "starts on damage per second").toBe("Damage per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "LeftButton")');
+  expect(kindRow(addon), "the title click stepped the kind and the row follows").toBe("Healing per second");
+  addon.eval('local t = Vanguard_Meter.titleBar t.__scripts.OnClick(t, "RightButton")');
+  expect(addon.eval("return ns.GetModule('Meter').settings.session"), "a right click steps the segment").toBe("Overall");
+});

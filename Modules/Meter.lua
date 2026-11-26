@@ -399,6 +399,7 @@ end
 local function addTitle(f)
   local title = CreateFrame("Button", nil, f)
   title:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
+  ns.Options.RefreshShown()
   title:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(2 * (MT.BUTTON_W + MT.GAP) + T.SPACE.gap), 0)
   f.titleBar = title
   title:SetHeight(MT.HEAD)

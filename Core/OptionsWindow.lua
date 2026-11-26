@@ -1208,6 +1208,12 @@ function O.Refresh()
   if window then window.profile:Refresh() window.reload:Refresh() placeVersion(window) O.FitNotice(window) O.MarkChanged() end
 end
 
+-- Re-reads every row when the window is open, for a change made outside it (a /vg command, the meter's title, the
+-- raid preview ending). It only re-reads built rows and draws nothing new, so it is safe in a fight.
+function O.RefreshShown()
+  if window and window:IsShown() then O.Refresh() end
+end
+
 -- Marks the current page's nav entry (the row's selected look, and its text and icon) and dims pages the search misses.
 local function markNav(key)
   for k, b in pairs(window.nav) do

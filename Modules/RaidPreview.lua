@@ -261,6 +261,7 @@ local function stop(said, refit)
   RP.frame:Hide()
   restoreOptions()
   refit()
+  ns.Options.RefreshShown()
   ns.Chat(said or L["Raid frames preview off."])
 end
 
@@ -289,6 +290,7 @@ function RP.Set(n)
   RP.size = n
   draw()
   clearOptions()
+  ns.Options.RefreshShown()
 end
 
 -- Draws the preview again (a raid frame setting changed); nothing while it's off.
