@@ -1614,8 +1614,8 @@ it("H58-1 profile names hold the letters of every language, never | or control b
   // Whether ns.ValidProfileName takes the name.
   const valid = (name) => addon.eval(`return ns.ValidProfileName(${JSON.stringify(name)})`);
   expect([valid("Größe"), valid("Рейд"), valid("Я".repeat(32)), valid("Я".repeat(33)), valid("a|cffff0000b"), addon.eval(`return ns.ValidProfileName("a\\1b")`)], "letters of any language, counted as characters; | and control bytes refused").toEqual([true, true, true, false, false, false]);
-  const refused = ["a\\194\\160", "a\\194\\133b", "a\\226\\128\\174b", "a\\tb", "\\128\\128\\128", "a\\239\\187\\191", "a\\226\\128", "Default\\194\\160"];
-  expect(refused.map((lua) => addon.eval(`return ns.ValidProfileName("${lua}")`)), "no-break space, NEL, RLO, a tab, a lone continuation byte, a BOM, a cut character").toEqual(refused.map(() => false));
+  const refused = ["a\\194\\160", "a\\194\\133b", "a\\226\\128\\174b", "a\\tb", "\\128\\128\\128", "a\\239\\187\\191", "a\\226\\128", "Default\\194\\160", "Default\\227\\128\\128", "a\\194\\173", "a\\227\\133\\164", "a\\225\\133\\159", "a\\239\\190\\160", "a\\225\\160\\142"];
+  expect(refused.map((lua) => addon.eval(`return ns.ValidProfileName("${lua}")`)), "no-break space, NEL, RLO, a tab, a lone continuation byte, a BOM, a cut character, an ideographic space, a soft hyphen, the Hangul fillers, a Mongolian vowel separator").toEqual(refused.map(() => false));
   expect(addon.eval("return ns.ValidProfileName(string.rep('\\240\\159\\152\\128', 33))"), "past 128 bytes").toBe(false);
   // The rolling backup name for a profile in use.
   const backupOf = (name) => addon.eval(`VanguardDB.profiles[${JSON.stringify(name)}] = {} VanguardCharDB.profile = ${JSON.stringify(name)} return ns.BackupProfile()`);

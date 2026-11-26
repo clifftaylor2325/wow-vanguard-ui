@@ -15,9 +15,11 @@ local S = ns.Serialize
 -- other languages' letters (UTF-8, 128-255). "|" and control bytes stay out, so a name never draws an escape code.
 local NAME_REFUSED = "[^%w %-_\128-\255]"
 
--- UTF-8 marks a name may not hold though they are bytes of 128 and up: C1 controls and the no-break space, zero-width and
--- direction marks, and the byte order mark (a name ending in one would read as "Default ").
-local NAME_MARKS = { "\194[\128-\160]", "\226\128[\128-\143\168-\175]", "\226\129[\160-\175]", "\239\187\191" }
+-- UTF-8 marks a name may not hold though they are bytes of 128 and up: C1 controls, the no-break space and soft hyphen,
+-- the wide and zero-width spaces and direction marks, the ideographic space, the Hangul fillers, the Mongolian vowel
+-- separator and the byte order mark (a name ending in one would read as "Default ").
+local NAME_MARKS = { "\194[\128-\160\173]", "\226\128[\128-\143\168-\175]", "\226\129[\160-\175]", "\239\187\191",
+  "\227\128\128", "\227\133\164", "\225\133[\159\160]", "\239\190\160", "\225\160\142" }
 
 -- Whether a name's bytes of 128 and up are all whole UTF-8 characters, none of them one of NAME_MARKS.
 local function cleanName(name)
