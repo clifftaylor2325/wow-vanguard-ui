@@ -176,14 +176,30 @@ it("target buffs: Unit extras switched on in a fight counts no room until the fi
   expect(threatState(addon)).toEqual({ room: 48, made: true });
 });
 
-it("target buffs: a module switch while Frame auras is off asks for no rows and raises no error", () => {
+// Counts how many times the threat room's refit is scheduled (its one-shot timer), from now on.
+const countRoomRefits = (addon) => addon.eval(`__refits = 0 local guard = ns.Guard
+  ns.Guard = function(name, fn) if name == "timer frame auras threat room" then __refits = __refits + 1 end return guard(name, fn) end`);
+
+it("target buffs: a module switch while Frame auras is off schedules no refit and raises no error", () => {
   const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
   addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
   settle(addon);
-  addon.eval('__applies = 0 local FA = ns.GetModule("FrameAuras") local apply = FA.Apply FA.Apply = function() __applies = __applies + 1 return apply() end');
+  countRoomRefits(addon);
   addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
   settle(addon);
-  expect([addon.eval("return __applies"), addon.eval("return #ns.errors")]).toEqual([0, 0]);
+  expect([addon.eval("return __refits"), addon.eval("return #ns.errors")]).toEqual([0, 0]);
+});
+
+// H54-G4: a switch of any other module leaves the room as the rows were built for, so it schedules nothing (a module
+// toggled in the lifecycle tests leaves what a fresh login leaves), and Unit extras' own switch schedules one refit only.
+it("target buffs: another module's switch schedules no refit, Unit extras' own switch schedules one", () => {
+  const addon = loggedIn(UNITS_ENV + FRAME_AURAS);
+  countRoomRefits(addon);
+  addon.eval('ns.SetModuleEnabled("MainTanks", false) ns.SetModuleEnabled("MainTanks", true)');
+  expect(addon.eval("return __refits"), "MainTanks").toBe(0);
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  settle(addon);
+  expect(addon.eval("return __refits"), "Unit extras").toBe(1);
 });
 
 // H47-6-1 (decide: option 1 built): the target's cast bar rises with the buff row's extra height, so a second line of
