@@ -532,6 +532,7 @@ it("H51-34 the Filters level boxes take whole digits from 1 to 999, never a sign
   expect(savedLevels("1e9", "0x10"), "an exponent and hex save no level").toEqual([false, false]);
   expect(savedLevels("inf", "-3"), "inf and a negative save none").toEqual([false, false]);
   expect(savedLevels("1000", "0"), "over three digits, and zero, save none").toEqual([false, false]);
+  expect(savedLevels("20.5", "2."), "a decimal, or a trailing point, saves none").toEqual([false, false]);
   expect(savedLevels(" 60 ", "999"), "whole digits (spaces around allowed) up to 999 save").toEqual([60, 999]);
 });
 it("filters travel: exact names export in quotes, import as exact, and copies have their own", () => {
