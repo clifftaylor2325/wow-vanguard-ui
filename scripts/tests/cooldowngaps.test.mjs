@@ -182,6 +182,10 @@ it("H51-31 /vg gaps takes only whole IDs: a sign, decimal, hex or exponent is no
   expect(chosen(), "-5 does not take item 5 off").toEqual(["5", ""]);
   addon.slash("gaps add  5512 ");
   expect(chosen(), "spaces around whole digits still add").toEqual(["5 5512", ""]);
+  for (const typed of ["123456789012345", "99999999999999999999", "|Hitem:123456789012345|h[Big]|h"]) addon.slash(`gaps add ${typed}`);
+  expect(chosen(), "an ID too long to stay in digits (15 or more, or a link carrying one) is not added").toEqual(["5 5512", ""]);
+  addon.slash("gaps add 999999999");
+  expect(chosen(), "nine digits still add").toEqual(["5 5512 999999999", ""]);
 });
 
 // TEST-ONLY: spells the player knows, spell cooldown tables, and the Cooldown Manager's essential and utility rows.
