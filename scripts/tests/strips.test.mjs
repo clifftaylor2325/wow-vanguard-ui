@@ -806,7 +806,7 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(barSize(addon), "the bags row counts the bag buttons on the bar, not its other frames: the bar hugs their two slots inside a 12-unit margin (two rows tall)").toEqual([barW(2), BAR_H]);
   addon.eval("CharacterBag1Slot:Hide() ns.PausePins(false)");
   expect([...barSize(addon), addon.eval("return Vanguard_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), BAR_H, true]);
-  expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
+  expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetAlpha(), not s:IsMouseMotionEnabled() }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
   expect(addon.eval("return { Vanguard_QuestTracker:GetWidth(), Vanguard_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "Vanguard's tracker is on: its spot is made (260 by 174) and the game's tracker is not pinned").toEqual([260, 174, true]);
 });
 it("menu strip: the game's tracker is pinned into the spot only while Vanguard's own tracker is off", () => {
@@ -871,8 +871,8 @@ it("a menu button takes clicks while the game's notification badge is shown (#24
     __badge:HookScript("OnShow", function(self) self:EnableMouse(true) self:SetHitRectInsets(0, 0, 0, 0) end)
     __alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true)`;
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + BADGE_ENV);
-  // A frame's mouse switch (as EnableMouse last set it; the test client's IsMouseEnabled says nothing) and its hit area's left inset.
-  const state = (f) => addon.eval(`return { ${f}.__mouse and 1 or 0, ${f}.__hitInsets[1] }`);
+  // Whether a frame takes the mouse (clicks or motion), and its hit area's left inset.
+  const state = (f) => addon.eval(`return { (${f}:IsMouseClickEnabled() or ${f}:IsMouseMotionEnabled()) and 1 or 0, ${f}.__hitInsets[1] }`);
   expect([state("__badge"), state("__alert")], "both frames take no mouse and have no place to hit").toEqual([[0, 512], [0, 512]]);
   addon.eval("__badge:Show()");
   expect(state("__badge"), "a badge shown later is made click-through again").toEqual([0, 512]);

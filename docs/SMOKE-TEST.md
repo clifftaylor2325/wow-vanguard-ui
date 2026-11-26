@@ -7771,6 +7771,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: bar 1 is shown with the vehicle's or override bar's abilities, and hides again when you leave. Then set bar 1 to Hidden and repeat. It stays hidden.
 - If it fails, paste: /vg errors
 
+### 33.958 With the Calm HUD on, right-click anywhere on your frame or your target's opens its menu (WoW Forever and Retail)
+
+- Do: turn on Calm HUD out of combat (Options > General), target someone, then right-click the middle of your health bar, its number, the power bar and the name, on your frame and on the target's. Do it under Centered, The keep and Standards. [Client: Forever and Retail.]
+- Expect: every right-click opens the unit's menu and every left-click targets the unit. With `/fstack` on, the arrow points at Vanguard_player (or Vanguard_target), never at a part inside it. Hovering a dimmed frame still brings it back.
+- If it fails, paste: /vg errors, and a screenshot of `/fstack` over the spot that doesn't answer
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

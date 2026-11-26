@@ -326,11 +326,25 @@ local function hoverLeave(f)
   V.Refresh(frame)
 end
 
+-- Gives a frame back the mouse it had (clicks, motion) where the client changed it. A protected frame is left in a
+-- fight, where the client refuses the change; a secure button takes the mouse already, so nothing changes on it.
+local function keepMouse(f, click, motion)
+  if f:IsMouseClickEnabled() == click and f:IsMouseMotionEnabled() == motion then return end
+  if ns.InCombat() and ns.IsTrue(f:IsProtected()) then return end
+  f:SetMouseClickEnabled(click)
+  f:SetMouseMotionEnabled(motion)
+end
+
 -- Hooks one of a frame's mouse scripts; false when the client refuses. It refuses on a frame it keeps from
 -- addons (a forbidden one), and on a frame whose own handler it keeps (the aura buttons of its aura containers,
--- which raise "cannot replace a forbidden script handler").
+-- which raise "cannot replace a forbidden script handler"). Hooking a mouse script makes the client take the mouse
+-- for the frame (motion and clicks), so the frame gets back what it had: a plain part inside a unit frame (the
+-- health bar's text layer) would otherwise catch the clicks meant for the secure button under it.
 local function hookMouse(f, script, fn)
-  return pcall(f.HookScript, f, script, ns.Guard("visibility hover", fn))
+  local click, motion = f:IsMouseClickEnabled(), f:IsMouseMotionEnabled()
+  local ok = pcall(f.HookScript, f, script, ns.Guard("visibility hover", fn))
+  keepMouse(f, click, motion)
+  return ok
 end
 
 -- Follows the mouse over a frame and every frame inside it (nothing polls). A frame the client won't let
@@ -342,9 +356,13 @@ local function hookHover(f, frame)
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end
 end
 
--- Watches the mouse over frame and the frames in it, for fading on mouseover.
+-- Watches the mouse over frame and the frames in it, for fading on mouseover. A protected frame is watched once the
+-- fight ends: the hook turns its mouse on, and in a fight nothing could turn it back off (keepMouse).
 function V.WatchHover(frame)
   frame.vgHoverRoot = frame
+  if ns.InCombat() and ns.IsTrue(frame:IsProtected()) then
+    return ns.OutOfCombat(function() hookHover(frame, frame) end)
+  end
   hookHover(frame, frame)
 end
 
