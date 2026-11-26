@@ -253,16 +253,22 @@ end
 
 -- Commands ---------------------------------------------------------------------------------------
 
+-- The ID in text: whole digits only (not a sign, decimal, hex or exponent, which CG.Chosen would
+-- read back as other IDs) or a link of that kind ("item" or "spell"); nil if neither.
+local function typedID(text, link)
+  return tonumber(text:match("^%s*(%d+)%s*$") or text:match(link .. ":(%d+)"))
+end
+
 -- The item ID in text: a number, an item link, or an item's name the client knows; nil if none.
 local function itemID(text)
-  local id = tonumber(text) or tonumber(text:match("item:(%d+)"))
+  local id = typedID(text, "item")
   if id then return id end
   return text ~= "" and C_Item and C_Item.GetItemInfoInstant and (C_Item.GetItemInfoInstant(text)) or nil
 end
 
 -- The spell ID in text: a number, a spell link, or a spell's name the client knows; nil if none.
 local function spellID(text)
-  local id = tonumber(text) or tonumber(text:match("spell:(%d+)"))
+  local id = typedID(text, "spell")
   if id then return id end
   local info = text ~= "" and C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(text)
   return type(info) == "table" and info.spellID or nil
