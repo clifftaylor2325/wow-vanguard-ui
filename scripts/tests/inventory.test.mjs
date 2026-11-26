@@ -220,3 +220,17 @@ it("inventory: a bank change waiting when the module is switched off is not read
   addon.advance(0.6, 0.1);
   expect(mine(addon).bank, "the remembered bank stays as it was").toEqual({ 2589: 4 });
 });
+
+it("H53-1 inventory: a character that picks a side after starting neutral takes its own record along, and another neutral character's stays", () => {
+  const addon = loggedIn(BAGS_ENV + "__wfgWorld.units.player.faction = 'Neutral'");
+  expect(addon.eval('return VanguardDB.inventory["ForeverTest-none"].Tester.bags'), "while neutral the record is under the neutral home").toEqual({ 2589: 8, 118: 1 });
+  addon.eval('VanguardDB.inventory["ForeverTest-none"].Other = { bags = { [118] = 2 }, bank = {} }');
+  addon.eval("__wfgWorld.units.player.faction = 'Horde'");
+  addon.fire("NEUTRAL_FACTION_SELECT_RESULT");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(0.6, 0.1);
+  expect(addon.eval('return { VanguardDB.inventory["ForeverTest-Horde"].Tester.bags, VanguardDB.inventory["ForeverTest-none"].Tester == nil }'), "the record moved once: its bags came along and none is left behind")
+    .toEqual([{ 2589: 8, 118: 1 }, true]);
+  expect(addon.eval('return { VanguardDB.inventory["ForeverTest-none"].Other.bags, VanguardDB.inventory["ForeverTest-Horde"].Other == nil }'), "another neutral character's record stays where it is")
+    .toEqual([{ 118: 2 }, true]);
+});

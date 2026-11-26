@@ -40,10 +40,20 @@ function IV.Characters()
   return VanguardDB.inventory[key]
 end
 
+-- A character that picked a side after starting neutral (a Pandaren at level 10) takes its own record from the
+-- neutral home to this one, once; names are unique on a realm, so another neutral character's record stays there.
+function IV.TakeFromNeutral(chars, name)
+  local neutral = VanguardDB.inventory[ns.Home.NeutralKey()]
+  local old = type(neutral) == "table" and neutral[name]
+  if ns.Home.Side() == "none" or chars[name] ~= nil or type(old) ~= "table" then return end
+  chars[name], neutral[name] = old, nil
+end
+
 -- This character's record, made if new (a record kept nowhere when the client won't say your name).
 function IV.Mine()
   local chars, name = IV.Characters(), UnitName("player")
   if type(name) ~= "string" or ns.IsSecret(name) then return { bags = {}, bank = {} } end
+  IV.TakeFromNeutral(chars, name)
   local _, class = UnitClass("player")
   chars[name] = type(chars[name]) == "table" and chars[name] or { bags = {}, bank = {} }
   chars[name].class = class
