@@ -84,7 +84,7 @@ end
 
 -- Text --------------------------------------------------------------------------------------
 
--- Characters in a string: UTF-8 code points, so "é" or "中" counts once (as the website counts).
+-- Characters in a string: UTF-8 code points, so "é" or "中" counts once (the website counts a character past U+FFFF twice: Core/Feedback.lua).
 ---@param s string
 ---@return number
 function ns.TextLength(s)
