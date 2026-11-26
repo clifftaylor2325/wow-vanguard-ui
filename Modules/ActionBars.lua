@@ -620,8 +620,14 @@ local function onAttributeChanged(b, name)
 end
 
 -- The icon, one screen pixel inside the border (set again after a scale change) and cropped past the baked-in edge.
+-- With the skinning library loaded it places the icon itself, so Vanguard must not place it again.
 local function addIcon(b)
-  b.icon = T.PixelInset(b:CreateTexture(nil, "ARTWORK"), b)
+  b.icon = b:CreateTexture(nil, "ARTWORK")
+  if ns.Masque.Group(AB.MASQUE) then
+    b.icon:SetAllPoints(b)
+  else
+    T.PixelInset(b.icon, b)
+  end
   T.Crop(b.icon)
 end
 
