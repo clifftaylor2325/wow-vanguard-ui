@@ -3150,3 +3150,10 @@ it("H49-R2 the quest tracker's rules stay one pixel tall after a UI scale change
   own.advance(1);
   expect(own.eval("local f = Vanguard_QuestTrackerFrame return f.rule:GetHeight() - ns.Theme.Pixel(f)")).toBeCloseTo(0, 5);
 });
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the quest dialog and the quest log take the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = loggedIn(QUEST_ENV);
+  expect(addon.eval("return { Vanguard_QuestDialog:IsMouseClickEnabled(), Vanguard_QuestLog:IsMouseClickEnabled() }")).toEqual([true, true]);
+});

@@ -153,7 +153,7 @@ end
 -- Builds the board (hidden), movable, closed by Escape; at a dialog's opacity (T.ALPHA.dialog), since a click hands you to the chat box.
 function GB.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_GroupBoard", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
-  f:SetSize(GB.W, GB.H)
+  f:EnableMouse(true) f:SetSize(GB.W, GB.H)
   f:SetFrameStrata("HIGH")
   GB.Adopt(f)
   addTop(f)

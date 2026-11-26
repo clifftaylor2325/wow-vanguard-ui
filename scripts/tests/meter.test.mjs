@@ -691,3 +691,16 @@ it("H55-G2 a Meter rows value outside 3 to 10 draws as many lines as the panel i
   };
   expect([shown(0), shown(-3), shown(40), shown(5), shown('"x"')], "3, 3, 10, 5 and the default 8 lines").toEqual([3, 3, 10, 5, 8]);
 });
+
+// H57-65: a plain frame takes no mouse in the game, so a click on an empty part of the window reached the world behind it;
+// the game's own windows opt in (/home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_UIPanels_Game/*/QuestFrame.xml QuestFrame
+// and Blizzard_MailFrame/MailFrame.xml MailFrame: enableMouse="true").
+it("H57-65 the meter's spell panel takes the mouse, so a click on a gap does not reach the world behind", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Pet', amountPerSecond = 300, sourceCreatureID = 7 } }");
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 1, totalAmount = 900 } } } end`);
+  addon.advance(1);
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  expect(addon.eval("return Vanguard_MeterDetail:IsMouseClickEnabled()")).toBe(true);
+});

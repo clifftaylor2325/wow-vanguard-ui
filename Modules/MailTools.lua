@@ -658,7 +658,7 @@ end
 -- The panel, built when the mailbox first opens with the tools on: right of the mail window.
 function MT.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true, alpha = T.ALPHA.opaque })
-  f:SetSize(MT.WIDTH, ROWS_TOP + MT.ROWS * MT.ROW + FOOT)
+  f:EnableMouse(true) f:SetSize(MT.WIDTH, ROWS_TOP + MT.ROWS * MT.ROW + FOOT)
   heading(f)
   buildRows(f)
   buildSearch(f)

@@ -297,6 +297,7 @@ end
 -- a row per reagent (CR.ROWS at most), the totals and Add reagents.
 function CR.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftingPanel", UIParent), { shadow = true })
+  f:EnableMouse(true)
   f:SetWidth(CR.WIDTH)
   heading(f)
   f.rows, f.lines = {}, {}
