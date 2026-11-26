@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
+import { FAKE_FADES, SETUP_DONE, TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -63,6 +63,17 @@ it("the popover says why a typed offset's link is refused", () => {
   addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" })');
   addon.eval('Vanguard_MoverPopover.x:SetText("5") Vanguard_MoverPopover.x:GetScript("OnEnterPressed")(Vanguard_MoverPopover.x)');
   expect(addon.eval("return Vanguard_MoverPopover.why:GetText()"), "a refused offset says why").toBe("A frame can't be anchored to itself.");
+});
+
+it("the popover moves to another handle without fading in again, and fades in again after its close began (H62-2)", () => {
+  const addon = loggedIn(FAKE_FADES + BOX);
+  // The popover is built by its first call, which fades it in with no animation support; give it a fader after.
+  addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" }) ns.FrameState("vgFader")[Vanguard_MoverPopover] = nil __fakeFader(Vanguard_MoverPopover) ns.Theme.StopFade(Vanguard_MoverPopover) __fades = {}');
+  addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" })');
+  expect(addon.eval("return #__fades"), "already up: no fade").toBe(0);
+  addon.eval("ns.CloseMoverPopover() Vanguard_MoverPopover:SetAlpha(0.5) __fades = {}");
+  addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" })');
+  expect(addon.eval("local g = __fades[1] return { #__fades, g.from, g.to }"), "reopened during its close: fades in from where it is").toEqual([1, 0.5, 1]);
 });
 
 it("a mover's size the client can't give reads 0, not its height", () => {

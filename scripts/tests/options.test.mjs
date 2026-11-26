@@ -2414,6 +2414,15 @@ it("options: a new page's card fades in when the window is already open; opening
   expect(addon.eval("return { #__fades, __np:GetAlpha() }"), "Reduce motion: at once").toEqual([0, 1]);
 });
 
+it("options: a second close while the window fades out plays no second sound or fade, and Show during the close reopens it opaque (H62-1)", () => {
+  const addon = loggedIn(CLICK_LUA + FAKE_FADES + "SOUNDKIT = { IG_MAINMENU_OPEN = 850, IG_MAINMENU_CLOSE = 851, IG_CHARACTER_INFO_TAB = 841 } __sounds = {} PlaySound = function(k) table.insert(__sounds, k) end");
+  addon.eval('ns.Options.Show("general") __fakeFader(Vanguard_Options) __finishFades() __sounds = {} __fades = {}');
+  addon.eval("ns.Options.Hide() ns.Options.Hide() ns.Options.Toggle()");
+  expect(addon.eval("return { __sounds, #__fades, Vanguard_Options:IsShown() }"), "one close sound and one fade, the window still up while it fades").toEqual([[851], 1, true]);
+  addon.eval('ns.Options.Show("general")');
+  expect(addon.eval("return { Vanguard_Options:GetAlpha(), ns.Theme.FadingOut(Vanguard_Options) }"), "opened again during the close: opaque, no fade-out left").toEqual([1, false]);
+});
+
 it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("talents")');

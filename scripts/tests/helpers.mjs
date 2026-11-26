@@ -503,6 +503,7 @@ export const FAKE_FADES = `
       local g = { scripts = {}, owner = frame }
       function g:SetToFinalAlpha() end
       function g:Stop() self.playing = false end
+      function g:IsPlaying() return self.playing == true end
       function g:SetScript(k, fn) self.scripts[k] = fn end
       function g:Play() self.playing = true table.insert(__fades, self) end
       function g:CreateAnimation(kind)

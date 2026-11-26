@@ -77,7 +77,7 @@ end
 -- Saves the offset typed into a box: from the side of the frame it's anchored to, or from its screen
 -- point, the other axis as it is. Returns the setter's answer (ok, why); a bad number saves nothing.
 local function saveOffset(box)
-  local v, key = tonumber(box:GetText() or ""), popover.key
+  local v, key = ns.TypedNumber(box:GetText() or ""), popover.key
   if not v then return nil end
   local to, side, rx, ry = ns.MoverAnchor(key)
   local point, relPoint, x, y = ns.MoverPoint(key)
@@ -98,7 +98,7 @@ end
 -- Saves a percent typed into the Scale or Opacity box (Enter): the box's setter
 -- clamps it to the allowed range; a bad number is ignored.
 local function applyPercent(box)
-  local v = tonumber(box:GetText() or "")
+  local v = ns.TypedNumber(box:GetText() or "")
   if v then box.apply(popover.key, v / 100) end
   box:ClearFocus()
   answer(true)
@@ -245,7 +245,7 @@ function ns.MoverPopover(m)
   popover:ClearAllPoints()
   popover:SetPoint(point, to, relPoint, x, 0)
   answer(true)
-  T.FadeIn(popover)
+  if not popover:IsShown() or T.FadingOut(popover) then T.FadeIn(popover) end
 end
 
 -- Closes the popover (and any open dropdown).

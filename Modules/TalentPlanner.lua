@@ -635,9 +635,12 @@ local function hookWindow(frame)
   scope:Gate("window config", TP.Schedule, function(gate) hooksecurefunc(frame, "SetConfigID", ns.Guard("talent window config", gate)) end)
 end
 
--- Puts the game tooltip away.
+-- Puts the game tooltip away when one of the planner's own frames (a mark or the summary) owns it.
 function TP.HideTip()
-  GameTooltip:Hide()
+  local owner = GameTooltip:GetOwner()
+  local ours = owner ~= nil and (owner == TP.hovered or (TP.bar ~= nil and owner == TP.bar.tip))
+  TP.hovered = nil
+  if ours then GameTooltip:Hide() end
 end
 
 -- Hooks the game's talents window once it exists: the bar built and the window hooked (both once a session), the
@@ -939,11 +942,6 @@ end
 
 -- Sharing -----------------------------------------------------------------------------------------
 
--- A class token as a word ("MAGE" -> "Mage").
-local function classWord(token)
-  return token:sub(1, 1) .. token:sub(2):lower()
-end
-
 -- How many points a set of ranks adds up to.
 local function countRanks(ranks)
   local n = 0
@@ -975,7 +973,7 @@ function TP.ReadImport(text)
   if not scope then return false, data end
   if scope ~= "talents" or type(data) ~= "table" or type(data.ranks) ~= "table" then return false, L["that is not a talent plan"] end
   local _, class = UnitClass("player")
-  if type(data.class) == "string" and type(class) == "string" and data.class ~= class then return false, ns.Format(L["that plan is for a {class}"], { class = classWord(data.class) }) end
+  if type(data.class) == "string" and type(class) == "string" and data.class ~= class then return false, ns.Format(L["that plan is for a {class}"], { class = ns.ClassName(data.class) }) end
   local ranks = cleanRanks(data.ranks)
   if not next(ranks) then return false, L["that plan has no talents in it"] end
   return ranks, type(data.hash) == "string" and data.hash or nil

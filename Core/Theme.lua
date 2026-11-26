@@ -3903,17 +3903,21 @@ local function fader(frame)
   local group = frame.CreateAnimationGroup and frame:CreateAnimationGroup()
   local alpha = group and group.CreateAnimation and group:CreateAnimation("Alpha")
   if alpha then group:SetToFinalAlpha(true) alpha:SetSmoothing("OUT") end
-  vgFader[frame] = alpha and { group = group, alpha = alpha } or false
+  vgFader[frame] = alpha and { group = group, alpha = alpha, frame = frame } or false
   return vgFader[frame]
 end
+
+-- Fades in progress (weak): T.CapFadesInFight shortens the long ones when a fight starts.
+T.PLAYING_FADES = setmetatable({}, { __mode = "k" })
 
 -- Plays an alpha change from -> to over seconds, then runs done.
 local function playFade(f, from, to, seconds, done)
   f.group:Stop()
+  f.to, f.seconds, f.done, T.PLAYING_FADES[f] = to, seconds, done, true
   f.alpha:SetFromAlpha(from)
   f.alpha:SetToAlpha(to)
   f.alpha:SetDuration(seconds)
-  f.group:SetScript("OnFinished", ns.Guard("fade done", done))
+  f.group:SetScript("OnFinished", ns.Guard("fade done", function() T.PLAYING_FADES[f], f.out = nil, false f.done() end))
   f.group:Play()
 end
 
@@ -3935,23 +3939,51 @@ end
 
 -- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
 -- unless motion is off. Only for frames that aren't protected: animations
--- never move secure frames.
+-- never move secure frames. It fades up to the frame's mover opacity, and from where
+-- the frame is when it turns back from a fade-out.
 function T.FadeIn(frame, seconds)
   local f = activeFader(frame)
+  -- Goes on from the frame's alpha while one of its fades plays (as the game's own fades do), else from 0.
+  local from = f and (f.group:IsPlaying() and ns.PlainNumber(frame:GetAlpha()) or 0)
   frame:Show()
   if not f then return frame:SetAlpha(1) end
-  playFade(f, 0, 1, T.FadeTime(seconds), function() frame:SetAlpha(1) end)
+  f.out = false
+  playFade(f, from, ns.MoverOpacity(frame), T.FadeTime(seconds), function() frame:SetAlpha(1) end)
 end
 
--- Fades a frame out (as long as T.FadeIn), then hides it (and runs done); at
--- once when motion is off.
+-- True while a fade-out of the frame plays (a second close leaves the first to finish).
+function T.FadingOut(frame)
+  local f = vgFader[frame]
+  return f and f.out and f.group:IsPlaying() or false
+end
+
+-- Fades a frame out (as long as T.FadeIn), from the alpha it has, then hides it (and runs done);
+-- at once when motion is off. While one fade-out plays, another call leaves it be and its done runs
+-- when that fade ends, after the first call's.
 function T.FadeOut(frame, seconds, done)
   local f = activeFader(frame)
   -- Hides the frame, restores its alpha for next time, and tells the caller.
   local finish = function() frame:Hide() frame:SetAlpha(1) if done then done() end end
   if not f or not frame:IsShown() then return finish() end
-  playFade(f, 1, 0, T.FadeTime(seconds), finish)
+  if T.FadingOut(frame) then
+    local first = f.done
+    f.done = done and function() first() done() end or first
+    return
+  end
+  playFade(f, ns.PlainNumber(frame:GetAlpha()) or 1, 0, T.FadeTime(seconds), finish)
+  f.out = true
 end
+
+-- When a fight starts, a fade still playing for longer than T.COMBAT_FADE goes on from where
+-- the frame is and ends within T.COMBAT_FADE (the cap holds for a fade begun before the fight).
+function T.CapFadesInFight()
+  for f in pairs(T.PLAYING_FADES) do
+    if f.seconds > T.COMBAT_FADE and f.group:IsPlaying() then
+      playFade(f, ns.PlainNumber(f.frame:GetAlpha()) or f.to, f.to, T.COMBAT_FADE, f.done)
+    end
+  end
+end
+ns.On("PLAYER_REGEN_DISABLED", T.CapFadesInFight)
 
 -- How a window opens and closes (#257): seconds to open and to close, and how many screen
 -- pixels it rises into place as it opens.
@@ -4091,7 +4123,7 @@ end
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
   local f = vgFader[frame]
-  if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
+  if f then f.group:SetScript("OnFinished", nil) f.group:Stop() f.out, T.PLAYING_FADES[f] = false, nil end
   unbuffer(frame)
   frame:SetAlpha(1)
 end

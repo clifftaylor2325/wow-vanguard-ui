@@ -77,6 +77,16 @@ function ns.MoverLook(key)
   return within(p.scale, ns.MOVER_SCALE), within(p.alpha, ns.MOVER_ALPHA)
 end
 
+-- The opacity a frame rests at when it is a mover's (1 for any other frame): where a fade in ends.
+---@param frame Frame
+---@return number
+function ns.MoverOpacity(frame)
+  for key, m in pairs(movers) do
+    if m.frame == frame then return select(2, ns.MoverLook(key)) end
+  end
+  return 1
+end
+
 -- The nine anchor points a saved position may name.
 local POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 

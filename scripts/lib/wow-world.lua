@@ -2713,6 +2713,40 @@ C_ChatInfo = C_ChatInfo or {}
 -- global is only a deprecation fallback on Forever (Blizzard_DeprecatedChatInfo), so it is not modelled.
 C_ChatInfo.SendChatMessage = function(text, chatType) table.insert(world.sentChat, { text, chatType }) end
 ChatFrameUtil = {}
+-- Modified clicks: IsModifiedClick(action) is true while the action's modifier is held, by the default bindings
+-- (Blizzard_FrameXML/Bindings_Standard.xml: CHATLINK SHIFT-BUTTON1, DRESSUP CTRL-BUTTON1); with no action, while any is.
+local MODIFIED_CLICK_KEYS = { CHATLINK = "shift", DRESSUP = "ctrl" }
+-- IsModifiedClick(action): whether the action's modifier is held.
+function IsModifiedClick(action)
+  if action then return world.keys[MODIFIED_CLICK_KEYS[action]] == true end
+  return world.keys.shift == true or world.keys.ctrl == true or world.keys.alt == true
+end
+-- The chat box a test opens (a name), and what was put in chat boxes and the dressing room, in order.
+world.chatBox, world.chatInserts, world.dressedUp = nil, {}, {}
+-- ChatFrameUtil.InsertLink (Blizzard_ChatFrameBase/Mainline/ChatFrameUtilOverrides.lua): puts the text in the open chat
+-- box and answers true, or answers false when none is open.
+function ChatFrameUtil.InsertLink(text)
+  if not (text and world.chatBox) then return false end
+  table.insert(world.chatInserts, text)
+  return true
+end
+-- TryInsertChatLink and TryInsertQuestLinkForQuestID (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua): the same while
+-- CHATLINK is held.
+function ChatFrameUtil.TryInsertChatLink(link)
+  if IsModifiedClick("CHATLINK") and link then return ChatFrameUtil.InsertLink(link) end
+end
+-- Links the quest to the open chat box while CHATLINK is held.
+function ChatFrameUtil.TryInsertQuestLinkForQuestID(questID) return ChatFrameUtil.TryInsertChatLink(GetQuestLink(questID)) end
+-- GetQuestLink(questID): the quest's link.
+function GetQuestLink(questID) return "|cffffff00|Hquest:" .. questID .. ":0|h[Quest " .. questID .. "]|h|r" end
+-- HandleModifiedItemClick (Blizzard_ItemButton/Mainline/ItemButtonTemplate.lua): CHATLINK puts the link in the open
+-- chat box, DRESSUP shows it in the dressing room; true when it did either.
+function HandleModifiedItemClick(link)
+  if not link then return false end
+  if IsModifiedClick("CHATLINK") and ChatFrameUtil.InsertLink(link) then return true end
+  if IsModifiedClick("DRESSUP") then table.insert(world.dressedUp, link) return true end
+  return false
+end
 -- Chat filters: 12.x keeps them in ChatFrameUtil (Blizzard_ChatFrameBase/Shared/ChatFrameFilters.lua).
 function ChatFrameUtil.AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
 -- The old global is only an alias of it, set while the client loads its deprecation fallbacks

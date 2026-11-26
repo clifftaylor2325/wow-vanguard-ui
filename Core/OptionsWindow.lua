@@ -1517,7 +1517,7 @@ end
 -- Closes the window (and any open dropdown).
 function O.Hide()
   W.CloseMenu()
-  if not window or not window:IsShown() then return end
+  if not window or not window:IsShown() or T.FadingOut(window) then return end
   T.Sound("close")
   T.CloseWindow(window)
 end

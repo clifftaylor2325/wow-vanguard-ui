@@ -126,6 +126,38 @@ it("H45-27-R1: the session hand-back switched on and off inside a talk keeps the
   addon.eval("GossipFrame:Show() ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
   expect(addon.eval("return ns.GetModule('QuestDialog').gameTalk"), "an open game gossip window counts too").toBe(true);
 });
+// Reward buttons send a modified click to HandleModifiedItemClick: forever Blizzard_UIPanels_Game/Vanilla/QuestInfo.lua
+// QuestInfoRewardItemCodeTemplate_OnClick and live Mainline/QuestInfo.lua QuestInfoRewardItemMixin:OnClick.
+it("H61-62 quest dialog: Shift-click on a reward card links its item and picks nothing, and a plain click still picks", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect([addon.eval("return __wfgWorld.chatInserts[1]"), addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()")], "the item's link is in the chat box, the gloves are not picked").toEqual(["item:90022", false]);
+  addon.eval("__wfgWorld.chatBox = nil local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()"), "with no chat box open Shift-click still picks nothing, as the game's cards do").toBe(false);
+  addon.eval("__wfgWorld.setKeys({ shift = false, ctrl = true }) local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect([addon.eval("return __wfgWorld.dressedUp[1]"), addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()")], "Ctrl-click shows the boots in the dressing room, no pick").toEqual(["item:90021", false]);
+});
+// Forever and live Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua CheckProtectedFunctionsAllowed: addon code may not
+// show a UI panel (the dressing room) in a fight.
+it("H61-G1 quest dialog: in a fight Ctrl-click on a reward card opens no dressing room and picks nothing, and Shift-click still links", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  setCombat(addon, true);
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ ctrl = true }) local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect([addon.eval("return #__wfgWorld.dressedUp"), addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()")], "nothing opens, nothing is picked").toEqual([0, false]);
+  addon.eval("__wfgWorld.setKeys({ ctrl = false, shift = true }) local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return __wfgWorld.chatInserts[1]"), "Shift-click still links the item").toBe("item:90022");
+});
+it("H61-62 quest dialog: a modified click on a reward card with no item link, or on a client without the call, does nothing", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  addon.eval("__wfgWorld.setKeys({ shift = true }) __wfgWorld.chatBox = 'ChatFrame1EditBox' Vanguard_QuestDialog.cards[1].item.link = nil local c = Vanguard_QuestDialog.cards[1] c.__scripts.OnClick(c)");
+  expect(addon.eval("return Vanguard_QuestDialog.cards[1].picked:IsShown()"), "no link: not picked").toBe(false);
+  addon.eval("local h = HandleModifiedItemClick HandleModifiedItemClick = nil local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnClick(c) HandleModifiedItemClick = h");
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return Vanguard_QuestDialog.cards[2].picked:IsShown()")], "no call: not picked, nothing linked").toEqual([0, false]);
+});
 it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.eval("__completable = false");
@@ -550,6 +582,17 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
   expect(noLog.eval("return __opened"), "with Vanguard's quest log off, the game's map opens it").toBe(90051);
 });
+// Shift-click on a quest: forever and live Blizzard_ObjectiveTracker/Blizzard_QuestObjectiveTracker.lua OnBlockHeaderClick
+// and forever Blizzard_UIPanels_Game/Vanilla/QuestLogFrame.lua QuestLogTitleButton_OnClick put its link in an open chat box first.
+it("H61-61 quest tracker: Shift-click on a quest with a chat box open links it and does nothing else; with none open it keeps its meaning", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true }) local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return { __wfgWorld.chatInserts[1], Vanguard_QuestLog:IsShown() }"), "the quest's link is in the chat box, and the quest did not open").toEqual(["|cffffff00|Hquest:90051:0|h[Quest 90051]|h|r", false]);
+  addon.eval("__wfgWorld.chatBox = nil local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, #ns.errors }"), "with no chat box open Shift-click links nothing").toEqual([1, 0]);
+  addon.eval("local util = ChatFrameUtil ChatFrameUtil = nil local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton') ChatFrameUtil = util");
+  expect(addon.eval("return #ns.errors"), "a client without ChatFrameUtil: the click goes on as before").toBe(0);
+});
 // TEST-ONLY Legacy challenges: tracked achievements (C_ContentTracking's achievement type) and their criteria.
 const ACH_ENV = `
   Enum.ContentTrackingType = { Achievement = 2 }
@@ -590,6 +633,29 @@ it("quest tracker: a Legacy challenge with no criteria shows its description, an
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
   expect(tracker(addon).blocks.slice(3), "completed by someone else on the account (not earned by you): still Complete").toEqual([["TEST-ONLY Legacy Done", ["Complete"]]]);
+});
+// Shift-click on a tracked achievement or recipe: forever and live Blizzard_ObjectiveTracker/Blizzard_AchievementObjectiveTracker.lua
+// and Blizzard_ProfessionsRecipeTracker.lua OnBlockHeaderClick put its link in an open chat box.
+it("H61-R1 quest tracker: Shift-click on a tracked challenge links it when a chat box is open; right-click and no chat box do as before", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  addon.eval("GetAchievementLink = function(id) return '|Hachievement:' .. id .. '|h[Ach ' .. id .. ']|h' end __wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { __wfgWorld.chatInserts[1], __stopped == nil }"), "the challenge's link is in the chat box").toEqual(["|Hachievement:7001|h[Ach 7001]|h", true]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'RightButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, __stopped[2] }"), "right-click still stops tracking, and links nothing").toEqual([1, 7001]);
+  addon.eval("__stopped = nil __wfgWorld.chatBox = nil local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, #ns.errors }"), "no chat box: nothing linked").toEqual([1, 0]);
+});
+it("H61-R1 quest tracker: Shift-click on a tracked recipe links it when a chat box is open and opens it when none is", () => {
+  const addon = loggedIn(RECIPE_ENV);
+  addon.world.addQuest({ questID: 90052, title: "TEST-ONLY Letter", level: 12, watched: true });
+  addon.eval("__wfgWorld.trackRecipe(90100)");
+  addon.update(0);
+  addon.eval("C_TradeSkillUI.GetRecipeLink = function(id) return '|Henchant:' .. id .. '|h[Recipe ' .. id .. ']|h' end __wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { __wfgWorld.chatInserts[1], tostring(__wfgWorld.openedRecipe) }"), "the recipe's link is in the chat box, and the recipe did not open").toEqual(["|Henchant:90100|h[Recipe 90100]|h", "nil"]);
+  addon.eval("__wfgWorld.chatBox = nil local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, __wfgWorld.openedRecipe }"), "with no chat box it opens as before").toEqual([1, 90100]);
 });
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
@@ -1225,6 +1291,26 @@ it("H30-14-1 quest log: pointing at a long objective shows it in full, leaving h
   expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
   addon.eval("__wfgStub.inCombat = false local r = Vanguard_QuestLog.objectiveRows[1] r.full = nil r.__scripts.OnEnter(r) local g = GameTooltip GameTooltip = nil r.__scripts.OnEnter(r) r.__scripts.OnLeave(r) GameTooltip = g");
   expect(addon.eval("return GameTooltip:IsShown()"), "no text or no tooltip: nothing").toBe(false);
+});
+it("H61-62 quest log: Shift-click on a reward card links its item to the open chat box; a click with none open does nothing", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("GetQuestLogItemLink = function(kind, i) return 'item:9005' .. i end Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true }) local c = Vanguard_QuestLog.cards[2] c.__scripts.OnClick(c)");
+  expect(addon.eval("return __wfgWorld.chatInserts[1]"), "the card's link goes to the chat box").toBe("item:90051");
+  addon.eval("__wfgWorld.chatBox = nil local c = Vanguard_QuestLog.cards[2] c.__scripts.OnClick(c)");
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return #ns.errors")], "no chat box open: nothing more is linked, no error").toEqual([1, 0]);
+});
+it("H61-61 quest log: Shift-click on a quest with a chat box open links it and neither selects nor tracks it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  const before = addon.eval("return { ns.GetModule('QuestLog').selected, #__watches }");
+  addon.eval("__wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  logLine(addon, 2);
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return { ns.GetModule('QuestLog').selected, #__watches }")], "one link in the chat box, selection and tracking unchanged").toEqual([1, before]);
+  expect(before[0], "the quest linked was not the one selected before").not.toBe(90052);
+  addon.eval("__wfgWorld.chatBox = nil");
+  logLine(addon, 2);
+  expect([addon.eval("return #__wfgWorld.chatInserts"), addon.eval("return ns.GetModule('QuestLog').selected")], "with no chat box Shift-click selects the quest as before").toEqual([1, 90052]);
 });
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
@@ -2246,6 +2332,15 @@ it("quest dialog: Accept goes straight through without the flag, or without the 
   bare.fire("QUEST_DETAIL");
   key(bare, "SPACE");
   expect(calls(bare), "no warning text to ask with: accepted").toEqual(["accept nil"]);
+});
+it("H58-62 a quest's XP is grouped with the client's thousands mark, a lone % in it kept as typed", () => {
+  const addon = loggedIn(TRACK_ENV);
+  // The XP text of two rewards on a client grouping with this mark.
+  const xp = (mark) => addon.eval(`LARGE_NUMBER_SEPERATOR = ${JSON.stringify(mark)} return { ns.QuestParts.XPText(1250), ns.QuestParts.XPText(1234567) }`);
+  expect(xp("."), "a point").toEqual(["1.250 XP", "1.234.567 XP"]);
+  expect(xp(" "), "a space").toEqual(["1 250 XP", "1 234 567 XP"]);
+  expect(xp("%"), "a percent sign is no gsub escape").toEqual(["1%250 XP", "1%234%567 XP"]);
+  expect(xp(""), "a client with no mark falls back to a comma").toEqual(["1,250 XP", "1,234,567 XP"]);
 });
 it("quest log: each line shows its quest's XP at the right, with thousands set apart, and the switch turns it off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);

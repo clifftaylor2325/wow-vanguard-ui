@@ -218,3 +218,71 @@ it("a game push button's label takes the theme's text tiers from T.Button; a pri
   setCombat(addon, false);
   expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
 });
+
+// A frame with a fake fader, shown; the fade tests below set its alpha by hand to stand in for the
+// client's animated alpha (Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua reads GetAlpha mid-fade the same way).
+const fadeFrame = () => loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_F", UIParent) __fakeFader(f) f:Show()');
+// The last fade started, as { from, to, duration }.
+const lastFade = (addon) => addon.eval("local g = __fades[#__fades] return { g.from, g.to, g.duration }");
+
+it("motion: a fade that turns back starts from where the frame is (H62-2)", () => {
+  const addon = fadeFrame();
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.6) TEST_F:SetAlpha(0.4) ns.Theme.FadeIn(TEST_F, 0.1)");
+  expect(lastFade(addon), "a fade-in during a fade-out goes on from the alpha it has").toEqual([0.4, 1, 0.1]);
+  addon.eval("TEST_F:SetAlpha(0.7) ns.Theme.FadeOut(TEST_F, 0.1)");
+  expect(lastFade(addon), "and a fade-out during a fade-in too").toEqual([0.7, 0, 0.1]);
+  addon.eval("__finishFades() TEST_F:Show() ns.Theme.FadeIn(TEST_F)");
+  expect(lastFade(addon)[0], "a frame that is not fading starts from 0").toBe(0);
+});
+
+it("motion: a second fade-out leaves the first to finish, and each call's done runs once (H62-1)", () => {
+  const addon = fadeFrame();
+  addon.eval("__done = 0 ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 1 end) ns.Theme.FadeOut(TEST_F, 0.2, function() __done = __done + 10 end)");
+  expect(addon.eval("return { #__fades, ns.Theme.FadingOut(TEST_F) }"), "one fade, and the frame is fading out").toEqual([1, true]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __done, TEST_F:IsShown() }"), "each call's done ran, once").toEqual([11, false]);
+  addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) ns.Theme.FadeIn(TEST_F)");
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "a fade-in turns it back").toBe(false);
+  addon.eval("__fades = {} ns.Theme.FadeOut(TEST_F) ns.Theme.StopFade(TEST_F)");
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "so does StopFade").toBe(false);
+  addon.eval("TEST_F:Show() ns.Theme.FadeOut(TEST_F) __finishFades()");
+  expect(addon.eval("return { ns.Theme.FadingOut(TEST_F), TEST_F:IsShown() }"), "when it ends the frame is hidden and no longer fading out").toEqual([false, false]);
+});
+
+it("motion: a fade on a mover's frame runs to and from its opacity, not full (H62-R1)", () => {
+  const addon = loggedIn(FAKE_FADES);
+  addon.eval('__box = CreateFrame("Frame", "TESTONLY_Box", UIParent) __box:SetSize(200, 40) ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })');
+  addon.eval('ns.SetMoverAlpha("box", 0.5) __fakeFader(__box) __box:Hide() ns.Theme.FadeIn(__box)');
+  expect(lastFade(addon).slice(0, 2), "fades in up to the opacity").toEqual([0, 0.5]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return __box:GetAlpha()"), "and rests there").toBe(0.5);
+  addon.eval("ns.Theme.FadeOut(__box)");
+  expect(lastFade(addon).slice(0, 2), "fades out from the opacity").toEqual([0.5, 0]);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __box:GetAlpha(), __box:IsShown() }"), "hidden, ready to come back at the opacity").toEqual([0.5, false]);
+});
+
+it("motion: a fade playing when a fight starts finishes within 0.15 s (H62-R2)", () => {
+  const addon = fadeFrame();
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.35, function() __ended = true end) TEST_F:SetAlpha(0.8)");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(lastFade(addon), "the long fade goes on from its alpha over the combat length").toEqual([0.8, 0, 0.15]);
+  expect(addon.eval("return ns.Theme.FadingOut(TEST_F)"), "still a fade-out").toBe(true);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __ended, TEST_F:IsShown() }"), "with the same done").toEqual([true, false]);
+  addon.eval("__fades = {} TEST_F:Show() ns.Theme.FadeIn(TEST_F, 0.1) TEST_F:Show() __fades = {}");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return #__fades"), "a short fade is left alone").toBe(0);
+  addon.eval("ns.Theme.FadeIn(TEST_F, 0.3) __fades = {} __fades[0] = nil ns.Theme.StopFade(TEST_F)");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return #__fades"), "and a stopped fade is not replayed").toBe(0);
+});
+
+it("motion: a second fade-out's done still runs when the first fade ends, after the first one's", () => {
+  const addon = fadeFrame();
+  addon.eval("__order = {} ns.Theme.FadeOut(TEST_F, 0.1, function() __order[#__order + 1] = 'a' end)");
+  addon.eval("ns.Theme.FadeOut(TEST_F, 0.1, function() __order[#__order + 1] = 'b' end) ns.Theme.FadeOut(TEST_F)");
+  expect(addon.eval("return #__order"), "nothing runs before the fade ends").toBe(0);
+  addon.eval("__finishFades()");
+  expect(addon.eval("return { __order[1], __order[2], #__order, TEST_F:IsShown() }"), "both callbacks, in order, once each").toEqual(["a", "b", 2, false]);
+});

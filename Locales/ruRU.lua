@@ -3083,6 +3083,7 @@ L["{screen} ({width} x {height})  ·  your screen"] = "{screen} ({width} x {heig
 L["{seconds} s"] = "{seconds} с"
 L["{seconds}s"] = "{seconds} с"
 L["{setting}: {value}"] = "{setting}: {value}"
+L["{silver}s"] = "{silver}с"
 L["{silver}s {copper}c"] = "{silver}с {copper}м"
 L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."] = "{site}: {count} сбоев, приостановлено до перезагрузки; возобновите на странице «Отзыв»."
 L["{situation} (now)"] = "{situation} (сейчас)"
