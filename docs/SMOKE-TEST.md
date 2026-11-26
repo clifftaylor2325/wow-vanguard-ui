@@ -7825,6 +7825,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: it targets it.
 - If it fails, paste: whether the click targeted and /vg errors
 
+### 33.967 The bag keeps its sections in a fight (bags-in-combat; WoW Forever and Retail)
+
+- Do: with the bag's sections on (Bars and bags), close the bag, start a fight, open the bag with B, loot or use an item while the fight goes on, then click an item to use it and drag one to another slot. [Client: Forever, then Retail.]
+- Expect: the bag opens in its sections (QUEST ITEMS, EQUIPMENT and so on), not one plain grid, and stays in them all fight; a looted item lands in its section at once; using and dragging items work as out of a fight; `/vg errors` shows nothing, and no "blocked" or "interface action failed" message appears.
+- If it fails, paste: what the bag showed in the fight, any red error text, and /vg errors
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
