@@ -305,12 +305,7 @@ function ER.ItemID(text)
 end
 
 -- An item's name, when the client has it cached ("item 123" until then).
-local function itemName(id)
-  local info = C_Item and C_Item.GetItemInfo
-  local name = type(info) == "function" and info(id)
-  if type(name) == "string" then return name end
-  return ns.Format(L["item {id}"], { id = id })
-end
+local itemName = ns.ItemName
 ER.ItemName = itemName
 
 -- "sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw the item sold, or nil

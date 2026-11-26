@@ -183,3 +183,22 @@ it("H45-40-101: a roster dropped mid-screen shows the same cut on every repaint 
   }
   expect(counts, "three identical roster events, one cut").toEqual([41, 41, 41]);
 });
+
+// UNIT_NAME_UPDATE: the name cache entry, so the unit's class, has arrived (forever and live
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua, CompactUnitFrame_OnEvent: "we now have the unit's class").
+it("H50-61 a member whose class arrives late takes their class colour on UNIT_NAME_UPDATE; a mob's name update draws nothing", () => {
+  const addon = loggedIn("RAID_CLASS_COLORS.MAGE = { r = 0.25, g = 0.78, b = 0.92 }");
+  addon.world.setUnit("party1", { name: "Pal", isPlayer: true });
+  say(addon, "loot roster");
+  addon.advance(0.5);
+  // The red part of Pal's line colour.
+  const palRed = () => addon.eval(`for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:GetText() == "Pal" then return row.left.__textColor[1] end end`);
+  expect(palRed(), "grey while the class is unknown").not.toBeCloseTo(0.25);
+  addon.world.setUnit("party1", { class: "MAGE", className: "Mage" });
+  addon.fire("UNIT_NAME_UPDATE", "nameplate1");
+  addon.advance(0.5);
+  expect(palRed(), "a nameplate's update does not repaint").not.toBeCloseTo(0.25);
+  addon.fire("UNIT_NAME_UPDATE", "party1");
+  addon.advance(0.5);
+  expect(palRed(), "the mage's colour").toBeCloseTo(0.25);
+});

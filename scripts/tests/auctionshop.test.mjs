@@ -967,3 +967,30 @@ it("H45-31-R2 the shop's listings view and the Up now card name the same time le
   expect(view(addon)[3][0][2], "H46-31-3 your own listing's minutes round up in the view too").toBe("2 min");
   expect(mine, "H45-D-G3A5 your own auction's minutes round up (119 s is 2 min), another's down, hours down").toEqual(["2 min", "1 min", "2 h"]);
 });
+
+// GET_ITEM_INFO_RECEIVED(itemID, success) answers C_Item.GetItemInfo, ITEM_KEY_ITEM_INFO_RECEIVED only
+// C_AuctionHouse.GetItemKeyInfo: forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:1815-1820,
+// AuctionHouseDocumentation.lua:1433-1440; GetItemInfo MayReturnNothing (ItemDocumentation.lua:626).
+it("H50-31 a list entry for an item ID the client has not loaded takes its name and icon when it arrives, the Filters title too", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY L", "{ '7777' }");
+  addon.update(0.5);
+  // The first row's name and icon.
+  const row = () => addon.eval(`local r = ${TABLE}.rows[1] return { r.name:GetText(), r.icon:GetTexture() }`);
+  expect(row()[0], "not loaded yet").toBe("item 7777");
+  openFilters(addon, 1);
+  expect(filterDialog(addon)[1], "the dialog title names it the same way").toBe("Filters: item 7777");
+  addon.eval('__wfgWorld.items[7777] = { name = "TEST-ONLY Late Item", icon = "TEST-ONLY-LATE" }');
+  addon.fire("GET_ITEM_INFO_RECEIVED", 7777, true);
+  addon.update(0.5);
+  expect(row(), "named after the load").toEqual(["TEST-ONLY Late Item", "TEST-ONLY-LATE"]);
+  expect(filterDialog(addon)[1], "the open dialog's title follows").toBe("Filters: TEST-ONLY Late Item");
+});
+it("H50-31 closing the auction house forgets the items the list was waiting on", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY L", "{ '7777' }");
+  addon.update(0.5);
+  expect(addon.eval(`return ${HELPER}.namePending[7777]`), "noted while it shows the stand-in").toBe(true);
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  expect(addon.eval(`return next(${HELPER}.namePending)`), "forgotten at close").toBe(null);
+});

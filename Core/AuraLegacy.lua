@@ -273,3 +273,11 @@ function Container:Refresh(info)
   if reordered(self) then place(self) end
   clear(auras)
 end
+
+-- Wraps the rows at a new width: forgets where the icons were put, so the refresh lays them all out again.
+---@param size number
+function Container:SetLineSize(size)
+  self.flow.line = size
+  clear(self.placed)
+  self:Refresh()
+end

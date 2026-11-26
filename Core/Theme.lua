@@ -748,6 +748,30 @@ function T.PixelSize(frame, w, h, even)
   return frame
 end
 
+-- Sets `region` one screen pixel inside `owner` on every side, and again after each scale change
+-- (T.Rescale), so a crop or fill stays one pixel in at any UI or frame scale.
+---@param region table
+---@param owner table
+---@return table region
+function T.PixelInset(region, owner)
+  pixelSized[region] = { place = T.PixelInset, owner = owner }
+  local px = T.Pixel(owner)
+  region:ClearAllPoints()
+  region:SetPoint("TOPLEFT", owner, "TOPLEFT", px, -px)
+  region:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", -px, px)
+  return region
+end
+
+-- Sets a line's height to one screen pixel of `owner`, and again after each scale change (T.Rescale).
+---@param line table
+---@param owner table
+---@return table line
+function T.PixelHeight(line, owner)
+  pixelSized[line] = { place = T.PixelHeight, owner = owner }
+  line:SetHeight(T.Pixel(owner))
+  return line
+end
+
 -- Calls fn() (out of combat) after a UI scale, screen or frame scale change, once
 -- T.PixelSize frames are rounded again: for layouts that place things on whole pixels. Guarded, so one listener
 -- that fails stops no other.
@@ -755,8 +779,10 @@ function T.OnScale(fn)
   scaleListeners[#scaleListeners + 1] = ns.Guard("scale change", fn)
 end
 
--- Rounds one T.PixelSize frame's remembered size again for its scale now.
+-- Rounds one T.PixelSize frame's remembered size again for its scale now; a region placed with
+-- T.PixelInset or T.PixelHeight is placed again instead.
 local function reround(frame, s)
+  if s.place then return s.place(frame, s.owner) end
   frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3]))
 end
 

@@ -343,6 +343,16 @@ local function slotCount(reagents)
   return have
 end
 
+-- Reagent item IDs asked for whose names have not come (ns.OnItemLoaded redraws on a successful load only, so an item
+-- that fails to load is not asked for in a loop).
+QT.itemPending = {}
+
+-- Asks the client for a reagent's data and notes it, so the line is drawn when its name comes.
+local function askForName(id)
+  QT.itemPending[id] = true
+  ns.CallIf(C_Item, "RequestLoadItemDataByID", id)
+end
+
 -- A reagent line for a recipe's slot: "2/4 Linen Cloth" (what you hold against what the recipe needs)
 -- and whether you have enough; nil for an optional slot, a hidden value, or an item the client hasn't
 -- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
@@ -352,7 +362,7 @@ local function reagentLine(slot)
   local id = r and ns.PlainNumber(r.itemID)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
-  if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) return nil, true end
+  if ns.IsSecret(name) or type(name) ~= "string" then askForName(id) return nil, true end
   local have = slotCount(slot.reagents)
   return { text = have .. "/" .. need .. " " .. name, done = have >= need }
 end
@@ -513,7 +523,7 @@ local function followRecipes()
   if not ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
   ns.On("TRACKED_RECIPE_UPDATE", refreshSoon)
   ns.On("BAG_UPDATE_DELAYED", refreshSoon)
-  ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
+  ns.OnItemLoaded(ns.On, QT.itemPending, itemArrived)
 end
 
 -- Places the quest item buttons again next frame, out of combat: they sit at fixed spots on the screen, so

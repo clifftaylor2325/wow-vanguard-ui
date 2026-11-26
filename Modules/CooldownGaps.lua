@@ -34,6 +34,8 @@ CG.REREAD = { "SPELLS_CHANGED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED",
 CG.CATEGORIES = { "Essential", "Utility" }
 -- The spells the game's manager tracks now, read when they change (not on every cooldown event).
 CG.tracked = {}
+-- Item IDs the Gaps card shows as "Item 123" until the client has them (ns.OnItemLoaded rebuilds the card).
+CG.namePending = {}
 
 -- Sweeps -----------------------------------------------------------------------------------------
 
@@ -363,6 +365,20 @@ local function holder(scope)
   CG.holder:Show()
 end
 
+-- A chosen item's name came in: the Gaps card is built again (once for a burst), a page that is not showing
+-- costs nothing (O.RebuildPage).
+function CG.NamesLoaded()
+  ns.Soon("gaps names", function() ns.Options.RebuildPage("cooldowns") end)
+end
+
+-- The scope's events: what changes the row, what changes the spells it reads, and a chosen item's name arriving.
+local function listen(scope)
+  for _, event in ipairs(CG.EVENTS) do scope:On(event, refreshSoon) end
+  for _, event in ipairs(CG.REREAD) do scope:On(event, CG.Rebuild) end
+  scope:OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
+  ns.OnItemLoaded(function(event, fn) scope:On(event, fn) end, CG.namePending, CG.NamesLoaded)
+end
+
 -- Module entry point (Core/Modules.lua): off until switched on. Its row's switch and the manager's-cooldowns switch
 -- build it again (O.RestartSetting); the Gaps card's list is built again to match.
 function CG.Enable(settings, scope)
@@ -370,9 +386,7 @@ function CG.Enable(settings, scope)
   if settings.on then
     CG.settings = settings
     holder(scope)
-    for _, event in ipairs(CG.EVENTS) do scope:On(event, refreshSoon) end
-    for _, event in ipairs(CG.REREAD) do scope:On(event, CG.Rebuild) end
-    scope:OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
+    listen(scope)
     CG.Rebuild()
   end
   ns.Options.RebuildPage("cooldowns")
@@ -398,6 +412,7 @@ CG.INPUT_MIN = 120
 local function entryLook(kind, id)
   if kind == "spells" then return C_Spell.GetSpellTexture(id), C_Spell.GetSpellName(id) or ns.Format(L["Spell {id}"], { id = id }) end
   local name = C_Item.GetItemInfo(id)
+  if not name then CG.namePending[id] = true end
   return select(5, C_Item.GetItemInfoInstant(id)), name or ns.Format(L["Item {id}"], { id = id })
 end
 

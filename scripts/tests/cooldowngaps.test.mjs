@@ -396,3 +396,22 @@ it("hunt bars: a duration object the client refuses keeps its icon and leaves th
     "TEST-ONLY-ICON-Strike", "TEST-ONLY-ICON-Trinket", "TEST-ONLY-ICON-Healthstone",
   ]);
 });
+
+// C_Item.GetItemInfo MayReturnNothing (forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:626); the answer
+// is GET_ITEM_INFO_RECEIVED(itemID, success) (same file :1815-1820; live :604, :1777).
+it("H50-32 the Gaps card names a chosen item the client had not loaded when its data arrives", () => {
+  const addon = card("7777");
+  expect(addon.eval('return __entry("Item 7777") ~= nil'), "the stand-in at first").toBe(true);
+  addon.eval('__wfgWorld.items[7777] = { name = "TEST-ONLY Late Item", icon = "TEST-ONLY-LATE" }');
+  addon.fire("GET_ITEM_INFO_RECEIVED", 7777, true);
+  addon.update(0.5);
+  expect(addon.eval('return { __entry("Item 7777") == nil, __entry("TEST-ONLY Late Item").icon.__texture }'), "named, with its icon").toEqual([true, "TEST-ONLY-LATE"]);
+});
+
+it("H50-32 an item load nobody waits for does not rebuild the Cooldowns page", () => {
+  const addon = card("5512");
+  addon.eval("__rebuilds = 0 local o = ns.Options.RebuildPage ns.Options.RebuildPage = function(k, ...) __rebuilds = __rebuilds + 1 return o(k, ...) end");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 4242, true);
+  addon.update(0.5);
+  expect(addon.eval("return __rebuilds"), "typing in the add box is not interrupted by other items").toBe(0);
+});

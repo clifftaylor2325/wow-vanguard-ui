@@ -381,15 +381,53 @@ function ns.OwnValues(fn, ...)
   return unpack(out, 2, out.n)
 end
 
--- Puts the active situation's override on screen, the last one's base back first: nothing
--- while recording or while the module is off under Modules (Disable takes the override off),
--- nothing new while the right one is on. Run out of combat.
-function SI.Apply()
-  if SI.recording or not running() then return end
+-- A frame the override holds a spot for has come up since it was applied: its own spot is added to the base first (as
+-- SI.Pick does for the frames there at the start, or leaving the situation would leave the override in the profile),
+-- then the override's spot is placed. A key already in the base is never placed again.
+local function topUpSpots(ov)
+  for key, spot in pairs(tbl(ov.positions)) do
+    if SI.base.positions[key] == nil and ns.MoverFrame(key) then
+      SI.base.positions[key] = spotOf(ns.Settings("positions")[key])
+      placeSpot(key, spot)
+    end
+  end
+end
+
+-- A module the override holds settings for has started since it was applied: its own values are added to the base
+-- first, then the override's are written.
+local function topUpSettings(ov)
+  for module, values in pairs(tbl(ov.settings)) do
+    if SI.base.refs[module] == nil and moduleTable(module) then
+      for key in pairs(tbl(values)) do
+        if liveValue(module, key) ~= nil then put(SI.base.settings, module, key, liveValue(module, key)) end
+      end
+      SI.base.refs[module] = moduleTable(module)
+      writeModule(module, values)
+    end
+  end
+end
+
+-- Puts what the applied override holds for frames and modules that came up after it was applied on screen, without
+-- touching what was applied (a change made during the stay lasts).
+function SI.TopUp(ov)
+  topUpSpots(ov)
+  topUpSettings(ov)
+end
+
+-- The situation whose override shows now and that override (nil, nil while there is none, or the switch is off).
+local function wanted()
   local name = SI.Where()
   local ov = db().enabled and SI.Override(name) or nil
-  local want = ov and name or nil
-  if want == SI.applied then return end
+  return ov and name or nil, ov
+end
+
+-- Puts the active situation's override on screen, the last one's base back first: nothing
+-- while recording or while the module is off under Modules (Disable takes the override off),
+-- only frames and modules that came up since while the right one is on. Run out of combat.
+function SI.Apply()
+  if SI.recording or not running() then return end
+  local want, ov = wanted()
+  if want == SI.applied then return ov and SI.TopUp(ov) end
   SI.RestoreBase()
   SI.applied = want
   if ov then SI.ApplyOverride(ov) end
@@ -645,6 +683,10 @@ function SI.Disable()
   SI.RestoreBase()
   SI.applied = nil
 end
+
+-- A frame or module came up or went (the movers' list, the module switches): the applied override reaches it.
+ns.OnMoversChanged(function() if running() then SI.Refresh() end end)
+ns.OnModulesChanged(function() if running() then SI.Refresh() end end)
 
 -- Module entry point (Core/Modules.lua): follows where you are, and applies the override for it.
 function SI.Enable(settings, scope)

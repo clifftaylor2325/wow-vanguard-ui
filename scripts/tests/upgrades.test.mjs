@@ -245,6 +245,22 @@ it("upgrades: an item whose stats arrive late gets its arrow when the client sen
   expect(arrows(), "the waited item arrives: the better bracers get their arrow").toEqual([true, false]);
 });
 
+// GET_ITEM_INFO_RECEIVED(itemID, success): forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:1815-1820.
+it("H50-64 upgrades: an item whose data fails to load is not asked for again and again, and a later success still marks", () => {
+  const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  addon.eval("__stats = C_Item.GetItemStats __asked = {} C_Item.RequestLoadItemDataByID = function(id) __asked[#__asked + 1] = id end C_Item.GetItemStats = function(link) if __loaded then return __stats(link) end end");
+  addon.eval("ContainerFrameCombinedBags:UpdateItems()");
+  // How many times the bracers (item 2) were asked for.
+  const asked = () => addon.eval("local n = 0 for _, id in ipairs(__asked) do if id == 2 then n = n + 1 end end return n");
+  for (let i = 0; i < 5; i++) addon.fire("GET_ITEM_INFO_RECEIVED", 2, false);
+  expect(asked(), "five failed loads: the bag is not marked, so the item is not asked for again").toBe(1);
+  addon.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(asked(), "the next look at the bag asks once more").toBe(2);
+  addon.eval("__loaded = true");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 2, true);
+  expect(addon.eval("local a = ns.FrameState('vgUpgrade')[__buttons[1]] return a ~= nil and a:IsShown()"), "a later success still marks the bag").toBe(true);
+});
+
 it("upgrades: changed weights and the bag switch mark the open combined bag at once (H46-33-102)", () => {
   const addon = loggedIn(GEAR_ENV + BAG_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
   // Whether the better bracers' slot shows its arrow.

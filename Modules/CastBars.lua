@@ -254,14 +254,15 @@ end
 local function stageMark(bar)
   local m = T.Tint(T.Snap(bar:CreateTexture(nil, "ARTWORK", nil, 3)), "white", 0.8)
   m:SetTexture(T.WHITE)
-  m:SetWidth(2 * T.Pixel(bar))
   return m
 end
 
--- Puts one stage mark at its share of the bar's width, or hides it when that stage has none.
+-- Puts one stage mark at its share of the bar's width, two screen pixels wide at the bar's scale now, or hides it
+-- when that stage has none.
 local function placeMark(bar, m, share)
   m:SetShown(share ~= nil)
   if share == nil then return end
+  m:SetWidth(2 * T.Pixel(bar))
   m:ClearAllPoints()
   m:SetPoint("TOP", bar, "TOPLEFT", bar:GetWidth() * share, 0)
   m:SetPoint("BOTTOM", bar, "BOTTOMLEFT", bar:GetWidth() * share, 0)

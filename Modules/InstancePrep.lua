@@ -149,10 +149,20 @@ PR.CLASS_SUPPLY = {
   shards = { L["Soul shards"], function(IS) return IS.SoulShards() end },
 }
 
+-- Items the card names with a stand-in (the English reagent name, "item 123") until the client has their data:
+-- ns.OnItemLoaded gives their rows the real name (PR.NameLoaded).
+PR.namePending = {}
+
+-- An item's name from the client, or nil while it has none, when the item is noted for PR.NameLoaded.
+local function clientName(id)
+  local name = C_Item and type(C_Item.GetItemInfo) == "function" and ns.PlainText((C_Item.GetItemInfo(id)))
+  if not name then PR.namePending[id] = true end
+  return name or nil
+end
+
 -- A class reagent's name in the client's language (once the client has the item's data), else the English one.
 local function reagentName(r)
-  local name = C_Item and type(C_Item.GetItemInfo) == "function" and ns.PlainText((C_Item.GetItemInfo(r[1])))
-  return name or r[3]
+  return clientName(r[1]) or r[3]
 end
 
 -- The class rows: the class's supply (ammo, soul shards) from CLASS_KEYS, then its reagents at your level.
@@ -178,7 +188,7 @@ function PR.StockRows()
   local list = ER.settings and ER.StockList() or {}
   for id in pairs(list) do ids[#ids + 1] = id end
   table.sort(ids)
-  for _, id in ipairs(ids) do rows[#rows + 1] = short(itemName(id), count(id), list[id], id) end
+  for _, id in ipairs(ids) do rows[#rows + 1] = short(clientName(id) or itemName(id), count(id), list[id], id) end
   return rows
 end
 
@@ -257,9 +267,19 @@ end
 -- Shows one row on a row frame, or hides the frame when there is none.
 local function paintRow(r, row)
   r:SetShown(row ~= nil)
+  r.id = row and row.id
   if not row then return end
   r.label:SetText(row.label)
   r.value:SetText(row.value)
+end
+
+-- An item's data came in (ns.OnItemLoaded): its row on the shown card takes the client's name. The rows with
+-- another item keep what they show (a reagent still on its English name stays on it).
+function PR.NameLoaded(id)
+  if not PR.card:IsShown() then return end
+  for _, r in ipairs(PR.card.rows) do
+    if r.id == id then r.label:SetText(ns.ItemName(id)) end
+  end
 end
 
 -- Whether the card offers Buy list: a row is an item you can buy, and the Auction helper is on.
@@ -493,6 +513,7 @@ function PR.Enable(settings, scope)
   scope:On("READY_CHECK", PR.OnReadyCheck)
   scope:On("BAG_UPDATE_DELAYED", PR.OnBags)
   scope:On("PLAYER_ENTERING_WORLD", PR.OnWorld)
+  ns.OnItemLoaded(function(event, fn) scope:On(event, fn) end, PR.namePending, PR.NameLoaded)
 end
 
 -- Switched off: the wanted-amounts window, a second frame made when it is first opened, closes with the card.

@@ -1314,3 +1314,35 @@ it("H46-18-1 bars: a press slid off the button leaves a not-current action unlit
   addon.update(1);
   expect(addon.eval("return Vanguard_Bar1Button2:GetChecked()"), "nor does anything later").toBe(false);
 });
+
+// H49-31: a button's icon sits one screen pixel inside its border at the bar's Scale, also for a Scale saved in the
+// profile (applied after the buttons are built) and after a later UI scale change.
+const ICON_INSET = `
+  local b = Vanguard_Bar1.vgButtons[1]
+  return { x = b.icon.__points.TOPLEFT.x, px = ns.Theme.Pixel(b), scale = Vanguard_Bar1:GetScale() }`;
+
+it("a button icon is one pixel inside at a bar Scale saved in the profile", () => {
+  const addon = loggedIn(ACTIONS_ENV + "\n__wfgStub.setScreen(1920, 1080)", { savedVariables: "VanguardDB.profiles.Default = { positions = { bar1 = { scale = 1.25 } } }\n" });
+  addon.advance(1);
+  const r = addon.eval(ICON_INSET);
+  expect(r.scale).toBe(1.25);
+  expect(r.x).toBeCloseTo(r.px, 5);
+});
+
+it("a button icon stays one pixel inside after a bar Scale or UI scale change", () => {
+  const addon = loggedIn(ACTIONS_ENV + "\n__wfgStub.setScreen(1920, 1080)");
+  addon.eval("Vanguard_Bar1:SetScale(1.5) UIParent:SetScale(0.8) ns.Theme.Rescale()");
+  addon.advance(1);
+  const r = addon.eval(ICON_INSET);
+  expect(r.x).toBeCloseTo(r.px, 5);
+});
+
+// H49-R1: with Pixel-perfect scale on, the pixel scale is applied after the modules build at login, so an inset
+// taken while building must be placed again for it.
+it("a button icon is one pixel inside once Pixel-perfect scale is applied at login", () => {
+  const addon = loggedIn(ACTIONS_ENV + "\n__wfgStub.setScreen(1920, 1080)", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  addon.advance(1);
+  const r = addon.eval(ICON_INSET);
+  expect(addon.eval("return UIParent:GetScale()")).toBeCloseTo(768 / 1080, 5);
+  expect(r.x).toBeCloseTo(r.px, 5);
+});

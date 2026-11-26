@@ -17,8 +17,9 @@ UF.Portrait = PT
 PT.KEYS = { player = true, target = true, focus = true }
 -- The choices a frame's setting holds ("off" for anything else).
 PT.CHOICES = { portrait = true, class = true }
--- What changes a unit's portrait (the target and focus also repaint when they change: PT.UNIT_CHANGES).
-PT.EVENTS = { "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }
+-- What changes a unit's portrait (the target and focus also repaint when they change: PT.UNIT_CHANGES);
+-- the name cache's answer (UNIT_NAME_UPDATE) gives a player's class, so the class icon.
+PT.EVENTS = { "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "UNIT_NAME_UPDATE" }
 -- The deepest cut or rounding (screen pixels, not units: the corners are drawn in pixels) an outer corner may have and
 -- still leave the square its room: Rimmed's four fit; the shield's eight-pixel cut and the points do not.
 PT.MAX_CORNER = 4

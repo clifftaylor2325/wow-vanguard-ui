@@ -196,14 +196,31 @@ ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe")
 
 -- Client globals and items -----------------------------------------------------------------
 
--- An item's name when the client has it cached, else "item 123".
+-- An item's name when the client has it cached, else "item 123" in the client's language.
 ---@param id number
 ---@return string
 function ns.ItemName(id)
   local info = C_Item and C_Item.GetItemInfo
   local name = type(info) == "function" and info(id)
   if type(name) == "string" then return name end
-  return "item " .. id
+  return ns.Format(L["item {id}"], { id = id })
+end
+
+-- Hears the game load item data that a painter had to do without: the painter notes an item in `pending`
+-- (itemID -> a value for loaded) when it shows a stand-in such as "item 123" or skips a judgement.
+-- When the item's data arrives the note is taken off, and only for a successful load loaded(itemID, value)
+-- runs (a module's own ns.Soon repaint). A failed load is never asked for again here. `on` is the module's own
+-- listener, ns.On or a scope's (function(event, fn)); keep `pending` the same table, emptying it in place.
+---@param on fun(event: string, fn: function)
+---@param pending table<number, any>
+---@param loaded fun(itemID: number, value: any)
+function ns.OnItemLoaded(on, pending, loaded)
+  on("GET_ITEM_INFO_RECEIVED", function(_, id, success)
+    local value = pending[id]
+    if value == nil then return end
+    pending[id] = nil
+    if success == true then loaded(id, value) end
+  end)
 end
 
 -- What a bag that takes only one kind of thing is called, by the bit of the game's bag family

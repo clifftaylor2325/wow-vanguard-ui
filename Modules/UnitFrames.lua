@@ -1337,6 +1337,13 @@ function UF.UpdateFrame(f)
   if f.status then UF.Status.Update(f) end
 end
 
+-- The name cache gave the unit's name, and so its class: the name and level are drawn again and the bar takes the
+-- class colour (Blizzard's CompactUnitFrame does the same on UNIT_NAME_UPDATE). The values may be secret: passed on as is.
+function UF.UpdateNameAndHealth(f)
+  UF.UpdateName(f)
+  UF.UpdateHealth(f)
+end
+
 -- Unit event -> what it updates.
 local UNIT_EVENTS = {
   UNIT_HEALTH = UF.UpdateHealth,
@@ -1346,7 +1353,7 @@ local UNIT_EVENTS = {
   UNIT_POWER_UPDATE = UF.UpdatePower,
   UNIT_MAXPOWER = UF.UpdatePower,
   UNIT_DISPLAYPOWER = UF.UpdatePower,
-  UNIT_NAME_UPDATE = UF.UpdateName,
+  UNIT_NAME_UPDATE = UF.UpdateNameAndHealth,
   -- A unit's level changed (you dinged, or your target did): its level text.
   UNIT_LEVEL = UF.UpdateName,
 }

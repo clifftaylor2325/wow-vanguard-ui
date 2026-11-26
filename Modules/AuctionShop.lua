@@ -78,6 +78,9 @@ end
 -- Entries whose browse results wait for an item's name (matched again when it comes in).
 AH.unnamed = {}
 
+-- Item IDs the list shows as "item 123" until the client has them (ns.OnItemLoaded repaints the card).
+AH.namePending = {}
+
 -- The terms searched last, newest first (VanguardDB.ah.recent, kept for the account).
 function AH.Recent()
   local store = AP.Store()
@@ -478,12 +481,14 @@ local function priceLate()
 end
 
 -- Item names came in: the browse list waiting on them is priced, the entries waiting on them are
--- matched again, and the card repainted (the game sends these in bursts, so the listener asks for
--- it once a frame: AH.ListenShop).
+-- matched again, and the card and an open Filters dialog's title repainted (the game sends these in
+-- bursts, so the listener asks for it once a frame: AH.ListenShop).
 function AH.OnItemInfo()
   priceLate()
   for entry, results in pairs(AH.unnamed) do AH.TakeBrowse(entry, results) end
   AH.PaintShop()
+  local d = AH.filterDialog
+  if d and d:IsShown() then AH.PaintFilterTitle(d) end
 end
 
 -- Whether browse result r bears on an entry's term: its item ID, or a name containing the text (exact,
@@ -518,11 +523,14 @@ function AH.OnBrowse()
   AH.Done()
 end
 
--- The auction house closed: its view, the browse list waiting on item info and the entries waiting on item names
--- go, the list priced first when info came in for it since its last pricing (priceLate's wait would find it gone).
+-- The auction house closed: its view, its Filters dialog (Vanguard's own frame on UIParent, so safe in combat),
+-- the browse list waiting on item info and the entries waiting on item names go, the list priced first when info
+-- came in for it since its last pricing (priceLate's wait would find it gone).
 local function shopClosed()
   local late = AH.lateBrowse
   AH.view, AH.lateBrowse, AH.unnamed = nil, nil, {}
+  for id in pairs(AH.namePending) do AH.namePending[id] = nil end
+  if AH.filterDialog then AH.filterDialog:Hide() end
   if late and late.due then AP.RecordBrowse(late.results) end
 end
 
@@ -531,6 +539,7 @@ end
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction item info", AH.OnItemInfo) end)
+  ns.OnItemLoaded(on, AH.namePending, function() ns.Soon("auction item info", AH.OnItemInfo) end)
   ns.On("AUCTION_HOUSE_CLOSED", shopClosed) -- state only, so also in combat
 end
 
@@ -702,6 +711,7 @@ function AH.EntryLook(entry, found)
   if info then return info.itemName, info.iconFileID end
   if type(term) ~= "number" then return term, AH.UNKNOWN_ICON end
   local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(term)
+  if not name then AH.namePending[term] = true end
   return name or ns.Format(L["item {id}"], { id = term }), icon or AH.UNKNOWN_ICON
 end
 
@@ -1110,12 +1120,17 @@ local function buildFilters()
   return d
 end
 
+-- The filter dialog's title, naming the item of the entry it edits (d.entry).
+function AH.PaintFilterTitle(d)
+  d.title:SetText(ns.Format(L["Filters: {item}"], { item = (AH.EntryLook(d.entry)) }))
+end
+
 -- Fills the filter dialog from an entry's filters.
 local function fillFilters(d, entry)
   local term, f = AH.Term(entry)
   f = f or {}
   d.term, d.draft, d.want = term, { exact = f.exact == true, quality = f.quality or AH.ANY, alert = f.alert == true }, f.want
-  d.title:SetText(ns.Format(L["Filters: {item}"], { item = (AH.EntryLook(entry)) }))
+  AH.PaintFilterTitle(d)
   d.minLevel:SetText(f.minLevel and tostring(f.minLevel) or "")
   d.maxLevel:SetText(f.maxLevel and tostring(f.maxLevel) or "")
   d.price:SetText(f.maxPrice and AP.Money(f.maxPrice) or "")

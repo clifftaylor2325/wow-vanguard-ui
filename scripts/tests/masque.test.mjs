@@ -55,6 +55,10 @@ it("with the skinning library loaded, action, pet and stance buttons and aura ic
   addon.world.setUnit("target", { name: "TEST-ONLY Target", hp: 1, maxhp: 2, reaction: 2 });
   expect(addon.eval('local g = __groups["Target and focus auras"] return g ~= nil and #g.buttons > 0 and g.buttons[1].kind'), "the target and focus auras in a group of their own").toBe("Aura");
   expect(addon.eval('local g = __groups["Buffs and debuffs"] for _, e in ipairs(g.buttons) do for _, c in ipairs({ e.button:GetChildren() }) do if __panelled[c] then return true end end end return false'), "with no theme edge").toBe(false);
+  // H49 gate two: the library places the icon, so a scale change must not place it again.
+  addon.eval("__icon = Vanguard_Bar1Button1.icon __icon:ClearAllPoints() __icon:SetPoint('CENTER') ns.Theme.Rescale()");
+  addon.advance(1);
+  expect(addon.eval("return { __icon:GetNumPoints(), (__icon:GetPoint(1)) }"), "the library's single CENTER point survives T.Rescale").toEqual([1, "CENTER"]);
 });
 
 it("without the skinning library (or without LibStub) nothing changes", () => {

@@ -133,6 +133,38 @@ it("prep: Keep-stocked items under their count, and worn gear, are on the card",
   expect(rows(addon)[0][0], "durability over the warning is fine").toBe("Linen Cloth");
 });
 
+// C_Item.GetItemInfo MayReturnNothing (forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua:626); the answer is
+// GET_ITEM_INFO_RECEIVED(itemID, success) (same file :1815-1820; live :604, :1777).
+it("H50-R1 prep: a Keep-stocked item the client has not loaded takes its name on the open card when it arrives", () => {
+  const addon = character("WARRIOR", 60);
+  addon.slash("stock 99999 2");
+  addon.slash("prep");
+  expect(rows(addon), "the stand-in at first").toEqual([["item 99999", "0 / 2"]]);
+  addon.eval("__wfgWorld.items[99999] = { name = 'TEST-ONLY Late Item', icon = 'TEST-ONLY-LATE' }");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 99998, true);
+  expect(rows(addon)[0][0], "another item's data changes nothing").toBe("item 99999");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 99999, false);
+  expect(rows(addon)[0][0], "a failed load changes nothing").toBe("item 99999");
+  addon.slash("prep");
+  addon.eval("__wfgWorld.items[99999] = nil");
+  addon.slash("prep");
+  addon.eval("__wfgWorld.items[99999] = { name = 'TEST-ONLY Late Item', icon = 'TEST-ONLY-LATE' }");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 99999, true);
+  expect(rows(addon), "the name arrives: the row is relabelled, its count kept").toEqual([["TEST-ONLY Late Item", "0 / 2"]]);
+});
+
+it("H50-R1 prep: a class reagent shown by its English name takes the client's name when the item loads, and a hidden card is left alone", () => {
+  const addon = character("SHAMAN", 30, { extra: "__wfgWorld.items[17030] = nil" });
+  addon.slash("prep");
+  expect(rows(addon).map((r) => r[0]), "the English name until the client has the item").toContain("Ankh");
+  addon.eval("__wfgWorld.items[17030] = { name = 'TEST-ONLY Ankh', classID = 15, subClassID = 0 }");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 17030, true);
+  expect(rows(addon).map((r) => r[0]), "the client's name once it loads").toContain("TEST-ONLY Ankh");
+  addon.eval("ns.GetModule('InstancePrep').card:Hide() ns.GetModule('InstancePrep').namePending[17057] = true");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 17057, true);
+  expect(addon.eval("return #ns.errors"), "a load while the card is hidden is no work and no error").toBe(0);
+});
+
 it("prep: a hidden count skips its row without an error", () => {
   const addon = character("HUNTER", 60, { extra: "__ammo = __wfgWorld.secret(120)" });
   addon.slash("prep");

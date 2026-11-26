@@ -192,8 +192,9 @@ end
 
 -- The events that change a line: the group, roles, and your own death or return.
 RT.ROSTER_EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
--- The unit events that change a line: a member going offline or changing flags.
-RT.ROSTER_UNIT_EVENTS = { "UNIT_CONNECTION", "UNIT_FLAGS" }
+-- The unit events that change a line: a member going offline or changing flags, or the game's name cache giving
+-- the member's name and class (Blizzard_UnitFrame/Shared/CompactUnitFrame.lua: UNIT_NAME_UPDATE "may signify that we now have the unit's class").
+RT.ROSTER_UNIT_EVENTS = { "UNIT_CONNECTION", "UNIT_FLAGS", "UNIT_NAME_UPDATE" }
 
 -- Draws the roster on the next frame, once however many events come in before then.
 function RT.SoonPaint()

@@ -287,6 +287,12 @@ function Container:SetUnit(unit)
   self.frame:SetEnabled(unit ~= nil)
 end
 
+-- Wraps the rows at a new width (the client lets it change after the container is built).
+---@param size number
+function Container:SetLineSize(size)
+  self.frame:SetFlowLayoutMaximumLineSize(size)
+end
+
 -- Reads the auras again: for a token whose unit changed (target, focus).
 function Container:Refresh()
   self.frame:UpdateAllAuras()

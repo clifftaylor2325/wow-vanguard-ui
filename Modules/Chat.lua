@@ -1116,6 +1116,16 @@ function CH.Refresh()
   CH.UpdateTabs()
 end
 
+-- Lays every window's rule and edit box rail at their pixels again, after a scale change a window's own Scale made
+-- (T.OnScale; CH.Refresh does it after a theme change, but a mover Scale does not run it).
+function CH.Repixel()
+  for _, name in ipairs(windowNames()) do
+    local parts = CH.frames and CH.frames[_G[name] or false]
+    if parts then placeRule(parts.rule, parts.bar) end
+  end
+  CH.PlaceEditBoxes()
+end
+
 -- Keeps the main chat window where its mover put it: the game's Edit Mode
 -- re-anchors it whenever a layout is applied. The offsets are in UIParent's units, so a scaled
 -- window divides them by its scale, as the mover does.
@@ -1346,6 +1356,13 @@ local function hookGame()
   watchEditMode()
 end
 
+-- Registers once (Chat is reload-only, so Enable runs once a session): a theme change re-fonts and re-tints every
+-- window, a scale change lays their pixel lines again.
+local function followTheme()
+  T.OnChanged(CH.Refresh)
+  T.OnScale(CH.Repixel)
+end
+
 -- Module entry point (Core/Modules.lua). Chat frames aren't protected, so
 -- this runs at once; temporary windows (whispers) are skinned as they open.
 function CH.Enable(settings)
@@ -1353,7 +1370,7 @@ function CH.Enable(settings)
   CH.frames = {}
   CH.SkinAll()
   CH.ApplyBarHover()
-  T.OnChanged(CH.Refresh)
+  followTheme()
   CH.Place()
   ns.On("PLAYER_ENTERING_WORLD", CH.Size)
   ns.On("PLAYER_REGEN_DISABLED", CH.ApplyFades)

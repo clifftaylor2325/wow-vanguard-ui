@@ -3043,3 +3043,15 @@ it("H27-4-5: the minimap drawer toggle's icon is text at rest and accent under t
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.IsMouseOver = function() return true end t.__scripts.OnEnter(t) __wfgStub.advance(1)");
   expect(addon.eval("return ns.Theme.HoverParts(Vanguard_MinimapDrawerToggle)[2]:GetAlpha() > 0"), "T.Button's hover line still comes up with the icon's paint").toBe(true);
 });
+
+// H49-35: a chat window's rule and its edit box rail are one screen pixel at the window's scale, also after a mover Scale
+// (which runs T.Rescale, not the theme's change listeners).
+it("chat: the bar rule and the edit box rail follow a chat window Scale change", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("ChatFrame1:SetScale(1.5) ns.Theme.Rescale()");
+  addon.advance(1);
+  const r = addon.eval(`local f = ns.GetModule("Chat").frames[ChatFrame1] local T = ns.Theme
+    return { f.rule:GetHeight() - T.Pixel(f.bar), ns.FrameState("vgRail")[ChatFrame1EditBox]:GetWidth() - 2 * T.Pixel(ChatFrame1EditBox) }`);
+  expect(r[0]).toBeCloseTo(0, 5);
+  expect(r[1]).toBeCloseTo(0, 5);
+});
