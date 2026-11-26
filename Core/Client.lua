@@ -196,14 +196,14 @@ ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe")
 
 -- Client globals and items -----------------------------------------------------------------
 
--- An item's name when the client has it cached, else "item 123".
+-- An item's name when the client has it cached, else "item 123" in the client's language.
 ---@param id number
 ---@return string
 function ns.ItemName(id)
   local info = C_Item and C_Item.GetItemInfo
   local name = type(info) == "function" and info(id)
   if type(name) == "string" then return name end
-  return "item " .. id
+  return ns.Format(L["item {id}"], { id = id })
 end
 
 -- What a bag that takes only one kind of thing is called, by the bit of the game's bag family

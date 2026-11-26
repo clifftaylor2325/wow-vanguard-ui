@@ -954,3 +954,12 @@ it("H46-4-103 /vg accent's usage line names class and reset, its pipes doubled s
   addon.slash("accent nonsense");
   expect(chatHas(addon, /Usage: \/vg accent rrggbb \|\| brass \|\| arcane \|\| jade \|\| orchid \|\| copper \|\| class \|\| reset$/), "every word COMMANDS.md lists").toBe(true);
 });
+
+// Client rule: C_Item.GetItemInfo returns nothing until the item is cached (MayReturnNothing,
+// forever Blizzard_APIDocumentationGenerated/ItemDocumentation.lua, Name = "GetItemInfo").
+it("H50-1 ns.ItemName names an uncached item in the client's language", () => {
+  const addon = loggedIn("", { client: 'GetLocale = function() return "deDE" end' });
+  const got = addon.eval("return { ns.ItemName(987654), ns.Format(ns.L['item {id}'], { id = 987654 }), ns.GetModule('Errands').ItemName(987654) }");
+  expect(got[0], "the stand-in goes through the string table").toBe(got[1]);
+  expect(got[2], "Errands uses the same name").toBe(got[1]);
+});
