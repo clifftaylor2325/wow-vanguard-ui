@@ -448,6 +448,16 @@ it("H58-R1 punctuation of other languages (guillemets, an ellipsis, a dash) does
   expect(parse(boardIn("frFR"), "«besoin de tank» SFK"), "French guillemets").toEqual(["LFM", "Shadowfang Keep", "tank"]);
 });
 
+it("H58-34 a Chinese post written without spaces is read: LFM glued to the dungeon, the full-width comma", () => {
+  const zh = boardIn("zhCN");
+  zh.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[1][1] = '怒焰裂谷' GB.LoadWords()");
+  expect(parse(zh, "LFM 怒焰裂谷 tank"), "spaced, as before").toEqual(["LFM", "怒焰裂谷", "tank"]);
+  expect(parse(zh, "LFM怒焰裂谷tank"), "glued to the shared word and to a role").toEqual(["LFM", "怒焰裂谷", "tank"]);
+  expect(parse(zh, "LFM 怒焰裂谷，缺坦克")?.slice(0, 2), "a full-width comma").toEqual(["LFM", "怒焰裂谷"]);
+  expect(parse(zh, "LFM（怒焰裂谷）")?.slice(0, 2), "full-width brackets").toEqual(["LFM", "怒焰裂谷"]);
+  expect(parse(boardIn("koKR"), "LFM SFK tank"), "Korean is as before").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+});
+
 it("group board words: a locale's own dungeon name is read from the name the board shows", () => {
   const addon = boardIn("deDE");
   addon.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[5][1] = 'Burg Schattenfang' GB.LoadWords()");
