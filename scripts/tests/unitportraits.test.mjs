@@ -123,3 +123,30 @@ it("H45-13-2: the Versus deck hides both portraits and the bars keep their room;
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
   expect(state().slice(0, 2), "deck off, back under Hairline").toEqual([true, true]);
 });
+
+// UNIT_NAME_UPDATE: the name cache entry, so the class, has arrived (forever and live
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua, CompactUnitFrame_OnEvent).
+it("H50-63 a class icon whose class arrives late is drawn on UNIT_NAME_UPDATE", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: ROOM().savedVariables.replace('targetPortrait = "portrait"', 'targetPortrait = "class"') });
+  addon.eval('__units.target = { name = "TEST-ONLY Friend", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", player = true }');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(read(addon, "target")[1], "no class yet: the portrait").toBe("TEST-ONLY-PORTRAIT");
+  addon.eval('__units.target.class = "ROGUE"');
+  addon.fire("UNIT_NAME_UPDATE", "target");
+  expect(read(addon, "target")[1], "the class icon").toBe("Interface\\TargetingFrame\\UI-Classes-Circles");
+});
+
+// UNIT_NAME_UPDATE "may signify that we now have the unit's class (the name cache entry has been received)", and the
+// game's frame recolours its health bar then (forever and live Blizzard_UnitFrame/Shared/CompactUnitFrame.lua,
+// CompactUnitFrame_OnEvent).
+it("H50-63 a target whose class arrives late: the health bar takes the class colour and the name follows on UNIT_NAME_UPDATE", () => {
+  const addon = loggedIn(UNITS_ENV, ROOM());
+  addon.eval("__units.target = { name = 'Pal', hp = 100, maxhp = 100, power = 0, maxpower = 0, ptype = 'MANA', player = true, reaction = 5 }");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // The target health bar's red part and the target's name.
+  const bar = () => addon.eval("return { Vanguard_target.health.__barColor[1], Vanguard_target.name:GetText() }");
+  expect(bar()[0], "no class yet: the reaction colour, not the mage's").not.toBe(0.25);
+  addon.eval("__units.target.class, __units.target.name = 'MAGE', 'Pal Renamed'");
+  addon.fire("UNIT_NAME_UPDATE", "target");
+  expect(bar(), "the class colour, and the name still follows").toEqual([0.25, "Pal Renamed"]);
+});

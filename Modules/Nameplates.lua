@@ -1116,9 +1116,15 @@ local function onFaction(f, unit)
   if NP.PaintNameOnly(f, unit) then NP.UpdateAuras(f, unit) end
 end
 
+-- A plate's unit name came from the name cache (so its class did): the name and the bar's class colour.
+local function onNameUpdate(f, unit)
+  NP.UpdateName(f, unit)
+  NP.UpdateColor(f, unit)
+end
+
 -- Health moves the fill and its numbers only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
 local UNIT_HANDLERS = {
-  UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
+  UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = onNameUpdate,
   UNIT_FACTION = onFaction, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
   UNIT_FLAGS = onFaction, UNIT_LEVEL = NP.UpdateName,
 }

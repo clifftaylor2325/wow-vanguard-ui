@@ -408,3 +408,14 @@ it("a target change in a fight with the aura buttons held: the icons are left al
   addon.advance(0.1, 0.1);
   expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1]:GetScale(), __inset(), #ns.errors }"), "let go: the old target's icon is one pixel at 100% again").toEqual([1, 1, 0]);
 });
+
+// UNIT_NAME_UPDATE: the name cache entry, so the class, has arrived (forever and live
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua, CompactUnitFrame_OnEvent).
+it("H50-63 a plate whose player's class arrives late takes the class colour on UNIT_NAME_UPDATE", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "RAID_CLASS_COLORS.MAGE = { r = 0.25, g = 0.78, b = 0.92 }");
+  addon.eval("__units.party1.class = nil");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  addon.eval("__units.party1.class = 'MAGE'");
+  addon.fire("UNIT_NAME_UPDATE", "nameplate2");
+  expect(plate(addon, "nameplate2").color.slice(0, 3), "the mage's colour").toEqual([0.25, 0.78, 0.92]);
+});
