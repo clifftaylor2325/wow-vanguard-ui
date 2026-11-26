@@ -204,11 +204,12 @@ local function build()
   addButtons()
 end
 
--- Why the wizard can't open before Gear upgrades has started: it is switched off under Modules, or it was
--- switched on there this session and starts at the next reload.
+-- Why the wizard can't open before Gear upgrades has started: it is switched off under Modules, it was switched on in
+-- a fight and starts when the fight ends, or its start failed (switching it off and on tries again).
 function WZ.SayNotStarted()
-  if ns.ModuleEnabled("Upgrades") then return ns.Chat(L["Gear upgrades starts after a /reload."]) end
-  ns.Chat(L["Gear upgrades is switched off: turn it on under Modules first."])
+  if not ns.ModuleEnabled("Upgrades") then return ns.Chat(L["Gear upgrades is switched off: turn it on under Modules first."]) end
+  if ns.ModuleAwaitsFight("Upgrades") then return ns.Chat(L["Gear upgrades starts when the fight ends."]) end
+  ns.Chat(L["Gear upgrades couldn't start: switch it off and on under Modules (/vg errors says why)."])
 end
 
 -- Hides the wizard when it was built (the module went off: its unsaved draft belongs to the profile that ran).

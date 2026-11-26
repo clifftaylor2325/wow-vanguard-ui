@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, chatHas, isTok, loggedIn, px } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 // TEST-ONLY gear for a warrior with no group role (strength weights: STR 1, DPS 2.5; SPI is worth
@@ -217,7 +217,31 @@ it("upgrades: the wizard names every stat, and says when Gear upgrades is off", 
   off.clearChat();
   off.eval("ns.SetModuleEnabled('Upgrades', true)");
   off.slash("weights wizard");
-  expect([chatHas(off, /Gear upgrades starts after a \/reload\./), chatHas(off, /switched off/)], "switched on under Modules it starts at once (a live module), so the wizard opens").toEqual([false, false]);
+  expect([chatHas(off, /Gear upgrades starts (after a \/reload|when the fight ends)\./), chatHas(off, /switched off/)], "switched on under Modules it starts at once (a live module), so the wizard opens").toEqual([false, false]);
+});
+
+// H54-61: Gear upgrades is live: switched on in a fight it starts when the fight ends, and a failed start is tried
+// again by switching it off and on; the wizard says which.
+it("upgrades: the wizard says Gear upgrades starts when the fight ends after a switch-on in a fight, and it does", () => {
+  const addon = loggedIn(GEAR_ENV);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  addon.advance(1);
+  setCombat(addon, true);
+  addon.eval("ns.SetModuleEnabled('Upgrades', true)");
+  addon.eval("ns.GetModule('Upgrades').Wizard.Open()");
+  expect([chatHas(addon, /Gear upgrades starts when the fight ends\./), chatHas(addon, /reload|couldn't start/)], "the wait is for the fight, not a reload").toEqual([true, false]);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.GetModule('Upgrades').settings ~= nil"), "running once the fight is over").toBe(true);
+});
+
+it("upgrades: the wizard says the start failed, and to switch it off and on, when Gear upgrades raised on its way up", () => {
+  expectErrors("module Upgrades: eval:2: TEST-ONLY boom");
+  const addon = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Upgrades = false } } }" });
+  addon.eval("local UP = ns.GetModule('Upgrades') local enable = UP.Enable UP.Enable = function() UP.Enable = enable error('TEST-ONLY boom') end ns.SetModuleEnabled('Upgrades', true)");
+  addon.eval("ns.GetModule('Upgrades').Wizard.Open()");
+  expect([chatHas(addon, /Gear upgrades couldn't start: switch it off and on under Modules/), chatHas(addon, /reload|starts when the fight ends/)], "a failed start is not a reload or a fight").toEqual([true, false]);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false) ns.SetModuleEnabled('Upgrades', true)");
+  expect(addon.eval("return ns.GetModule('Upgrades').settings ~= nil"), "switched off and on it starts").toBe(true);
 });
 
 // TEST-ONLY combined bag holding better bracers (2) and worse ones (3), and a slot that isn't a bag button.

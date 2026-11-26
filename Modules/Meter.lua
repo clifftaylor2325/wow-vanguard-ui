@@ -335,11 +335,12 @@ function MT.Reset()
   ns.Chat(pcall(reset) and L["The game's damage meter was reset."] or L["The game's damage meter can't be reset now."])
 end
 
--- Why /vg meter can't answer before the module has started: it is switched off under Modules, or it was
--- switched on there this session and starts at the next reload.
+-- Why /vg meter can't answer before the module has started: it is switched off under Modules, it was switched on in a
+-- fight and starts when the fight ends, or its start failed (switching it off and on tries again).
 function MT.SayNotStarted()
-  if ns.ModuleEnabled("Meter") then return ns.Chat(L["Vanguard's meter starts after a /reload."]) end
-  ns.Chat(L["Vanguard's meter is switched off under Modules (/vg > Modules)."])
+  if not ns.ModuleEnabled("Meter") then return ns.Chat(L["Vanguard's meter is switched off under Modules (/vg > Modules)."]) end
+  if ns.ModuleAwaitsFight("Meter") then return ns.Chat(L["Vanguard's meter starts when the fight ends."]) end
+  ns.Chat(L["Vanguard's meter couldn't start: switch it off and on under Modules (/vg errors says why)."])
 end
 
 -- /vg meter [on|off|<kind>|<segment>|reset|report ...]: switch it, or say how it stands.

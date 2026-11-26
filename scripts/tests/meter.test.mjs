@@ -1,7 +1,7 @@
 // meter: Vanguard's own damage and healing meter (Modules/Meter.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: the client's damage meter enums (the world has the meter but not these), a warrior's class color.
 const METER_ENV = `Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1, Hps = 3 }
@@ -192,7 +192,31 @@ it("with the Meter module switched off, /vg meter says so instead of failing", (
   addon.clearChat();
   addon.eval("ns.SetModuleEnabled('Meter', true)");
   addon.slash("meter on");
-  expect([chatHas(addon, /Vanguard's meter starts after a \/reload\./), chatHas(addon, /switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([false, false, 0]);
+  expect([chatHas(addon, /meter starts (after a \/reload|when the fight ends)\./), chatHas(addon, /switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([false, false, 0]);
+});
+
+// H54-61: a live module switched on in a fight starts when the fight ends (no reload), and one whose start failed
+// is tried again by switching it off and on; /vg meter says which.
+it("/vg meter says it starts when the fight ends after Meter is switched on in a fight, and it does", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  addon.eval("ns.SetModuleEnabled('Meter', false)");
+  addon.advance(1);
+  setCombat(addon, true);
+  addon.eval("ns.SetModuleEnabled('Meter', true)");
+  addon.slash("meter");
+  expect([chatHas(addon, /meter starts when the fight ends\./), chatHas(addon, /reload|couldn't start/)], "the wait is for the fight, not a reload").toEqual([true, false]);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.GetModule('Meter').Running()"), "running once the fight is over").toBe(true);
+});
+
+it("/vg meter says the start failed, and to switch it off and on, when Meter raised on its way up", () => {
+  expectErrors("module Meter: eval:2: TEST-ONLY boom");
+  const addon = loggedIn(METER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
+  addon.eval("local MT = ns.GetModule('Meter') local enable = MT.Enable MT.Enable = function() MT.Enable = enable error('TEST-ONLY boom') end ns.SetModuleEnabled('Meter', true)");
+  addon.slash("meter");
+  expect([chatHas(addon, /meter couldn't start: switch it off and on under Modules/), chatHas(addon, /reload|starts when the fight ends/)], "a failed start is not a reload or a fight").toEqual([true, false]);
+  addon.eval("ns.SetModuleEnabled('Meter', false) ns.SetModuleEnabled('Meter', true)");
+  expect(addon.eval("return ns.GetModule('Meter').Running()"), "switched off and on it starts").toBe(true);
 });
 
 it("the title is a card's heading on the click-to-switch button, the room above the bars fits it, and the empty line is label text2", () => {
