@@ -184,15 +184,16 @@ local function sendLater(wait)
 end
 
 -- Sends the next queued search: one in flight at a time, and AH.SEND_GAP seconds apart (at most
--- 60 a minute, well under the client's 100). The one after follows its results, or AH.FALLBACK seconds.
+-- 60 a minute, well under the client's 100). The one after follows its results, or AH.FALLBACK seconds (the
+-- timer starts before the send, so a send that raises still frees the queue).
 function AH.Next()
   if AH.pending or #AH.queue == 0 or not AH.open then return end
   local wait = AH.lastSent + AH.SEND_GAP - GetTime()
   if wait > 0 then return sendLater(wait) end
   local s = table.remove(AH.queue, 1)
   AH.pending, AH.lastSent = s, GetTime()
-  AH.Send(s)
   C_Timer.After(AH.FALLBACK, ns.Guard("timer search fallback", function() if AH.pending == s then AH.Done() end end))
+  AH.Send(s)
 end
 
 -- Queues a search at the back of the line and sends it if nothing is in flight. A closed house takes none:
