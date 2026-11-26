@@ -221,16 +221,48 @@ it("inventory: a bank change waiting when the module is switched off is not read
   expect(mine(addon).bank, "the remembered bank stays as it was").toEqual({ 2589: 4 });
 });
 
-it("H53-1 inventory: a character that picks a side after starting neutral takes its own record along, and another neutral character's stays", () => {
+// A neutral character's record with data a bag read never refills: a bank, money, time played and a level.
+const NEUTRAL_RECORD = '{ class = "MAGE", bags = { [118] = 7 }, bank = { [2589] = 3 }, money = 4321, played = 1234, level = 9, updated = 55 }';
+const SEEDED = ["MAGE", { 118: 7 }, { 2589: 3 }, 4321, 1234, 9, 55];
+// The fields of Tester's record under a home key that a bag read never writes.
+const fields = (addon, home) => addon.eval(`local r = VanguardDB.inventory["${home}"].Tester return { r.class, r.bags, r.bank, r.money, r.played, r.level, r.updated }`);
+
+// A client where Tester is neutral and has a seeded record, then picks the Horde without the bags being read.
+const pickHorde = (extra = "") => {
   const addon = loggedIn(BAGS_ENV + "__wfgWorld.units.player.faction = 'Neutral'");
-  expect(addon.eval('return VanguardDB.inventory["ForeverTest-none"].Tester.bags'), "while neutral the record is under the neutral home").toEqual({ 2589: 8, 118: 1 });
-  addon.eval('VanguardDB.inventory["ForeverTest-none"].Other = { bags = { [118] = 2 }, bank = {} }');
+  addon.eval(`VanguardDB.inventory["ForeverTest-none"].Tester = ${NEUTRAL_RECORD} ${extra}`);
   addon.eval("__wfgWorld.units.player.faction = 'Horde'");
-  addon.fire("NEUTRAL_FACTION_SELECT_RESULT");
-  addon.fire("BAG_UPDATE_DELAYED");
-  addon.advance(0.6, 0.1);
-  expect(addon.eval('return { VanguardDB.inventory["ForeverTest-Horde"].Tester.bags, VanguardDB.inventory["ForeverTest-none"].Tester == nil }'), "the record moved once: its bags came along and none is left behind")
-    .toEqual([{ 2589: 8, 118: 1 }, true]);
+  return addon;
+};
+
+it("H53-1 inventory: a character that picks a side after starting neutral takes its own record along, and another neutral character's stays", () => {
+  const addon = pickHorde('VanguardDB.inventory["ForeverTest-none"].Other = { bags = { [118] = 2 }, bank = {} }');
+  addon.eval('ns.GetModule("Inventory").Mine()');
+  expect(fields(addon, "ForeverTest-Horde"), "the moved record keeps its bank, money, time played and level; the class is the character's own").toEqual(SEEDED);
+  expect(addon.eval('return VanguardDB.inventory["ForeverTest-none"].Tester == nil'), "none is left behind").toBe(true);
   expect(addon.eval('return { VanguardDB.inventory["ForeverTest-none"].Other.bags, VanguardDB.inventory["ForeverTest-Horde"].Other == nil }'), "another neutral character's record stays where it is")
     .toEqual([{ 118: 2 }, true]);
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(0.6, 0.1);
+  expect(addon.eval('return VanguardDB.inventory["ForeverTest-Horde"].Tester.bags'), "the next bag read then refreshes its bags").toEqual({ 2589: 8, 118: 1 });
+  expect(addon.eval('return VanguardDB.inventory["ForeverTest-Horde"].Tester.bank'), "and leaves the bank alone").toEqual({ 2589: 3 });
+});
+
+it("H53-1 inventory: a record already under the new key is kept, and the neutral one stays where it is", () => {
+  const addon = pickHorde('VanguardDB.inventory["ForeverTest-Horde"] = { Tester = { bags = {}, bank = { [118] = 9 }, played = 99 } }');
+  addon.eval('ns.GetModule("Inventory").Mine()');
+  expect(addon.eval('local r = VanguardDB.inventory["ForeverTest-Horde"].Tester return { r.bank, r.played, r.money == nil }'), "the existing record is not overwritten")
+    .toEqual([{ 118: 9 }, 99, true]);
+  expect(fields(addon, "ForeverTest-none"), "the neutral record is untouched").toEqual(SEEDED);
+});
+
+it("H53-1 inventory: taking the record is done once, and a second read changes nothing", () => {
+  const addon = pickHorde();
+  addon.eval('ns.GetModule("Inventory").Mine()');
+  // What the moved record holds now, and whether the neutral one is gone.
+  const after = () => addon.eval('return { VanguardDB.inventory["ForeverTest-Horde"].Tester.bank, VanguardDB.inventory["ForeverTest-Horde"].Tester.played, VanguardDB.inventory["ForeverTest-none"].Tester == nil }');
+  const first = after();
+  addon.eval('ns.GetModule("Inventory").Mine()');
+  expect(after(), "the second run leaves the moved record as it was").toEqual(first);
+  expect(first, "and the first moved it").toEqual([{ 2589: 3 }, 1234, true]);
 });
