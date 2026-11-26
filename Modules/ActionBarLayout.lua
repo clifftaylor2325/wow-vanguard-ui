@@ -104,9 +104,11 @@ function AB.Visibility(n)
   return V.Mode(AB.settings.bars[n].visibility)
 end
 
--- Bar n's own secure visibility driver, from its setting and checklist.
+-- Bar n's own secure visibility driver, from its setting and checklist; bar 1 also shows in a vehicle, a possess
+-- or an override bar (V.Wake), where it holds the only buttons.
 function AB.OwnDriver(n)
-  return V.Driver(V.State(AB.Visibility(n), AB.settings.bars[n].showWhen))
+  local mode = AB.Visibility(n)
+  return V.Driver(V.Wake(AB.bars[n], mode, V.State(mode, AB.settings.bars[n].showWhen)))
 end
 
 -- Alpha 0 for a bar that fades on mouseover while the mouse isn't over it

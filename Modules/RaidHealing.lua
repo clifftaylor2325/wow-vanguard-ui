@@ -695,12 +695,19 @@ end
 
 ns.Options.AddRowKind("buffpick", buffRow, W.ROW_HEIGHT)
 
+-- The buff-list box: Enter saves it, as the Save button does.
+local function buffInput(row)
+  local input = W.Input(row, 330)
+  input:SetPoint("LEFT")
+  input:SetScript("OnEnterPressed", ns.Guard("buff list enter", saveBuffs))
+  return input
+end
+
 -- The buff-list editor: names separated by commas, and Save.
 local function buffEditor(content)
   local row = CreateFrame("Frame", nil, content)
   row:SetSize(480, 28)
-  row.input = W.Input(row, 330)
-  row.input:SetPoint("LEFT")
+  row.input = buffInput(row)
   row.save = W.Button(row, L["Save"], function() saveBuffs(row.input) end, 80)
   row.save:SetPoint("LEFT", row.input, "RIGHT", 8, 0)
   -- Shows the saved list, or your class's defaults when you haven't set one.

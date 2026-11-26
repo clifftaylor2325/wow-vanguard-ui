@@ -231,6 +231,23 @@ it("ranks the recipes whose prices are all known, by profit, per craft and per h
   expect(chatHas(addon, /TEST-ONLY Linen Bag: 4s 50c a craft, 4g 50s 0c an hour at 36s a craft/), "the pace is the setting").toBe(true);
 });
 
+it("/vg craft top keeps a crafted profile's seconds per craft inside the slider's 1 to 60 (H52-R1)", () => {
+  const addon = crafter();
+  addon.eval("__price(2589, 10) __price(2320, 20) __price(4238, 500) __price(1251, 40)");
+  // Runs /vg craft top with the pace setting at secs.
+  const top = (secs) => { addon.eval(`ns.Settings('CraftQueue').secs = ${secs}`); addon.slash("craft top"); };
+  top(0);
+  expect(chatHas(addon, /Linen Bag: 4s 50c a craft, 162g 0s 0c an hour at 1s a craft/), "0 reads as 1, no infinity").toBe(true);
+  top(-5);
+  expect(chatHas(addon, /Linen Bag: 4s 50c a craft, 162g 0s 0c an hour at 1s a craft/), "negative reads as 1").toBe(true);
+  top(500);
+  expect(chatHas(addon, /Linen Bag: 4s 50c a craft, 2g 70s 0c an hour at 60s a craft/), "500 reads as 60").toBe(true);
+  addon.eval("ns.Settings('CraftQueue').secs = 'slow'");
+  addon.slash("craft top");
+  expect(chatHas(addon, /Linen Bag: 4s 50c a craft, 27g \d+s \d+c an hour at 6s a craft/), "text reads as the default 6").toBe(true);
+  expect(chatHas(addon, /inf|nan/), "no inf or nan").toBe(false);
+});
+
 it("/vg craft top shows a losing recipe's loss with a minus, never as a profit", () => {
   const addon = crafter();
   addon.eval("__price(2589, 10) __price(2320, 20) __price(4238, 500) __price(1251, 2)");

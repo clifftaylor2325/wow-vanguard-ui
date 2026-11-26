@@ -69,6 +69,21 @@ it("add, list, remove and clear keep reserves on the character, by name or item 
   expect(addon.eval("return ns.GetModule('OfficerLoot').Remove('x', '  ')"), "blank item removes nothing").toBe(0);
 });
 
+it("H51-61 the Add a reserve box closes once a reserve is kept, takes text with spaces around it, and stays open on a usage error", () => {
+  const addon = loggedIn("", ON);
+  // Types into the box and presses its Add; whether the box is still shown.
+  const add = (text) => addon.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary) return Vanguard_TextDialog:IsShown()`);
+  press(addon, "Add a reserve");
+  expect([add("Thrall"), chatHas(addon, /Use \/vg loot add/)], "a name alone: the usage line, the box stays").toEqual([true, true]);
+  expect(addon.eval("return #VanguardCharDB.lootReserves"), "nothing kept").toBe(0);
+  expect([add("  Thrall Boots  "), addon.eval("return #VanguardCharDB.lootReserves")], "spaces around: kept, the box closes").toEqual([false, 1]);
+  expect(say(addon, "loot add   Jaina   Cloak "), "the command takes the same text").toMatch(/Reserved: Cloak for Jaina/);
+  expect(say(addon, "loot add Thrall   "), "a player with no item is a usage error").toMatch(/Use \/vg loot add/);
+  expect(say(addon, "loot add Bob Onyxia Hide Backpack"), "an item name of several words is kept whole").toMatch(/Reserved: Onyxia Hide Backpack for Bob/);
+  addon.eval('ns.GetModule("OfficerLoot").CmdRemove("  Bob   Onyxia Hide Backpack  ")');
+  expect([chatHas(addon, /Removed the reserve for Bob/), addon.eval("return #VanguardCharDB.lootReserves")], "remove takes the same spaces and several words").toEqual([true, 2]);
+});
+
 it("a roll on a reserved item is flagged [SR], by the item the loot history says is rolling, and the item lists who reserved it", () => {
   const addon = loggedIn(ROLL_ENV + LOOT("false"), ON);
   say(addon, "loot add Thrall TEST-ONLY Boots");

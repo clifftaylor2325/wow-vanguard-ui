@@ -66,9 +66,14 @@ local function count(n)
   return n >= 1000 and string.format("%d,%03d", math.floor(n / 1000), n % 1000) or tostring(n)
 end
 
+-- Characters as the website counts them: code points, but a character past U+FFFF (four bytes, such as an emoji) twice, as JavaScript's length does.
+local function siteLength(value)
+  return ns.TextLength(value) + select(2, value:gsub("[\240-\244]", ""))
+end
+
 -- The message when a text is missing, too short or too long, else nil.
 local function lengthError(field, value, label)
-  local least, most, n = LIMITS[field][1], LIMITS[field][2], ns.TextLength(value)
+  local least, most, n = LIMITS[field][1], LIMITS[field][2], siteLength(value)
   if least > 0 and n == 0 then return ns.Format(L["{field} is required."], { field = label }) end
   if n > 0 and n < least then return ns.Format(L["{field} needs at least {least} characters."], { field = label, least = count(least) }) end
   if n > most then return ns.Format(L["{field} can be at most {most} characters (it has {count})."], { field = label, most = count(most), count = count(n) }) end
