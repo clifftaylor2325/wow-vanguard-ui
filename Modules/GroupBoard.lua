@@ -104,20 +104,22 @@ local function spaceMarks(text)
 end
 
 -- The text with CJK punctuation (U+3000-303F and the full-width marks of U+FF00-FFEF) turned into spaces and each
--- ideograph set apart, as Chinese runs words together with no spaces: every phrase must sit between spaces, so
--- "LFM怒焰裂谷缺坦克" reads as the words lfm 怒 焰 裂 谷 缺 坦 克, and the same on both sides, line and phrase. Hangul keeps
--- its own spaces. Lines with no byte in 227-239 (most) skip the strips.
+-- ideograph set apart (U+3400-9FFF and the compatibility ideographs U+F900-FAFF), as Chinese runs words together
+-- with no spaces: every phrase must sit between spaces, so "LFM怒焰裂谷缺坦克" reads as the words lfm 怒 焰 裂 谷 缺 坦 克,
+-- and the same on both sides, line and phrase. Hangul keeps its own spaces. Lines with no byte in 227-239 (most) skip it.
 local function spaceIdeographs(text)
   if not text:find("[\227-\239]") then return text end
   text = text:gsub("\227\128[\128-\191]", " "):gsub("\239\188[\128-\143\154-\160\187-\191]", " ")
-  return (text:gsub("\239\189[\155-\165]", " "):gsub("[\228-\233][\128-\191][\128-\191]", " %0 "))
+  text = text:gsub("\239\189[\155-\165]", " "):gsub("[\228-\233][\128-\191][\128-\191]", " %0 ")
+  return (text:gsub("\227[\144-\191][\128-\191]", " %0 "):gsub("\239[\164-\171][\128-\191]", " %0 "))
 end
 
--- A line without its colour and link codes (a link keeps its [name]). A line with no escape codes (most of them)
--- skips the three strips.
+-- A line without its colour, link, texture, atlas and protected-name codes (a link keeps its [name]). A line with
+-- no escape codes (most of them) skips the strips.
 function GB.Plain(text)
   if not text:find("|", 1, true) then return text end
-  return (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", ""))
+  text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "")
+  return (text:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|K.-|k", ""))
 end
 
 -- A line as " word word ": lower-case (accented and Cyrillic letters too), colour and link codes and punctuation gone,

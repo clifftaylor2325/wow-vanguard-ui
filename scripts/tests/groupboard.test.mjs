@@ -357,6 +357,12 @@ it("H61-R2 group board: the probe's last line has its colour and link codes take
   expect(chatHas(addon, /Last line that was not a post: selling cheap stuff right now, whisper me for details please ok \[TEST-ONLY Key\]$/), "the words and the link's name, no codes").toBe(true);
 });
 
+it("group board: a line's texture, atlas and protected-name codes are taken out with its colours and links", () => {
+  const addon = board();
+  const plain = addon.eval(`return ns.GetModule("GroupBoard").Plain("a |TInterface\\\\Icons\\\\x:0|t b |A:raid-icon:0:0|a c |Kq1|k d")`);
+  expect(plain, "only the words are left").toBe("a  b  c  d");
+});
+
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
 // button's inset, and the display (a window title's) and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
@@ -462,6 +468,7 @@ it("H58-34 a Chinese post written without spaces is read: LFM glued to the dunge
   expect(parse(zh, "LFM怒焰裂谷tank"), "glued to the shared word and to a role").toEqual(["LFM", "怒焰裂谷", "tank"]);
   expect(parse(zh, "LFM 怒焰裂谷，缺坦克")?.slice(0, 2), "a full-width comma").toEqual(["LFM", "怒焰裂谷"]);
   expect(parse(zh, "LFM（怒焰裂谷）")?.slice(0, 2), "full-width brackets").toEqual(["LFM", "怒焰裂谷"]);
+  expect(zh.eval(`return ns.GetModule("GroupBoard").Words("lfm㐀豈tank")`), "an Extension A and a compatibility ideograph are set apart too").toBe(" lfm 㐀 豈 tank ");
   expect(parse(boardIn("koKR"), "LFM SFK tank"), "Korean is as before").toEqual(["LFM", "Shadowfang Keep", "tank"]);
 });
 
