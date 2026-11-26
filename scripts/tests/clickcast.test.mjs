@@ -425,6 +425,24 @@ it("without specializations the page speaks of this character", () => {
   expect(addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames')).toBe(false);
 });
 
+it("H55-33 the unit-frame switch is a reload row: the footer notice goes when it is put back, and the row has its default", () => {
+  const addon = priest("", { savedVariables: "VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }" });
+  addon.eval('ns.Options.Show("clickcast")');
+  // Whether the footer's reload notice shows.
+  const notice = () => addon.eval("return Vanguard_Options.notice:IsShown()");
+  // Whether the row's reset dot shows.
+  const dot = () => addon.eval('return __find("Also on player, target and focus").reset:IsShown()');
+  // The stored setting.
+  const saved = () => addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames');
+  expect([notice(), dot()], "built with it on: no notice, and on is not the default (off), so the dot shows").toEqual([false, true]);
+  addon.eval('__click("Also on player, target and focus")');
+  expect([notice(), saved(), dot()], "turning it off shows the notice; off is the default").toEqual([true, false, false]);
+  addon.eval('__click("Also on player, target and focus")');
+  expect([notice(), saved()], "turning it back on drops the notice").toEqual([false, true]);
+  addon.eval('local d = __find("Also on player, target and focus").reset d.__scripts.OnClick(d)');
+  expect([notice(), saved(), dot()], "the dot puts the default back and the notice follows").toEqual([true, false, false]);
+});
+
 it("H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu", () => {
   const healOnLeft = '{ { key = "BUTTON1", action = "spell", value = "Flash Heal" } }';
   const addon = priest("__wfgWorld.spec = 1", {

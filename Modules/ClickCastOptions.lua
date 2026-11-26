@@ -1178,17 +1178,6 @@ local function title()
   return scopeLine(CC.CurrentKey())
 end
 
--- Whether click casting also covers the unit frames.
-local function unitFramesOn()
-  return ns.Settings("ClickCast", CC.defaults).unitFrames
-end
-
--- Turns click casting on the unit frames on or off (applies on reload).
-local function setUnitFrames(on)
-  ns.Settings("ClickCast", CC.defaults).unitFrames = on
-  O.NeedReload()
-end
-
 O.AddRowKind("bindlayout", layoutBuilder, 36, true)
 O.AddRowKind("bindgrid", gridBuilder, GRID.head + #MOUSE * CELL_H + 8, true)
 O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight, true)
@@ -1215,7 +1204,7 @@ local ROWS = {
   { "bindtest" },
   { "header", L["Share"] },
   { "bindshare" },
-  { "check", L["Also on player, target and focus (reload)"], unitFramesOn, setUnitFrames },
+  { "check", L["Also on player, target and focus (reload)"], O.ReloadSetting("ClickCast", "unitFrames") },
 }
 
 -- Whether the game's click bindings are switched on.
