@@ -551,6 +551,7 @@ it("filters travel: exact names export in quotes, import as exact, and copies ha
   expect(prices, "gold as a number, or g/s/c amounts").toEqual([25000, 7520, 30400, 12, false, false, false, false, false, false]);
   const bad = addon.eval(`local out = {} for i, t in ipairs({ "1e5", "0x10", "1e999", "inf", "nan", "1.2.3", "5e", "1_0", ${JSON.stringify("9".repeat(400))}, "1000000g", "999999g 99s 99c", "999999g 99s 100c", "999999g 99s 99c 1c" }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
   expect(bad, "exponent, hex, infinity and other number forms are not money; nothing above the game's highest price").toEqual([false, false, false, false, false, false, false, false, false, false, 9999999999, false, false]);
+  expect(addon.eval(`return { ${HELPER}.ParseMoney("0.00004") or false, ${HELPER}.ParseMoney("0.00005") }`), "a price that rounds to 0 copper is no price; half a copper rounds up to 1").toEqual([false, 1]);
   expect(addon.eval(`return { ${HELPER}.ParseMoney(".5"), ${HELPER}.ParseMoney("3."), ${HELPER}.ParseMoney("1G") }`), "a bare .5 and 3. still read as gold").toEqual([5000, 30000, 10000]);
 });
 // The text dialog: whether it shows, its title and its text.
