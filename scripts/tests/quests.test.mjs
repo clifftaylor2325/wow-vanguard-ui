@@ -634,6 +634,29 @@ it("quest tracker: a Legacy challenge with no criteria shows its description, an
   addon.update(0);
   expect(tracker(addon).blocks.slice(3), "completed by someone else on the account (not earned by you): still Complete").toEqual([["TEST-ONLY Legacy Done", ["Complete"]]]);
 });
+// Shift-click on a tracked achievement or recipe: forever and live Blizzard_ObjectiveTracker/Blizzard_AchievementObjectiveTracker.lua
+// and Blizzard_ProfessionsRecipeTracker.lua OnBlockHeaderClick put its link in an open chat box.
+it("H61-R1 quest tracker: Shift-click on a tracked challenge links it when a chat box is open; right-click and no chat box do as before", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  addon.eval("GetAchievementLink = function(id) return '|Hachievement:' .. id .. '|h[Ach ' .. id .. ']|h' end __wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { __wfgWorld.chatInserts[1], __stopped == nil }"), "the challenge's link is in the chat box").toEqual(["|Hachievement:7001|h[Ach 7001]|h", true]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'RightButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, __stopped[2] }"), "right-click still stops tracking, and links nothing").toEqual([1, 7001]);
+  addon.eval("__stopped = nil __wfgWorld.chatBox = nil local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, #ns.errors }"), "no chat box: nothing linked").toEqual([1, 0]);
+});
+it("H61-R1 quest tracker: Shift-click on a tracked recipe links it when a chat box is open and opens it when none is", () => {
+  const addon = loggedIn(RECIPE_ENV);
+  addon.world.addQuest({ questID: 90052, title: "TEST-ONLY Letter", level: 12, watched: true });
+  addon.eval("__wfgWorld.trackRecipe(90100)");
+  addon.update(0);
+  addon.eval("C_TradeSkillUI.GetRecipeLink = function(id) return '|Henchant:' .. id .. '|h[Recipe ' .. id .. ']|h' end __wfgWorld.chatBox = 'ChatFrame1EditBox' __wfgWorld.setKeys({ shift = true })");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { __wfgWorld.chatInserts[1], tostring(__wfgWorld.openedRecipe) }"), "the recipe's link is in the chat box, and the recipe did not open").toEqual(["|Henchant:90100|h[Recipe 90100]|h", "nil"]);
+  addon.eval("__wfgWorld.chatBox = nil local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'LeftButton')");
+  expect(addon.eval("return { #__wfgWorld.chatInserts, __wfgWorld.openedRecipe }"), "with no chat box it opens as before").toEqual([1, 90100]);
+});
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'RightButton') b[3].__scripts.OnClick(b[3], 'LeftButton')");

@@ -482,8 +482,10 @@ function QT.OnTitle(id, button)
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end
 end
 
--- A tracked achievement's title was clicked: right stops tracking it (the game's own tracker does the same).
+-- A tracked achievement's title was clicked: right stops tracking it (the game's own tracker does the same); Shift-left
+-- with a chat box open puts its link there.
 function QT.OnAchievement(id, button)
+  if button ~= "RightButton" and ns.QuestParts.TryLink(ns.CallIf(_G, "GetAchievementLink", id)) then return end
   local kind, stop = achievementType(), Enum and Enum.ContentTrackingStopType
   if button == "RightButton" and kind and C_ContentTracking and C_ContentTracking.StopTracking then
     C_ContentTracking.StopTracking(kind, id, stop and stop.Manual)
@@ -491,9 +493,11 @@ function QT.OnAchievement(id, button)
 end
 
 -- A tracked recipe's title was clicked: left opens it in the profession window (not a recraft, as the game's
--- tracker opens none), right stops tracking it (the game's own calls; its tracker's menu offers the same).
+-- tracker opens none), right stops tracking it (the game's own calls; its tracker's menu offers the same); Shift-left
+-- with a chat box open puts its link there instead.
 function QT.OnRecipe(row, button)
   if button == "RightButton" then return ns.CallIf(C_TradeSkillUI, "SetRecipeTracked", row.id, false, row.recraft == true) end
+  if ns.QuestParts.TryLink(ns.CallIf(C_TradeSkillUI, "GetRecipeLink", row.id)) then return end
   if not row.recraft then ns.CallIf(C_TradeSkillUI, "OpenRecipe", row.id) end
 end
 
