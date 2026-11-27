@@ -405,9 +405,10 @@ end
 
 -- Keeps the sectioned bag on the screen: the sections can make it taller than the game's smallest scale (0.75)
 -- fits on a short canvas, which would push its title and Sort button past the top. A call on the game's frame,
--- once (not in fitWindow, which runs on every layout), out of combat.
+-- once (not in fitWindow, which runs on every layout), in a fight too; a frame the client protects then waits.
 function BG.KeepOnScreen(frame)
-  ns.OutOfCombat(function() frame:SetClampedToScreen(true) end, "bag clamp")
+  if ns.FrameWaits(frame) then return ns.OutOfCombat(function() frame:SetClampedToScreen(true) end, "bag clamp") end
+  frame:SetClampedToScreen(true)
 end
 
 -- Sections in the combined bag window (Bags.Enable): after the game lays out

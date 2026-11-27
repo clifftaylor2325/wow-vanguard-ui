@@ -1065,6 +1065,26 @@ it("the sectioned combined bag is clamped to the screen, so a bag taller than a 
   expect(clamp("C_Item.GetItemInfoInstant = nil"), "a client that can't section keeps the game's frame as it is").toBeNull();
 });
 
+// H63-1-32: the combined bag holds no secure template on either client (Interface/AddOns/Blizzard_UIPanels_Game/
+// Mainline/ContainerFrame.xml ContainerFrameCombinedBags inherits PortraitFrameFlatTemplate), so it is clamped in a
+// fight too; SetClampedToScreen is refused on a protected frame (Blizzard_APIDocumentationGenerated/
+// SimpleFrameAPIDocumentation.lua, IsProtectedFunction), so a bag the client calls protected waits, with no blocked call.
+it("H63-1-32 a bag sectioned in a fight is clamped to the screen at once, unless the client protects it", () => {
+  // TEST-ONLY: the harness's own SetClampedToScreen still runs (so a blocked call is recorded); frames record the clamp.
+  const record = "local set = __wfgStub.methods.SetClampedToScreen __wfgStub.methods.SetClampedToScreen = function(self, on) set(self, on) self.__testClamped = on end\n";
+  const unmovable = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { movable = false } } }" };
+  // The combined bag's clamp after a login in a fight, then after the fight ends.
+  const clamp = (extra) => {
+    const addon = loggedIn(record + BAG_ENV + extra + " __wfgStub.inCombat = true", unmovable);
+    const during = addon.eval("return ContainerFrameCombinedBags.__testClamped");
+    setCombat(addon, false);
+    return [during, addon.eval("return ContainerFrameCombinedBags.__testClamped")];
+  };
+  expect(clamp(""), "not protected: clamped in the fight").toEqual([true, true]);
+  expect(clamp("__wfgStub.protect(ContainerFrameCombinedBags)"), "protected: clamped when the fight ends").toEqual([null, true]);
+  expect(clamp("ContainerFrameCombinedBags.IsProtected = function() return __wfgWorld.secret(false) end"), "a hidden answer waits too").toEqual([null, true]);
+});
+
 it("search words and group names ignore the case of Russian letters, so a small-letter word finds a name and cat: finds a group", () => {
   const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV);
   addon.eval(`local items = __wfgWorld.items
