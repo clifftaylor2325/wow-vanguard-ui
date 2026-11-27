@@ -400,6 +400,14 @@ local function runCallback(cb, ...)
   return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
 end
 
+-- Whether a callback taken at the start of a run is still registered for its event.
+local function stillKept(event, cb)
+  for _, kept in ipairs(world.callbacks[event] or {}) do
+    if kept == cb then return true end
+  end
+  return false
+end
+
 -- The client's check on an event name: text, else it raises with the method's own message (the client writes
 -- RegisterCallback's with a double colon). Blizzard_SharedXMLBase/CallbackRegistry.lua:112-113, 187-188, 225-226.
 local function needEventName(method, event)
@@ -426,12 +434,14 @@ EventRegistry = {
     for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
   end,
   -- Runs the callbacks for an event (its name must be text): those kept with extra arguments (the client's closures)
-  -- first, then the rest.
+  -- first, then the rest. One registered during the run waits for the next (GetMutableCallbacksByEvent defers it);
+  -- one removed during the run before its turn does not run (UnregisterCallback clears the live table that
+  -- secureexecuterange walks). Blizzard_SharedXMLBase/CallbackRegistry.lua TriggerEvent, UnregisterCallback, both clients.
   TriggerEvent = function(_, event, ...)
     needEventName("CallbackRegistryMixin:TriggerEvent", event)
     local list = { stub.unpack(world.callbacks[event] or {}) }
-    for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
-    for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n > 0 and stillKept(event, cb) then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n == 0 and stillKept(event, cb) then runCallback(cb, ...) end end
   end,
 }
 

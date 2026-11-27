@@ -783,3 +783,22 @@ it("addon code that shows a managed frame in a fight starts a layout that is blo
       "blocked in combat: Modules/TEST-ONLY.lua:1 called SetSize on the protected frame BottomManagedFrameContainer"]);
   expect(addon.eval("return TalkingHeadFrame:GetParent() == BottomManagedFrameContainer"), "the unprotected one still moves").toBe(true);
 });
+
+// Blizzard_SharedXMLBase/CallbackRegistry.lua TriggerEvent and UnregisterCallback (both clients): a callback removed
+// during a run before its turn does not run; one registered during the run waits for the next.
+it("EventRegistry skips a callback removed mid-dispatch and runs one added mid-dispatch only on the next event", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local seen, a, b = {}, {}, {}
+    EventRegistry:RegisterCallback("TEST-ONLY", function()
+      seen[#seen + 1] = "a"
+      EventRegistry:UnregisterCallback("TEST-ONLY", b)
+      EventRegistry:RegisterCallback("TEST-ONLY", function() seen[#seen + 1] = "c" end, {})
+    end, a)
+    EventRegistry:RegisterCallback("TEST-ONLY", function() seen[#seen + 1] = "b" end, b)
+    EventRegistry:TriggerEvent("TEST-ONLY")
+    local first = table.concat(seen, " ")
+    seen = {}
+    EventRegistry:UnregisterCallback("TEST-ONLY", a)
+    EventRegistry:TriggerEvent("TEST-ONLY")
+    return { first, table.concat(seen, " ") }`)).toEqual(["a", "c"]);
+});
