@@ -92,8 +92,10 @@ local function paintBar(bar, fight, peak, latest)
   T.Tint(bar, latest and "accent" or "muted")
 end
 
--- Shows the strip while it's on, has a fight and its visibility shows it, and draws each fight's bar.
+-- Shows the strip while it's on, has a fight and its visibility shows it, and draws each fight's bar; nothing once
+-- the module stopped (a paint queued for a fight's end runs after the stop).
 function FH.Paint()
+  if not (FH.scope and FH.scope:Running()) then return end
   local f = FH.frame
   f:SetShown(FH.settings.strip == true and #FH.fights > 0 and V.Shows(f))
   local peak = FH.Peak()

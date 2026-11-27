@@ -247,10 +247,10 @@ local function append(a, b)
   return a
 end
 
--- Applies a module's visibility now, when the module runs.
+-- Applies a module's visibility now, when the module runs (built and still switched on: one switched off in a
+-- fight is still marked enabled until its stop runs).
 local function applyModuleVisibility(module)
-  local m = ns.GetModule(module)
-  if m.enabled then m.ApplyVisibility() end
+  if moduleRunning(module) then ns.GetModule(module).ApplyVisibility() end
 end
 
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once

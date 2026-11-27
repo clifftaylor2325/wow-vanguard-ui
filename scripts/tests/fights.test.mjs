@@ -127,6 +127,23 @@ it("the strip's visibility setting hides it, and an empty history shows nothing"
   expect(addon.frame("Vanguard_FightHistory").visible, "Hidden hides it").toBe(false);
 });
 
+// The Combat tools page's "Fight history visibility" row set to `mode`, as a click on it does.
+const setVisibilityRow = (addon, mode) => addon.eval(`for _, page in ipairs(ns.Options.NavOrder()) do if page.key == "tools" then
+  for _, row in ipairs(ns.Options.RowsOf(page)) do if row[2] == "Fight history visibility" then row[5]("${mode}") end end end end`);
+
+it("H63-1-1 fight history switched off in a fight stays hidden after its visibility row changes in that fight", () => {
+  const addon = loggedIn(METER_ENV, STRIP_ON);
+  fight(addon, 100, 30);
+  addon.world.combat(true);
+  addon.eval('ns.SetModuleEnabled("FightHistory", false)');
+  setVisibilityRow(addon, "always");
+  addon.world.combat(false);
+  addon.advance(0.1);
+  expect(addon.eval('return { ns.GetModule("FightHistory").scope:Running(), Vanguard_FightHistory:IsShown() }'), "stopped, its strip hidden").toEqual([false, false]);
+  addon.eval("ns.GetModule('FightHistory').Paint()");
+  expect(addon.frame("Vanguard_FightHistory").visible, "a paint after the stop draws nothing").toBe(false);
+});
+
 it("the tooltip and /vg fights list the fights, newest first", () => {
   const addon = loggedIn(METER_ENV, STRIP_ON);
   addon.slash("fights");
