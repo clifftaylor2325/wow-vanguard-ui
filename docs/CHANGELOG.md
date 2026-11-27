@@ -6,7 +6,7 @@ Vanguard is made by one person. Every change runs through a headless copy of the
 
 ## 0.9.9
 
-<!-- SMOKE steps 33.923 to 33.984 -->
+<!-- SMOKE steps 33.923 to 33.966, steps 33.968 to 33.984 -->
 
 Questions before the things you can't take back, the Calm HUD's right-click menu back on your frames, and fixes across UI scale changes, raid frames, the bank, the auction house, other-language clients, quests and chat.
 
