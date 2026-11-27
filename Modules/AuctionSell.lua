@@ -45,8 +45,11 @@ AH.defaults.vendorFloor = true
 -- Enum.ItemCommodityStatus's Item and Commodity (AuctionHouseDocumentation.lua); the game's
 -- names for the three auction lengths (AUCTION_DURATION_ONE...).
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
--- The undercut rules as the sell card's segments.
-AH.UNDERCUT_CHOICES = { { "copper", "1c" }, { "silver", "1s" }, { "percent", "1%" }, { "match", L["Match"] } }
+-- The undercut rules as the sell card's segments; the coin letters are the client's, as the prices beside them (AP.Money).
+AH.UNDERCUT_CHOICES = {
+  { "copper", ns.Format(L["{copper}c"], { copper = 1 }) }, { "silver", ns.Format(L["{silver}s"], { silver = 1 }) },
+  { "percent", "1%" }, { "match", L["Match"] },
+}
 
 -- Stack presets for vanilla: how many units go up in one auction by default, by item class and
 -- subclass ("class:subclass", as C_Item.GetItemInfoInstant gives them; Enum.ItemClass and

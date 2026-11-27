@@ -197,6 +197,38 @@ it("H55-R1 a refresh of the options window leaves a half-typed buff list in the 
   expect(addon.eval("return __editor.input:GetText()"), "and the saved list comes back once it has not").not.toBe("Half-ty");
 });
 
+it("H55-G6 a buff switch clicked while the Buffs to watch box has the cursor edits the box's list, which Enter then saves", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  addon.eval('ns.Options.Show("healing")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then __editor = w end end
+    __editor.input:SetFocus() __editor.input:SetText("A, B") __click("Divine Spirit")`);
+  expect(addon.eval("return __editor.input:GetText()"), "the box shows the typed names and the switch just clicked").toBe("A, B, Divine Spirit");
+  expect(addon.eval("return __editor.input:HasFocus()"), "and keeps the cursor").toBe(true);
+  addon.eval("__editor.input:GetScript('OnEnterPressed')(__editor.input)");
+  expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "Enter saves all of them").toBe("A, B, Divine Spirit");
+});
+
+it("H55-G6 a buff switched off while the Buffs to watch box has the cursor leaves the typed names and drops that buff", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  addon.eval('ns.GetModule("RaidHealing").Forget() ns.Settings("RaidHealing").buffs = "Arcane Intellect, Arcane Brilliance"');
+  addon.eval('ns.GetModule("RaidHealing").Forget() ns.Options.Show("healing")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then __editor = w end end
+    __editor.input:SetFocus() __editor.input:SetText("Arcane Intellect, Arcane Brilliance, A") __click("Arcane Intellect")`);
+  expect(addon.eval("return __editor.input:GetText()"), "the box loses the switched-off buff and keeps the rest").toBe("Arcane Brilliance, A");
+  addon.eval("__editor.input:GetScript('OnEnterPressed')(__editor.input)");
+  expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "Enter saves that list").toBe("Arcane Brilliance, A");
+});
+
+it("H55-G6 a buff switch clicked while the Buffs to watch box has no cursor edits the saved list, as before", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  addon.eval('ns.GetModule("RaidHealing").Forget() ns.Settings("RaidHealing").buffs = "Arcane Brilliance"');
+  addon.eval('ns.GetModule("RaidHealing").Forget() ns.Options.Show("healing")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.save and w.input then __editor = w end end
+    __editor.input:SetText("unsaved") __click("Arcane Intellect")`);
+  expect(addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "the saved list gets the switch").toBe("Arcane Brilliance, Arcane Intellect");
+  expect(addon.eval("return __editor.input:GetText()"), "and the box shows it").toBe("Arcane Brilliance, Arcane Intellect");
+});
+
 it("every healing buff has a static icon, so none shows a question mark", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
   expect(addon.eval(`local RH = ns.GetModule("RaidHealing") for _, c in ipairs(RH.ALL_BUFFS) do for _, b in ipairs(c[2]) do

@@ -365,6 +365,9 @@ it("talent planner: export and import share a plan as a string, for your class; 
   expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[101], VanguardCharDB.talentPlans[1].ranks[103], __mark(101).badge:GetText() }"), "ranks and badges are back").toEqual([5, 2, "5"]);
   const priest = addon.eval(`return ns.Serialize.Encode("talents", { class = "PRIEST", ranks = { [101] = 1 } })`);
   expect(addon.eval(`return { ${TP}.ReadImport(${JSON.stringify(priest)}) }`), "another class's plan is refused").toEqual([false, "that plan is for a Priest"]);
+  addon.eval("LOCALIZED_CLASS_NAMES_MALE = { PRIEST = 'Priester' }");
+  expect(addon.eval(`return { ${TP}.ReadImport(${JSON.stringify(priest)}) }`), "H58-61: the client's own class name").toEqual([false, "that plan is for a Priester"]);
+  addon.eval("LOCALIZED_CLASS_NAMES_MALE = nil");
   expect(addon.eval(`return { ${TP}.ReadImport(ns.Serialize.Encode("profile", {})) }`), "a profile string is not a plan").toEqual([false, "that is not a talent plan"]);
   expect(addon.eval(`return { ${TP}.ReadImport("hello") }`), "junk is refused with the serializer's reason").toEqual([false, "not a Vanguard profile string"]);
   expect(addon.eval(`return { ${TP}.ReadImport(ns.Serialize.Encode("talents", { ranks = { [101] = 0, x = 3 } })) }`), "a string with no usable rank is refused").toEqual([false, "that plan has no talents in it"]);
@@ -684,4 +687,19 @@ it("H48-4-52 talent planner: control, a level-up spend queued in a fight buys wh
 });
 it("H48-4-52 talent planner: switched off in that fight, the queued level-up spend buys nothing", () => {
   expect(levelUpInFight(true)).toEqual([0, 0]);
+});
+
+it("talent planner: closing the talents window puts away the planner's own tooltip, and no other", () => {
+  const addon = open();
+  addon.eval("local m = __mark(101) m.__scripts.OnEnter(m)");
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return GameTooltip:IsShown()"), "a mark's tooltip goes with the window").toBe(false);
+  addon.eval("__open()");
+  addon.eval(`local area = ${TP}.bar.tip area.__scripts.OnEnter(area)`);
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return GameTooltip:IsShown()"), "the summary's tooltip goes too").toBe(false);
+  addon.eval("__open()");
+  addon.eval("GameTooltip:SetOwner(UIParent, 'ANCHOR_CURSOR') GameTooltip:SetText('TEST-ONLY other tooltip') GameTooltip:Show()");
+  addon.eval("PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return { GameTooltip:IsShown(), #ns.errors }"), "another frame's tooltip stays up").toEqual([true, 0]);
 });

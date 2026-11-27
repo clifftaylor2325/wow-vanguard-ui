@@ -608,6 +608,13 @@ local function track(b, unit)
   for _, sub in ipairs(b.moreEvents or {}) do ns.SetUnits(sub, unit, isPlayer and "player" or nil) end
 end
 
+-- Every tile files itself again under its unit (and "player" when it shows you): a roster change can move you to
+-- another tile without changing any tile's unit token. Touches only our own tables and subscriptions, so it is
+-- safe in combat.
+local function retrackAll()
+  for _, b in ipairs(RF.buttons) do track(b, b:GetAttribute("unit")) end
+end
+
 -- Another module's unit events on a tile, for the tile's own unit only (as the tile's own events: nobody else's
 -- aura, heal or threat reaches it): fn(b, unit, event, ...) while the tile shows. It follows the tile's unit (track).
 ---@param b Frame  a raid tile
@@ -1039,6 +1046,7 @@ end)
 -- fit is asked for first, so it runs before the tiles refresh; in a fight it waits for the fight to end (RF.Fit).
 function RF.RosterChanged()
   ns.Soon("raidfit", RF.Fit)
+  ns.Soon("raidtrack", retrackAll)
   ns.Soon("raidtiles", RF.UpdateAll)
 end
 

@@ -350,6 +350,19 @@ it("group board: the probe's last line keeps its first 80 characters whole, neve
   expect(chatHas(addon, new RegExp("Last line that was not a post: aé{79}$")), "79 whole é after the a, no stray byte").toBe(true);
 });
 
+it("H61-R2 group board: the probe's last line has its colour and link codes taken out before it is cut, so no link is cut in half", () => {
+  const addon = board();
+  post(addon, "selling cheap stuff right now, whisper me for details please ok |cff1eff00|Hitem:1::::::::|h[TEST-ONLY Key]|h|r", "Crafty-Ruleset");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, /Last line that was not a post: selling cheap stuff right now, whisper me for details please ok \[TEST-ONLY Key\]$/), "the words and the link's name, no codes").toBe(true);
+});
+
+it("group board: a line's texture, atlas and protected-name codes are taken out with its colours and links", () => {
+  const addon = board();
+  const plain = addon.eval(`return ns.GetModule("GroupBoard").Plain("a |TInterface\\\\Icons\\\\x:0|t b |A:raid-icon:0:0|a c |Kq1|k d")`);
+  expect(plain, "only the words are left").toBe("a  b  c  d");
+});
+
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
 // button's inset, and the display (a window title's) and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
@@ -437,6 +450,26 @@ it("group board words: Russian lines are read, Cyrillic capitals and all", () =>
   const addon = boardIn("ruRU");
   expect(parse(addon, "Ищем Хила и ДД в SFK")?.slice(0, 1), "looking for more").toEqual(["LFM"]);
   expect(parse(addon, "ищу группу в ЛФМ")?.[0], "looking for group").toBe("LFG");
+});
+
+it("H58-R1 punctuation of other languages (guillemets, an ellipsis, a dash) does not glue to the words of a post", () => {
+  const ru = boardIn("ruRU");
+  expect(parse(ru, "SFK ищем танка…"), "an ellipsis typed without a space").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(ru, "«ищем танка» SFK"), "guillemets").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(ru, "SFK — ищем танка"), "a spaced dash").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+  expect(parse(boardIn("enUS"), "LFM BRD—tank"), "an unspaced em dash").toEqual(["LFM", "Blackrock Depths", "tank"]);
+  expect(parse(boardIn("frFR"), "«besoin de tank» SFK"), "French guillemets").toEqual(["LFM", "Shadowfang Keep", "tank"]);
+});
+
+it("H58-34 a Chinese post written without spaces is read: LFM glued to the dungeon, the full-width comma", () => {
+  const zh = boardIn("zhCN");
+  zh.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[1][1] = '怒焰裂谷' GB.LoadWords()");
+  expect(parse(zh, "LFM 怒焰裂谷 tank"), "spaced, as before").toEqual(["LFM", "怒焰裂谷", "tank"]);
+  expect(parse(zh, "LFM怒焰裂谷tank"), "glued to the shared word and to a role").toEqual(["LFM", "怒焰裂谷", "tank"]);
+  expect(parse(zh, "LFM 怒焰裂谷，缺坦克")?.slice(0, 2), "a full-width comma").toEqual(["LFM", "怒焰裂谷"]);
+  expect(parse(zh, "LFM（怒焰裂谷）")?.slice(0, 2), "full-width brackets").toEqual(["LFM", "怒焰裂谷"]);
+  expect(zh.eval(`return ns.GetModule("GroupBoard").Words("lfm㐀豈tank")`), "an Extension A and a compatibility ideograph are set apart too").toBe(" lfm 㐀 豈 tank ");
+  expect(parse(boardIn("koKR"), "LFM SFK tank"), "Korean is as before").toEqual(["LFM", "Shadowfang Keep", "tank"]);
 });
 
 it("group board words: a locale's own dungeon name is read from the name the board shows", () => {

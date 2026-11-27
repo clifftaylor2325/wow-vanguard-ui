@@ -209,7 +209,7 @@ function WN.Show(entry)
   fit()
   relay(entry)
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
-  T.FadeIn(frame)
+  if not frame:IsShown() or T.FadingOut(frame) then T.FadeIn(frame) end
   frame.view:ScrollTo(frame.view:GetVerticalScroll() or 0)
 end
 

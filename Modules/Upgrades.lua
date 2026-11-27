@@ -583,7 +583,7 @@ end
 ---@param text any
 ---@return number|nil
 function UP.ParseWeight(text)
-  local n = tonumber(text)
+  local n = ns.TypedNumber(text)
   local finite = n and n == n and n > -math.huge and n < math.huge
   if finite then return n end
 end

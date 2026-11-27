@@ -202,7 +202,7 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   expect(setupState(addon).step, "Back stops at the layout step").toBe(2);
   // The name the fork gives a character called name, with Default and name taken.
   const fork = (name) => addon.eval(`return ns.ForkName(${JSON.stringify(name)})`);
-  expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
+  expect([fork("name"), fork("Ælfric"), fork("Jürgen"), fork("a|cffff0000b"), fork("|"), fork(undefined)], "a taken name is numbered; letters of any language are kept, \"|\" is dropped").toEqual(["name 2", "Ælfric", "Jürgen", "acffff0000b", "Character", "Character"]);
 });
 it("hunt setup: a player name the client hides (a secret string) names the fork's profile Character instead of raising", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });

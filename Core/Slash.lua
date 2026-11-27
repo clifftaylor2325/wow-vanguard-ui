@@ -84,6 +84,7 @@ local HELP = {
     L["opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list; resume runs parts paused after repeated errors again"] },
   { "report", L["one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback"] },
   { "feedback [bug|feature]", L["a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)"] },
+  { "bug [words]", L["note a bug in the saved bug log, with where you are and a screenshot; with no words, a box to type them"] },
   { "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]", L["Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them"] },
   { "perf [cpu|watch|slow]", L["Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)"] },
   { "mem", L["prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early"] },
@@ -195,7 +196,7 @@ end
 
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
-  local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
+  local o, word, size = ns.MoverOptions(), rest:lower(), ns.TypedNumber(rest)
   if size and size >= ns.GRID_SIZE.min and size <= ns.GRID_SIZE.max then
     o.grid, o.gridSize = true, math.floor(size)
   elseif word == "on" or word == "off" or word == "" then
@@ -257,7 +258,7 @@ local nineSliceCommand = switchCommand({
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
   if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown Manager glow is off: turn the module on in the options first."]) end
-  local percent = tonumber(rest)
+  local percent = ns.TypedNumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
   if on == nil then return chat(ns.Literal(L["Usage: /vg cdmglow [on|off|<percent>]"])) end
@@ -451,7 +452,7 @@ end
 local function findProfile(name)
   if VanguardDB.profiles[name] then return name end
   for _, existing in ipairs(ns.ProfileNames()) do
-    if existing:lower() == name:lower() then return existing end
+    if ns.Lower(existing) == ns.Lower(name) then return existing end
   end
 end
 
@@ -837,7 +838,8 @@ local function screenLine()
   return d.width > 0 and string.format("Screen %dx%d", d.width, d.height) or "Screen size unknown"
 end
 
--- The report's lines before the errors: the same facts /vg status and /vg errors print.
+-- The report's lines before the errors: the same facts /vg status and /vg errors print. The bug log keeps
+-- them with each entry too (ns.ReportHead, Core/BugLog.lua).
 local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
@@ -845,6 +847,8 @@ local function reportHead()
     "Left off: " .. (#ns.notes > 0 and table.concat(ns.notes, "; ") or "none"),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
+
+ns.ReportHead = reportHead
 
 -- One caught error for the report: "[i] text  (xN)", then up to `depth` of its stack lines, indented.
 local function errorLines(i, e, depth)
@@ -1002,6 +1006,8 @@ local COMMANDS = {
   perf = function(rest) ns.Perf.Command(rest) end,
   mem = function() ns.Perf.MemCommand() end,
   graphics = function(rest) ns.Graphics.Command(rest) end,
+  -- /vg bug [words]: notes a bug in the bug log, or opens the box to type one (Core/BugLog.lua).
+  bug = function(rest) ns.BugLog.Command(rest) end,
 }
 
 -- /vg entry point: no arguments opens the options window. A command runs under
@@ -1012,6 +1018,7 @@ local function handleSlash(msg)
     return ns.Try("slash options", ns.Options.Toggle)
   end
   local word = cmd:lower()
+  ns.BugLog.Trail("/vg " .. msg)
   local handler = wordHere(word) and COMMANDS[word] or function() chat(L["Unknown command. /vg help"]) end
   ns.Try("slash " .. word, handler, rest)
   ns.Options.RefreshShown()

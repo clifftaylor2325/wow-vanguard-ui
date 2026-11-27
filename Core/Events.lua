@@ -104,6 +104,41 @@ function ns.TextPrefix(s, n)
   return s
 end
 
+-- A number typed by the player: tonumber of the trimmed text. On a client whose decimal mark is a comma
+-- (DECIMAL_SEPERATOR, spelled so by Blizzard) one decimal comma ("87,5", "-12,5") reads as a point; on any other
+-- client "1,200" stays no number. A number passes as it is; anything else is nil.
+---@param text any
+---@return number|nil
+function ns.TypedNumber(text)
+  if type(text) == "number" then return text end
+  if type(text) ~= "string" then return nil end
+  text = text:match("^%s*(.-)%s*$")
+  if _G.DECIMAL_SEPERATOR == "," then text = text:gsub("^(%-?%d*),(%d+)$", "%1.%2") end
+  return tonumber(text)
+end
+
+-- A whole number with its thousands set apart by the client's own mark (LARGE_NUMBER_SEPERATOR, spelled so by
+-- Blizzard; FormatLargeNumber does the same), "," when the client has none: 8412 as "8,412" or "8.412".
+---@param n number
+---@return string
+function ns.Grouped(n)
+  local mark = type(_G.LARGE_NUMBER_SEPERATOR) == "string" and _G.LARGE_NUMBER_SEPERATOR ~= "" and _G.LARGE_NUMBER_SEPERATOR or ","
+  local text, count = tostring(math.floor(n)), 1
+  while count > 0 do text, count = text:gsub("^(-?%d+)(%d%d%d)", "%1" .. mark:gsub("%%", "%%%%") .. "%2") end
+  return text
+end
+
+-- A class token as the client's own name for it (LOCALIZED_CLASS_NAMES_MALE: "Magier" on a German client), else the
+-- token in title case ("MAGE" -> "Mage"). The token must be a string.
+---@param token string
+---@return string
+function ns.ClassName(token)
+  local names = _G.LOCALIZED_CLASS_NAMES_MALE
+  local own = type(names) == "table" and names[token]
+  if type(own) == "string" then return own end
+  return token:sub(1, 1) .. token:sub(2):lower()
+end
+
 -- The capitals ns.Lower folds beyond A-Z, as byte ranges: a lead byte, the second byte's range, the small letter's
 -- lead byte and the step to its second byte, and a second byte to leave alone (× in Latin-1). The reverse of
 -- the theme's T.UPPER_RANGES.

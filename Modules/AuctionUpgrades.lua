@@ -71,10 +71,34 @@ function AH.Upgrade(link, price, found)
     slot = slotName(loc), fill = slots and slots[1] or 0, score = empty and (UP.Score(link, (UP.Current())) or 0) or nil, found = found }
 end
 
--- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
--- and level, so two listings of the same item and suffix share a key.
+-- The most bonus IDs a key reads; a count above it is no real link's, and the tail is kept whole.
+AH.MAX_BONUS_IDS = 64
+
+-- The pattern for a bonus block of n IDs (":n:id:...:id"), made once per count: a scan asks for thousands.
+AH.bonusPatterns = setmetatable({}, { __index = function(t, n)
+  local v = "^(:%d+" .. string.rep(":[^:]*", n) .. ")"
+  t[n] = v
+  return v
+end })
+
+-- The bonus block of an item string's tail (":numBonusIDs:id:id..."): the count and that many IDs, without
+-- the modifiers, relic bonuses, crafter and extra enchant after it, which differ per listing (who made it,
+-- the level it was looted at). "" when the tail has no bonus block.
+local function bonusBlock(tail)
+  local count = tonumber(tail:match("^:(%d+)"))
+  if not count or count < 1 then return "" end
+  if count > AH.MAX_BONUS_IDS then return tail end
+  return tail:match(AH.bonusPatterns[count]) or tail
+end
+
+-- Which item a gear link is: its ID, enchant, gems and suffix, then its bonus IDs (on Retail they set the item
+-- level and upgrade track), without the per-listing unique ID, link level, spec, upgrade type, difficulty,
+-- modifiers and crafter, so two listings of the same item at the same level share a key. A link too short
+-- to carry bonus IDs (Forever's) keys on its first seven fields; text that is no item link is its own key.
 function AH.GearKey(link)
-  return link:match("item:(%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*)") or link
+  local item, rest = link:match("item:(%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*)([^|]*)")
+  if not item then return link end
+  return item .. bonusBlock(rest:match("^:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*(:.*)$") or "")
 end
 
 -- A gear listing claims its item's place: false when a listing of the same item at the same price

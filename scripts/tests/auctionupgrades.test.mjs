@@ -148,6 +148,29 @@ it("upgrades: the same item and suffix at another unique ID is one row at the ch
   expect(addon.eval(`return ${HELPER}.GearKey("not a link")`), "text that is no item link is its own key").toBe("not a link");
 });
 
+// Item string field order: live Blizzard_PTRFeedback/Blizzard_Reports.lua GetBonusListFromID
+// (item:itemID:enchant:gem1..4:suffix:unique:linkLevel:spec:upgradeType:difficulty:numBonusIDs[:bonusIDs]).
+it("H61-31 upgrades: bonus IDs keep two item levels of one item apart; unique ID and link level do not", () => {
+  const addon = warrior();
+  // The key of a Retail link of item 102 with one bonus ID.
+  const key = (unique, level, bonus) => addon.eval(`return ${HELPER}.GearKey("|cffa335ee|Hitem:102:0:0:0:0:0:0:${unique}:${level}:0:0:0:1:${bonus}|h[x]|h|r")`);
+  expect(key(111, 60, 4000), "another bonus ID is another key").not.toBe(key(111, 60, 4100));
+  expect(key(111, 60, 4000), "the same bonus IDs at another unique ID and link level are one key").toBe(key(222, 70, 4000));
+  expect(addon.eval(`return ${HELPER}.GearKey("item:102:0:0:0:0:0:0:5:60")`), "a link with no bonus block keys on its first seven fields").toBe("102:0:0:0:0:0:0");
+});
+
+// Past the bonus IDs: numModifiers[:type:value...], relic bonus lists, crafterGUID, extraEnchantID (same source).
+it("H61-31 upgrades: modifiers and the crafter after the bonus IDs do not split one item into two keys", () => {
+  const addon = warrior();
+  // The key of a Retail link of item 102 with two bonus IDs, one modifier and a crafter.
+  const key = (mod, crafter) => addon.eval(`return ${HELPER}.GearKey("|Hitem:102:0:0:0:0:0:0:1:60:0:0:0:2:4000:4100:1:9:${mod}:::${crafter}:|h[x]|h")`);
+  expect(key(60, "Player-1-A"), "another looted level and crafter is the same item").toBe(key(70, "Player-1-B"));
+  expect(key(60, "Player-1-A"), "the key keeps the two bonus IDs").toBe("102:0:0:0:0:0:0:2:4000:4100");
+  expect(addon.eval(`return ${HELPER}.GearKey("item:102:0:0:0:0:0:0:1:60:0:0:0:0")`), "a zero bonus count adds nothing").toBe("102:0:0:0:0:0:0");
+  expect(addon.eval(`return ${HELPER}.GearKey("item:102:0:0:0:0:0:0:1:60:0:0:0:99:1")`), "a count no real link has keeps the tail whole").toBe("102:0:0:0:0:0:0:99:1");
+  expect(addon.eval(`return ${HELPER}.GearKey("item:102:0:0:0:0:0:0:1:60:0:0:0:3:7")`), "a block shorter than its count keeps the tail whole").toBe("102:0:0:0:0:0:0:3:7");
+});
+
 it("upgrades: what you wear and the weights change the judgement; kept after closing until what you wear changes", () => {
   const addon = warrior();
   scan(addon, SCAN);

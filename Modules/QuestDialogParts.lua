@@ -57,9 +57,7 @@ end
 
 -- "1,250 XP" for a quest's XP reward (a whole number, thousands set apart).
 function QP.XPText(xp)
-  local s, n = tostring(math.floor(xp)), 1
-  while n > 0 do s, n = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") end
-  return ns.Format(L["{xp} XP"], { xp = s })
+  return ns.Format(L["{xp} XP"], { xp = ns.Grouped(xp) })
 end
 
 -- The money and XP a quest gives as text ("+1g 20s 0c  ·  1,250 XP"), then any extra parts; "" for none.
@@ -206,6 +204,37 @@ local function cardName(c)
   c.name:SetMaxLines(2)
 end
 
+-- A link in the open chat box on a Shift-click (the game's CHATLINK click); true when it linked, false with no chat
+-- box open, no link or no ChatFrameUtil.TryInsertChatLink. Not protected (no combat check in ChatFrameUtil.InsertLink),
+-- so it works in combat.
+function QP.TryLink(link)
+  local util = ChatFrameUtil
+  if type(link) ~= "string" or type(util) ~= "table" or type(util.TryInsertChatLink) ~= "function" then return false end
+  return util.TryInsertChatLink(link) == true
+end
+
+-- A modified click on a reward card (Shift links the item to the open chat box, Ctrl shows it in the dressing room),
+-- as the game's reward buttons send it (QuestInfo.lua, QuestInfoRewardItemMixin:OnClick); true when it did one.
+-- The dressing room is a UI panel, which the game won't let addon code show in a fight (UIParentPanelManager.lua
+-- CheckProtectedFunctionsAllowed), so in a fight only the chat link is tried; a currency card has no link.
+function QP.ModifiedClick(c)
+  local link = c.item and c.item.link
+  if not (IsModifiedClick() and type(link) == "string") then return false end
+  if ns.InCombat() then return QP.TryLink(link) end
+  if type(HandleModifiedItemClick) ~= "function" then return false end
+  return HandleModifiedItemClick(link) == true
+end
+
+-- A quest's link in the open chat box on a Shift-click (the game's CHATLINK click), as the game's trackers and quest
+-- log do first (Blizzard_QuestObjectiveTracker.lua OnBlockHeaderClick, Vanilla/QuestLogFrame.lua QuestLogTitleButton_OnClick,
+-- ChatFrameUtil.TryInsertQuestLinkForQuestID in Shared/ChatFrameUtil.lua); true when it linked, false with no chat box
+-- open (or the client lacks the call), so the click keeps its other meaning. Not protected, so it works in combat.
+function QP.TryQuestLink(id)
+  local util = ChatFrameUtil
+  if type(util) ~= "table" or type(util.TryInsertQuestLinkForQuestID) ~= "function" then return false end
+  return util.TryInsertQuestLinkForQuestID(id) == true
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
@@ -215,6 +244,7 @@ function QP.Card(parent)
   c.count = T.Text(c:CreateFontString(nil, "OVERLAY"), "auraCount", "text")
   c.count:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", -1, 1)
   cardName(c)
+  c:SetScript("OnClick", ns.Guard("click quest reward", QP.ModifiedClick))
   return QP.WireTooltip(addCrown(c))
 end
 

@@ -7801,11 +7801,11 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the letters you typed are still in the box. Press Esc to leave the box: the saved list is back the next time the window refreshes (click the meter's title again).
 - If it fails, paste: the box text before and after, and /vg errors
 
-### 33.963 Clicking a buff switch while the Buffs to watch box has the cursor (H55-G6, held; WoW Forever and Retail)
+### 33.963 A buff switch clicked while the Buffs to watch box has the cursor edits the box's list (H55-G6; WoW Forever and Retail)
 
-- Do: on Healing, click into the Buffs to watch box, type a few letters, click one buff switch above it, then press Enter. [Client: Forever and Retail.]
-- Expect: note whether the click took the cursor out of the box. If the cursor stays, the switch you clicked is gone from the list after Enter. No fix is built: this tells us whether setWatched should clear the focus first.
-- If it fails, paste: the box text and the switch state before the click and after Enter
+- Do: open the options window on Healing. Click into the Buffs to watch box and type "A, B" without pressing Enter. With the cursor still in the box, click one buff switch above it that is currently off, then press Enter. [Client: Forever and Retail.]
+- Expect: the box reads "A, B, <that buff's name>" and the cursor stays in it. After Enter the page rebuilds with that switch on, and the list still holds A, B and the buff. Repeat with a switch that is on: the buff leaves the box text and the typed names stay. A switch clicked with the cursor out of the box shows the saved list as before.
+- If it fails, paste: the box text before the click, after the click and after Enter, the switch state, and /vg errors
 
 ### 33.964 Quest dialog, quest log, mail tools, meter detail, crafting cost, craft queue and group board take the mouse (H57-65; WoW Forever and Retail)
 
@@ -7830,6 +7830,120 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: with the bag's sections on (Bars and bags), close the bag, start a fight, open the bag with B, loot or use an item while the fight goes on, then click an item to use it and drag one to another slot. [Client: Forever, then Retail.]
 - Expect: the bag opens in its sections (QUEST ITEMS, EQUIPMENT and so on), not one plain grid, and stays in them all fight; a looted item lands in its section at once; using and dragging items work as out of a fight; `/vg errors` shows nothing, and no "blocked" or "interface action failed" message appears.
 - If it fails, paste: what the bag showed in the fight, any red error text, and /vg errors
+
+### 33.968 A profile name in another alphabet is kept whole (H58-1; WoW Forever and Retail)
+
+- Do: on a German, Russian or Korean client, open Options, Profiles, make a new profile and type a name in your own letters (Jürgen, Рейд or 공격대), then press Enter. Also try a name that ends in a no-break space. [Client: Forever and Retail.]
+- Expect: the profile is made and its row shows every letter as typed; a new character's first profile is named after it with its letters kept (Jürgen, not Jrgen); the name with a no-break space at the end is refused.
+- If it fails, paste: the profile row text, your client language and /vg errors
+
+### 33.969 A typed decimal comma counts on a comma client (H58-2, H58-63; WoW Forever and Retail)
+
+- Do: on a German or French client, run /vg unlock, right-click a handle, type 87,5 in Scale % and press Enter; then in the upgrade wizard type a weight of 1,5. [Client: Forever and Retail.]
+- Expect: the scale takes about 88 % and the weight saves as 1.5. On an English client, 1,200 in an offset box is still refused.
+- If it fails, paste: the box text before and after Enter, your client language and /vg errors
+
+### 33.970 Large numbers use the client's own thousands mark (H58-31, H58-62; WoW Forever and Retail)
+
+- Do: on a German or French client, run a price scan at the auction house, and read a quest's XP reward in the quest dialog, the quest log and the tracker. [Client: Forever and Retail.]
+- Expect: counts and XP are grouped with the game's own mark (8.412 on German, 8 412 on French), the same as the game's own numbers.
+- If it fails, paste: the scan line and the XP text, your client language and /vg errors
+
+### 33.971 The undercut choices show the client's coin letters (H58-32; WoW Forever and Retail)
+
+- Do: on a German or Russian client, open the auction sell card and look at the Undercut by choices. [Client: Forever and Retail.]
+- Expect: the copper and silver choices use the same coin letters as the prices on the card.
+- If it fails, paste: the row's text, your client language and /vg errors
+
+### 33.972 The group board reads posts in Russian punctuation and in Chinese without spaces (H58-R1, H58-34; WoW Forever)
+
+- Do: on a Russian client have someone post "SFK ищем танка…" in a numbered channel; on a Chinese client "LFM怒焰裂谷缺坦克". [Client: Forever.]
+- Expect: the group board lists each post as looking for more, for its dungeon.
+- If it fails, paste: the post as typed, the board row or its absence, your client language and /vg errors
+
+### 33.973 Class names in messages are the client's own (H58-61; WoW Forever and Retail)
+
+- Do: on a non-English client, open the talents window and import a talent plan made for another class. [Client: Forever and Retail.]
+- Expect: the refusal names that class in your client's language.
+- If it fails, paste: the message, your client language and /vg errors
+
+### 33.974 Your heals stay on your own raid tile after the roster shifts (H59-R1; WoW Forever and Retail)
+
+- Do: in a raid with Raid frames on, have someone listed before you in your group leave, then have a healer put a heal over time on you. [Client: Forever and Retail.]
+- Expect: the heal over time, the heal prediction and the dispel wash show on your own tile only, not on the tile that took your old place.
+- If it fails, paste: which tile showed the heal, a screenshot of both tiles and /vg errors
+
+### 33.975 Closing the talents window leaves other tooltips alone (H60-R1; WoW Forever and Retail)
+
+- Do: with the talents window open, rest the mouse on an action button so its tooltip shows, then close the talents window with its key. [Client: Forever and Retail.]
+- Expect: the action button's tooltip stays up; a talent plan tooltip still goes away when the window closes.
+- If it fails, paste: what the tooltip did and /vg errors
+
+### 33.976 An imported layout name prints as plain text (H61-1; WoW Forever and Retail)
+
+- Do: import a profile string that names an Edit Mode layout this account does not have. [Client: Forever and Retail.]
+- Expect: the chat message names the layout as plain text, with no colour or link in it.
+- If it fails, paste: the chat line and /vg errors
+
+### 33.977 Gear upgrades judges two item levels of one item apart (H61-31; WoW Retail)
+
+- Do: with Gear upgrades on, search an armour piece listed at two item levels and open the Upgrades entry. [Client: Retail.]
+- Expect: both item levels are judged, and the better upgrade is listed, not only the cheaper one.
+- If it fails, paste: the Upgrades rows' names and prices and /vg errors
+
+### 33.978 Quest reward cards link and try on, and stay safe in a fight (H61-62; WoW Forever and Retail)
+
+- Do: open a quest's reward page (or Vanguard's quest log on a quest with rewards) with the chat box open; Shift-click one reward, then Ctrl-click another. Then in a fight Ctrl-click a reward. [Client: Forever and Retail.]
+- Expect: Shift-click puts the item link in the chat box and Ctrl-click opens the dressing room, and neither picks a reward. In the fight nothing opens and no "Interface action failed" message shows.
+- If it fails, paste: what the chat box holds, any error message and /vg errors
+
+### 33.979 Shift-click on a quest links it while a chat box is open [DECIDE] (H61-61; WoW Forever and Retail)
+
+- Do: open the chat box and Shift-click a watched quest in Vanguard's tracker and a quest in Vanguard's quest log. Close the chat box and Shift-click again. [Client: Forever and Retail.]
+- Expect: with the chat box open the quest link goes into it and nothing else changes; with it closed, Shift-click does what it did before (the arrow points, the quest opens or tracks).
+- If it fails, paste: the chat box text, what else changed and /vg errors
+
+### 33.980 Shift-click on a tracked achievement or recipe links it (H61-R1; WoW Forever and Retail)
+
+- Do: track an achievement (Retail) and a recipe, open the chat box and Shift-click each title in Vanguard's tracker; close the chat box and Shift-click the recipe. [Client: Forever and Retail.]
+- Expect: each link goes into the chat box; with the chat box closed, the recipe opens as before.
+- If it fails, paste: the chat box text and /vg errors
+
+### 33.981 Popovers, What's new and the hover-shown tab bar turn back without a blink (H62-2; WoW Forever and Retail)
+
+- Do: run /vg unlock and right-click one handle, then another, then the first again; run /vg whatsnew twice with the window open; with the chat tab bar set to show on hover, let it start to fade and move the mouse back over it. [Client: Forever and Retail.]
+- Expect: the popover and What's new refresh without blinking, and the tab bar comes back from where it was, with no flash to empty.
+- If it fails, paste: which of the three blinked and /vg errors
+
+### 33.982 Closing the options window twice during its fade plays one close (H62-1; WoW Forever and Retail)
+
+- Do: open the options window and press Escape twice quickly; open it again and click the X twice quickly. [Client: Forever and Retail.]
+- Expect: one close sound and one smooth fade each time, with no jump back to full opacity.
+- If it fails, paste: what you heard and saw and /vg errors
+
+### 33.983 A cast bar set below full opacity keeps it while it fades (H62-R1; WoW Forever and Retail)
+
+- Do: run /vg unlock, right-click the player cast bar, set Opacity to 50 %, lock, and cast a spell to the end. [Client: Forever and Retail.]
+- Expect: the bar stays at half opacity while it shows and fades; it never flashes to full.
+- If it fails, paste: what the bar did and /vg errors
+
+### 33.984 A fade playing when a fight starts ends within the combat length (H62-R2; WoW Forever and Retail)
+
+- Do: cast a spell at a mob from out of combat so the cast ends as the fight starts. [Client: Forever and Retail.]
+- Expect: the cast bar is gone within a moment (0.15 s), with no slow fade.
+- If it fails, paste: what the bar did and /vg errors
+
+### 33.985 The bug log keeps a noted bug, with a screenshot, across a reload (WoW Forever and Retail)
+
+- Do: point the mouse at the minimap and type `/vg bug smoke test`. Open /vg, Feedback, the Bug log tab, and click Open the bug log. Close it, type `/reload`, and click Open the bug log again. Then start a fight and type `/vg bug in a fight`. [Client: Forever and Retail.]
+- Expect: chat says `Bug noted, with a screenshot. The log is saved when you log out or reload.`, the game takes a screenshot (a new file in its Screenshots folder), and nothing hitches. The window's last entry reads `mark  x1`, the time, the Vanguard version, your character and realm, your zone, `none` (or the instance kind) and `out of a fight`, with `smoke test` under it, and it is still there after the reload. The note typed in a fight says `in a fight`, and neither note raises an "Interface action failed because of an AddOn" message. [Needs in game: that Screenshot and GetMouseFoci answer an addon on both clients, in and out of a fight.]
+- If it fails, paste: what chat said, whether a screenshot appeared, and /vg errors
+
+### 33.986 The bug log takes an error by itself, and Clear empties it (WoW Forever and Retail)
+
+- Do: on the Bug log tab switch Screenshot each new error on. Type `/run Vanguard.RegisterSkin("Smoke test", function() error("smoke test") end)`, which makes an error Vanguard catches. Click Open the bug log, then Clear the bug log..., answer No, click it again and answer Clear. Switch Screenshot each new error off again and `/reload`. [Client: Forever and Retail.]
+- Expect: chat prints the error once, and the window's last entry is `error  x1` with `skin for Smoke test: ... smoke test` under it, without typing anything more; the game took one screenshot when it happened. No leaves the log as it was; Clear empties it and chat says `Bug log cleared.`; the error is still in `/vg errors` until the reload.
+- If it fails, paste: the Open the bug log text and /vg errors
 
 ## 34. Retail
 

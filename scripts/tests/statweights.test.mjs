@@ -331,3 +331,11 @@ it("H48-6-R1 a role change while the replace question is open imports nothing", 
   addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect([chatHas(addon, /Nothing was imported: the weights in use changed\./), addon.eval(`return (${UP}.Own('strength')).STR`)], "the strength weights stay").toEqual([true, 7]);
 });
+
+it("H58-63 a weight typed with a decimal comma is taken on a client whose decimal mark is a comma", () => {
+  const addon = loggedIn(GEAR);
+  addon.eval('DECIMAL_SEPERATOR = ","');
+  expect(addon.eval("local parse = ns.GetModule('Upgrades').ParseWeight return { tostring((parse('1,5'))), tostring((parse('1e999'))), tostring((parse('1,5,2'))) }"), "1,5 is 1.5, and the finite check still holds").toEqual(["1.5", "nil", "nil"]);
+  addon.slash("weights set str 2,5");
+  expect(addon.eval("return (ns.GetModule('Upgrades').Current()).STR"), "/vg weights set takes it").toBe(2.5);
+});

@@ -1271,7 +1271,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|67", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
     "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|59", "profiles|Profiles|90|22",
-    "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|27",
+    "feedback|Feedback|100|18", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|27",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
   addon.eval('ns.Options.Show("general")');
@@ -2412,6 +2412,15 @@ it("options: a new page's card fades in when the window is already open; opening
   expect(addon.eval("local n = 0 for _, f in ipairs(__fades) do if f.owner == __np then n = n + 1 end end return n"), "the same page again, or the window opening on it, fades no card").toBe(0);
   addon.eval('ns.Options.Show("general") ns.Theme.Settings().reduceMotion = true __fades = {} ns.Options.Show("nameplates")');
   expect(addon.eval("return { #__fades, __np:GetAlpha() }"), "Reduce motion: at once").toEqual([0, 1]);
+});
+
+it("options: a second close while the window fades out plays no second sound or fade, and Show during the close reopens it opaque (H62-1)", () => {
+  const addon = loggedIn(CLICK_LUA + FAKE_FADES + "SOUNDKIT = { IG_MAINMENU_OPEN = 850, IG_MAINMENU_CLOSE = 851, IG_CHARACTER_INFO_TAB = 841 } __sounds = {} PlaySound = function(k) table.insert(__sounds, k) end");
+  addon.eval('ns.Options.Show("general") __fakeFader(Vanguard_Options) __finishFades() __sounds = {} __fades = {}');
+  addon.eval("ns.Options.Hide() ns.Options.Hide() ns.Options.Toggle()");
+  expect(addon.eval("return { __sounds, #__fades, Vanguard_Options:IsShown() }"), "one close sound and one fade, the window still up while it fades").toEqual([[851], 1, true]);
+  addon.eval('ns.Options.Show("general")');
+  expect(addon.eval("return { Vanguard_Options:GetAlpha(), ns.Theme.FadingOut(Vanguard_Options) }"), "opened again during the close: opaque, no fade-out left").toEqual([1, false]);
 });
 
 it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {

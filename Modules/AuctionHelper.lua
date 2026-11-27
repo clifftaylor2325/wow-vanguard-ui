@@ -468,19 +468,13 @@ local function ago(t)
   return ns.Format(L["{count} days ago"], { count = math.floor(seconds / 86400) })
 end
 
--- A count with its thousands apart: 8412 as "8,412".
-local function grouped(n)
-  local text = tostring(math.floor(n))
-  return (text:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
-end
-
 -- The line under the button: "scanning 400 of 12000", "no scan yet", or "Scanned 2 min ago · 8,412 items",
 -- the last in the warning colour once the prices are over a day old.
 local function paintScanLine(line, s, last)
   T.Color(line, not s and last > 0 and AP.Now() - last > AH.SCAN_STALE and "warn" or "text2")
   if s then return line:SetText(ns.Format(L["scanning {done} of {total}"], { done = s.next, total = s.total or 0 })) end
   if last == 0 then return line:SetText(L["no scan yet"]) end
-  line:SetText(ns.Format(L["Scanned {ago} · {count} items"], { ago = ago(last), count = grouped(AP.House().count) }))
+  line:SetText(ns.Format(L["Scanned {ago} · {count} items"], { ago = ago(last), count = ns.Grouped(AP.House().count) }))
 end
 
 -- The scan button: greyed and counting down ("Next scan in 12 min") inside the 15 minutes, else ready.

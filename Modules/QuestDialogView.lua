@@ -206,9 +206,16 @@ local function renderBody(f, p)
   return bodyHeight(f, #(p.lines or {}))
 end
 
+-- A reward card's click: a Shift or Ctrl click links or dresses the item (QP.ModifiedClick) and never picks, as
+-- the game's own cards do (Vanilla/QuestInfo.lua QuestInfoRewardItemCodeTemplate_OnClick); a plain click picks a choice.
+local function clickCard(self)
+  if IsModifiedClick() then return QP.ModifiedClick(self) end
+  if self.item.kind == "choice" then QD.Pick(self.item.index) end
+end
+
 -- One reward card's clicks (its tooltip is the card's own, QP.WireTooltip).
 local function wireCard(c)
-  c:SetScript("OnClick", ns.Guard("click quest reward choice", function(self) if self.item.kind == "choice" then QD.Pick(self.item.index) end end))
+  c:SetScript("OnClick", ns.Guard("click quest reward choice", clickCard))
 end
 
 -- The page's reward sections: the items to hand in on the progress page, else the choices, then what you get anyway.

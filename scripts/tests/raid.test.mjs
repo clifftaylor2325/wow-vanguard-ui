@@ -26,6 +26,20 @@ it("a unit event reaches only the tile showing that unit", () => {
   expect(addon.eval('local RF = ns.GetModule("RaidFrames") return RF.byUnit.player == nil'), "and the player entry goes when that tile shows someone else").toBe(true);
 });
 
+it("a roster change that keeps every tile's unit still moves the player entry to the tile showing you", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  expect(addon.eval('return ns.GetModule("RaidFrames").byUnit.player == Vanguard_RaidUnitButton2')).toBe(true);
+  // raid1 leaves: you become raid1, the old raid3 becomes raid2. No tile's unit attribute changes.
+  addon.eval("local me, gone = __units.player, __units.raid3 __units.raid1, __units.raid2, __units.raid3 = me, gone, nil");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.05);
+  const r = addon.eval(`local RF = ns.GetModule("RaidFrames")
+    local s = Vanguard_RaidUnitButton2.unitEvents.__unitEvents.UNIT_HEALTH
+    return { RF.byUnit.player == Vanguard_RaidUnitButton1, s[1], s[2] or "none" }`);
+  expect(r, "player entry and player events follow you to the first tile").toEqual([true, "raid2", "none"]);
+});
+
 it("raid frames", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   const h = addon.eval(`local h = Vanguard_Raid return { template = h:GetAttribute("template"), groupBy = h:GetAttribute("groupBy"),

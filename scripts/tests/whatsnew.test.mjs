@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, chatHas, isTok, loggedIn, setCombat, tok } from "./helpers.mjs";
+import { FAKE_FADES, SETUP_DONE, chatHas, isTok, loggedIn, setCombat, tok } from "./helpers.mjs";
 
 // TEST-ONLY notes for two versions, and the running version set to the newer one.
 const NOTES = `
@@ -109,6 +109,17 @@ it("what's new: a login in combat waits for combat to end", () => {
   expect(state(addon).shown, "not in a fight").toBe(false);
   setCombat(addon, false);
   expect(state(addon).shown, "it shows when the fight ends").toBe(true);
+});
+
+it("/vg whatsnew while the window is up does not fade it in again (H62-2)", () => {
+  const addon = loggedIn(FAKE_FADES + ENV, { savedVariables: 'VanguardDB.whatsNewSeen = "9.9.9"' });
+  addon.slash("whatsnew");
+  addon.eval("ns.FrameState('vgFader')[Vanguard_WhatsNew] = nil __fakeFader(Vanguard_WhatsNew) __fades = {}");
+  addon.slash("whatsnew");
+  expect(addon.eval("return #__fades"), "up already: no fade").toBe(0);
+  addon.eval("Vanguard_WhatsNew:Hide()");
+  addon.slash("whatsnew");
+  expect(addon.eval("return #__fades"), "closed: it fades in").toBe(1);
 });
 
 it("/vg whatsnew and the General page's What's new button open it again; with no notes, chat says so", () => {
