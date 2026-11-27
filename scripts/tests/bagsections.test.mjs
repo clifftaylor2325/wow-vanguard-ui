@@ -248,20 +248,22 @@ it("bag sections follow what you carry; the same items move nothing", () => {
   expect(layouts(), "a closed bag waits for its next opening").toBe(0);
 });
 
-it("in combat the bag keeps its layout and catches up after; opened in combat it shows the plain grid until then", () => {
+it("in combat the sections follow your items at once (the bag's slots are not protected)", () => {
   const addon = loggedIn(BAG_ENV);
   addon.eval("__openBag()");
   setCombat(addon, true);
   addon.eval("local bags = __wfgWorld.bags bags[1][2], bags[0][5] = bags[0][5], nil ContainerFrameCombinedBags:UpdateItems()");
-  expect(spot(addon, "b1s2"), "a change in combat leaves the slots where they are").toEqual([278, 160]);
-  setCombat(addon, false);
-  expect([spot(addon, "b1s2"), spot(addon, "b0s5")], "combat over: the gray item's new slot is under Junk, its old one with the empty ones").toEqual([[103, 160], [194, 160]]);
+  expect([spot(addon, "b1s2"), spot(addon, "b0s5")], "the gray item's new slot is under Junk, its old one with the empty ones").toEqual([[103, 160], [194, 160]]);
+});
+
+it("opened in combat the bag shows its sections, not the game's plain grid", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__openBag()");
+  const before = [headers(addon).length, spot(addon, "b0s6"), height(addon)];
   setCombat(addon, true);
   addon.eval("ContainerFrameCombinedBags:Hide() __openBag()");
-  expect([headers(addon), spot(addon, "b0s1"), height(addon)], "opened in combat: the game's grid, no headers, the game's height").toEqual([[], [343, 75], 186]);
-  expect(addon.eval("local f = ContainerFrameCombinedBags return { f:GetWidth(), f.MoneyFrame:GetLeft() - f:GetLeft(), f:GetRight() - ns.GetModule('Bags').sort:GetRight() }"), "the game's width and money line; Sort still inside the right edge").toEqual([430, 8, 12]);
-  setCombat(addon, false);
-  expect([headers(addon).length, spot(addon, "b0s6"), height(addon)], "and the sections when combat ends").toEqual([7, [12, 93], 233]);
+  expect([headers(addon).length, spot(addon, "b0s6"), height(addon)], "the same sections as out of combat").toEqual(before);
+  expect(before, "the sections").toEqual([7, [12, 93], 233]);
 });
 
 it("an item the client hasn't loaded yet waits under Other and moves when its info arrives", () => {

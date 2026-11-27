@@ -4,9 +4,11 @@
 -- section header (W.SectionHeader: small muted capitals), packed side by side where they fit, with the window's
 -- padding (Bags.PAD) around them and the money line. The buttons stay
 -- the game's, so using, dragging, search dimming, quality borders and item
--- tooltips work as before; only where they sit changes. Item buttons are
--- protected: they move only out of combat, and a change in combat waits for
--- it to end. A switch under Bars and bags gives back the game's plain grid.
+-- tooltips work as before; only where they sit changes. Neither the bag window
+-- nor its item buttons are protected (ContainerFrame.xml and ItemButtonTemplate.xml
+-- in wow-ui-source, forever and live: no protected or secure template), so the
+-- sections are laid out in combat too: opened in a fight, the bag shows its sections
+-- rather than the game's grid. A switch under Bars and bags gives back the plain grid.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -351,26 +353,22 @@ function BG.LayOutSections(frame)
   paintJunkValue(list)
 end
 
--- Lays the sections out now, or once combat ends (the item buttons are
--- protected); until then the bag keeps the layout it has.
-function BG.QueueSections()
-  local frame = BG.sectionFrame
-  ns.OutOfCombat(function() BG.LayOutSections(frame) end, "bagSections")
+-- Lays the sections out again in the bag window, in combat as out of it (see the file's header).
+function BG.RefreshSections()
+  BG.LayOutSections(BG.sectionFrame)
 end
 
--- The game laid out its plain grid again (the window opened): in combat the
--- headers go with it until combat ends; the sections come back when they can.
+-- The game laid out its plain grid again (the window opened): the sections go back over it at once.
 function BG.AfterGameLayout(frame)
   vgSections[frame] = nil
-  if ns.InCombat() then BG.HideHeaders() end
-  BG.QueueSections()
+  BG.RefreshSections()
 end
 
 -- The client sent an item's info: an item waiting under Other moves to its section.
 local function itemLoaded(_, itemID)
   if not BG.pending[itemID] then return end
   BG.pending[itemID] = nil
-  BG.QueueSections()
+  BG.RefreshSections()
 end
 
 -- The sections switch or your categories changed: sections at once (laid out again even with the
@@ -380,7 +378,7 @@ function BG.SectionsChanged()
   local frame = BG.sectionFrame
   if not frame then return end
   if vgSections[frame] then vgSections[frame] = "changed" end
-  BG.QueueSections()
+  BG.RefreshSections()
 end
 
 -- Whether the client has the item calls the sections classify with.
@@ -420,7 +418,7 @@ function BG.WatchSections(frame)
   BG.sectionFrame = frame
   BG.KeepOnScreen(frame)
   hooksecurefunc(frame, "UpdateItemLayout", ns.Guard("hook UpdateItemLayout", BG.AfterGameLayout))
-  hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", BG.QueueSections))
+  hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", BG.RefreshSections))
   hooksecurefunc(frame, "UpdateCurrencyFrames", ns.Guard("hook UpdateCurrencyFrames", BG.PadMoney))
   ns.On("ITEM_DATA_LOAD_RESULT", itemLoaded)
 end
