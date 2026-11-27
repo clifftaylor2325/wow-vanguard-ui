@@ -302,6 +302,28 @@ it("the game's tools: an Edit Mode system is fitted through the client's own Set
   addon.eval("__ran = {} ns.GetModule('GameTools').FitFill(TESTONLY_EditModeSystem, Vanguard_TESTONLY_EditModeSystemSpot)");
   expect(addon.eval("return __ran"), "filling a spot goes the same way").toEqual(["ClearAllPointsOverride", "SetPointBase TOPLEFT", "SetPointBase BOTTOMRIGHT"]);
 });
+// A Cooldown Manager row's scale (fitted at half size first) after the game lays it out 300 wide in a fight, and once
+// the fight ends (236 wide spot).
+const fightFit = (addon) => {
+  addon.eval("EssentialCooldownViewer:SetSize(472, 40) EssentialCooldownViewer:RefreshLayout()");
+  setCombat(addon, true);
+  const during = addon.eval("EssentialCooldownViewer:SetSize(300, 40) EssentialCooldownViewer:RefreshLayout() return EssentialCooldownViewer:GetScale()");
+  setCombat(addon, false);
+  return [during, addon.eval("return EssentialCooldownViewer:GetScale()")];
+};
+// H63-1-31: the rows are not protected on either client (Interface/AddOns/Blizzard_CooldownViewer/CooldownViewer.xml
+// CooldownViewerTemplate: EditModeCooldownViewerSystemTemplate, GridLayoutFrame, no SecureFrameTemplate), so they are
+// fitted at once in a fight; one the client calls protected (itself, through a frame inside it, or with a hidden answer:
+// IsProtected is secret for ObjectSecurity, SimpleScriptRegionAPIDocumentation.lua) waits, with no blocked call.
+it("H63-1-31 the game's tools: a row the client protects in a fight waits for the fight to end, without a blocked call", () => {
+  const screen = "__wfgStub.setScreen(1365, 768) ";
+  const itself = loggedIn(TOOLS_ENV + screen + "__wfgStub.protect(EssentialCooldownViewer)");
+  expect(fightFit(itself), "protected itself: the old size in the fight, fitted after it").toEqual([0.5, 236 / 300]);
+  const inside = loggedIn(TOOLS_ENV + screen + "__wfgStub.protect(CreateFrame('Button', nil, EssentialCooldownViewer))");
+  expect(fightFit(inside), "protected through a button inside it: the same").toEqual([0.5, 236 / 300]);
+  const hidden = loggedIn(TOOLS_ENV + screen + "EssentialCooldownViewer.IsProtected = function() return __wfgWorld.secret(false) end");
+  expect(fightFit(hidden), "a hidden answer waits too").toEqual([0.5, 236 / 300]);
+});
 it("the game's tools: a Cooldown Manager row wider than its spot shrinks to fit it, again whenever the game lays it out", () => {
   // On a canvas 768 tall the essential row sits in the 236-wide gap between your frames (a taller one gives it 560).
   const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
@@ -312,9 +334,8 @@ it("the game's tools: a Cooldown Manager row wider than its spot shrinks to fit 
   expect(scaleAt(900), "never under half size, so its icons stay readable").toBe(0.5);
   expect(addon.eval("return EssentialCooldownViewer.__points.CENTER.rel == Vanguard_EssentialCooldownViewerSpot"), "still centered on its spot").toBe(true);
   setCombat(addon, true);
-  expect(scaleAt(300), "laid out again in a fight: nothing changes until it ends").toBe(0.5);
+  expect(scaleAt(300), "laid out again in a fight: it fits at once, as the row is not protected").toBeCloseTo(236 / 300);
   setCombat(addon, false);
-  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "then it fits again").toBeCloseTo(236 / 300);
   addon.eval("EditModeManagerFrame:Show()");
   expect(scaleAt(200), "while Edit Mode is open, Vanguard stands aside").toBeCloseTo(236 / 300);
   addon.eval("EditModeManagerFrame:Hide()");
@@ -589,13 +610,28 @@ const TOAST_ENV = `
   }
 `;
 it("H34-15-1 game alerts: a talking head still in the game's container (a fight) keeps the toasts above it until its pin runs", () => {
-  const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
+  // A head the client calls protected (a stand-in: the game's own is not, see the H63-1-31 test) keeps its move for after the fight.
+  const addon = loggedIn(ALERTS_ENV + TOAST_ENV + "__wfgStub.protect(TalkingHeadFrame)");
   setCombat(addon, true);
   addon.eval("__cont = CreateFrame('Frame', 'TestBottomManagedContainer', UIParent) TalkingHeadFrame:ClearAllPoints() TalkingHeadFrame:SetPoint('TOP', __cont, 'TOP', 0, 0) TalkingHeadFrame:Show()");
   addon.eval("__toast:ClearAllPoints() __toast:SetPoint('BOTTOM', TalkingHeadFrame, 'TOP', 0, 10) AlertFrame:UpdateAnchors()");
   expect(addon.eval("return __toast.__points.BOTTOM.rel == TalkingHeadFrame"), "in the fight the toast stays on the head").toBe(true);
   setCombat(addon, false);
   expect(addon.eval("return __toast.__points.BOTTOM.rel == TestToastBase"), "once the head is moved the toast is laid out from the base").toBe(true);
+});
+
+// H63-1-31: the game's managed layout puts the talking head back in its own container on every show, in a fight too
+// (Interface/AddOns/Blizzard_ManagedFrameSystem/Shared/ManagedFrameSystem.lua ManagedFrameMixin:OnShow -> AddManagedFrame
+// -> Layout, no InCombatLockdown check), and the head is not protected on either client (Interface/AddOns/Blizzard_FrameXML/
+// TalkingHeadUI.xml: BottomManagedFrameTemplate, EditModeTalkingHeadFrameSystemTemplate, no SecureFrameTemplate).
+it("H63-1-31 game alerts: a talking head the game moves in a fight goes back to its spot at once, the toasts off it", () => {
+  const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
+  setCombat(addon, true);
+  addon.eval("__cont = CreateFrame('Frame', 'TestBottomManagedContainer', UIParent) TalkingHeadFrame:ClearAllPoints() TalkingHeadFrame:SetPoint('TOP', __cont, 'TOP', 0, 0) TalkingHeadFrame:Show()");
+  expect(addon.eval("return { TalkingHeadFrame.__points.CENTER.rel == Vanguard_TalkingHeadFrameSpot, ns.QueuedCount() }"), "on its spot in the fight, nothing queued").toEqual([true, 0]);
+  addon.eval("__toast:ClearAllPoints() __toast:SetPoint('BOTTOM', TalkingHeadFrame, 'TOP', 0, 10) AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __toast.__points.BOTTOM.rel == TestToastBase"), "the toasts are laid out from the base").toBe(true);
+  setCombat(addon, false);
 });
 
 it("H30-18-1 game alerts: toasts stack from the base anchor, not the moved talking head, and not while pins are paused", () => {

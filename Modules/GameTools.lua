@@ -129,7 +129,10 @@ function GT.FitRoomy()
 end
 ns.Theme.OnScale(GT.FitRoomy)
 
--- A movable spot (its SPOTS row or the alert's) for one of the game's frames, with the frame kept on it by `fit`.
+-- A movable spot (its SPOTS row or the alert's) for one of the game's frames, with the frame kept on it by `fit`,
+-- in a fight too: none of these frames is protected on either client (TalkingHeadUI.xml, CooldownViewer.xml,
+-- DamageMeter.xml, LossOfControlFrame.xml), and `fit` only sets its anchors and scale; one the client calls
+-- protected all the same waits for the fight to end (ns.PinLive).
 function GT.PlaceSpot(name, spot, fit)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetPoint or not spot then return end
@@ -137,10 +140,10 @@ function GT.PlaceSpot(name, spot, fit)
   holder:SetSize(GT.SpotWidth(spot), spot[5])
   if spot.roomy then GT.roomyHolders[holder] = { spot = spot, frame = f } end
   ns.Mover(holder, spot[1], spot[2], spot[3])
-  ns.Pin(f, function(frame) fit(frame, holder) end)
+  ns.PinLive(f, function(frame) fit(frame, holder) end)
 end
 
--- Fits a cooldown row to its spot again each time the game lays it out (after combat, if in one).
+-- Fits a cooldown row to its spot again each time the game lays it out.
 local function refitOnLayout(viewer)
   if type(viewer) ~= "table" or type(viewer.RefreshLayout) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout", ns.Repin))

@@ -15,6 +15,18 @@ function ns.InCombat()
   return type(InCombatLockdown) == "function" and InCombatLockdown() == true
 end
 
+-- True while a fight is on and the client protects the frame (itself or through a frame inside it), so a call
+-- it refuses on protected frames must wait for the fight to end. Asked at each call, as a frame can gain a
+-- protected child; a hidden answer waits too (IsProtected is secret for the ObjectSecurity aspect:
+-- Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua, both clients).
+---@param frame Frame
+---@return boolean
+function ns.FrameWaits(frame)
+  if not ns.InCombat() then return false end
+  local protected = frame:IsProtected()
+  return ns.IsSecret(protected) or protected ~= false
+end
+
 -- Queues fn: a new key (or none) takes the next slot, a key already queued
 -- gets its slot's function replaced, so the order of first calls holds.
 local function enqueue(fn, key)

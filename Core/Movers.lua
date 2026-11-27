@@ -466,11 +466,12 @@ end
 -- them plants taint). Weak keys, so a frame that goes away doesn't stay.
 -- pinned: frame -> its apply function; runs: frame -> its queued run (made once,
 -- so the combat queue keeps one entry per frame); hooked: frames whose SetPoint
--- is hooked; pinning: frames whose pin is running now.
+-- is hooked; pinning: frames whose pin is running now; live: frames pinned with ns.PinLive.
 local pinned = setmetatable({}, { __mode = "k" })
 local runs = setmetatable({}, { __mode = "k" })
 local hooked = setmetatable({}, { __mode = "k" })
 local pinning = setmetatable({}, { __mode = "k" })
+local live = setmetatable({}, { __mode = "k" })
 
 -- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
 -- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same;
@@ -485,8 +486,10 @@ end
 
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open) or for a frame let go.
+-- A live pin runs at once in a fight while the client does not protect its frame.
 local function runPin(frame)
   if pinsPaused or not pinned[frame] then return end
+  if live[frame] and not ns.FrameWaits(frame) then return applyPin(frame) end
   ns.OutOfCombat(runs[frame], frame)
 end
 
@@ -502,11 +505,23 @@ function ns.Pin(frame, apply)
   hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not pinning[self] then runPin(self) end end))
 end
 
+-- Pins one of the game's frames as ns.Pin does, but a fight puts it back at once while the client does not
+-- protect it (asked at each run, ns.FrameWaits); a protected one, or one whose answer is hidden, waits as ns.Pin's.
+-- Only for an apply that sets the frame's own anchors and scale: never Show, Hide or SetParent, which start the
+-- game's managed layout (ManagedFrameSystem.lua) from addon code.
+---@param frame Frame
+---@param apply function
+function ns.PinLive(frame, apply)
+  live[frame] = true
+  ns.Pin(frame, apply)
+end
+
 -- Lets a pinned frame go (the module that pinned it stopped): the game may move it again, and its SetPoint hook,
 -- which can't be taken off, does nothing until a later ns.Pin.
 ---@param frame Frame
 function ns.Unpin(frame)
   pinned[frame] = nil
+  live[frame] = nil
 end
 
 -- Runs a pinned frame's pin again (the game resized it or laid it out again),
