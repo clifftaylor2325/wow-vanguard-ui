@@ -630,3 +630,178 @@ it("a chat message sent while the client restricts chat (an encounter, a keyston
   addon.eval("C_ChatInfo.InChatMessagingLockdown = function() return false end");
   expect(addon.eval('ns.SendChat("TEST-ONLY report", "PARTY") return __sent[1]'), "unrestricted: sent").toBe("PARTY");
 });
+
+// The bug log's entries as [kind, text, count] each, oldest first.
+const logged = (addon) => addon.eval("local out = {} for _, e in ipairs(VanguardDB.bugLog.entries) do out[#out + 1] = { e.kind, e.text, e.count } end return out");
+// A wall clock that reads one fixed moment, and a debugstack to cut.
+const BUGLOG_ENV = `date = function(format) return format == "%Y-%m-%d %H:%M:%S" and "2026-11-27 14:03:11" or format == "%H:%M:%S" and "14:03:11" or "TEST-ONLY format" end
+  debugstack = function() return string.rep("s", 2500) end`;
+// The bug log emptied and this session's errors cleared, so a case starts from nothing.
+const emptyLog = (addon) => addon.eval("ns.ClearErrors() VanguardDB.bugLog.entries = {}");
+
+it("the bug log: what Vanguard caught is kept in the saved variables, with where the character was", () => {
+  expectErrors("TEST-ONLY site: boom", "TEST-ONLY quiet: TEST-ONLY no", "TEST-ONLY part: TEST-ONLY fails");
+  const addon = loggedIn(BUGLOG_ENV, { savedVariables: 'VanguardDB = { bugLog = { sessions = 4, entries = { { kind = "error", text = "TEST-ONLY site: boom", count = 2, version = "0.0.1" } } } }' });
+  addon.eval(`ns.ClearErrors() VanguardDB.bugLog.entries = { VanguardDB.bugLog.entries[1] } __wfgStub.world.instance = true
+    ns.Report("TEST-ONLY site", "boom") ns.Report("TEST-ONLY site", "boom")`);
+  addon.advance(0.1);
+  expect(logged(addon), "an error is logged the frame after it is kept; the same text from an older version keeps its own entry").toEqual([["error", "TEST-ONLY site: boom", 2], ["error", "TEST-ONLY site: boom", 2]]);
+  expect(addon.eval(`local e = VanguardDB.bugLog.entries[2]
+    return { e.first, e.last, e.session, e.version == ns.AddonVersion(), e.profile, e.client, e.who, e.class, e.level, e.zone, e.instance, e.combat, e.group, #e.stack, e.shot == nil }`),
+  "with the time, session, version, profile, client, character, place, instance, fight and group, and the top of its stack").toEqual(
+    ["2026-11-27 14:03:11", "2026-11-27 14:03:11", 5, true, "Default", "1.16.0 (65000)", "Tester-ForeverTest", expect.any(String), expect.any(Number), "Elwynn Forest, Goldshire", "party", false, 0, 2000, true]);
+  addon.eval(`ns.Report("TEST-ONLY site", "boom") ns.Quiet("TEST-ONLY quiet", error, "TEST-ONLY no") ns.Note("TEST-ONLY skin", "left off")
+    for i = 1, 10 do ns.TryRepeating("TEST-ONLY part", error, "TEST-ONLY fails") end`);
+  addon.fire("ADDON_ACTION_BLOCKED", "Vanguard", "TEST-ONLY:CallProtected()");
+  addon.fire("ADDON_ACTION_FORBIDDEN", "Vanguard", "TEST-ONLY:Forbidden()");
+  addon.advance(0.1);
+  expect(logged(addon).slice(1), "a repeat grows the count; quiet errors, a paused part, blocked calls and what was left off each get an entry").toEqual([
+    ["error", "TEST-ONLY site: boom", 3], ["quiet", "TEST-ONLY quiet: TEST-ONLY no", 1], ["error", "TEST-ONLY part: TEST-ONLY fails", 10],
+    ["blocked", "action blocked: TEST-ONLY:CallProtected()", 1], ["blocked", "action forbidden: TEST-ONLY:Forbidden()", 1], ["paused", "TEST-ONLY part", 1], ["note", "TEST-ONLY skin: left off", 1]]);
+  expect(addon.eval("local out = {} for i, e in ipairs(VanguardDB.bugLog.entries) do out[i] = e.state ~= nil and e.layout ~= nil and e.trail ~= nil end return out"),
+    "errors, blocked calls and paused parts carry a snapshot; an old entry, a quiet fallback and a skin left off don't").toEqual([false, true, false, true, true, true, true, false]);
+  addon.eval('ns.Report("TEST-ONLY site", "boom")');
+  expect(logged(addon)[1][2], "a repeat alone waits for the next look").toBe(3);
+  addon.fire("PLAYER_LOGOUT");
+  expect(logged(addon)[1][2], "which logging out is, so the file gets the last counts").toBe(4);
+  addon.eval('ns.Report("TEST-ONLY site", "boom") ns.ClearErrors() ns.Report("TEST-ONLY site", "boom")');
+  addon.advance(0.1);
+  expect(logged(addon)[1][2], "/vg errors clear starts the session's list over; the log takes the count the cleared error had reached, and goes on counting").toBe(6);
+  addon.eval('ns.Report("TEST-ONLY quiet", "TEST-ONLY no") ns.BugLog.Sync()');
+  expect(logged(addon).filter((e) => /quiet/.test(e[1])), "a quiet fallback later reported loudly is the same entry, now an error").toEqual([["error", "TEST-ONLY quiet: TEST-ONLY no", 2]]);
+  expect(addon.eval("return ns.BugLog.Text()").split("\n")[2], "an entry that lacks a field (an older file) still lists, with ? for it").toBe("[1] error  x2  ·  ?  ·  0.0.1  ·  ?  ·  ?  ·  ?  ·  ?");
+  addon.eval('UnitClass = function() error("TEST-ONLY no class", 0) end ns.BugLog.Mark("TEST-ONLY while a call fails")');
+  expect(addon.eval("local e = VanguardDB.bugLog.entries[#VanguardDB.bugLog.entries] return { e.text, e.unread, e.version == ns.AddonVersion(), e.who == nil }"),
+    "a client call that fails while the facts are read costs the facts, not the entry").toEqual(["TEST-ONLY while a call fails", "TEST-ONLY no class", true, true]);
+});
+
+it("the bug log: no saved variables yet, a client without date(), and what goes past the cap", () => {
+  expectErrors(/^TEST-ONLY many: \d+$/);
+  const addon = loggedIn("date = nil debugstack = nil");
+  emptyLog(addon);
+  addon.eval("ns.BugLog.MAX = 3");
+  expect(addon.eval('local db = VanguardDB VanguardDB = nil ns.Report("TEST-ONLY many", 0) local store = ns.BugLog.Store() ns.BugLog.Sync() VanguardDB = db return { store == nil, #db.bugLog.entries }'),
+    "before the saved variables load there is no log, and nothing is written").toEqual([true, 0]);
+  addon.eval('ns.ClearErrors() ns.BugLog.Mark("TEST-ONLY mine") for i = 1, 4 do ns.Report("TEST-ONLY many", i) end ns.BugLog.Sync()');
+  expect(logged(addon).map((e) => e[1]), "past its cap the log drops the oldest entry it made by itself, never the player's own note first").toEqual(["TEST-ONLY mine", "TEST-ONLY many: 3", "TEST-ONLY many: 4"]);
+  expect(addon.eval("local e = VanguardDB.bugLog.entries[3] return { e.first, e.stack == nil, VanguardDB.bugLog.sessions }"), "without date() the time is empty, without a stack none is kept, and a session is counted once").toEqual(["", true, 1]);
+  addon.eval('for i = 1, 3 do ns.BugLog.Mark("TEST-ONLY note " .. i) end');
+  expect(logged(addon).map((e) => e[1]), "with only notes left, the oldest note goes").toEqual(["TEST-ONLY note 1", "TEST-ONLY note 2", "TEST-ONLY note 3"]);
+  addon.eval('ns.Report("TEST-ONLY many", 5) ns.BugLog.Sync()');
+  expect(logged(addon).map((e) => e[1]), "and a new error among only notes is kept, at the cost of the oldest note").toEqual(["TEST-ONLY note 2", "TEST-ONLY note 3", "TEST-ONLY many: 5"]);
+  addon.eval('__wfgStub.world.setUnit("party1", { name = "TEST-ONLY Mate" }) ns.BugLog.Mark("TEST-ONLY grouped")');
+  expect(addon.eval("local e = VanguardDB.bugLog.entries[3] return e.state[#e.state - 1]"), "in a group the situation line says which kind and how many").toMatch(/^Group party of \d+ {2}· /);
+});
+
+it("the bug log: a new entry carries the state of the UI, the layout and what led up to it", () => {
+  expectErrors("TEST-ONLY site: boom", "TEST-ONLY site: again");
+  const addon = loggedIn(BUGLOG_ENV);
+  emptyLog(addon);
+  addon.eval(`ns.BugLog.TRAIL_MAX = 8 UISpecialFrames[#UISpecialFrames + 1] = "TEST_ONLY_Window" UIPanelWindows.TEST_ONLY_Window = { area = "left" }
+    UIPanelWindows.TEST_ONLY_Hidden, UIPanelWindows.TEST_ONLY_NoFrame, TEST_ONLY_NotAFrame = { area = "left" }, { area = "left" }, 5
+    UISpecialFrames[#UISpecialFrames + 1] = "TEST_ONLY_NotAFrame"
+    CreateFrame("Frame", "TEST_ONLY_Window", UIParent):Show() CreateFrame("Frame", "TEST_ONLY_Hidden", UIParent):Hide()`);
+  addon.eval("ns.BugLog.Trail('TEST-ONLY pushed out') ns.BugLog.TRAIL_CHARS = 60");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  addon.eval("__wfgStub.fire('ENCOUNTER_START', 1023, 'TEST-ONLY Boss', { __secret = true }, 40, 'TEST-ONLY fifth')");
+  addon.slash("unlock");
+  setCombat(addon, false);
+  addon.slash("unlock");
+  addon.slash("lock");
+  addon.eval('ns.Report("TEST-ONLY site", "boom")');
+  addon.advance(0.1);
+  const entry = addon.eval("local e = VanguardDB.bugLog.entries[1] return { state = e.state, layout = e.layout, trail = e.trail }");
+  expect(entry.state[0], "the state opens with the report's version line").toMatch(/^Vanguard \S+ {2}· {2}interface \d+ {2}· {2}profile Default {2}· {2}\d+\/\d+ modules on$/);
+  expect(entry.state.some((l) => /^Modules off: /.test(l)) && entry.state.some((l) => /^Game restrictions: /.test(l)), "and has the report's other lines").toBe(true);
+  expect(entry.state.slice(-2), "then the character's situation and the open windows, each once").toEqual(["Group none  ·  target no  ·  pet no  ·  dead no  ·  frames locked", expect.stringMatching(/^Open windows: (.+, )?TEST_ONLY_Window$/)]);
+  expect(entry.layout.at(-1), "the layout ends with the movable frames not shown").toMatch(/^Not shown: \S/);
+  expect(entry.layout.find((l) => /^minimap: /.test(l)), "after each shown one with its state in brief").toMatch(/^minimap: visible yes, alpha [\d.?]+, scale [\d.]+, [\d.]+ x [\d.]+ at -?[\d.]+, -?[\d.]+$/);
+  expect(entry.trail, "the trail has the last things that happened, oldest first, a hidden argument named and never read, a long line cut").toEqual([
+    "14:03:11 fight started (Elwynn Forest, Goldshire)", "14:03:11 boss pulled 1023 TEST-ONLY Boss (hidden) 40 (Elwynn Forest, ", "14:03:11 /vg unlock",
+    "14:03:11 fight ended (Elwynn Forest, Goldshire)", "14:03:11 /vg unlock", "14:03:11 frames unlocked", "14:03:11 /vg lock", "14:03:11 frames locked"]);
+  addon.eval('ns.ProfileChanged() ns.ReportHead = function() error("TEST-ONLY head") end ns.Report("TEST-ONLY site", "again")');
+  addon.advance(0.1);
+  const second = addon.eval("local e = VanguardDB.bugLog.entries[2] return { state = e.state, layout = #e.layout, trail = e.trail }");
+  expect([second.state.length, second.state[0], second.layout > 1], "a part of the snapshot that fails says so and costs neither the entry nor the other parts").toEqual([1, expect.stringMatching(/^state not read: .*TEST-ONLY head$/), true]);
+  expect([second.trail.length, second.trail.at(-1)], "the trail keeps its newest lines, a profile's settings changing among them").toEqual([8, "14:03:11 profile settings changed (Default)"]);
+});
+
+it("Note a bug: /vg bug and the Feedback page's button keep the player's words, what the mouse is over and a screenshot", () => {
+  const addon = loggedIn(CLICK_LUA + BUGLOG_ENV);
+  emptyLog(addon);
+  addon.eval("__wfgStub.world.screenshots = 0");
+  setCombat(addon, true);
+  addon.slash("bug the bag fell back to one grid");
+  expect(logged(addon), "/vg bug <words> notes them").toEqual([["mark", "the bag fell back to one grid", 1]]);
+  expect(addon.eval("local e = VanguardDB.bugLog.entries[1] return { e.combat, e.errors, e.zone, e.shot, e.mouse, e.trail[#e.trail], #e.state > 5, #e.layout > 1, __wfgStub.world.screenshots }"),
+    "with the fight, the errors kept so far, the place, the mouse over the world, the trail and the snapshot; the screenshot waits a frame").toEqual(
+    [true, 0, "Elwynn Forest, Goldshire", true, ["nothing (the world, or off the screen)"], "14:03:11 /vg bug the bag fell back to one grid", true, true, 0]);
+  addon.advance(0.1);
+  expect([addon.eval("return __wfgStub.world.screenshots"), chatHas(addon, /Bug noted, with a screenshot\. The log is saved when you log out or reload\./)], "then the client takes it, and chat says the bug is noted").toEqual([1, true]);
+  setCombat(addon, false);
+  addon.eval('__wfgStub.world.mouseFoci = { ns.MoverFrame("minimap") }');
+  addon.slash("bug");
+  expect(addon.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextDialog.title:GetText(), Vanguard_TextDialog.primary.text:GetText() }"), "/vg bug alone opens a box for the words").toEqual([true, "What went wrong? A few words, then Note", "Note"]);
+  addon.eval(`__wfgStub.world.mouseFoci = { Vanguard_TextDialog.primary } Vanguard_TextDialog.edit:SetText(string.rep("é", 600)) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect(addon.eval("local e = VanguardDB.bugLog.entries[2] return { Vanguard_TextDialog:IsShown(), e.kind, ns.TextLength(e.text), e.combat }"), "Note closes the box and keeps the first 500 characters").toEqual([false, "mark", 500, false]);
+  const mouse = addon.eval("return VanguardDB.bugLog.entries[2].mouse");
+  expect([mouse[0], mouse.some((l) => /^ {2}\S+ to /.test(l)), mouse.some((l) => /^ {2}under UIParent: /.test(l))], "with what the mouse was over when the box opened, as /vg frame says it: state, anchors, ancestors").toEqual(
+    [expect.stringMatching(/^Vanguard_Minimap \(Frame\): shown yes, visible yes, /), true, true]);
+  addon.slash("");
+  addon.eval('__click("Feedback") __click("Bug log")');
+  expect(addon.eval('return __click("Note a bug")') && addon.eval("return Vanguard_TextDialog:IsShown()"), "the Feedback page's Note a bug opens the same box").toBe(true);
+  addon.eval('Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)');
+  expect(logged(addon)[2], "a note with no words says so").toEqual(["mark", "(no words)", 1]);
+  expect(addon.eval("return VanguardDB.bugLog.entries[3].mouse"), "and from the page the mouse is on the button, so it is not read").toEqual(["not read (noted from the Feedback page)"]);
+});
+
+it("the bug log: Screenshot each new error is off until switched on, and stops after ten a session", () => {
+  expectErrors(/^TEST-ONLY shot: \d+$/);
+  const addon = loggedIn(CLICK_LUA);
+  emptyLog(addon);
+  addon.eval('__wfgStub.world.screenshots = 0 ns.Report("TEST-ONLY shot", 0)');
+  addon.advance(0.1);
+  expect(addon.eval("return { __wfgStub.world.screenshots, VanguardDB.bugLog.shots, VanguardDB.bugLog.entries[1].shot == nil }"), "off, a new error takes no screenshot").toEqual([0, false, true]);
+  addon.slash("");
+  addon.eval('__click("Feedback") __click("Bug log")');
+  expect(addon.eval('return __click("Screenshot each new error")') && addon.eval("return VanguardDB.bugLog.shots"), "the Bug log card's switch turns it on, for the account").toBe(true);
+  addon.eval('ns.Report("TEST-ONLY shot", 0) ns.Report("TEST-ONLY shot", 1) ns.Report("TEST-ONLY shot", 2)');
+  addon.advance(0.1);
+  addon.advance(0.1);
+  expect(addon.eval("local e = VanguardDB.bugLog.entries return { __wfgStub.world.screenshots, e[1].shot == nil, e[2].shot, e[3].shot }"),
+    "on, a new error gets one on the next frame, two new in one frame share it, and one the log already has gets none").toEqual([1, true, true, true]);
+  for (let i = 3; i <= 12; i++) {
+    addon.eval(`ns.Report("TEST-ONLY shot", ${i})`);
+    addon.advance(0.1);
+  }
+  addon.advance(0.1);
+  expect(addon.eval("return { __wfgStub.world.screenshots, VanguardDB.bugLog.entries[12].shot, VanguardDB.bugLog.entries[13].shot == nil }"), "ten a session at most, so a storm of errors can't fill the disk").toEqual([10, true, true]);
+});
+
+it("the bug log: Open the bug log lists the newest entries, and Clear the bug log asks first", () => {
+  expectErrors("TEST-ONLY site: a|cffff0000red|r pipe");
+  const addon = loggedIn(CLICK_LUA + BUGLOG_ENV);
+  emptyLog(addon);
+  addon.eval('ns.BugLog.SHOWN = 2 ns.Report("TEST-ONLY site", "a|cffff0000red|r pipe")');
+  addon.slash("bug first");
+  addon.slash("bug second");
+  addon.slash("");
+  addon.eval('__click("Feedback") __click("Bug log")');
+  expect(addon.eval('return __click("Open the bug log")') && addon.eval("return Vanguard_TextDialog.title:GetText()"), "Open the bug log opens the copy window").toBe("Vanguard bug log: Ctrl+C to copy");
+  // What the window's line for the n-th entry, a note, has to match.
+  const mark = (n) => new RegExp(`^\\[${n}\\] mark {2}x1 {2}· {2}2026-11-27 14:03:11 {2}· {2}\\S+ {2}· {2}Tester-ForeverTest {2}· {2}Elwynn Forest, Goldshire {2}· {2}none {2}· {2}out of a fight$`);
+  expect(addon.eval("return Vanguard_TextDialog.edit:GetText()").split("\n"), "a heading, then the newest entries, newest last").toEqual(["### Vanguard bug log ###",
+    "3 kept, the newest 2 listed, newest last. The saved file has each one's stack and snapshot.", expect.stringMatching(mark(2)), "    first", expect.stringMatching(mark(3)), "    second"]);
+  addon.eval("ns.BugLog.SHOWN = 40 ns.BugLog.Show()");
+  expect(addon.eval("return Vanguard_TextDialog.edit:GetText()"), "an error's colour codes are shown as typed, not read").toContain("    TEST-ONLY site: a||cffff0000red||r pipe");
+  addon.eval('ns.HideText() __click("Clear the bug log...")');
+  expect(addon.eval("return { Vanguard_Question:IsShown(), #VanguardDB.bugLog.entries }"), "Clear the bug log asks first").toEqual([true, 3]);
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(addon.eval("return #VanguardDB.bugLog.entries"), "No keeps the log").toBe(3);
+  addon.eval('__click("Clear the bug log...") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect([addon.eval("return #VanguardDB.bugLog.entries"), /Bug log cleared\.$/.test(addon.chat().at(-1))], "Clear empties it and says so").toEqual([0, true]);
+  addon.advance(0.1);
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return { #VanguardDB.bugLog.entries, #ns.errors }"), "what the session had already caught does not come back, and /vg errors still has it").toEqual([0, 1]);
+});

@@ -2071,6 +2071,14 @@ C_Map = {
 
 -- The game's tools ------------------------------------------------------------------------------
 
+-- Takes a screenshot (warcraft.wiki.gg, API Screenshot: no arguments, on every client since 1.0.0, WoW Forever
+-- included); world.screenshots counts them.
+function Screenshot() world.screenshots = (world.screenshots or 0) + 1 end
+
+-- The regions under the mouse, the topmost first (warcraft.wiki.gg, API GetMouseFoci: a ScriptRegion[] on every
+-- client, WoW Forever included; empty over the world or off the screen): world.mouseFoci, none by default.
+function GetMouseFoci() return world.mouseFoci or {} end
+
 C_CooldownViewer = {
   -- Whether the Cooldown Manager exists (a test sets world.cooldownViewer).
   IsCooldownViewerAvailable = function() return world.cooldownViewer == true end,

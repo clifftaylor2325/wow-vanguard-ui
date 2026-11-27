@@ -104,6 +104,8 @@ read_globals = {
   "LibStub",
   -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.
   "TimeUtil", "time", "date", "CHAT_FRAMES",
+  -- The bug log (Core/BugLog.lua): a screenshot with a bug noted by hand, and what the mouse was over.
+  "Screenshot", "GetMouseFoci",
   -- P3.9 GameAlerts: rare spawns from the minimap's vignettes.
   "C_VignetteInfo",
   -- P3.10 Click casting: the game's click bindings and its Click Casting window.

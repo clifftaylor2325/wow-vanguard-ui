@@ -7927,6 +7927,18 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the cast bar is gone within a moment (0.15 s), with no slow fade.
 - If it fails, paste: what the bar did and /vg errors
 
+### 33.985 The bug log keeps a noted bug, with a screenshot, across a reload (WoW Forever and Retail)
+
+- Do: point the mouse at the minimap and type `/vg bug smoke test`. Open /vg, Feedback, the Bug log tab, and click Open the bug log. Close it, type `/reload`, and click Open the bug log again. Then start a fight and type `/vg bug in a fight`. [Client: Forever and Retail.]
+- Expect: chat says `Bug noted, with a screenshot. The log is saved when you log out or reload.`, the game takes a screenshot (a new file in its Screenshots folder), and nothing hitches. The window's last entry reads `mark  x1`, the time, the Vanguard version, your character and realm, your zone, `none` (or the instance kind) and `out of a fight`, with `smoke test` under it, and it is still there after the reload. The note typed in a fight says `in a fight`, and neither note raises an "Interface action failed because of an AddOn" message. [Needs in game: that Screenshot and GetMouseFoci answer an addon on both clients, in and out of a fight.]
+- If it fails, paste: what chat said, whether a screenshot appeared, and /vg errors
+
+### 33.986 The bug log takes an error by itself, and Clear empties it (WoW Forever and Retail)
+
+- Do: on the Bug log tab switch Screenshot each new error on. Type `/run Vanguard.RegisterSkin("Smoke test", function() error("smoke test") end)`, which makes an error Vanguard catches. Click Open the bug log, then Clear the bug log..., answer No, click it again and answer Clear. Switch Screenshot each new error off again and `/reload`. [Client: Forever and Retail.]
+- Expect: chat prints the error once, and the window's last entry is `error  x1` with `skin for Smoke test: ... smoke test` under it, without typing anything more; the game took one screenshot when it happened. No leaves the log as it was; Clear empties it and chat says `Bug log cleared.`; the error is still in `/vg errors` until the reload.
+- If it fails, paste: the Open the bug log text and /vg errors
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.

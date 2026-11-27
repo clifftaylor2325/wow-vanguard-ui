@@ -974,9 +974,10 @@ local function communityRows()
   }
 end
 
--- Feedback: the paused parts (when there are any), the form and the report, then the community links.
+-- Feedback: the paused parts (when there are any), the form and the report, the bug log (Core/BugLog.lua),
+-- then the community links.
 local function feedbackRows()
-  return append(append(pausedRows(), feedbackFormRows()), communityRows())
+  return append(append(append(pausedRows(), feedbackFormRows()), ns.BugLog.Rows()), communityRows())
 end
 
 -- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).
