@@ -449,6 +449,8 @@ function lifecycle(addon) {
     // ADDON_LOADED, PLAYER_LOGIN, PLAYER_ENTERING_WORLD, with the gold and item moves watched first (world.moves).
     login: () => {
       addon.eval("__wfgWorld.watchMoves()");
+      // The client's refusals again, over the stand-ins a test's env put in place of the calls they cover (wow-taint.lua).
+      addon.eval("__wfgWorld.refuseSecretArgs() __wfgWorld.blockDriversInFight()");
       addon.fire("ADDON_LOADED", ADDON);
       addon.fire("PLAYER_LOGIN");
       addon.fire("PLAYER_ENTERING_WORLD", true, false);

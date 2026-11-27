@@ -280,6 +280,24 @@ it("state drivers and unit watches from addon code are blocked in a fight at the
   expect(read()).toEqual([false, false, false]);
 });
 
+// A test's env that puts its own stand-in in place of a listed call (helpers.mjs UNITS_ENV, ACTIONS_ENV and the like)
+// gets the same two rules at login, wrapped once however often the rules run again.
+it("a stand-in a test's env puts in place of a listed call refuses the addon's secret and its drivers are blocked in a fight, from login", () => {
+  const addon = createAddon();
+  addon.eval(`UnitExists = function() return true end
+    RegisterStateDriver = function(frame, state, value) frame.__states = frame.__states or {} frame.__states[state] = value end
+    CreateFrame("Frame", "TestDriven", UIParent) __s = __wfgWorld.secret("target")`);
+  addon.login();
+  const again = addon.eval("local a, b = UnitExists, RegisterStateDriver __wfgWorld.refuseSecretArgs() __wfgWorld.blockDriversInFight() return a == UnitExists and b == RegisterStateDriver");
+  expect(again, "a second run of the rules keeps the wrapped calls").toBe(true);
+  const usage = "Modules/TEST-ONLY.lua:1: bad argument #1 to '?' (Usage: UnitExists(). Secret values are only allowed during untainted execution for this argument.)";
+  expect(addon.eval(`return { pcall(assert(loadstring("return UnitExists(__s)", "@Modules/TEST-ONLY.lua"))) }`), "refused").toEqual([false, usage]);
+  addon.world.combat(true);
+  asAddon(addon, "RegisterStateDriver(TestDriven, 'page', '1')");
+  expect(violations(addon), "blocked once at the manager").toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetAttribute on the protected frame SecureStateDriverManager"]);
+  expect(addon.eval("return TestDriven.__states == nil"), "the stand-in registered nothing").toBe(true);
+});
+
 // Every aura button a container makes carries DenyTaintedAccessWhenAurasAreSecret, the container none
 // (Interface/AddOns/Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:298, Blizzard_AuraContainerShared.lua:108,
 // Blizzard_AuraContainerUtil.lua:403-419, both clients): the button refuses addon code whenever aura information is

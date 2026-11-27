@@ -224,7 +224,9 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 -- flags match on both clients, except that Forever also protects FocusEnter, FocusExit, MouseDown and MouseUp
 -- (SimpleScriptRegionAPIDocumentation.lua). Every documented name is here (checked against both clients'
 -- documents, H63-4-34); one no kind in wow-widget-api.lua carries (today the ones from AddRoleset on, and Forever's
--- four) is guarded once it is listed there (the loop below makes no method of its own for it).
+-- four) is guarded once it is listed there (the loop below makes no method of its own for it). So those names have no
+-- effect until one is added to wow-widget-api.lua: addon code calling one meets a nil method, not a block. Gate Forever's
+-- four by client when that happens.
 local PROTECTED_CALLS = {
   -- SimpleFrameAPIDocumentation.lua
   "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
@@ -461,16 +463,34 @@ for _, row in ipairs({
 local driverManager = ownByGame(createFrame("Frame", "SecureStateDriverManager"))
 stub.protect(driverManager)
 
+-- The calls the harness has wrapped with a client rule (a driver's manager, a secret argument): a second pass of the
+-- same rule over a global finds them here and leaves them as they are.
+local wrappedByRule = setmetatable({}, { __mode = "k" })
+
+-- Marks a call as wrapped by a client rule and hands it back.
+local function ruled(wrapped)
+  wrappedByRule[wrapped] = true
+  return wrapped
+end
+
 -- A driver call that goes through the manager's SetAttribute first, and stops there when that is blocked.
 local function throughDriverManager(call)
-  return function(...)
+  -- The call as the client runs it.
+  return ruled(function(...)
     if blocked(driverManager, "SetAttribute") then return end
     return call(...)
+  end)
+end
+
+-- Puts the six driver calls through the manager: at load, and again at login (lua-harness.mjs) over any stand-in a
+-- test's env put in their place, so a test's own RegisterStateDriver meets the rule too. A call already wrapped is kept.
+function world.blockDriversInFight()
+  for _, name in ipairs({ "RegisterStateDriver", "UnregisterStateDriver", "RegisterAttributeDriver", "UnregisterAttributeDriver", "RegisterUnitWatch", "UnregisterUnitWatch" }) do
+    local call = rawget(_G, name)
+    if type(call) == "function" and not wrappedByRule[call] then rawset(_G, name, throughDriverManager(call)) end
   end
 end
-for _, name in ipairs({ "RegisterStateDriver", "UnregisterStateDriver", "RegisterAttributeDriver", "UnregisterAttributeDriver", "RegisterUnitWatch", "UnregisterUnitWatch" }) do
-  if type(_G[name]) == "function" then _G[name] = throughDriverManager(_G[name]) end
-end
+world.blockDriversInFight()
 
 -- Secret arguments --------------------------------------------------------------------------
 -- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a
@@ -513,7 +533,10 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 -- one): addon code that hands one a secret gets the same error. The docs set them apart from the calls made to take a
 -- secret from addon code, which carry "AllowedWhenTainted" (UnitName, C_Spell.GetSpellInfo, AbbreviateNumbers,
 -- C_StringUtil.*); issecretvalue, whose argument is a LuaValueReference, is left out. Listed from the docs of both
--- clients against the names the harness defines (the six C_UnitAuras calls above keep their own wrapper).
+-- clients against the names the harness defines (the six C_UnitAuras calls above keep their own wrapper). Five are
+-- Forever's alone, AllowedWhenUntainted there and absent from Retail's documents: C_Item.GetWeaponEnchantInfo,
+-- C_SkillInfo.GetSkillLineInfoByID, C_SwingTimer.EnableRangeCheck, C_SwingTimer.IsTargetWithinSwingRange and
+-- UnitDefenseSkill (the five C_CVar names are NotAllowed on both).
 local UNTAINTED_ARGS = {
   "C_ActionBar.EnableActionRangeCheck", "C_ActionBar.GetActionText", "C_ActionBar.GetActionTexture",
   "C_ActionBar.HasAction", "C_ActionBar.IsEquippedAction", "C_ActionBar.PutActionInSlot",
@@ -597,15 +620,18 @@ local function secretArgsRefused(name, call)
     return call(...)
   end
   stub.transparent[wrapped] = true
-  return wrapped
+  return ruled(wrapped)
 end
 
--- Wraps each listed call the client has (a Retail world's own stubs included): lua-harness.mjs runs it before the addon loads.
+-- Wraps each listed call the client has (a Retail world's own stubs included): lua-harness.mjs runs it before the
+-- addon loads, and again at login over any stand-in a test's env put in a listed call's place (helpers.mjs UNITS_ENV,
+-- PLATE_ENV and the like), so a stand-in refuses a secret too. A call already wrapped is kept, so a second run adds nothing.
 function world.refuseSecretArgs()
   for _, name in ipairs(UNTAINTED_ARGS) do
     local space, key = name:match("^(.-)%.?([^.]+)$")
     local holder = space == "" and _G or _G[space]
-    if type(holder) == "table" and type(rawget(holder, key)) == "function" then rawset(holder, key, secretArgsRefused(name, holder[key])) end
+    local call = type(holder) == "table" and rawget(holder, key)
+    if type(call) == "function" and not wrappedByRule[call] then rawset(holder, key, secretArgsRefused(name, call)) end
   end
 end
 

@@ -418,7 +418,9 @@ it("boat timer: off by default, and quiet where a ride can't be judged", () => {
   expect(quiet("UnitOnTaxi = function() return true end"), "a flight is not a boat").toBe(false);
   expect(quiet("UnitOnTaxi = function() return false end IsInInstance = function() return true end"), "an instance is not a boat").toBe(false);
   expect(quiet("IsInInstance = function() return false end UnitIsDeadOrGhost = function() return true end"), "a ghost is not a boat").toBe(false);
-  expect(quiet("UnitIsDeadOrGhost = function() return false end C_Map.GetBestMapForUnit = function() return { __secret = true } end"), "a hidden map is not judged").toBe(false);
+  // (No hidden map: C_Map.GetBestMapForUnit carries no SecretReturns on either client,
+  // Interface/AddOns/Blizzard_APIDocumentationGenerated/MapDocumentation.lua, and the game refuses a secret map id to
+  // GetPlayerMapPosition from addon code, wow-taint.lua.)
   expect(quiet("C_Map.GetBestMapForUnit = function() return 37 end IsInInstance = function() return false end UnitIsDeadOrGhost = function() return false end UnitOnTaxi = function() return { __secret = true } end"), "a hidden flight answer is not judged").toBe(false);
   expect(quiet("UnitOnTaxi = function() return false end UnitIsDeadOrGhost = function() return { __secret = true } end"), "a hidden death answer is not judged").toBe(false);
   expect(quiet("UnitIsDeadOrGhost = function() return false end C_Map.GetPlayerMapPosition = function() return { __secret = true } end"), "a hidden position is not judged").toBe(false);
