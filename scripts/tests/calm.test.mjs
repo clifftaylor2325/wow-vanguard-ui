@@ -210,3 +210,33 @@ it("calm HUD rows: the unit frames' Dim and Leave as is sit in the columns the o
   expect([frames[0][1], frames[2][1]], "Dim and Leave as is line up with the bars row").toEqual([bars[0][1], bars[2][1]]);
   expect(frames.map((s) => s[2]), "Hide's place on the unit frames row is not drawn").toEqual([true, false, true]);
 });
+
+// TEST-ONLY: holds every engine aura button back from addon code, as the client does while aura information is secret
+// (Interface/AddOns/Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86 applies
+// AuraContainerUtil.ApplyAccessRestrictions to each button it makes, never to the container;
+// Blizzard_AuraContainerShared.lua AccessRestrictionFlags = DenyTaintedAccessWhenAurasAreSecret;
+// Blizzard_APIDocumentationGenerated/SimpleFrameScriptObjectAPIDocumentation.lua IsForbidden stays false).
+const holdButtons = (addon) => addon.eval(`__wfgWorld.aurasSecret = true
+  local n = 0
+  for _, f in ipairs(__wfgStub.frames) do if f.__kind == "AuraButton" then __wfgWorld.holdAccess(f) n = n + 1 end end
+  return n`);
+
+it("H63-2-1 Calm HUD: your buffs dim while the client holds their aura buttons back, with no error", () => {
+  const addon = loggedIn(ENV);
+  expect(holdButtons(addon), "the buffs have aura buttons to hold").toBeGreaterThan(0);
+  expect(calmOn(addon)).toBe(true);
+  expect(addon.eval("return #ns.errors"), "nothing raised").toBe(0);
+  expect(calm(addon, "Vanguard_PlayerAuras").state, "the block dims").toBe(DIM);
+});
+
+it("H63-2-1 Calm HUD: once the buttons are let go, the block still dims and wakes over its hover pad", () => {
+  const addon = loggedIn(ENV);
+  holdButtons(addon);
+  calmOn(addon);
+  addon.eval("__wfgWorld.aurasSecret = false for _, f in ipairs(__wfgStub.frames) do if f.__kind == 'AuraButton' then __wfgWorld.releaseAccess(f) end end");
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "dimmed").toBe(0.35);
+  addon.hover("Vanguard_PlayerAuras.vgHoverArea");
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "the mouse over the pad wakes the block").toBe(1);
+  addon.hover(null);
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "and it dims again").toBe(0.35);
+});

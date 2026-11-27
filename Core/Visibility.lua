@@ -348,9 +348,10 @@ local function hookMouse(f, script, fn)
 end
 
 -- Follows the mouse over a frame and every frame inside it (nothing polls). A frame the client won't let
--- Vanguard hook, and what is in it, are left out: the mouse over the frame around it still counts.
+-- Vanguard hook, and what is in it, are left out: the mouse over the frame around it still counts. A held aura
+-- button (T.Held: every call but IsForbidden raises, and hookMouse reads the mouse outside its pcall) is left out too.
 local function hookHover(f, frame)
-  if f:IsForbidden() or not hookMouse(f, "OnEnter", hoverEnter) then return end
+  if f:IsForbidden() or T.Held(f) or not hookMouse(f, "OnEnter", hoverEnter) then return end
   vgHoverOf[f] = frame
   hookMouse(f, "OnLeave", hoverLeave)
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end
