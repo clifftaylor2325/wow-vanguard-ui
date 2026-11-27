@@ -332,9 +332,38 @@ end
 
 -- Static popups: which are shown, by name.
 world.popups = {}
--- Shows a popup by name (its arguments kept), hides one, or shows or hides a UI panel
--- (wow-taint.lua adds the panel manager's combat refusal).
-function StaticPopup_Show(name, ...) world.popups[name] = { ... } return world.popups[name] end
+-- The game declines a show (OnCancel(nil, data), then nil) when a show condition fails, a defined dialog without
+-- whileDead while the player is dead or a ghost (Blizzard_StaticPopup_Game/GameDialog.lua StaticPopup_AddShowCondition),
+-- or when no dialog frame is free: four, StaticPopup1 to 4 (GameDialog.xml); one already shown is reused
+-- (Blizzard_StaticPopup/StaticPopup.lua StaticPopup_Show, both clients). A dialog the test did not define in
+-- StaticPopupDialogs is still shown (the client raises "Dialog ... does not exist"; the harness defines none).
+StaticPopupDialogs = {}
+local POPUP_FRAMES = 4
+
+-- How many popups are shown now.
+local function shownPopups()
+  local n = 0
+  for _ in pairs(world.popups) do n = n + 1 end
+  return n
+end
+
+-- Whether the game declines to show a popup now.
+local function popupDeclined(name, info)
+  if info and not info.whileDead and UnitIsDeadOrGhost("player") then return true end
+  return world.popups[name] == nil and shownPopups() >= POPUP_FRAMES
+end
+
+-- Shows a popup by name (its arguments kept), or declines as the game does.
+function StaticPopup_Show(name, ...)
+  local info = StaticPopupDialogs[name]
+  if popupDeclined(name, info) then
+    if info and info.OnCancel then info.OnCancel(nil, (select(3, ...))) end
+    return nil
+  end
+  world.popups[name] = { ... }
+  return world.popups[name]
+end
+-- Hides a popup by name, or shows or hides a UI panel (wow-taint.lua adds the panel manager's combat refusal).
 function StaticPopup_Hide(name) world.popups[name] = nil end
 -- A prompt frame of its own shown as a popup (the role check, a queue): Blizzard_StaticPopup/StaticPopup.lua.
 function StaticPopupSpecial_Show(frame) frame:Show() end
@@ -400,6 +429,14 @@ local function runCallback(cb, ...)
   return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
 end
 
+-- Whether a callback taken at the start of a run is still registered for its event.
+local function stillKept(event, cb)
+  for _, kept in ipairs(world.callbacks[event] or {}) do
+    if kept == cb then return true end
+  end
+  return false
+end
+
 -- The client's check on an event name: text, else it raises with the method's own message (the client writes
 -- RegisterCallback's with a double colon). Blizzard_SharedXMLBase/CallbackRegistry.lua:112-113, 187-188, 225-226.
 local function needEventName(method, event)
@@ -426,12 +463,14 @@ EventRegistry = {
     for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
   end,
   -- Runs the callbacks for an event (its name must be text): those kept with extra arguments (the client's closures)
-  -- first, then the rest.
+  -- first, then the rest. One registered during the run waits for the next (GetMutableCallbacksByEvent defers it);
+  -- one removed during the run before its turn does not run (UnregisterCallback clears the live table that
+  -- secureexecuterange walks). Blizzard_SharedXMLBase/CallbackRegistry.lua TriggerEvent, UnregisterCallback, both clients.
   TriggerEvent = function(_, event, ...)
     needEventName("CallbackRegistryMixin:TriggerEvent", event)
     local list = { stub.unpack(world.callbacks[event] or {}) }
-    for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
-    for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n > 0 and stillKept(event, cb) then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n == 0 and stillKept(event, cb) then runCallback(cb, ...) end end
   end,
 }
 

@@ -222,22 +222,27 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 -- The methods the client blocks on a protected frame while insecure code runs in combat: the ones
 -- Blizzard_APIDocumentationGenerated marks IsProtectedFunction, grouped by its file, plus SetAttribute. The
 -- flags match on both clients, except that Forever also protects FocusEnter, FocusExit, MouseDown and MouseUp
--- (SimpleScriptRegionAPIDocumentation.lua). A documented name no kind in wow-widget-api.lua carries (those four
--- among them) is left out until it is listed.
+-- (SimpleScriptRegionAPIDocumentation.lua). Every documented name is here (checked against both clients'
+-- documents, H63-4-34); one no kind in wow-widget-api.lua carries (today the ones from AddRoleset on, and Forever's
+-- four) is guarded once it is listed there (the loop below makes no method of its own for it).
 local PROTECTED_CALLS = {
   -- SimpleFrameAPIDocumentation.lua
   "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
   "SetFrameLevel", "SetFrameStrata", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetToplevel", "SetID",
   "SetHitRectInsets", "SetClampedToScreen", "SetClampRectInsets", "EnableKeyboard", "SetIgnoreParentScale",
-  "SetHyperlinksEnabled", "SetAttribute",
-  -- SimpleScriptRegionAPIDocumentation.lua
+  "SetHyperlinksEnabled", "SetAttribute", "AddRoleset", "RemoveRoleset", "SetRolesets", "ClearAttribute",
+  "ClearAttributes", "EnableGamePadButton", "EnableGamePadStick", "ResizeToBoundsRect", "SetUsingParentLevel",
+  -- SimpleFrameScriptObjectAPIDocumentation.lua
+  "SetToDefaults",
+  -- SimpleScriptRegionAPIDocumentation.lua (FocusEnter, FocusExit, MouseDown and MouseUp: Forever only)
   "SetParent", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "SetMouseClickEnabled",
-  "SetMouseMotionEnabled", "SetPassThroughButtons",
+  "SetMouseMotionEnabled", "SetPassThroughButtons", "SetPropagateMouseClicks", "SetPropagateMouseMotion",
+  "SetCollapsesLayout", "SetRoundLayoutToNearestPixel", "FocusEnter", "FocusExit", "MouseDown", "MouseUp",
   -- SimpleScriptRegionResizingAPIDocumentation.lua
   "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "ClearPoint",
-  "ClearPointsOffset", "AdjustPointsOffset",
+  "ClearPointsOffset", "AdjustPointsOffset", "SetPointsOffset",
   -- SimpleButtonAPIDocumentation.lua
-  "Enable", "Disable", "SetEnabled", "RegisterForClicks",
+  "Enable", "Disable", "SetEnabled", "RegisterForClicks", "RegisterForMouse",
   -- SimpleScrollFrameAPIDocumentation.lua
   "SetScrollChild", "SetVerticalScroll", "SetHorizontalScroll",
 }
@@ -356,8 +361,10 @@ end
 
 -- Protected methods whose name another kind also carries unprotected (a ScrollingMessageFrame's Clear is a plain
 -- method): blocked on that kind only. Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks
--- these four IsProtectedFunction on both clients.
-local PROTECTED_BY_KIND = { Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject" } }
+-- these six IsProtectedFunction on both clients.
+local PROTECTED_BY_KIND = {
+  Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject", "SetCooldownFromExpirationTime", "SetCooldownUNIX" },
+}
 
 -- A protected method of one kind: blocked as lockable blocks it, on a widget of that kind.
 local function lockableOn(kind, name)
@@ -443,6 +450,27 @@ for _, row in ipairs({
   { C_ClickBindings, "ResetCurrentProfile", "C_ClickBindings.ResetCurrentProfile" },
   { C_ClickBindings, "ExecuteBinding", "C_ClickBindings.ExecuteBinding" },
 }) do guardCall(row[1], row[2], row[3]) end
+
+-- State drivers and unit watches: each of the six calls ends in SecureStateDriverManager:SetAttribute, and the
+-- manager is made from SecureFrameTemplate (Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua
+-- RegisterAttributeDriver, UnregisterAttributeDriver, RegisterStateDriver, UnregisterStateDriver, RegisterUnitWatch,
+-- UnregisterUnitWatch and `SecureStateDriverManager = CreateFrame(..., "SecureFrameTemplate")`, identical on both
+-- clients). So in a fight a run with addon code in it meets the standing SetAttribute rule on a protected frame: the
+-- call is blocked, nothing is registered or removed, and ADDON_ACTION_BLOCKED fires.
+-- (The harness has no SecureFrameTemplate, so the manager is marked protected instead.)
+local driverManager = ownByGame(createFrame("Frame", "SecureStateDriverManager"))
+stub.protect(driverManager)
+
+-- A driver call that goes through the manager's SetAttribute first, and stops there when that is blocked.
+local function throughDriverManager(call)
+  return function(...)
+    if blocked(driverManager, "SetAttribute") then return end
+    return call(...)
+  end
+end
+for _, name in ipairs({ "RegisterStateDriver", "UnregisterStateDriver", "RegisterAttributeDriver", "UnregisterAttributeDriver", "RegisterUnitWatch", "UnregisterUnitWatch" }) do
+  if type(_G[name]) == "function" then _G[name] = throughDriverManager(_G[name]) end
+end
 
 -- Secret arguments --------------------------------------------------------------------------
 -- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a
@@ -747,17 +775,30 @@ end
 -- world.releaseAccess(frame) lets them go again, as the end of a fight does.
 local held = setmetatable({}, { __mode = "k" })
 
--- Whether the current Lua may reach this object: false for addon code while the object is held.
-function methods:CanBeAccessedInContext()
-  return not (held[self] and byAddon(callerOf(1)))
+-- Aura buttons that carry the container's restriction (DenyTaintedAccessWhenAurasAreSecret): denied whenever aura
+-- information is secret, whatever a test held (stub.auraButtonMade below).
+local restricted = setmetatable({}, { __mode = "k" })
+
+-- Whether addon code is denied this object now: held, or restricted while aura information is secret.
+local function denied(w)
+  return held[w] == true or (restricted[w] == true and world.aurasSecret == true)
 end
 
--- A method that refuses addon code while its widget is held, and runs as it was otherwise.
+-- Whether the current Lua may reach this object: false for addon code while the object is denied.
+function methods:CanBeAccessedInContext()
+  return not (denied(self) and byAddon(callerOf(1)))
+end
+
+-- A method that refuses addon code while its widget is denied, and runs as it was otherwise. The copy only passes the
+-- call on (stub.transparent), so the method under it still sees the addon as its caller.
 local function refusingWhileHeld(orig)
-  return function(self, ...)
-    if held[self] and byAddon(callerOf(1)) then error(FORBIDDEN, 2) end
+  -- The refusing copy.
+  local copy = function(self, ...)
+    if denied(self) and byAddon(callerOf(1)) then error(FORBIDDEN, 2) end
     return orig(self, ...)
   end
+  stub.transparent[copy] = true
+  return copy
 end
 
 -- The refusing copies a hold put on each held widget, by name: { fn = the copy, prev = the raw value it covered }.
@@ -800,8 +841,59 @@ end
 -- the container's access restriction to each new frame right after the post-creation callback
 -- (Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86, Blizzard_AuraContainerUtil.lua:403-419,
 -- both clients).
+--
+-- And every button a container makes carries that restriction for good, the container itself none: each group's frame
+-- provider and each aura slot frame is made with accessRestrictions = DenyTaintedAccessWhenAurasAreSecret
+-- (Blizzard_CustomAuraContainer.lua:298 AddAuraGroup and :781 CreateAuraSlotFrame, Blizzard_AuraContainerShared.lua:108),
+-- applied by ApplyAccessRestrictions at once when the player is logged in, else at PLAYER_ENTERING_WORLD
+-- (Blizzard_AuraContainerUtil.lua:403-419). So the button refuses addon code whenever aura information is secret
+-- (world.aurasSecret: C_Secrets.ShouldAurasBeSecret), in a fight or out of one (a battleground, an encounter, a keystone
+-- run), with no test asking. Only the button: whether the restriction reaches the regions an addon hangs on it is not
+-- in the source (game sheet). The harness's login listener runs before the addon's, so a button made at load is
+-- restricted before the addon's own PLAYER_ENTERING_WORLD handler runs (the client does not say which runs first).
+local pendingRestrict, loggedIn = {}, false
+
+-- The method a restricted button runs for a name, looked up at call time, so a getter wrapped later still reaches it.
+local function liveMethod(w, name)
+  local own = rawget(w, name)
+  if own then return own end
+  -- The method as the widget resolves it now.
+  local live = function(self, ...)
+    local index = getmetatable(self).__index
+    local method = type(index) == "function" and index(self, name) or index[name]
+    return method(self, ...)
+  end
+  stub.transparent[live] = true
+  return live
+end
+
+-- Puts the restriction on one button: every listed method but the two that always answer refuses the addon while denied.
+local function restrict(w)
+  restricted[w] = true
+  for name in pairs(listedNames(w.__kind)) do
+    if not ALWAYS_ANSWERED[name] and type(w[name]) == "function" then rawset(w, name, refusingWhileHeld(liveMethod(w, name))) end
+  end
+end
+
+-- Holds a new button as its held container is, and restricts it now or when the player enters the world.
 function stub.auraButtonMade(container, button)
   if held[container] then world.holdAccess(button) end
+  if loggedIn then restrict(button) else pendingRestrict[#pendingRestrict + 1] = button end
+end
+
+-- Logged in from PLAYER_LOGIN on; the buttons made before then are restricted at PLAYER_ENTERING_WORLD, before any
+-- frame hears it (the harness watches its own event dispatch rather than making a frame of its own).
+local function watchLogin(event)
+  if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then loggedIn = true end
+  if event ~= "PLAYER_ENTERING_WORLD" then return end
+  for _, w in ipairs(pendingRestrict) do restrict(w) end
+  pendingRestrict = {}
+end
+local fireEvent = stub.fire
+-- The stub's event dispatch, with the login watch first.
+function stub.fire(event, ...)
+  watchLogin(event)
+  return fireEvent(event, ...)
 end
 
 -- Lets a held frame and everything under it go again (aura information is plain again).

@@ -112,7 +112,7 @@ function outValue(vm) {
 }
 
 // Harness files' frames, which a failure's traceback leaves out (as lua-harness.mjs's traceback does).
-const HARNESS_FRAME = /\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-aspects\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/;
+const HARNESS_FRAME = /\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-managed\.lua|wow-aspects\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/;
 
 // The error of the last call, labeled with the chunk name; a run error's traceback without the harness's frames.
 function outError(vm, chunkName, status) {
