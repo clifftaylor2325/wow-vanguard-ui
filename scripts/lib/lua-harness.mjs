@@ -395,7 +395,8 @@ function worldClient(S) {
 }
 
 // Runs the client Lua before the addon's files load, with the font metrics on for the text-fit
-// audit, then a Retail world's own stubs, then gives the addon the client's type() for secrets;
+// audit, then a Retail world's own stubs, then gives the addon the client's type() for secrets and the refusal of a
+// secret argument (wow-taint.lua world.refuseSecretArgs);
 // returns the client the world is.
 function startClient(S, client, textFit) {
   if (textFit) S.run('__wfgStub.textMetrics = "font"', "=textFit");
@@ -403,6 +404,7 @@ function startClient(S, client, textFit) {
   const name = worldClient(S);
   if (name === "retail") for (const file of retailStubs()) runLib(S, file);
   S.run("__wfgWorld.secretTypes()", "=secretTypes");
+  S.run("__wfgWorld.refuseSecretArgs()", "=secretArgs");
   return name;
 }
 

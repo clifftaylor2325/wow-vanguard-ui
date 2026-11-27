@@ -236,3 +236,20 @@ it("the raid window's group buttons, the target-of-target frames and the spell f
   asAddon(addon, "RaidGroupButton12:SetPoint('CENTER')");
   expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame RaidGroupButton12"]);
 });
+
+// H63-4-3: the game calls Blizzard_APIDocumentationGenerated tags SecretArguments = "AllowedWhenUntainted" (or "NotAllowed")
+// on both clients refuse the addon's secret; the "AllowedWhenTainted" ones take it (Interface/AddOns/
+// Blizzard_APIDocumentationGenerated/UnitDocumentation.lua UnitHealth, UnitIsUnit; SpellDocumentation.lua GetSpellName).
+it("a game call that takes a secret only from untainted code refuses the addon's at its line; an AllowedWhenTainted call and test code take it", () => {
+  const addon = createAddon();
+  addon.eval("__s = __wfgWorld.secret('target')");
+  // The addon's call under pcall, as { ok, error }.
+  const tryAddon = (lua) => addon.eval(`return { pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) }`);
+  const usage = (i, name) => `Modules/TEST-ONLY.lua:1: bad argument #${i} to '?' (Usage: ${name}(). Secret values are only allowed during untainted execution for this argument.)`;
+  expect(tryAddon("return UnitHealth(__s)"), "UnitHealth").toEqual([false, usage(1, "UnitHealth")]);
+  expect(tryAddon("return UnitIsUnit('player', __s)"), "UnitIsUnit, second argument").toEqual([false, usage(2, "UnitIsUnit")]);
+  expect(tryAddon("return C_Item.GetItemInfo(__s)"), "a namespaced call").toEqual([false, usage(1, "C_Item.GetItemInfo")]);
+  expect(tryAddon("C_Spell.GetSpellName(__wfgWorld.secret(1)) return true")[0], "C_Spell.GetSpellName is AllowedWhenTainted").toBe(true);
+  expect(tryAddon("return UnitHealth('player') > 0"), "a plain argument as ever").toEqual([true, true]);
+  expect(addon.eval("return { pcall(UnitHealth, __s) }")[0], "test code may").toBe(true);
+});

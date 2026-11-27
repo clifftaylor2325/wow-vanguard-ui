@@ -480,6 +480,107 @@ local function untaintedOnly(name, call)
 end
 for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name, C_UnitAuras[name]) end
 
+-- The rest of the game calls the harness models that Blizzard_APIDocumentationGenerated tags SecretArguments =
+-- "AllowedWhenUntainted" or "NotAllowed" on both clients (forever and live, every argument but a LuaValueReference
+-- one): addon code that hands one a secret gets the same error. The docs set them apart from the calls made to take a
+-- secret from addon code, which carry "AllowedWhenTainted" (UnitName, C_Spell.GetSpellInfo, AbbreviateNumbers,
+-- C_StringUtil.*); issecretvalue, whose argument is a LuaValueReference, is left out. Listed from the docs of both
+-- clients against the names the harness defines (the six C_UnitAuras calls above keep their own wrapper).
+local UNTAINTED_ARGS = {
+  "C_ActionBar.EnableActionRangeCheck", "C_ActionBar.GetActionText", "C_ActionBar.GetActionTexture",
+  "C_ActionBar.HasAction", "C_ActionBar.IsEquippedAction", "C_ActionBar.PutActionInSlot",
+  "C_AddOns.GetAddOnMetadata", "C_AddOns.IsAddOnLoaded", "C_AddOns.LoadAddOn",
+  "C_AuctionHouse.CalculateCommodityDeposit", "C_AuctionHouse.CalculateItemDeposit",
+  "C_AuctionHouse.CanCancelAuction", "C_AuctionHouse.CancelAuction", "C_AuctionHouse.ConfirmPostCommodity",
+  "C_AuctionHouse.ConfirmPostItem", "C_AuctionHouse.GetAvailablePostCount", "C_AuctionHouse.GetCancelCost",
+  "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.GetItemCommodityStatus",
+  "C_AuctionHouse.GetItemKeyFromItem", "C_AuctionHouse.GetItemKeyInfo", "C_AuctionHouse.GetItemSearchResultInfo",
+  "C_AuctionHouse.GetNumCommoditySearchResults", "C_AuctionHouse.GetNumItemSearchResults",
+  "C_AuctionHouse.GetReplicateItemInfo", "C_AuctionHouse.GetReplicateItemLink",
+  "C_AuctionHouse.HasFullCommoditySearchResults", "C_AuctionHouse.HasFullItemSearchResults",
+  "C_AuctionHouse.IsSellItemValid", "C_AuctionHouse.MakeItemKey", "C_AuctionHouse.PlaceBid",
+  "C_AuctionHouse.PostCommodity", "C_AuctionHouse.PostItem", "C_AuctionHouse.QueryOwnedAuctions",
+  "C_AuctionHouse.RequestMoreCommoditySearchResults", "C_AuctionHouse.RequestMoreItemSearchResults",
+  "C_AuctionHouse.SearchForItemKeys", "C_AuctionHouse.SendBrowseQuery", "C_AuctionHouse.SendSearchQuery",
+  "C_AuctionHouse.SendSellSearchQuery", "C_AuctionHouse.StartCommoditiesPurchase", "C_CVar.GetCVar",
+  "C_CVar.GetCVarBitfield", "C_CVar.GetCVarBool", "C_CVar.SetCVar", "C_CVar.SetCVarBitfield",
+  "C_CampaignInfo.GetCampaignChapterInfo", "C_CampaignInfo.GetCampaignID", "C_CampaignInfo.GetCampaignInfo",
+  "C_CampaignInfo.GetCurrentChapterID", "C_CampaignInfo.IsCampaignQuest", "C_ChallengeMode.GetAffixInfo",
+  "C_ChallengeMode.GetMapUIInfo", "C_ChatBubbles.GetAllChatBubbles", "C_ChatInfo.SendChatMessage",
+  "C_ClickBindings.ExecuteBinding", "C_ClickBindings.GetBindingType", "C_ClickBindings.SetProfileByInfo",
+  "C_Container.GetContainerItemInfo", "C_Container.GetContainerItemQuestInfo",
+  "C_Container.GetContainerNumFreeSlots", "C_Container.GetContainerNumSlots", "C_Container.UseContainerItem",
+  "C_ContentTracking.GetCurrentTrackingTarget", "C_ContentTracking.GetObjectiveText", "C_ContentTracking.GetTitle",
+  "C_ContentTracking.GetTrackedIDs", "C_ContentTracking.StopTracking", "C_DamageMeter.GetCombatSessionFromType",
+  "C_DamageMeter.GetSessionDurationSeconds", "C_EventUtils.IsEventValid", "C_GossipInfo.SelectActiveQuest",
+  "C_GossipInfo.SelectAvailableQuest", "C_GossipInfo.SelectOption", "C_GossipInfo.SelectOptionByIndex",
+  "C_Item.DoesItemExist", "C_Item.GetDetailedItemLevelInfo", "C_Item.GetItemCount", "C_Item.GetItemID",
+  "C_Item.GetItemIcon", "C_Item.GetItemInfo", "C_Item.GetItemInfoInstant", "C_Item.GetItemQualityColor",
+  "C_Item.GetItemStats", "C_Item.GetStackCount", "C_Item.GetWeaponEnchantInfo", "C_Item.IsEquippableItem",
+  "C_MajorFactions.GetMajorFactionData", "C_MajorFactions.HasMaximumRenown", "C_Map.GetBestMapForUnit",
+  "C_Map.GetPlayerMapPosition", "C_MerchantFrame.GetItemInfo", "C_MerchantFrame.IsMerchantItemRefundable",
+  "C_NeighborhoodInitiative.GetInitiativeTaskInfo", "C_NeighborhoodInitiative.RemoveTrackedInitiativeTask",
+  "C_PartyInfo.DoCountdown", "C_PerksActivities.GetPerksActivityInfo",
+  "C_PerksActivities.RemoveTrackedPerksActivity", "C_PlayerInfo.CanUseItem",
+  "C_QuestInfoSystem.GetQuestRewardSpellInfo", "C_QuestInfoSystem.GetQuestRewardSpells", "C_QuestLog.AddQuestWatch",
+  "C_QuestLog.GetDistanceSqToQuest", "C_QuestLog.GetInfo", "C_QuestLog.GetLogIndexForQuestID",
+  "C_QuestLog.GetQuestDifficultyLevel", "C_QuestLog.GetQuestIDForQuestWatchIndex",
+  "C_QuestLog.GetQuestIDForWorldQuestWatchIndex", "C_QuestLog.GetQuestObjectives",
+  "C_QuestLog.GetQuestRewardCurrencies", "C_QuestLog.GetQuestWatchType", "C_QuestLog.GetTimeAllowed",
+  "C_QuestLog.IsComplete", "C_QuestLog.IsFailed", "C_QuestLog.IsPushableQuest", "C_QuestLog.IsQuestFlaggedCompleted",
+  "C_QuestLog.IsRepeatableQuest", "C_QuestLog.IsWorldQuest", "C_QuestLog.RemoveQuestWatch",
+  "C_QuestLog.RemoveWorldQuestWatch", "C_QuestLog.SetSelectedQuest", "C_QuestLog.UnitIsRelatedToActiveQuest",
+  "C_Reputation.IsMajorFaction", "C_ScenarioInfo.GetCriteriaInfo", "C_ScenarioInfo.GetScenarioStepInfo",
+  "C_Secrets.CanCompareUnitTokens", "C_Secrets.ShouldUnitAuraInstanceBeSecret",
+  "C_Secrets.ShouldUnitThreatValuesBeSecret", "C_SkillInfo.GetSkillLineInfoByID",
+  "C_SpecializationInfo.GetActiveSpecGroup", "C_SpecializationInfo.GetSpecialization",
+  "C_SpecializationInfo.GetSpecializationInfo", "C_Spell.PickupSpell", "C_SpellBook.GetSpellBookItemInfo",
+  "C_SpellBook.GetSpellBookItemName", "C_SpellBook.GetSpellBookSkillLineInfo", "C_SpellBook.IsSpellInSpellBook",
+  "C_SpellBook.IsSpellKnown", "C_SwingTimer.EnableRangeCheck", "C_SwingTimer.IsTargetWithinSwingRange",
+  "C_TaskQuest.GetQuestInfoByQuestID", "C_TaskQuest.GetQuestZoneID", "C_Texture.GetAtlasInfo", "C_Timer.After",
+  "C_Timer.NewTicker", "C_Timer.NewTimer", "C_TooltipInfo.GetUnit", "C_TradeSkillUI.GetProfessionInfoBySkillLineID",
+  "C_TradeSkillUI.GetRecipeSchematic", "C_TradeSkillUI.GetRecipesTracked", "C_TradeSkillUI.OpenRecipe",
+  "C_TradeSkillUI.SetRecipeTracked", "C_UIWidgetManager.GetAllWidgetsBySetID",
+  "C_UIWidgetManager.GetScenarioHeaderDelvesWidgetVisualizationInfo", "C_UnitAuras.AddPrivateAuraAnchor",
+  "C_UnitAuras.RemovePrivateAuraAnchor", "C_WeeklyRewards.GetActivities", "CanBeRaidTarget", "GetCombatRating",
+  "GetCombatRatingBonus", "GetComboPoints", "GetPowerRegenForPowerType", "GetRaidTargetIndex", "GetRealZoneText",
+  "GetRuneCooldown", "GetStringFromModifiers", "GetTotemDuration", "GetTotemInfo", "GetUnitChargedPowerPoints",
+  "GetUnitEmpowerHoldAtMaxTime", "GetUnitEmpowerStageDuration", "SetPortraitTexture", "SetRaidTarget",
+  "SetUnitCursorTexture", "UnitAffectingCombat", "UnitCastingInfo", "UnitChannelInfo", "UnitClass",
+  "UnitClassification", "UnitDefenseSkill", "UnitDetailedThreatSituation", "UnitEffectiveLevel", "UnitExists",
+  "UnitFactionGroup", "UnitGUID", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs",
+  "UnitGroupRolesAssigned", "UnitHealth", "UnitHealthMax", "UnitHealthMissing", "UnitHealthPercent", "UnitHonor",
+  "UnitHonorLevel", "UnitHonorMax", "UnitInRange", "UnitIsAFK", "UnitIsConnected", "UnitIsDeadOrGhost",
+  "UnitIsFeignDeath", "UnitIsGhost", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsPlayer", "UnitIsTapDenied",
+  "UnitIsUnit", "UnitLevel", "UnitNameplateShowsWidgetsOnly", "UnitOnTaxi", "UnitPartialPower",
+  "UnitPlayerControlled", "UnitPower", "UnitPowerDisplayMod", "UnitPowerMax", "UnitPowerType",
+  "UnitQuestTrivialLevelRange", "UnitReaction", "UnitStagger", "UnitThreatSituation", "UnitXP", "UnitXPMax"
+}
+
+-- A call that refuses a secret argument from addon code, at the addon's line; the game's and the tests' code pass.
+local function secretArgsRefused(name, call)
+  -- The call as the client runs it.
+  local wrapped = function(...)
+    local i = __wfgSecretAt(...)
+    if i then
+      local at = callerOf(1)
+      if byAddon(at) then error(string.format("%s: bad argument #%d to '?' (Usage: %s(). Secret values are only allowed during untainted execution for this argument.)", where(at), i, name), 0) end
+    end
+    return call(...)
+  end
+  stub.transparent[wrapped] = true
+  return wrapped
+end
+
+-- Wraps each listed call the client has (a Retail world's own stubs included): lua-harness.mjs runs it before the addon loads.
+function world.refuseSecretArgs()
+  for _, name in ipairs(UNTAINTED_ARGS) do
+    local space, key = name:match("^(.-)%.?([^.]+)$")
+    local holder = space == "" and _G or _G[space]
+    if type(holder) == "table" and type(rawget(holder, key)) == "function" then rawset(holder, key, secretArgsRefused(name, holder[key])) end
+  end
+end
+
 -- Secret geometry ---------------------------------------------------------------------------
 -- The client hides a region's position and size from addons when they come from a
 -- secret: a status bar's fill while its value is secret, a font string showing secret
