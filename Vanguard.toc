@@ -111,6 +111,7 @@ Core/FactionArt.lua
 Core/Inspect.lua
 Core/Slash.lua
 Core/Feedback.lua
+Core/BugLog.lua
 Core/Perf.lua
 Core/Graphics.lua
 Core/GameMenu.lua

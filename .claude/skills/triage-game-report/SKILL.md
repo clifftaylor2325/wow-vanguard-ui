@@ -1,6 +1,6 @@
 ---
 name: triage-game-report
-description: "Turn what Cliff pastes from the game (a /vg report block, /vg errors lines, smoke-test step results, a batch checklist) into issues, closed issues and fixes. Use when a message quotes \"### Vanguard report v1 ###\", a step id like 9.4, or /vg errors output."
+description: "Turn what Cliff pastes from the game (a /vg report block, /vg errors lines, smoke-test step results, a batch checklist) into issues, closed issues and fixes. Use when a message quotes \"### Vanguard report v1 ###\", a step id like 9.4, or /vg errors output, or when Cliff says to find or read the logs (the bug log) on his computer."
 ---
 
 # Triage a game report
@@ -18,6 +18,16 @@ The in-game check is the only ground truth this project has, and Cliff's time in
 7. **A batch checklist** (an open issue Cliff names, if there is one) is ticked item by item with the paste's version in the tick's comment, and each item's result goes in the ledger; an item that could not be run is left unticked with why. An API probe's answer (what `type()` returns for a secret, whether addon messages work in instances) goes into the harness or the plan it was blocking, in its own PR, and the issue comment links that PR.
 8. **Then the fixes**, highest crash risk first, each by `fix-bug` or `fix-visual-issue`, one branch per issue. A fix for an error only the game showed runs the whole suite locally before it merges, as every PR does.
 9. **Reply** with one line per error (issue link, what it is, what is next) and the facts recorded. No fix is claimed as seen; every PR from a report says "Needs in-game check" with the step to rerun.
+
+## The bug log on Cliff's computer
+
+When Cliff says to find, read or pull the logs from his machine, the source is Vanguard's bug log (`Core/BugLog.lua`), not a paste. Nothing here needs him to copy anything.
+
+1. **Where it is**: the account's saved variables, `<WoW folder>\_forever_\WTF\Account\<account>\SavedVariables\Vanguard.lua` (`_retail_` for Retail), the table `VanguardDB.bugLog`; `Vanguard.lua.bak` beside it is the write before. Read it through the device's folder access (the WoW folder is one Cliff approves); list `WTF\Account` first when the account folder's name is not known. The game writes the file only at logout or `/reload`, so if the newest entry is older than what he describes, ask him to `/reload` once and read again.
+2. **What an entry holds**: `kind` (`error`, `quiet` for a client call that fell back, `blocked`, `paused`, `note` for a skin left off, `mark` for a bug he noted with `/vg bug` or Note a bug), `text`, `count`, `first` and `last` (his computer's local time), `session`, `version`, `client`, `profile`, `who`, `class`, `level`, `zone`, `instance`, `combat`, `group`, and for an error the top of its `stack`. A detailed kind also has `state` (the `/vg report` head lines without the first, then the group, target, pet and open windows), `layout` (each shown movable frame's size, place and scale, then the ones not shown) and `trail` (what happened just before, oldest first). A `mark` adds `mouse` (the `/vg frame` lines of what the mouse was over) and `errors` (how many this session had kept).
+3. **Screenshots**: every `mark`, and an error with `shot = true`, has a file in `<client folder>\Screenshots` named `WoWScrnShot_MMDDYY_HHMMSS` by the same local time as the entry's `first`; read the one whose time matches (a second or two later).
+4. **Then triage as a paste**: an entry is a `/vg errors` line with its report already attached, so steps 2 to 9 above apply as they are. Group entries by `version` first: one from an older version than the fix is not a regression. A `mark` with no error near it in the list is a `fix-visual-issue` or `fix-bug` task, and its `mouse`, `layout` and screenshot are the evidence to start from.
+5. **Afterwards** tell Cliff which entries became which issue, and that Clear the bug log on the Feedback page empties it once he has read the reply; never edit or delete the file yourself.
 
 ## Do not
 

@@ -82,6 +82,18 @@ function I.Rect(w)
   return "at " .. safe(left) .. ", " .. safe(bottom)
 end
 
+-- Whether a widget is shown, as far as the client says: true only for a plain yes.
+function I.IsShown(w)
+  return get(w, "IsShown") == "yes"
+end
+
+-- A frame's state in brief, for a list of many frames (the bug log's layout): visible, effective alpha and
+-- scale, size and rect.
+function I.Brief(f)
+  return string.format("visible %s, alpha %s, scale %s, %s x %s %s", get(f, "IsVisible"), get(f, "GetEffectiveAlpha"),
+    get(f, "GetEffectiveScale"), get(f, "GetWidth"), get(f, "GetHeight"), I.Rect(f))
+end
+
 -- One line of a frame's state: shown, visible, alpha, scale, size, rect, strata, level and parent.
 function I.StateLine(f)
   local parent = parentOf(f)
