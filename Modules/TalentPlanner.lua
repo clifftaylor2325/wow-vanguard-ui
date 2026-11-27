@@ -919,7 +919,7 @@ local function orderFoot(f)
   f.reset:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
--- Builds the order window (hidden; out of combat): a dialog with the list, the hint and the reset button.
+-- Builds the order window (hidden): a dialog with the list, the hint and the reset button.
 function TP.BuildOrder()
   local height = T.CONTROL.inset + T.SPACE.col + TP.ORDER_ROWS * T.ROW.height + 2 * T.SPACE.col + T.BUTTON_H + 2 * T.SPACE.pad + 2 * T.SPACE.section
   local f = ns.Dialog("Vanguard_TalentOrder", TP.ORDER_WIDTH, height, L["Talent plan order"])
@@ -929,13 +929,10 @@ function TP.BuildOrder()
   return f
 end
 
--- Opens or closes the order window (built the first time, out of combat; in a fight it opens when the fight ends).
+-- Opens or closes the order window (built the first time, in a fight too: it is Vanguard's own unprotected dialog).
 function TP.ToggleOrder()
   if not TP.settings then return ns.Chat(L["The Talent planner is off (/vg > Modules)."]) end
-  if not TP.orderFrame then
-    if ns.InCombat() then return ns.OutOfCombat(TP.ToggleOrder, "talentorder") end
-    TP.BuildOrder()
-  end
+  if not TP.orderFrame then TP.BuildOrder() end
   TP.orderFrame:SetShown(not TP.orderFrame:IsShown())
   TP.RefreshOrder()
 end

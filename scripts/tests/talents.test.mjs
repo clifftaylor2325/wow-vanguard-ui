@@ -626,7 +626,9 @@ it("talent planner: Move up on the first row (or Move down on the last) leaves t
   expect(addon.eval(`return table.concat(${TP}.OrderedIDs(${TP}.ReadTree(), ${TP}.Plan()), ",")`), "a talent planned later keeps its top-row place").toBe("101,102,201");
 });
 
-it("talent planner: the bar's Order button and /vg talents order open the window; import and clear drop the order; nothing is built in combat", () => {
+// H63-1-62: the order window is Vanguard's own dialog (Core/Dialog.lua: a plain CreateFrame("Frame", name, UIParent),
+// no template, no secure child), so it opens in a fight with the taint checks on and no blocked call.
+it("talent planner: the bar's Order button and /vg talents order open the window; import and clear drop the order; it opens in a fight too", () => {
   const addon = open();
   addon.eval("Vanguard_TalentPlan.order:GetScript('OnClick')(Vanguard_TalentPlan.order)");
   expect(addon.eval(`return ${TP}.orderFrame:IsShown()`), "the bar's button").toBe(true);
@@ -638,12 +640,11 @@ it("talent planner: the bar's Order button and /vg talents order open the window
   addon.eval(`${TP}.Plan().order = { 102 } ${TP}.Clear()`);
   expect(addon.eval(`return ${TP}.Plan().order == nil`), "a cleared plan has none either").toBe(true);
   const fresh = open();
-  fresh.eval("InCombatLockdown = function() return true end");
+  setCombat(fresh, true);
   fresh.eval(`${TP}.ToggleOrder()`);
-  expect(fresh.eval(`return ${TP}.orderFrame == nil`), "in a fight nothing is built").toBe(true);
-  fresh.eval("InCombatLockdown = function() return false end");
-  fresh.fire("PLAYER_REGEN_ENABLED");
-  expect(fresh.eval(`return ${TP}.orderFrame ~= nil and ${TP}.orderFrame:IsShown()`), "it opens when the fight ends").toBe(true);
+  expect(fresh.eval(`return { ${TP}.orderFrame ~= nil and ${TP}.orderFrame:IsShown(), ns.QueuedCount() }`), "first opened in a fight: built and shown at once, nothing queued").toEqual([true, 0]);
+  setCombat(fresh, false);
+  expect(fresh.eval(`return ${TP}.orderFrame:IsShown()`), "still open when the fight ends").toBe(true);
 });
 
 // The order window opened with three talents planned (the longest name 26 characters with its place and count) in a
