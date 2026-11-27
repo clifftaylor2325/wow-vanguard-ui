@@ -6,7 +6,8 @@
    compare" error), so VG_USE and VG_ORDER give the refusal the metatable would have.
    VG_TRUTH and VG_COMPARE are the client's refusals that no metamethod can make, as
    scripts/lib/lua-secret-ops.mjs puts them in fengari's VM: a truth test or `not` on a secret boolean,
-   and `==` / `~=` with a secret, in the addon's own chunks only.
+   and `==` / `~=` with a secret, in the addon's own chunks only. VG_KEY is the same for a secret used as a table
+   key (`t[secret]`, `t[secret] = v`).
    vg_keep_frames is for lparser.c: the addon's chunks compile without tail calls (scripts/lib/lua-keep-frames.mjs). */
 #ifndef vg_hooks_h
 #define vg_hooks_h
@@ -18,6 +19,7 @@ extern Table *vg_secret_meta;
 
 void vg_truth (lua_State *L, const TValue *v, int negate);
 void vg_compare (lua_State *L);
+void vg_key (lua_State *L);
 void vg_use (lua_State *L);
 int vg_keep_frames (const TString *source);
 
@@ -28,6 +30,8 @@ int vg_keep_frames (const TString *source);
   { if (vg_secret_on && vg_is_secret(v)) { (L)->savedpc = (pc); vg_truth(L, v, neg); } }
 #define VG_COMPARE(L,a,b,pc) \
   { if (vg_secret_on && (vg_is_secret(a) || vg_is_secret(b))) { (L)->savedpc = (pc); vg_compare(L); } }
+#define VG_KEY(L,k,pc) \
+  { if (vg_secret_on && vg_is_secret(k)) { (L)->savedpc = (pc); vg_key(L); } }
 #define VG_USE(L,v,pc) \
   { if (vg_is_secret(v)) { (L)->savedpc = (pc); vg_use(L); } }
 #define VG_ORDER(L,a,b) \

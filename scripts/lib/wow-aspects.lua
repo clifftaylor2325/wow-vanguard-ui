@@ -250,6 +250,43 @@ local function plainValues(...)
   return unpackN(out, 1, out.n)
 end
 
+-- Text made from a secret ------------------------------------------------------------------------------
+-- string.format with a secret argument gives a secret string, and tostring of a secret gives one too: neither raises.
+-- Blizzard_ScriptErrorsFrame/Blizzard_ScriptErrorsFrame.lua (live :95-105, forever :100-110) checks issecretvalue on a message key
+-- "formatted with a secret value", and Blizzard_SharedXML/Dump.lua (both clients), whose comment calls the
+-- dump code tainted (:183), runs tostring and string.format("%q") on secret values (prepSimple :97-114,
+-- DevTools_DumpValue :312-313). Only the addon's code gets the secret back: the harness and the tests read the plain text.
+
+local SECRET_META = getmetatable(world.secret(0))
+-- Lua's own two, kept as fields so an error inside them still names 'format' or 'tostring'.
+local raw = { tostring = tostring, format = string.format }
+
+-- Whether a value is a secret world.secret made (a test's plain stand-in is left to Lua).
+local function madeSecret(v)
+  return type(v) == "table" and getmetatable(v) == SECRET_META
+end
+
+-- Each secret world.secret made as the plain value it hides.
+local function hiddenValues(...)
+  local out = pack(...)
+  for i = 1, out.n do
+    if madeSecret(out[i]) then out[i] = rawget(out[i], "n") end
+  end
+  return unpackN(out, 1, out.n)
+end
+
+-- tostring as the client runs it.
+_G.tostring = function(v)
+  if madeSecret(v) and byAddon(callerOf(1)) then return world.secret(raw.tostring(rawget(v, "n"))) end
+  return raw.tostring(v)
+end
+
+-- string.format as the client runs it: a secret anywhere in it makes the result secret.
+string.format = function(fmt, ...)
+  if (madeSecret(fmt) or secretAt(...)) and byAddon(callerOf(1)) then return world.secret(raw.format(hiddenValues(fmt, ...))) end
+  return raw.format(fmt, ...)
+end
+
 -- Wrapping -------------------------------------------------------------------------------------------
 
 -- The geometry getters wow-taint.lua's GEOMETRY leaves out that the docs also mark SecretWhenAnchoringSecret

@@ -361,6 +361,12 @@ void vg_compare (lua_State *L) {
   if (addon_running(L)) luaG_runerror(L, "attempt to compare a secret value");
 }
 
+/* A secret as a table key, read or written: Blizzard_ScriptErrorsFrame.lua (both clients) says tainted code "would
+   trigger a Lua error when indexing 'seen' with a secret value" (live :95-103, forever :100-108). The text is the harness's own. */
+void vg_key (lua_State *L) {
+  if (addon_running(L)) luaG_runerror(L, "attempt to use a secret value as a table key");
+}
+
 void vg_use (lua_State *L) {
   luaG_runerror(L, "attempt to use a secret value");
 }

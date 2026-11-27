@@ -42,6 +42,8 @@ const PATCHES = [
   ["          case LUA_TTABLE: {\n            setnvalue(ra, cast_num(luaH_getn(hvalue(rb))));", "          case LUA_TTABLE: {\n            VG_USE(L, rb, pc);\n            setnvalue(ra, cast_num(luaH_getn(hvalue(rb))));"],
   ["        TValue *rc = RKC(i);\n        Protect(\n          if (equalobj(L, rb, rc)", "        TValue *rc = RKC(i);\n        VG_COMPARE(L, rb, rc, pc);\n        Protect(\n          if (equalobj(L, rb, rc)"],
   ["      case OP_TEST: {\n", "      case OP_TEST: {\n        VG_TRUTH(L, ra, pc, 0);\n"],
+  ["      case OP_GETTABLE: {\n", "      case OP_GETTABLE: {\n        VG_KEY(L, RKC(i), pc);\n"],
+  ["      case OP_SETTABLE: {\n", "      case OP_SETTABLE: {\n        VG_KEY(L, RKB(i), pc);\n"],
   ["        TValue *rb = RB(i);\n        if (l_isfalse(rb) != GETARG_C(i)) {", "        TValue *rb = RB(i);\n        VG_TRUTH(L, rb, pc, 0);\n        if (l_isfalse(rb) != GETARG_C(i)) {"],
 ];
 

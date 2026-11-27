@@ -1,8 +1,8 @@
 // The client's refusals on secret values that Lua 5.1 has no metamethod for, put into the TEST-ONLY VM.
 // A harness secret is a table (wow-world.lua's world.secret), so arithmetic, ordering, concatenation,
 // length, calls and field reads already raise through its metatable. Three operations never reach a
-// metatable: a truth test (`if v`, `v and x`, `v or x`), `not v`, and `==` / `~=` against a value of
-// another type. The client refuses all three in tainted code: "attempt to perform boolean test on a
+// metatable: a truth test (`if v`, `v and x`, `v or x`), `not v`, `==` / `~=` against a value of
+// another type, and a secret used as a table key. The client refuses all three in tainted code: "attempt to perform boolean test on a
 // secret value" (on a secret boolean: a secret number or string tests true, warcraft.wiki.gg Secret
 // Values), "attempt to negate a secret value" and "attempt to compare a secret value".
 //
@@ -44,6 +44,10 @@ const PATCHES = [
     "case OP_EQ: {\n                let eb = RKB(L, base, k, i), ec = RKC(L, base, k, i);\n                if (secretOps.on && (eb.ttistable() || ec.ttistable())) secretOps.compare(L, eb, ec);\n                if (luaV_equalobj(L, eb, ec) !== i.A)"],
   ["case OP_TEST: {\n                if (i.C ?",
     "case OP_TEST: {\n                if (secretOps.on && L.stack[ra].ttistable()) secretOps.test(L, L.stack[ra]);\n                if (i.C ?"],
+  ["case OP_GETTABLE: {\n                let rb = L.stack[RB(L, base, i)];\n                let rc = RKC(L, base, k, i);\n",
+    "case OP_GETTABLE: {\n                let rb = L.stack[RB(L, base, i)];\n                let rc = RKC(L, base, k, i);\n                if (secretOps.on && rc.ttistable()) secretOps.key(L, rc);\n"],
+  ["case OP_SETTABLE: {\n                let table = L.stack[ra];\n                let key = RKB(L, base, k, i);\n",
+    "case OP_SETTABLE: {\n                let table = L.stack[ra];\n                let key = RKB(L, base, k, i);\n                if (secretOps.on && key.ttistable()) secretOps.key(L, key);\n"],
   ["let rb = L.stack[rbIdx];\n                if (i.C ? rb.l_isfalse()",
     "let rb = L.stack[rbIdx];\n                if (secretOps.on && rb.ttistable()) secretOps.test(L, rb);\n                if (i.C ? rb.l_isfalse()"],
 ];
@@ -115,6 +119,12 @@ OPS.negate = (L, tv) => {
 // `==` or `~=` with a secret on either side.
 OPS.compare = (L, a, b) => {
   if ((a.ttistable() && isSecret(a)) || (b.ttistable() && isSecret(b))) refuse(L, "attempt to compare a secret value");
+};
+
+// A secret as a table key, read or written: Blizzard_ScriptErrorsFrame.lua (both clients) says tainted code "would
+// trigger a Lua error when indexing 'seen' with a secret value" (live :95-103, forever :100-108). The text is the harness's own.
+OPS.key = (L, tv) => {
+  if (isSecret(tv)) refuse(L, "attempt to use a secret value as a table key");
 };
 
 // Marks the table given as the secrets' metatable: wow-world.lua calls __wfgMarkSecretMeta(SECRET) once per state.

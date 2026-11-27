@@ -195,3 +195,28 @@ it("a widget holding ObjectSecurity answers the addon's IsForbidden, IsProtected
   expect(tryAddon(addon, "if __w:IsForbidden() then return 1 end"), "a truth test of the hidden answer raises").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to perform boolean test on a secret value"]);
   expect(addon.eval("return { __w:IsForbidden(), __w:CanBeAccessedInContext() }"), "test code reads the plain answers").toEqual([false, true]);
 });
+
+// H63-4-2: tainted code that indexes a table with a secret raises (Interface/AddOns/Blizzard_ScriptErrorsFrame/
+// Blizzard_ScriptErrorsFrame.lua :95-103, both clients: "would trigger a Lua error when indexing 'seen' with a secret value").
+it("the addon's read or write of a table with a secret key raises; game and test code may use one", () => {
+  const addon = createAddon();
+  addon.eval("__k = __wfgWorld.secret(7) __t = {}");
+  const text = "Modules/TEST-ONLY.lua:1: attempt to use a secret value as a table key";
+  expect(tryAddon(addon, "return __t[__k]"), "a read").toEqual([false, text]);
+  expect(tryAddon(addon, "__t[__k] = 1"), "a write").toEqual([false, text]);
+  expect(tryAddon(addon, "__t[7] = 1 return __t[7]"), "a plain key as ever").toEqual([true, 1]);
+  expect(addon.eval("__t[__k] = 2 return __t[__k]"), "test code may").toBe(2);
+});
+
+// H63-4-2: string.format with a secret gives a secret string (Blizzard_ScriptErrorsFrame.lua :95-105, a message key
+// "formatted with a secret value" tested with issecretvalue), and the tainted dump code runs tostring and string.format on
+// secrets without an error (Blizzard_SharedXML/Dump.lua :183, prepSimple :97-114, :312-313); both clients.
+it("the addon's tostring and string.format of a secret give secret text; plain values and game code read as ever", () => {
+  const addon = createAddon();
+  addon.eval("__n = __wfgWorld.secret(42)");
+  expect(asAddon(addon, `local s = issecretvalue
+    return { s(tostring(__n)), s(string.format('%d hp', __n)), s(('%s'):format(__n)), s(string.format(__wfgWorld.secret('%d'), 1)), s(string.format('%d', 3)), tostring(3) }`),
+  "secret text from a secret, plain from plain").toEqual([true, true, true, true, false, "3"]);
+  expect(tryAddon(addon, "return tostring(__n) == '42'"), "comparing the text raises").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to compare a secret value"]);
+  expect(addon.eval("return { issecretvalue(tostring(__n)), (pcall(string.format, '%d', __n)) }"), "test code gets Lua's own answers").toEqual([false, false]);
+});
