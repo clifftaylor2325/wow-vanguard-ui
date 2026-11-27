@@ -244,6 +244,7 @@ it("state drivers and unit watches from addon code are blocked in a fight at the
   const addon = createAddon();
   addon.eval('CreateFrame("Frame", "TestDriven", UIParent)');
   const DRIVE = "RegisterStateDriver(TestDriven, 'page', '1') RegisterAttributeDriver(TestDriven, 'x', '2') RegisterUnitWatch(TestDriven)";
+  // What the frame has registered: the page state, the x attribute driver, the unit watch.
   const read = () => addon.eval("return { TestDriven.__states and TestDriven.__states.page or false, TestDriven.__drivers and TestDriven.__drivers.x or false, TestDriven.__watched == true }");
   addon.world.combat(true);
   asAddon(addon, DRIVE);
@@ -260,4 +261,43 @@ it("state drivers and unit watches from addon code are blocked in a fight at the
   asAddon(addon, "UnregisterStateDriver(TestDriven, 'page') UnregisterAttributeDriver(TestDriven, 'x') UnregisterUnitWatch(TestDriven)");
   expect(addon.eval("return #__wfgStub.violations"), "out of a fight nothing is blocked").toBe(0);
   expect(read()).toEqual([false, false, false]);
+});
+
+// Every aura button a container makes carries DenyTaintedAccessWhenAurasAreSecret, the container none
+// (Interface/AddOns/Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua:298, Blizzard_AuraContainerShared.lua:108,
+// Blizzard_AuraContainerUtil.lua:403-419, both clients): the button refuses addon code whenever aura information is
+// secret, in a fight or out of one, with no test holding anything.
+it("an aura button refuses addon code whenever aura information is secret, out of a fight too; its container stays open", () => {
+  const addon = createAddon();
+  addon.login();
+  addon.eval(`TestBox = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    TestBox:AddAuraGroup("g", "HELPFUL", { maxFrameCount = 40, layout = {} })
+    TestBox:SetUnit("player") TestBox:SetEnabled(true) TestButton = TestBox.__groups[1].buttons[1]`);
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(tryAddon("TestButton:SetAlpha(0.5) return TestButton:CanBeAccessedInContext()"), "plain: open").toEqual([true, true]);
+  addon.eval("__wfgWorld.aurasSecret = true");
+  expect(tryAddon("TestButton:SetAlpha(0.5)"), "secret, out of a fight: refused").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
+  expect(tryAddon("return TestButton:IsForbidden() or TestButton:CanBeAccessedInContext()"), "not forbidden, not reachable").toEqual([true, false]);
+  expect(tryAddon("TestBox:SetAlpha(0.5) return TestBox:CanBeAccessedInContext()"), "the container stays open").toEqual([true, true]);
+  expect(addon.eval("TestButton:SetAlpha(0.25) return TestButton:GetAlpha()"), "test code still reaches it").toBe(0.25);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  expect(tryAddon("TestButton:SetAlpha(0.5) return TestButton:GetAlpha()"), "plain again: open").toEqual([true, 0.5]);
+});
+
+it("an aura button made before login is restricted from PLAYER_ENTERING_WORLD on", () => {
+  const addon = createAddon();
+  addon.eval(`TestBox = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    TestBox:AddAuraGroup("g", "HELPFUL", { maxFrameCount = 40, layout = {} }) TestButton = TestBox.__groups[1].buttons[1]
+    __wfgWorld.aurasSecret = true`);
+  // Whether addon code may reach the button now.
+  const reach = () => addon.eval(`return assert(loadstring("return TestButton:CanBeAccessedInContext()", "@Modules/TEST-ONLY.lua"))()`);
+  expect(reach(), "before login: not yet restricted").toBe(true);
+  addon.fire("ADDON_LOADED", "Vanguard");
+  addon.fire("PLAYER_LOGIN");
+  expect(reach(), "logging in alone does not restrict it").toBe(true);
+  addon.fire("PLAYER_ENTERING_WORLD", true, false);
+  expect(reach(), "entering the world does").toBe(false);
+  addon.eval(`TestBox:AddAuraGroup("h", "HARMFUL", { maxFrameCount = 40, layout = {} }) TestButton = TestBox.__groups[2].buttons[1]`);
+  expect(reach(), "a button made after login is restricted at once").toBe(false);
 });
