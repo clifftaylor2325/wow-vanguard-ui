@@ -109,7 +109,11 @@ it("#201 the combined bag: a drag strip along its top, and its place kept when t
   expect(saved(addon).ContainerFrameCombinedBags, "saved in UIParent's units").toEqual({ x: 200, y: 800 });
 });
 
-it("#201 nothing moves in combat: a drag doesn't start, putting back waits until the fight ends, and so does setting up a window that loads", () => {
+// H63-1-61: the character pane holds no secure template on either client (Interface/AddOns/Blizzard_UIPanels_Game/
+// Camelot/CharacterFrame.xml CharacterFrame on Forever, Mainline/CharacterFrame.xml on Retail), so the game's
+// placing it in a fight is undone at once (ClearAllPoints and SetPoint are refused only on a protected frame:
+// Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua, IsProtectedFunction).
+it("#201 H63-1-61 in combat: a drag doesn't start, a moved window the game does not protect is put back at once, a window that loads is set up after the fight", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("__open(CharacterFrame)");
   drag(addon, "CharacterFrame", 500, 700);
@@ -117,12 +121,12 @@ it("#201 nothing moves in combat: a drag doesn't start, putting back waits until
   expect(drag(addon, "CharacterFrame", 900, 300), "no drag in combat").toBe(false);
   expect(saved(addon).CharacterFrame, "and nothing saved").toEqual({ x: 500, y: 700 });
   addon.eval("UpdateUIPanelPositions()");
-  expect(corner(addon, "CharacterFrame"), "the game placed it in combat: left there for now").toEqual([16, 964]);
+  expect([corner(addon, "CharacterFrame"), addon.eval("return ns.QueuedCount()")], "the game placed it in combat: put back at once, nothing queued").toEqual([[500, 700], 0]);
   addon.eval('__window("LFGParentFrame") LFGParentFrame:SetSize(300, 400)');
   addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   expect(addon.eval("return ns.FrameState('vgMoveHandle')[LFGParentFrame] == nil"), "a window that loads in combat is set up after it").toBe(true);
   setCombat(addon, false);
-  expect(corner(addon, "CharacterFrame"), "put back when the fight ends").toEqual([500, 700]);
+  expect(corner(addon, "CharacterFrame"), "still on its place when the fight ends").toEqual([500, 700]);
   expect(addon.eval("return ns.FrameState('vgMoveHandle')[LFGParentFrame] ~= nil and ns.FrameState('vgMoveHandle')[LFGParentFrame].__mouse"), "the loaded window has its drag area").toBe(true);
   expect(errors(addon)).toBe("none");
 });
@@ -141,6 +145,26 @@ const holdBoth = (addon) => addon.eval(`local h = ns.FrameState('vgMoveHandle')[
 
 // Whether each window still follows the mouse: the character pane, then the calendar.
 const following = (addon) => addon.eval("return { CharacterFrame.__moving == true, CalendarFrame.__moving == true }");
+
+// Drags the character pane to 500, 700, then has the game place it in a fight: its corner then and after the fight.
+const placedInFight = (addon) => {
+  addon.eval("__open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  setCombat(addon, true);
+  addon.eval("UpdateUIPanelPositions()");
+  const during = corner(addon, "CharacterFrame");
+  setCombat(addon, false);
+  return [during, corner(addon, "CharacterFrame"), errors(addon)];
+};
+// H63-1-61: a window the client protects through a secure button inside it (the spellbook's assisted rotation
+// button, Interface/AddOns/Blizzard_UIPanelTemplates/Shared/UIPanelSpellButtonFrame.xml: Button inherits
+// SecureFrameTemplate) keeps the wait, and so does one whose IsProtected answer is hidden (secret for ObjectSecurity,
+// SimpleScriptRegionAPIDocumentation.lua): no blocked call.
+it("H63-1-61 in combat: a moved window the client protects, or whose answer is hidden, waits for the fight to end", () => {
+  expect(placedInFight(loggedIn(SECURE_MOVE_ENV)), "protected: the game's spot in the fight, put back after it").toEqual([[16, 964], [500, 700], "none"]);
+  const hidden = loggedIn(MOVE_ENV + "CharacterFrame.IsProtected = function() return __wfgWorld.secret(false) end");
+  expect(placedInFight(hidden), "a hidden answer: the same").toEqual([[16, 964], [500, 700], "none"]);
+});
 
 it("a drag still held as a fight starts ends before the lockdown, where the window is; letting go in the fight does nothing", () => {
   const addon = loggedIn(SECURE_MOVE_ENV);

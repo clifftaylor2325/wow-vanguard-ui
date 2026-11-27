@@ -105,7 +105,7 @@ function GW.SavePlace(key, frame)
 end
 
 -- Puts a frame on the place saved under key; nothing when there is none, or when the client hides the frame's scale.
--- The caller keeps it out of combat.
+-- The caller keeps it out of a fight while the client protects the frame (ns.FrameWaits).
 function GW.PutBack(key, frame)
   local at, scale = GW.Moved()[key], ns.PlainNumber(frame:GetScale())
   if not scale or type(at) ~= "table" or type(at.x) ~= "number" or type(at.y) ~= "number" then return end
@@ -115,12 +115,13 @@ end
 
 -- Putting windows back ----------------------------------------------------------------------------
 
--- Puts one window back on its saved place (not while it's being dragged), out of combat: in a fight
--- it waits, once per window, until the fight ends.
+-- Puts one window back on its saved place (not while it's being dragged), in a fight too; one the client protects
+-- then (a window holding secure buttons, such as the spellbook's) waits, once per window, until the fight ends.
 local function place(name)
   local frame = _G[name]
   if type(frame) ~= "table" or not vgMovable[frame] or vgDragging[frame] or not GW.Moved()[name] then return end
-  ns.OutOfCombat(function() GW.PutBack(name, frame) end, "move " .. name)
+  if ns.FrameWaits(frame) then return ns.OutOfCombat(function() GW.PutBack(name, frame) end, "move " .. name) end
+  GW.PutBack(name, frame)
 end
 
 -- Every window that can be moved: the ones with a drag area, then the ones dragged by their top edge.
