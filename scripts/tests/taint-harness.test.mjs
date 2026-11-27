@@ -236,3 +236,28 @@ it("the raid window's group buttons, the target-of-target frames and the spell f
   asAddon(addon, "RaidGroupButton12:SetPoint('CENTER')");
   expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame RaidGroupButton12"]);
 });
+
+// The six driver calls end in SecureStateDriverManager:SetAttribute on a SecureFrameTemplate frame
+// (Interface/AddOns/Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua, both clients): in a fight addon code's
+// call is blocked there and registers nothing; game and test code still register.
+it("state drivers and unit watches from addon code are blocked in a fight at the driver manager, and land out of it", () => {
+  const addon = createAddon();
+  addon.eval('CreateFrame("Frame", "TestDriven", UIParent)');
+  const DRIVE = "RegisterStateDriver(TestDriven, 'page', '1') RegisterAttributeDriver(TestDriven, 'x', '2') RegisterUnitWatch(TestDriven)";
+  const read = () => addon.eval("return { TestDriven.__states and TestDriven.__states.page or false, TestDriven.__drivers and TestDriven.__drivers.x or false, TestDriven.__watched == true }");
+  addon.world.combat(true);
+  asAddon(addon, DRIVE);
+  const text = "blocked in combat: Modules/TEST-ONLY.lua:1 called SetAttribute on the protected frame SecureStateDriverManager";
+  expect(addon.eval("return { #__wfgStub.violations, __wfgStub.violations[1].text, __wfgStub.violations[1].count }")).toEqual([1, text, 3]);
+  addon.eval("__wfgStub.clearViolations()");
+  expect(read(), "nothing registered").toEqual([false, false, false]);
+  addon.eval(DRIVE);
+  expect(read(), "test code still registers in a fight").toEqual(["1", "2", true]);
+  asAddon(addon, "UnregisterStateDriver(TestDriven, 'page') UnregisterAttributeDriver(TestDriven, 'x') UnregisterUnitWatch(TestDriven)");
+  expect(violations(addon)).toEqual([text]);
+  expect(read(), "nothing removed").toEqual(["1", "2", true]);
+  addon.world.combat(false);
+  asAddon(addon, "UnregisterStateDriver(TestDriven, 'page') UnregisterAttributeDriver(TestDriven, 'x') UnregisterUnitWatch(TestDriven)");
+  expect(addon.eval("return #__wfgStub.violations"), "out of a fight nothing is blocked").toBe(0);
+  expect(read()).toEqual([false, false, false]);
+});

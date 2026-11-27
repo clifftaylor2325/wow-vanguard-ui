@@ -444,6 +444,27 @@ for _, row in ipairs({
   { C_ClickBindings, "ExecuteBinding", "C_ClickBindings.ExecuteBinding" },
 }) do guardCall(row[1], row[2], row[3]) end
 
+-- State drivers and unit watches: each of the six calls ends in SecureStateDriverManager:SetAttribute, and the
+-- manager is made from SecureFrameTemplate (Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua
+-- RegisterAttributeDriver, UnregisterAttributeDriver, RegisterStateDriver, UnregisterStateDriver, RegisterUnitWatch,
+-- UnregisterUnitWatch and `SecureStateDriverManager = CreateFrame(..., "SecureFrameTemplate")`, identical on both
+-- clients). So in a fight a run with addon code in it meets the standing SetAttribute rule on a protected frame: the
+-- call is blocked, nothing is registered or removed, and ADDON_ACTION_BLOCKED fires.
+-- (The harness has no SecureFrameTemplate, so the manager is marked protected instead.)
+local driverManager = ownByGame(createFrame("Frame", "SecureStateDriverManager"))
+stub.protect(driverManager)
+
+-- A driver call that goes through the manager's SetAttribute first, and stops there when that is blocked.
+local function throughDriverManager(call)
+  return function(...)
+    if blocked(driverManager, "SetAttribute") then return end
+    return call(...)
+  end
+end
+for _, name in ipairs({ "RegisterStateDriver", "UnregisterStateDriver", "RegisterAttributeDriver", "UnregisterAttributeDriver", "RegisterUnitWatch", "UnregisterUnitWatch" }) do
+  if type(_G[name]) == "function" then _G[name] = throughDriverManager(_G[name]) end
+end
+
 -- Secret arguments --------------------------------------------------------------------------
 -- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a
 -- secret argument (a hidden aura instance id) only from the game's own code, and the
