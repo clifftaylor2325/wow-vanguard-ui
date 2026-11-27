@@ -63,6 +63,23 @@ it("the game's cast bar stays put away after Edit Mode hands it back to UIParent
   expect(addon.eval("return { PlayerCastingBarFrame:IsVisible(), PlayerCastingBarFrame:GetParent() == UIParent }"), "a layout apply and Edit Mode's show: parked again, hidden").toEqual([false, false]);
 });
 
+// H63-1-33: the game's cast bars hold no secure template on either client (Interface/AddOns/Blizzard_UIPanels_Game/
+// Mainline/CastingBarFrame.xml PlayerCastingBarFrame, Blizzard_UnitFrame/Mainline/PetFrame.xml PetCastingBarFrame), and
+// UnregisterAllEvents is no protected call (Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua), so
+// after a login in a fight they are silenced at once. Hiding and parenting a showing managed bar lays out the game's
+// bottom container, which can hold the protected extra action button, so the park still waits: shown here on a
+// stand-in bar the client protects, with no blocked call.
+it("H63-1-33 after a login in a fight the game's cast bars are silenced at once and put away when the fight ends", () => {
+  const pet = "PetCastingBarFrame = CreateFrame('StatusBar', 'PetCastingBarFrame', UIParent) PetCastingBarFrame:RegisterEvent('UNIT_SPELLCAST_START') ";
+  const addon = loggedIn(CAST_ENV + pet + "__wfgStub.protect(PlayerCastingBarFrame) __wfgStub.inCombat = true");
+  // Whether each of the game's bars listens for casts, and whether it is still on UIParent.
+  const bars = () => addon.eval(`local p, q = PlayerCastingBarFrame, PetCastingBarFrame
+    return { p:IsEventRegistered("UNIT_SPELLCAST_START") == true, q:IsEventRegistered("UNIT_SPELLCAST_START") == true, p:GetParent() == UIParent, q:GetParent() == UIParent }`);
+  expect(bars(), "in the fight: no events, still on UIParent").toEqual([false, false, true, true]);
+  setCombat(addon, false);
+  expect(bars(), "after it: put away").toEqual([false, false, false, false]);
+});
+
 it("cast bar flashes on finish and interrupt", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_CastBar_player)");

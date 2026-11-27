@@ -590,6 +590,17 @@ local function hideBlizzard(name)
   ns.GetModule("UnitFrames").HideBlizzard(name)
 end
 
+-- Puts the game's cast bars away: silenced at once, in a fight too (UnregisterAllEvents is no protected call, so they
+-- show for no later cast), parked once out of combat (hiding a showing managed bar lays out the game's bottom
+-- container, ManagedFrameSystem.lua, which can hold the protected extra action button).
+local function hideBlizzardBars()
+  for _, name in ipairs(BLIZZARD) do
+    local f = _G[name]
+    if type(f) == "table" and f.UnregisterAllEvents then f:UnregisterAllEvents() end
+  end
+  ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end, "cast bar park")
+end
+
 -- The game's overlay cast bar ---------------------------------------------------------
 
 -- The color token for the overlay bar's fill: "cast" while casting; once full, "good", or "bad" when the
@@ -842,7 +853,7 @@ function CB.Enable(settings)
   CB.settings = settings
   local units = createBars(settings)
   CB.FitLook()
-  if settings.hideBlizzard and settings.player then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
+  if settings.hideBlizzard and settings.player then hideBlizzardBars() end
   CB.SkinOverlay()
   listen(units)
   CB.ApplyRing()
