@@ -2069,8 +2069,8 @@ end
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked). A game button of kind "secondary" (Accept, Open All, Train) also gets the theme's label
--- copies (T.ButtonLabel), set out of combat; a primary's label is its own, and Vanguard's own have no font objects, so
--- nothing waits on a fight for them.
+-- copies (T.ButtonLabel), in a fight too (its font object setters are no protected calls); a primary's label is its
+-- own, and Vanguard's own have no font objects.
 local function stateParts(button, kind)
   local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
@@ -2079,7 +2079,7 @@ local function stateParts(button, kind)
   button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
   pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
   pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
-  if kind ~= "primary" and T.WantsLabelFonts(button) then ns.OutOfCombat(function() T.ButtonLabel(button) end) end
+  if kind ~= "primary" and T.WantsLabelFonts(button) then T.ButtonLabel(button) end
 end
 
 -- The panel options of each button kind: the secondary is an inset panel with a bevel; the primary

@@ -200,7 +200,10 @@ it("motion: a disabled button's label goes to the disabled tier with no hover, a
   expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
 });
 
-it("a game push button's label takes the theme's text tiers from T.Button; a primary keeps its own, and in a fight the copies wait", () => {
+// H63-1-2: SetNormalFontObject, SetHighlightFontObject and SetDisabledFontObject carry no IsProtectedFunction on either
+// client (Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua :315, :381, :423), so the
+// client refuses them on no frame: in a fight the copies are given at once, to a button it protects too (a stand-in).
+it("a game push button's label takes the theme's text tiers from T.Button; a primary keeps its own, and in a fight the copies come at once", () => {
   const addon = loggedIn();
   // Whether TEST_Game's label colour is the theme token `name`.
   const labelIs = (name) => isTok(addon, addon.eval("return TEST_Game:GetFontString().__textColor"), name);
@@ -213,10 +216,9 @@ it("a game push button's label takes the theme's text tiers from T.Button; a pri
   addon.eval("local wait = ns.OutOfCombat __waits = 0 ns.OutOfCombat = function(...) __waits = __waits + 1 return wait(...) end");
   addon.eval('local b = CreateFrame("Button", "TEST_Own", UIParent) b:SetFontString(b:CreateFontString()) ns.Theme.Button(b)');
   expect(addon.eval("return __waits"), "a button with no font object (Vanguard's own) leaves nothing waiting on the fight").toBe(0);
-  addon.eval('local b = CreateFrame("Button", "TEST_Fight", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b)');
-  expect(addon.eval("return { __waits, ns.Theme.LabelFonts(TEST_Fight) == nil }"), "a game button's label waits for the fight to end").toEqual([1, true]);
+  addon.eval('local b = CreateFrame("Button", "TEST_Fight", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) __wfgStub.protect(b) ns.Theme.Button(b)');
+  expect(addon.eval("return { __waits, ns.Theme.LabelFonts(TEST_Fight) ~= nil }"), "a protected game button's label: its copies at once, nothing waiting").toEqual([0, true]);
   setCombat(addon, false);
-  expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
 });
 
 // A frame with a fake fader, shown; the fade tests below set its alpha by hand to stand in for the
