@@ -1410,3 +1410,65 @@ it("H49-61 your buffs: a count that did not change leaves the container alone", 
   addon.advance(1);
   expect(addon.eval("return __lines"), "no new line size").toBe(0);
 });
+
+// A container with one row of buttons; its buttons are held as the client holds them while aura information is secret
+// (Interface/AddOns/Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86 and Blizzard_AuraContainerUtil.lua:403-419:
+// the restriction goes on each button, never on the container, so the container's own check passes).
+const HELD_BUTTONS = `
+  __c = ns.Auras.Container(UIParent, { point = { "CENTER", UIParent, "CENTER", 0, 0 }, lineSize = 200,
+    groups = { { filter = "HELPFUL", max = 4, size = 20 } } }, "player")
+  __buttons = {}
+  for _, f in ipairs({ __c.frame:GetChildren() }) do if f.__kind == "AuraButton" then __buttons[#__buttons + 1] = f end end
+  function __holdAll() __wfgWorld.aurasSecret = true for _, f in ipairs(__buttons) do __wfgWorld.holdAccess(f) end end
+  function __releaseAll() __wfgWorld.aurasSecret = false for _, f in ipairs(__buttons) do __wfgWorld.releaseAccess(f) end end
+  -- How many of the buttons and their regions the theme has been told to forget (a forgetter of the test's own).
+  __forgotten = {}
+  ns.Theme.forgetters[#ns.Theme.forgetters + 1] = function(r) __forgotten[r] = true end
+  function __told()
+    local n = 0
+    for _, f in ipairs(__buttons) do
+      if __forgotten[f] then n = n + 1 end
+      for _, r in ipairs({ f:GetRegions() }) do if __forgotten[r] then n = n + 1 end end
+    end
+    return n
+  end
+`;
+
+it("H63-2-2 auras: retiring a container whose buttons the client holds back raises nothing, and the theme forgets them once let go", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV);
+  addon.eval(HELD_BUTTONS);
+  expect(addon.eval("return #__buttons"), "the container has buttons").toBeGreaterThan(0);
+  addon.eval("__holdAll()");
+  expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire still works").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+  expect(addon.eval("return __told()"), "held: not walked").toBe(0);
+  addon.eval("__releaseAll()");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(addon.eval("return __told()"), "let go: every button is forgotten").toBeGreaterThanOrEqual(addon.eval("return #__buttons"));
+  expect(addon.eval("return #ns.errors"), "still nothing caught").toBe(0);
+});
+
+it("H63-2-2 auras: a button still held at the next restriction change is kept for the one after", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV);
+  addon.eval(HELD_BUTTONS);
+  addon.eval("__holdAll() ns.Auras.Retire(__c)");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(addon.eval("return __told()"), "aura information still secret: left for the next one").toBe(0);
+  addon.eval("__releaseAll()");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(addon.eval("return __told()"), "plain again: forgotten").toBeGreaterThan(0);
+});
+
+it("H63-2-2 auras: a frame the client closed for good is forgotten itself, not walked, and nothing is kept for later", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV);
+  const out = addon.eval(`local f = CreateFrame("Frame", nil, UIParent)
+    __wfgWorld.forbid(f)
+    local gone
+    ns.Theme.forgetters[#ns.Theme.forgetters + 1] = function(r) if r == f then gone = true end end
+    ns.Theme.Forget(f)
+    return { f:IsForbidden(), gone == true, next(ns.Theme.forgetLater) == nil, #ns.errors }`);
+  expect(out, "closed, forgotten, none waiting, no error").toEqual([true, true, true, 0]);
+});

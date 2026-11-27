@@ -3658,14 +3658,28 @@ do
     for _, region in ipairs({ frame:GetRegions() }) do forgetOne(region) end
   end
 
+  -- Frames T.Forget met while the client held them back from addon code, to be forgotten once it lets go.
+  T.forgetLater = setmetatable({}, { __mode = "k" })
+
   -- Drops a frame, its regions and every child below it from the theme's registries, so a page thrown away stays out of
-  -- T.Refresh's walks (the game never frees a frame, and a hidden one would be repainted on every theme change).
+  -- T.Refresh's walks (the game never frees a frame, and a hidden one would be repainted on every theme change). A frame
+  -- the client holds back (T.Held) is kept for T.ForgetHeld; one it closed for good (T.Closed) is dropped, not walked.
   ---@param frame Frame
   function T.Forget(frame)
+    if T.Held(frame) then T.forgetLater[frame], T.heldBack = true, true return end
     forgetOne(frame)
+    if T.Closed(frame) then return end
     forgetRegions(frame)
     if type(frame.GetChildren) ~= "function" then return end
     for _, child in ipairs({ frame:GetChildren() }) do T.Forget(child) end
+  end
+
+  -- Forgets the frames T.Forget found held, now the client lets go. The set is swapped for a fresh one first, so a
+  -- frame still held is noted again by its own T.Forget.
+  function T.ForgetHeld()
+    local waiting = T.forgetLater
+    T.forgetLater = setmetatable({}, { __mode = "k" })
+    for frame in pairs(waiting) do ns.Try("forget held", T.Forget, frame) end
   end
 end
 
@@ -4330,6 +4344,7 @@ end
 function T.CatchUpHeld()
   if not T.heldBack or ns.AurasSecret() then return end
   T.heldBack = nil
+  T.ForgetHeld()
   T.Refresh()
 end
 
