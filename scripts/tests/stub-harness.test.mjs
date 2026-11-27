@@ -741,3 +741,45 @@ it("the world has the client's shared curves, CurveConstants", () => {
     return { C.ZeroToOne:Evaluate(0.3), C.ScaleTo100:Evaluate(0.25), C.Reverse:Evaluate(0.25), C.ReverseTo100:Evaluate(0.25) }`);
   expect(out).toEqual([0.3, 25, 0.75, 75]);
 });
+
+// The managed-frame containers (scripts/lib/wow-managed.lua; Interface/AddOns/Blizzard_ManagedFrameSystem/Shared/
+// ManagedFrameSystem.lua ManagedFrameMixin:OnShow, ManagedFrameContainerMixin:UpdateFrame, Blizzard_SharedXML/
+// LayoutFrame.lua VerticalLayoutMixin:LayoutChildren, both clients): a managed frame that shows is re-parented to its
+// container and every shown child is laid out again, in layoutIndex order.
+it("a managed frame that shows is taken into its container, and the container lays out its shown children", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local head = CreateFrame("Frame", "TalkingHeadFrame", UIParent) head:SetSize(100, 40) head:Hide()
+    local loot = CreateFrame("Frame", "GroupLootContainer", UIParent) loot:SetSize(50, 20) loot:Hide()
+    head:SetPoint("CENTER", UIParent, "CENTER", 300, 0)
+    head:Show() loot:Show()
+    local p1, _, _, _, y1 = head:GetPoint(1)
+    local p2, _, _, _, y2 = loot:GetPoint(1)
+    local box = BottomManagedFrameContainer
+    local out = { head:GetParent() == box, loot:GetParent() == box, p1, y1, p2, y2, box:GetHeight(), head.layoutIndex }
+    loot:Hide()
+    local _, _, _, _, y3 = head:GetPoint(1)
+    out[#out + 1] = y3
+    return out`)).toEqual([true, true, "TOP", -30, "TOP", 0, 70, 8, 0]);
+});
+
+it("a frame moved by Edit Mode or marked ignoreFramePositionManager stays where it is", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local a = CreateFrame("Frame", "DurabilityFrame", UIParent) a:Hide() a.IsInDefaultPosition = function() return false end
+    local b = CreateFrame("Frame", "VehicleSeatIndicator", UIParent) b:Hide() b.ignoreFramePositionManager = true
+    a:Show() b:Show()
+    return { a:GetParent() == UIParent, b:GetParent() == UIParent }`)).toEqual([true, true]);
+});
+
+it("addon code that shows a managed frame in a fight starts a layout that is blocked on a protected managed frame", () => {
+  const addon = createAddon();
+  addon.eval(`local extra = CreateFrame("Frame", "ExtraAbilityContainer", UIParent) extra:Hide()
+    CreateFrame("Button", "ExtraActionButton1", extra) extra:Show()
+    local head = CreateFrame("Frame", "TalkingHeadFrame", UIParent) head:Hide()`);
+  addon.world.combat(true);
+  addon.eval(`assert(loadstring("TalkingHeadFrame:Show()", "@Modules/TEST-ONLY.lua"))()`);
+  expect(addon.eval(`local out = {} for _, v in ipairs(__wfgStub.violations) do out[#out + 1] = v.text end __wfgStub.clearViolations() return out`))
+    .toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called ClearAllPoints on the protected frame ExtraAbilityContainer",
+      "blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame ExtraAbilityContainer",
+      "blocked in combat: Modules/TEST-ONLY.lua:1 called SetSize on the protected frame BottomManagedFrameContainer"]);
+  expect(addon.eval("return TalkingHeadFrame:GetParent() == BottomManagedFrameContainer"), "the unprotected one still moves").toBe(true);
+});

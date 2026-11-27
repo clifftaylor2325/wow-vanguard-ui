@@ -238,7 +238,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-aspects\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-managed\.lua|wow-aspects\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -379,7 +379,7 @@ function loadStub(S, aspects) {
   runLib(S, "wow-stub.lua");
   loadText(S);
   runLib(S, "wow-layout.lua");
-  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(S, file);
+  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua", "wow-managed.lua"]) runLib(S, file);
   if (aspects) runLib(S, "wow-aspects.lua");
   S.run("__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns");
 }
