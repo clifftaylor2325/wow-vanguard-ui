@@ -251,7 +251,9 @@ local function plainValues(...)
 end
 
 -- Text made from a secret ------------------------------------------------------------------------------
--- string.format with a secret argument gives a secret string, and tostring of a secret gives one too: neither raises.
+-- string.format with a secret argument gives a secret string, and neither it nor tostring of a secret raises
+-- (Dump.lua, below). That tostring's result is secret too is assumed until the game sheet answers (H63-4-2b): the source
+-- shows only that it does not raise. tonumber stays unmodelled (plain nil).
 -- Blizzard_ScriptErrorsFrame/Blizzard_ScriptErrorsFrame.lua (live :95-105, forever :100-110) checks issecretvalue on a message key
 -- "formatted with a secret value", and Blizzard_SharedXML/Dump.lua (both clients), whose comment calls the
 -- dump code tainted (:183), runs tostring and string.format("%q") on secret values (prepSimple :97-114,

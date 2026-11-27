@@ -72,9 +72,10 @@ it("the game's cast bar stays put away after Edit Mode hands it back to UIParent
 it("H63-1-33 after a login in a fight the game's cast bars are silenced at once and put away when the fight ends", () => {
   const pet = "PetCastingBarFrame = CreateFrame('StatusBar', 'PetCastingBarFrame', UIParent) PetCastingBarFrame:RegisterEvent('UNIT_SPELLCAST_START') ";
   const addon = loggedIn(CAST_ENV + pet + "__wfgStub.protect(PlayerCastingBarFrame) __wfgStub.inCombat = true");
-  // Whether each of the game's bars listens for casts, and whether it is still on UIParent.
+  // Whether each of the game's bars listens for casts, and whether it is still where the game put it (the player bar,
+  // shown at login, is in the game's bottom container: wow-managed.lua).
   const bars = () => addon.eval(`local p, q = PlayerCastingBarFrame, PetCastingBarFrame
-    return { p:IsEventRegistered("UNIT_SPELLCAST_START") == true, q:IsEventRegistered("UNIT_SPELLCAST_START") == true, p:GetParent() == UIParent, q:GetParent() == UIParent }`);
+    return { p:IsEventRegistered("UNIT_SPELLCAST_START") == true, q:IsEventRegistered("UNIT_SPELLCAST_START") == true, p:GetParent() == BottomManagedFrameContainer, q:GetParent() == UIParent }`);
   expect(bars(), "in the fight: no events, still on UIParent").toEqual([false, false, true, true]);
   setCombat(addon, false);
   expect(bars(), "after it: put away").toEqual([false, false, false, false]);
@@ -272,7 +273,8 @@ it("with your cast bar unticked, the game's own player and pet cast bars stay up
   // TEST-ONLY the game's pet cast bar, a child of UIParent (forever Blizzard_UnitFrame/Mainline/PetFrame.xml, PetCastingBarFrame).
   const pet = 'PetCastingBarFrame = CreateFrame("StatusBar", "PetCastingBarFrame", UIParent)';
   const addon = loggedIn(CAST_ENV + pet, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { player = false } } }" });
-  const out = addon.eval(`return { Vanguard_CastBar_player ~= nil, PlayerCastingBarFrame:GetParent() == UIParent,
+  // The player bar, shown at login, sits in the game's bottom container (wow-managed.lua), not parked.
+  const out = addon.eval(`return { Vanguard_CastBar_player ~= nil, PlayerCastingBarFrame:GetParent() == BottomManagedFrameContainer,
     PlayerCastingBarFrame:IsEventRegistered("UNIT_SPELLCAST_START") == true, PetCastingBarFrame:GetParent() == UIParent, #ns.errors }`);
   expect(out, "no Vanguard bar for you, and the game's bars are left where they are, listening").toEqual([false, true, true, true, 0]);
 });

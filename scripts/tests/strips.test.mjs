@@ -859,10 +859,11 @@ it("the game's extras: each switch off leaves the game's frame alone, and missin
   expect(["StatusTrackingBarManager", "TimeManagerClockButton"].map((n) => putAway(off, n)), "replacements off: the game's own stay").toEqual([false, false]);
   expect(putAway(off, "DurabilityFrame"), "the durability block off: the game's armoured man is still put away while the strip is on (R1.9)").toBe(true);
   const noStrip = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { InfoStrip = false } } }" });
-  expect([putAway(noStrip, "DurabilityFrame"), noStrip.eval("return DurabilityFrame:IsShown() and DurabilityFrame:GetParent() == UIParent")], "the info strip module off: the game's durability figure is left where it was").toEqual([false, true]);
+  // (Shown at login, the figure is in the game's right container: wow-managed.lua.)
+  expect([putAway(noStrip, "DurabilityFrame"), noStrip.eval("return DurabilityFrame:IsShown() and DurabilityFrame:GetParent() == RightManagedFrameContainer")], "the info strip module off: the game's durability figure is left where it was").toEqual([false, true]);
   expect(off.eval("return MinimapCluster.Tracking:GetParent() == MinimapCluster"), "minimap buttons off: tracking stays where the game put it").toBe(true);
   expect(off.eval("return { Vanguard_MenuStrip:GetAlpha(), Vanguard_MenuStrip.__scripts.OnUpdate == nil }"), "menu strip set to Always: always shown, nothing polling").toEqual([1, true]);
-  expect(off.eval("return next(ObjectiveTrackerFrame.__points) == nil and Vanguard_QuestTracker == nil"), "tracker off: the game's tracker is left alone").toBe(true);
+  expect(off.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return p ~= nil and p.rel == RightManagedFrameContainer and Vanguard_QuestTracker == nil"), "tracker off: the game's tracker is left alone, in the game's right container").toBe(true);
   const bare = loggedIn(UI_ENV);
   expect(bare.eval("return Vanguard_MenuStrip ~= nil and Vanguard_QuestTracker ~= nil"), "a client without these frames still gets the strip and the spot, with nothing to pin").toBe(true);
 });

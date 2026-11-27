@@ -762,6 +762,17 @@ it("a managed frame that shows is taken into its container, and the container la
     return out`)).toEqual([true, true, "TOP", -30, "TOP", 0, 70, 8, 0]);
 });
 
+it("a managed frame already shown when it is made is taken into its container at PLAYER_ENTERING_WORLD", () => {
+  const addon = createAddon();
+  addon.eval(`local f = CreateFrame("Frame", "ArenaEnemyFramesContainer", UIParent) f:SetSize(60, 75)
+    local h = CreateFrame("Frame", "VehicleSeatIndicator", UIParent) h:Hide()`);
+  // Whether the shown frame is in the right container, and the hidden one still on UIParent.
+  const parents = () => addon.eval("return { ArenaEnemyFramesContainer:GetParent() == RightManagedFrameContainer, VehicleSeatIndicator:GetParent() == UIParent }");
+  expect(parents(), "made shown: no OnShow yet").toEqual([false, true]);
+  addon.login();
+  expect(parents(), "taken in at PLAYER_ENTERING_WORLD; a hidden one left").toEqual([true, true]);
+});
+
 it("a frame moved by Edit Mode or marked ignoreFramePositionManager stays where it is", () => {
   const addon = createAddon();
   expect(addon.eval(`local a = CreateFrame("Frame", "DurabilityFrame", UIParent) a:Hide() a.IsInDefaultPosition = function() return false end

@@ -123,6 +123,8 @@ OPS.compare = (L, a, b) => {
 
 // A secret as a table key, read or written: Blizzard_ScriptErrorsFrame.lua (both clients) says tainted code "would
 // trigger a Lua error when indexing 'seen' with a secret value" (live :95-103, forever :100-108). The text is the harness's own.
+// Only t[k] reads, writes and table constructors are covered (OP_GETTABLE, OP_SETTABLE): rawget, rawset, next and
+// table.insert's position take a secret key in silence, as the source does not show what the client does there.
 OPS.key = (L, tv) => {
   if (isSecret(tv)) refuse(L, "attempt to use a secret value as a table key");
 };

@@ -17,7 +17,11 @@
 --     LayoutMixin:Layout, VerticalLayoutMixin:LayoutChildren
 -- Left out (approximations): the containers' own place on the screen, the action-bar-override alpha, the objective
 -- tracker's UpdateHeight, the bottom row container (layoutOnBottom) laying out on its own, and the re-layout of every
--- held frame when UIParent shows again (UpdateManagedFrameContainers).
+-- held frame when UIParent shows again (UpdateManagedFrameContainers), and the third container,
+-- PlayerBottomManagedFrameTemplate (Interface/AddOns/Blizzard_UnitFrame/Shared/PlayerFrameTemplates.xml:4, both clients),
+-- which holds PetFrame (a SecureUnitButton), TotemFrame, the class resource bars and the rune frame under PlayerFrame.
+-- A managed frame already shown when it is made gets no OnShow from the harness, so PLAYER_ENTERING_WORLD takes each
+-- shown one in (the game's engine runs OnShow as such a frame first shows; that moment is not in Lua source).
 
 local stub = __wfgStub
 local world = stub.world
@@ -144,3 +148,18 @@ stub.newWidget = function(...)
   return w
 end
 stub.transparent[stub.newWidget] = true
+
+-- Takes each managed frame that is shown and not yet held into its container (a frame made shown never had an OnShow).
+local function takeShown()
+  for _, w in ipairs(stub.frames) do
+    local side = rawget(w, "__managed")
+    if side and not containers[side].showing[w] then addManaged(containers[side], w) end
+  end
+end
+local fire = stub.fire
+-- The client's events, PLAYER_ENTERING_WORLD taking the shown managed frames in first (no frame of its own, so the
+-- frame list the addon's tests count is as before).
+function stub.fire(event, ...)
+  if event == "PLAYER_ENTERING_WORLD" then takeShown() end
+  return fire(event, ...)
+end
