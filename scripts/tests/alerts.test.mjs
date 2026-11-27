@@ -1,6 +1,7 @@
 // alerts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, RAID_ENV, TIDY_ENV, TOOLS_ENV, UNITS_ENV, chatHas, expectErrors, gridLines, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
@@ -323,6 +324,56 @@ it("H63-1-31 the game's tools: a row the client protects in a fight waits for th
   expect(fightFit(inside), "protected through a button inside it: the same").toEqual([0.5, 236 / 300]);
   const hidden = loggedIn(TOOLS_ENV + screen + "EssentialCooldownViewer.IsProtected = function() return __wfgWorld.secret(false) end");
   expect(fightFit(hidden), "a hidden answer waits too").toEqual([0.5, 236 / 300]);
+});
+// H63-2-31: the game's bottom container lays its shown children out again in a fight, one after another
+// (Interface/AddOns/Blizzard_ManagedFrameSystem/Shared/ManagedFrameSystem.lua UpdateFrame -> Layout;
+// Blizzard_SharedXML/LayoutFrame.lua VerticalLayoutMixin:LayoutChildren: child:ClearAllPoints, child:SetPoint, no
+// InCombatLockdown check; the same on both clients). TEST-ONLY: the container, a layout pass over the three rows, and a
+// count of each row's SetPoint calls and of any Show, Hide or SetParent made on a row.
+const MANAGED_ENV = `
+  __container = CreateFrame("Frame", "BottomManagedFrameContainer", UIParent)
+  __rows, __setPoints, __shownParented = { EssentialCooldownViewer, UtilityCooldownViewer, BuffIconCooldownViewer }, {}, 0
+  for _, row in ipairs(__rows) do
+    local set = row.SetPoint
+    row.SetPoint = function(self, ...) __setPoints[self] = (__setPoints[self] or 0) + 1 return set(self, ...) end
+    for _, name in ipairs({ "Show", "Hide", "SetParent" }) do
+      local call = row[name]
+      row[name] = function(self, ...) __shownParented = __shownParented + 1 return call(self, ...) end
+    end
+  end
+  function __layoutRows()
+    local previous = __container
+    for _, row in ipairs(__rows) do row:ClearAllPoints() row:SetPoint("BOTTOM", previous, "TOP", 0, 4) previous = row end
+  end
+`;
+// Each row's anchor (on its own spot or not) and SetPoint calls after a layout pass in a fight, and the Show, Hide and
+// SetParent calls made on the rows.
+const managedPass = (addon) => {
+  setCombat(addon, true);
+  addon.eval("__setPoints, __shownParented = {}, 0 __layoutRows()");
+  const out = addon.eval(`local out = {}
+    for i, row in ipairs(__rows) do out[i] = { row.__points.CENTER ~= nil and row.__points.CENTER.rel == _G["Vanguard_" .. row:GetName() .. "Spot"], __setPoints[row] } end
+    return { out, __shownParented }`);
+  setCombat(addon, false);
+  return out;
+};
+it("H63-2-31 the game's tools: the game's container laying the rows out in a fight puts each back on its spot once, with no show, hide or reparent", () => {
+  const onSpot = [[[true, 2], [true, 2], [true, 2]], 0];
+  expect(managedPass(loggedIn(TOOLS_ENV + MANAGED_ENV)), "each row: the game's SetPoint, then the pin's one, which is not seen as the game's").toEqual(onSpot);
+  expect(managedPass(loggedIn(TOOLS_ENV + MANAGED_ENV, { client: RETAIL_CLIENT })), "the same on Retail").toEqual(onSpot);
+});
+// H63-2-31: in a fight the client can hide a row's size (secret geometry), which says nothing about whether it fits.
+it("H63-2-31 the game's tools: a row whose width the client hides in a fight keeps the scale it has, still on its spot", () => {
+  for (const client of ["", RETAIL_CLIENT]) {
+    const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)", { client });
+    addon.eval("EssentialCooldownViewer:SetSize(472, 40) EssentialCooldownViewer:RefreshLayout()");
+    setCombat(addon, true);
+    addon.world.secretGeometry("strict");
+    addon.eval("EssentialCooldownViewer:SetSize(100, 40) EssentialCooldownViewer:RefreshLayout() EssentialCooldownViewer:ClearAllPoints() EssentialCooldownViewer:SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 0)");
+    expect(addon.eval("return { EssentialCooldownViewer:GetScale(), EssentialCooldownViewer.__points.CENTER ~= nil and EssentialCooldownViewer.__points.CENTER.rel == Vanguard_EssentialCooldownViewerSpot }"), `half size kept, on its spot (${client ? "Retail" : "Forever"})`).toEqual([0.5, true]);
+    addon.world.secretGeometry(null);
+    setCombat(addon, false);
+  }
 });
 it("the game's tools: a Cooldown Manager row wider than its spot shrinks to fit it, again whenever the game lays it out", () => {
   // On a canvas 768 tall the essential row sits in the 236-wide gap between your frames (a taller one gives it 560).

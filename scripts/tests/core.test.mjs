@@ -235,6 +235,19 @@ it("pins: any number of game moves in combat leave one pending pin", () => {
   setCombat(addon, false);
   expect([addon.eval("return ns.QueuedCount()"), pinCalls(addon), pinPoint(addon)], "after combat the pin runs once and puts the frame back").toEqual([0, 2, "CENTER"]);
 });
+// H63-2-31 (c): only a live pin (ns.PinLive, the game's alert and cooldown spots) runs in a fight; every other pin
+// (the menu strip, minimap, minimap buttons, chat) keeps ns.Pin's wait, on a frame the client does not protect too.
+it("pins: in a fight a live pin on an unprotected frame runs at once, a plain pin waits, and a let-go live pin does nothing", () => {
+  const addon = loggedIn(PIN_ENV + `__live = CreateFrame("Frame", "Vanguard_PinLiveTest", UIParent) __liveCalls = 0
+    ns.PinLive(__live, function(f) __liveCalls = __liveCalls + 1 f:ClearAllPoints() f:SetPoint("CENTER", UIParent, "CENTER", 0, 0) end)`);
+  setCombat(addon, true);
+  addon.eval("__pinTarget:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1) __live:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 1, 1)");
+  expect(addon.eval("return { __calls, __liveCalls, ns.QueuedCount() }"), "the plain pin queued, the live one ran").toEqual([1, 2, 1]);
+  addon.eval("ns.Unpin(__live) __live:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 2, 2)");
+  expect(addon.eval("return __liveCalls"), "let go: the game's move stays").toBe(2);
+  setCombat(addon, false);
+  expect(addon.eval("return { __calls, __liveCalls }"), "after the fight only the plain pin ran").toEqual([2, 2]);
+});
 it("slash", () => {
   const addon = loggedIn();
   addon.slash("help");
