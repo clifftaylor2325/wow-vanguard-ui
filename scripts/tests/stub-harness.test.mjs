@@ -802,3 +802,19 @@ it("EventRegistry skips a callback removed mid-dispatch and runs one added mid-d
     EventRegistry:TriggerEvent("TEST-ONLY")
     return { first, table.concat(seen, " ") }`)).toEqual(["a", "c"]);
 });
+
+// Blizzard_StaticPopup/StaticPopup.lua StaticPopup_Show, Blizzard_StaticPopup_Game/GameDialog.lua's show condition and
+// GameDialog.xml's four StaticPopup frames (both clients): the game declines, calling OnCancel(nil, data) and answering nil.
+it("StaticPopup_Show declines a dialog without whileDead while the player is dead, and a fifth popup", () => {
+  const addon = createAddon();
+  addon.world.setUnit("player", { name: "TEST-ONLY Me", dead: true });
+  expect(addon.eval(`local cancelled = {}
+    StaticPopupDialogs.TEST_ONLY_LIVE = { OnCancel = function(_, data) cancelled[#cancelled + 1] = data end }
+    StaticPopupDialogs.TEST_ONLY_DEAD = { whileDead = 1 }
+    local live = StaticPopup_Show("TEST_ONLY_LIVE", nil, nil, "x")
+    local dead = StaticPopup_Show("TEST_ONLY_DEAD")
+    for i = 1, 3 do StaticPopup_Show("TEST_ONLY_" .. i) end
+    local fifth = StaticPopup_Show("TEST_ONLY_5")
+    local again = StaticPopup_Show("TEST_ONLY_1")
+    return { live == nil, cancelled[1], dead ~= nil, fifth == nil, again ~= nil }`)).toEqual([true, "x", true, true, true]);
+});
