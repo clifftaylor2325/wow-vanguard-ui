@@ -168,12 +168,21 @@ local function watchToasts()
   hooksecurefunc(alerts, "UpdateAnchors", ns.Guard("hook UpdateAnchors", GA.ReanchorToasts))
 end
 
+-- Keeps the talking head from playing at all: the game shows it only from TALKINGHEAD_REQUESTED (TalkingHeadUI.lua
+-- PlayCurrent), so with that event taken it never shows, in a fight too. Hiding a shown head from a hook instead would
+-- lay out the game's bottom container from addon code, blocked in a fight while the extra action button is in it
+-- (ManagedFrameSystem.lua OnHide). Its voice goes with it. Suppress still holds it hidden against Edit Mode's show.
+local function hideTalkingHead(f)
+  f:UnregisterEvent("TALKINGHEAD_REQUESTED")
+  ns.GetModule("DataBars").Suppress("TalkingHeadFrame")
+end
+
 -- The talking head, as chosen: moved and restyled, hidden, or left to the game. Done once at login:
 -- on the 12.x engine the frame is part of the base UI (Blizzard_FrameXML), there from the start.
 local function talkingHead(choice)
   local f = _G.TalkingHeadFrame
   if type(f) ~= "table" or choice == "game" then return end
-  if choice == "hide" then return ns.GetModule("DataBars").Suppress("TalkingHeadFrame") end
+  if choice == "hide" then return hideTalkingHead(f) end
   GA.SkinTalkingHead(f)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
   watchToasts()

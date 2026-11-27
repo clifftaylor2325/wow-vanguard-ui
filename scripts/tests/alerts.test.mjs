@@ -1,7 +1,7 @@
 // alerts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, RAID_ENV, TIDY_ENV, TOOLS_ENV, UNITS_ENV, chatHas, expectErrors, gridLines, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
@@ -63,6 +63,30 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   expect(partial.eval("return Vanguard_LossOfControlFrameSpot ~= nil and Vanguard_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return Vanguard_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
 });
+// H63-4-R1: the game plays a talking head from its TALKINGHEAD_REQUESTED event (PlayCurrent -> UpdateShownState ->
+// SetShown, Interface/AddOns/Blizzard_FrameXML/TalkingHeadUI.lua, both clients). The head is a BottomManagedFrameTemplate
+// frame (TalkingHeadUI.xml:3), so a Hide from addon code in a fight lays out the bottom container with the protected
+// extra action button in it (Blizzard_ManagedFrameSystem/Shared/ManagedFrameSystem.lua ManagedFrameMixin:OnHide).
+const HEAD_IN_FIGHT_ENV = `
+  for _, name in ipairs({ "ExtraAbilityContainer", "TalkingHeadFrame" }) do
+    if not _G[name] then CreateFrame("Frame", name, UIParent):SetSize(120, 30) end _G[name]:Hide()
+  end
+  if not _G.ExtraActionButton1 then CreateFrame("Button", "ExtraActionButton1", ExtraAbilityContainer, "SecureActionButtonTemplate") end
+  TalkingHeadFrame:RegisterEvent("TALKINGHEAD_REQUESTED")
+  TalkingHeadFrame:SetScript("OnEvent", function(self, event) if event == "TALKINGHEAD_REQUESTED" then self:SetShown(true) end end)
+`;
+for (const [label, client] of [["Forever", FOREVER_CLIENT], ["Retail", RETAIL_CLIENT]]) {
+  it(`game alerts (${label}): with the talking head Hidden, one the game plays in a fight with an extra action button up stays unseen, no call blocked`, () => {
+    const addon = loggedIn(HEAD_IN_FIGHT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { GameAlerts = { talkingHead = 'hide' } } }" });
+    addon.eval("ExtraAbilityContainer:Show()");
+    setCombat(addon, true);
+    addon.fire("TALKINGHEAD_REQUESTED");
+    addon.advance(1);
+    setCombat(addon, false);
+    addon.advance(1);
+    expect(addon.eval("return TalkingHeadFrame:IsShown()"), "no head (the setup's error guard fails a blocked call)").toBe(false);
+  });
+}
 it("game alerts: scaling the talking head or loss of control spot scales the game's frame", () => {
   const addon = loggedIn(ALERTS_ENV);
   addon.eval("ns.SetMoverScale('talkinghead', 2) ns.SetMoverScale('lossofcontrol', 1.5)");
