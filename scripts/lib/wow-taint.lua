@@ -222,22 +222,27 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 -- The methods the client blocks on a protected frame while insecure code runs in combat: the ones
 -- Blizzard_APIDocumentationGenerated marks IsProtectedFunction, grouped by its file, plus SetAttribute. The
 -- flags match on both clients, except that Forever also protects FocusEnter, FocusExit, MouseDown and MouseUp
--- (SimpleScriptRegionAPIDocumentation.lua). A documented name no kind in wow-widget-api.lua carries (those four
--- among them) is left out until it is listed.
+-- (SimpleScriptRegionAPIDocumentation.lua). Every documented name is here (checked against both clients'
+-- documents, H63-4-34); one no kind in wow-widget-api.lua carries (today the ones from AddRoleset on, and Forever's
+-- four) is guarded once it is listed there (the loop below makes no method of its own for it).
 local PROTECTED_CALLS = {
   -- SimpleFrameAPIDocumentation.lua
   "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
   "SetFrameLevel", "SetFrameStrata", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetToplevel", "SetID",
   "SetHitRectInsets", "SetClampedToScreen", "SetClampRectInsets", "EnableKeyboard", "SetIgnoreParentScale",
-  "SetHyperlinksEnabled", "SetAttribute",
-  -- SimpleScriptRegionAPIDocumentation.lua
+  "SetHyperlinksEnabled", "SetAttribute", "AddRoleset", "RemoveRoleset", "SetRolesets", "ClearAttribute",
+  "ClearAttributes", "EnableGamePadButton", "EnableGamePadStick", "ResizeToBoundsRect", "SetUsingParentLevel",
+  -- SimpleFrameScriptObjectAPIDocumentation.lua
+  "SetToDefaults",
+  -- SimpleScriptRegionAPIDocumentation.lua (FocusEnter, FocusExit, MouseDown and MouseUp: Forever only)
   "SetParent", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "SetMouseClickEnabled",
-  "SetMouseMotionEnabled", "SetPassThroughButtons",
+  "SetMouseMotionEnabled", "SetPassThroughButtons", "SetPropagateMouseClicks", "SetPropagateMouseMotion",
+  "SetCollapsesLayout", "SetRoundLayoutToNearestPixel", "FocusEnter", "FocusExit", "MouseDown", "MouseUp",
   -- SimpleScriptRegionResizingAPIDocumentation.lua
   "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "ClearPoint",
-  "ClearPointsOffset", "AdjustPointsOffset",
+  "ClearPointsOffset", "AdjustPointsOffset", "SetPointsOffset",
   -- SimpleButtonAPIDocumentation.lua
-  "Enable", "Disable", "SetEnabled", "RegisterForClicks",
+  "Enable", "Disable", "SetEnabled", "RegisterForClicks", "RegisterForMouse",
   -- SimpleScrollFrameAPIDocumentation.lua
   "SetScrollChild", "SetVerticalScroll", "SetHorizontalScroll",
 }
@@ -356,8 +361,10 @@ end
 
 -- Protected methods whose name another kind also carries unprotected (a ScrollingMessageFrame's Clear is a plain
 -- method): blocked on that kind only. Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks
--- these four IsProtectedFunction on both clients.
-local PROTECTED_BY_KIND = { Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject" } }
+-- these six IsProtectedFunction on both clients.
+local PROTECTED_BY_KIND = {
+  Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject", "SetCooldownFromExpirationTime", "SetCooldownUNIX" },
+}
 
 -- A protected method of one kind: blocked as lockable blocks it, on a widget of that kind.
 local function lockableOn(kind, name)
