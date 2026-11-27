@@ -450,7 +450,8 @@ local function shotsOn() return BL.Store().shots end
 -- Sets the Screenshot each new error switch.
 local function setShots(on) BL.Store().shots = on == true end
 
--- The Feedback page's Bug log card: note a bug, read the log, empty it, and the screenshot switch.
+-- The Feedback page's Bug log card: note a bug, read the log, empty it, and the screenshot switch (an
+-- account-wide aid with no default to put back, so the page still has nothing for Reset this page).
 function BL.Rows()
   return {
     { "header", L["Bug log"] },
@@ -459,6 +460,6 @@ function BL.Rows()
     { "button", L["Note a bug"], BL.Ask },
     { "button", L["Open the bug log"], BL.Show },
     { "button", L["Clear the bug log..."], BL.AskClear },
-    { "check", L["Screenshot each new error"], shotsOn, setShots, false },
+    { "check", L["Screenshot each new error"], shotsOn, setShots },
   }
 end
