@@ -178,3 +178,20 @@ it("a frame's parent key, the minimap's zoom, mask, ping and arch blob, and a fo
   for (const [call, name, i] of REFUSED_MORE) expect(tryAddon(addon, call), name).toEqual([false, refusedText(name, i)]);
   expect(tryAddon(addon, "Minimap:SetZoom(1) __w:SetParentKey('TEST_ONLY') return true"), "plain values set as ever").toEqual([true, true]);
 });
+
+// H63-4-1: the object-security reads are SecretReturnsForAspect ObjectSecurity (Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// SimpleFrameScriptObjectAPIDocumentation.lua CanBeAccessedInContext, IsForbidden; SimpleScriptRegionAPIDocumentation.lua
+// IsProtected; both clients), and the object aspects share the value 1 (SecretAspectConstantsDocumentation.lua).
+it("a widget holding ObjectSecurity answers the addon's IsForbidden, IsProtected and CanBeAccessedInContext with secrets", () => {
+  const addon = createAddon();
+  addon.eval("__w = CreateFrame('Frame', nil, UIParent)");
+  // Which of the three reads answer the addon with secrets.
+  const secrets = () => asAddon(addon, `local s = issecretvalue
+    return { s(__w:IsForbidden()), s((__w:IsProtected())), s(select(2, __w:IsProtected())), s(__w:CanBeAccessedInContext()) }`);
+  expect(secrets(), "nothing held").toEqual([false, false, false, false]);
+  addon.eval("__wfgWorld.holdSecret(__w, 'ObjectSecurity')");
+  expect(secrets(), "ObjectSecurity held").toEqual([true, true, true, true]);
+  expect(asAddon(addon, "return __w:HasSecretAspect(Enum.SecretAspect.Hierarchy)"), "the shared bit: Hierarchy reads as held too").toBe(true);
+  expect(tryAddon(addon, "if __w:IsForbidden() then return 1 end"), "a truth test of the hidden answer raises").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to perform boolean test on a secret value"]);
+  expect(addon.eval("return { __w:IsForbidden(), __w:CanBeAccessedInContext() }"), "test code reads the plain answers").toEqual([false, true]);
+});

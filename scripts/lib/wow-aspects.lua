@@ -119,7 +119,10 @@ local REFUSED = {
 -- SimpleFontStringAPIDocumentation.lua GetText, GetTextColor; SimpleStatusBarAPIDocumentation.lua GetValue, GetMinMaxValues,
 -- GetStatusBarColor; SimpleButtonAPIDocumentation.lua GetText, IsEnabled, GetButtonState; SimpleTextureBaseAPIDocumentation.lua
 -- GetTexCoord, GetRotation, IsDesaturated; FrameAPICooldownDocumentation.lua GetCooldownTimes, GetCooldownDuration;
--- SimpleScrollFrameAPIDocumentation.lua the scroll offsets; SimpleObjectAPIDocumentation.lua GetParent).
+-- SimpleScrollFrameAPIDocumentation.lua the scroll offsets; SimpleObjectAPIDocumentation.lua GetParent; the ObjectSecurity
+-- reads, which share the object aspects' value 1 and so read as Hierarchy here: SimpleFrameScriptObjectAPIDocumentation.lua
+-- CanBeAccessedInContext :47, IsForbidden :244, SimpleScriptRegionAPIDocumentation.lua IsProtected (forever :542, live :518),
+-- both clients; IsAnchoringRestricted carries the same tag but the stub answers nothing for it).
 local GETTERS = {
   IsShown = { "Shown" }, GetAlpha = { "Alpha" }, GetVertexColor = COLOR, GetTextColor = COLOR, GetStatusBarColor = COLOR,
   GetText = { "Text" }, GetValue = { "BarValue" }, GetMinMaxValues = { "BarValue" }, GetScale = { "Scale" },
@@ -129,6 +132,7 @@ local GETTERS = {
   IsDesaturated = { "Desaturation" }, GetVerticalScroll = { "ScrollOffset" }, GetHorizontalScroll = { "ScrollOffset" },
   GetChildren = { "Hierarchy" }, GetRegions = { "Hierarchy" }, GetNumChildren = { "Hierarchy" }, GetParent = { "Hierarchy" },
   GetCursorPosition = { "Cursor", "Text" },
+  IsForbidden = { "Hierarchy" }, CanBeAccessedInContext = { "Hierarchy" }, IsProtected = { "Hierarchy" },
 }
 
 -- Retail 12.1.5 has no FrameStrata aspect: live SecretAspectConstantsDocumentation.lua ends at RadialProgress, live
@@ -203,9 +207,10 @@ end
 
 -- The client holds a widget's aspects secret, as its own code would by handing their setters secrets: "Shown",
 -- "Alpha", "Text", "BarValue" (any Enum.SecretAspect name), or "Anchoring" for secret anchoring. The values stay.
+-- The object aspects (ObjectSecurity, ObjectName, Attributes ...) are one bit, so any of them holds Hierarchy.
 function world.holdSecret(w, ...)
   for _, name in ipairs({ ... }) do
-    if name == "Anchoring" then holdValues(w) else hold(w, { name }) end
+    if name == "Anchoring" then holdValues(w) else hold(w, { ASPECT_NAME[Enum.SecretAspect[name]] or name }) end
   end
 end
 
